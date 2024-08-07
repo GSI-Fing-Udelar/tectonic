@@ -57,7 +57,6 @@ The following are the requirements to run Tectonic:
 - GitLab credentials
 - Optionally AWS credentials
 
-An ansible playbook is provided to ease installation. 
 Please see the [detailed instructions](docs/installation.md) for more
 information.
 

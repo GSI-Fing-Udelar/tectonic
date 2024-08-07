@@ -19,7 +19,6 @@ There are two installation methods:
   - [Requirements](#requirements)
   - [Instructions](#instructions)
     - [Manual installation](#manual-installation)
-    - [Installation using Ansible](#installation-using-ansible)
   - [Versions support](#versions-support)
 
 #### Manual installation
@@ -109,26 +108,6 @@ pipenv install --dev -e .
     * This bridge should connect to an external network for student entry point access.
     * It is ok to have a dummy empty bridge for testing.
 
-
-#### Installation using Ansible
-- Install Python 3.11
-  ```
-  sudo dnf install -y python3.11
-  ```
-
-- Install [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#pip-install) 
-  ```
-  python3 -m pip install --user ansible
-  ```
-- Clone or download this GitLab repository
-  ```
-  git clone https://gitlab.fing.edu.uy/gsi/cyberrange/tectonic.git
-  ```
-
-- Install tectonic using [installation playbook.yml](./installation/playbook.yml):
-  ```
-  ansible-playbook -i localhost, tectonic/installation/playbook.yml
-  ```
 
 ### Versions support
 Tectonic was tested on the following versions:
