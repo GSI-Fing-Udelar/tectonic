@@ -1,4 +1,4 @@
-# Tectonic User Guide
+# Tectonic - An Academic Cyber Range
 
 ## Overview
 Tectonic is a cyber range designed to provide realistic cybersecurity
@@ -22,7 +22,7 @@ different use cases carried out by student users and instructors. The
 components are organized in five layers, each fulfilling a particular
 function in the platform's operation.
 
-![Tectonic Architecture](docs/architecture.png){width=400 height=350}
+<img src="docs/architecture.png" width="500">
 
 The underlying infrastructure constitutes the real-world
 infrastructure on which the systems and networks that form the basis
