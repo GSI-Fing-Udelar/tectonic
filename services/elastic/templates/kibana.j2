@@ -1,0 +1,26 @@
+# Managed by Ansible
+
+server.port: 5601
+server.host: 0.0.0.0
+server.ssl.enabled: true
+server.ssl.certificate: /etc/kibana/certs/elk.crt
+server.ssl.key: /etc/kibana/certs/elk.key
+elasticsearch.hosts: ["https://{{ ansible_facts['fqdn'] }}:9200"]
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "{{ kibana_system_password.stdout }}"
+elasticsearch.ssl.certificateAuthorities: [ "/etc/kibana/certs/ca.crt" ]
+logging:
+    appenders:
+        file:
+            type: file
+            fileName: /var/log/kibana/kibana.log
+            layout:
+                type: json
+    root:
+        appenders:
+            - file
+pid.file: /run/kibana/kibana.pid
+xpack.encryptedSavedObjects.encryptionKey: "{{ lookup('community.general.random_string', length=33, special=false, numbers=true, upper=true, lower=true) }}"
+{% if elastic.http_proxy != "" and platform == "libvirt" %}
+xpack.fleet.registryProxyUrl: "{{ elastic.http_proxy }}"
+{% endif %}

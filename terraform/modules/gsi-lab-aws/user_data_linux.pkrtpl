@@ -1,0 +1,3 @@
+#!/bin/bash
+hostnamectl set-hostname ${hostname}
+echo "${authorized_keys}" > ~${username}/.ssh/authorized_keys

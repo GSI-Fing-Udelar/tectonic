@@ -1,0 +1,65 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+- name: Install Elastic Agent
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Install agent on Linux
+      block:
+        - name: Check if Elastic Agent alredy installed
+          ansible.builtin.stat:
+            path: /opt/Elastic/Agent/data/
+          register: result
+        - name: Install Elastic Agent if not alredy installed 
+          block:
+            - name: Install agent
+              block: 
+              - name: Install agent secure
+                ansible.builtin.shell: "./elastic-agent install --url={{ elastic_url }} --enrollment-token={{ token }} --insecure --non-interactive --proxy-disabled"
+                args:
+                  chdir: /opt/elastic-agent/
+              - name: "Delete agent binary"
+                ansible.builtin.file:
+                  path: /opt/elastic-agent/
+                  state: absent
+          when: result.stat.isdir is undefined
+      when: ansible_facts['os_family'] != "Windows"
+    - name: Install agent on Windows
+      block:
+        - name: Check if Elastic Agent alredy installed
+          ansible.builtin.win_stat:
+            path: C:\\Program Files\\Elastic\\Agent\\data
+          register: result
+        - name: Install Elastic Agent if not alredy installed 
+          block:
+            - name: Install agent
+              block: 
+              - name: Install agent secure
+                ansible.builtin.win_shell: ".\\elastic-agent.exe install --url={{ elastic_url }} --enrollment-token={{ token }} --insecure --non-interactive --proxy-disabled"
+                args:
+                  chdir: C:\\elastic-agent
+              - name: Delete agent binary
+                ansible.builtin.win_file:
+                  path: C:\\elastic-agent
+                  state: absent
+      when: ansible_facts['os_family'] == "Windows"

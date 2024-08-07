@@ -1,0 +1,45 @@
+# The after-clone ansible playbook for the Password Cracking scenario.
+# This playbook is applied to each machine in each instance, after it
+# was cloned. Internet connection is not available by default.
+
+- name: "Password Cracking victim configuration"
+  hosts: victim
+  tasks:
+    - name: "Create FTP user with same password as username"
+      ansible.builtin.user:
+        name: "{{ parameter['ftp_users']['username'] }}"
+        password: "{{ parameter['ftp_users']['password'] | password_hash(hashtype='sha512', salt=parameter['ftp_users']['salt'], rounds=5000)}}"
+        comment: "{{ parameter['ftp_users']['gecos'] }}"
+        shell: /usr/sbin/nologin
+        create_home: yes
+        home: "/home/{{ parameter['ftp_users']['username'] }}"
+    - name: "Enable access for FTP user"
+      ansible.builtin.copy:
+        dest: /etc/ftpusers
+        content: |
+          {{ parameter['ftp_users']['username'] }}
+    - name: "Create user with shell access and password based on login information"
+      ansible.builtin.user:
+        name: "{{ parameter['shell_users']['username'] }}"
+        password: "{{ parameter['shell_users']['password'] | password_hash(hashtype='sha512', salt=parameter['shell_users']['salt'], rounds=5000)}}"
+        comment: "{{ parameter['shell_users']['gecos'] }}"
+        shell: /bin/bash
+        groups: "backup"
+        create_home: yes
+        home: "/home/{{ parameter['shell_users']['username'] }}"
+    - name: "Create a backup of the shadow file"
+      ansible.builtin.copy:
+        src: /etc/shadow
+        remote_src: true
+        dest: "/home/{{ parameter['ftp_users']['username'] }}/shadow.bak"
+        owner: "{{ parameter['ftp_users']['username'] }}"
+        group: "{{ parameter['ftp_users']['username'] }}"
+        mode: '0644'
+    - name: "Install flag in ssh user directory"
+      ansible.builtin.copy:
+        dest: "/home/{{ parameter['shell_users']['username'] }}/flag.txt"
+        owner: "{{ parameter['shell_users']['username'] }}"
+        group: "{{ parameter['shell_users']['username'] }}"
+        mode: '0600'
+        content: |
+          {{ parameter['flags'] }}

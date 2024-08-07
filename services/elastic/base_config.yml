@@ -1,0 +1,85 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+---
+- name: "Install Elastic Stack"
+  hosts: elastic
+  become: true
+  vars:
+    elastic_repo_key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    elastic_repo_url: https://artifacts.elastic.co/packages/8.x/yum
+    
+  tasks:
+    - name: Set hostname
+      ansible.builtin.hostname:
+        name: elastic
+
+    - name: Install packages
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - unzip
+        - wget
+        - jq
+        - firewalld
+        
+    - name: Install Elastic repo
+      block:
+        - name: Import Elastic repo key
+          ansible.builtin.rpm_key:
+            state: present
+            key: "{{ elastic_repo_key }}"
+        - name: Import Elastic repo
+          ansible.builtin.yum_repository:
+            name: elasticsearch
+            description: Elasticsearch repository for 8.x packages
+            baseurl: "{{ elastic_repo_url }}"
+            gpgkey: "{{ elastic_repo_key }}"
+            enabled: true
+            gpgcheck: true
+            file: elasticsearch
+            state: present
+
+    - name: Install Elastic latest version
+      ansible.builtin.package:
+        name:
+          - elasticsearch
+          - kibana
+          - logstash
+          - elastic-agent
+        state: present
+      when: elastic_latest_version
+
+    - name: Install Elastic specific version
+      ansible.builtin.package:
+        name: 
+          - "elasticsearch={{ elastic_version }}" 
+          - "kibana={{ elastic_version }}"
+          - "logstash={{ elastic_version }}"
+          - "elastic-agent={{ elastic_version }}"
+        state: present
+      when: not elastic_latest_version
+
+    - name : Start firewalld
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: yes

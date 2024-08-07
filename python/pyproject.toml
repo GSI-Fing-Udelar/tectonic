@@ -1,0 +1,85 @@
+[project]
+name = "tectonic"
+version = "0.1.0"
+description = "A Python package for the Tectonic project."
+requires-python = ">= 3.6"
+readme = "README.md"
+dependencies = [
+    "bcrypt",
+    "passlib",
+    "boto3",
+    "botocore",
+    "certifi",
+    "cffi",
+    "charset-normalizer",
+    "click",
+    "cryptography==41.0.3",
+    "decorator",
+    "deprecated",
+    "fabric",
+    "idna",
+    "invoke",
+    "jmespath",
+    "packer.py",
+    "paramiko",
+    "pycparser",
+    "pynacl",
+    "python-dateutil",
+    "python-terraform",
+    "pyyaml",
+    "requests",
+    "requests-toolbelt",
+    "s3transfer",
+    "six",
+    "urllib3",
+    "wrapt",
+    "ansible-runner",
+    "ansible==7.7.0",
+    "libvirt-python",
+    "elasticsearch",
+    "packaging",
+    "prettytable",
+    "beautifulsoup4",
+    "bs4",
+    "freezegun",
+]
+
+[project.optional-dependencies]
+dev = [
+    'pytest > 7',
+    'pytest-cov',
+    'pytest-mock',
+    'pytest-env',
+    'fabric[pytest]',
+    'pylint',
+    'black',
+    'moto[ec2] == 4.2.13',
+    'responses',
+    'freezegun'
+]
+
+[project.urls]
+Homepage = "https://cyberrange.fing.edu.uy/"
+Documentation = "https://readthedocs.org"
+Repository = "https://gitlab.fing.edu.uy/GSI/CyberRange/tectonic.git"
+
+[build-system]
+requires = ["setuptools >= 61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src/"]
+include = ["tectonic"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+pythonpath = "src"
+addopts = [
+    "--import-mode=importlib",
+]
+testpaths = [
+    "tests",
+]
+
+[project.scripts]
+tectonic = "tectonic.cli:tectonic"

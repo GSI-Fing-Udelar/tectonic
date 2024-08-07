@@ -1,0 +1,8 @@
+[Unit]
+After=network.target
+
+[Service]
+ExecStart=sh /usr/local/bin/vxlan.sh
+
+[Install]
+WantedBy=default.target

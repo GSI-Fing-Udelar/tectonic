@@ -1,0 +1,180 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+- name: "Manage Elastic Agent"
+  hosts: all
+  become: true
+  gather_facts: no
+  
+  tasks:
+    - name: Install agent
+      block:
+        - name: Check if Elastic Agent alredy installed
+          ansible.builtin.stat:
+            path: "/opt/elastic-agent-{{ institution }}-{{ lab_name }}"
+          register: result
+        - name: Install Elastic Agent if not alredy installed 
+          block:
+            - name: Create tmp dir
+              ansible.builtin.file:
+                path: /tmp/elastic-agent
+                state: directory
+                owner: root
+                group: root
+                mode: '0660'
+            - name: "Check if agent binaries already downloaded"
+              ansible.builtin.stat:
+                path: "/opt/elastic-agent-{{ elastic_agent_version }}-linux-x86_64/"
+              register: result_agent
+            - name: "Download agent"
+              ansible.builtin.unarchive:
+                src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{elastic_agent_version}}-linux-x86_64.tar.gz"
+                dest: /opt
+                remote_src: yes
+              when: result_agent.stat.isdir is undefined
+            - name: "Install agent"
+              block: 
+              - name: "Install agent"
+                ansible.builtin.shell: "./elastic-agent install --url={{elastic_url}} --enrollment-token={{token}} --base-path=/opt/elastic-agent-{{ institution }}-{{ lab_name }} --insecure --non-interactive --proxy-disabled --delay-enroll"
+                args:
+                  chdir: "/opt/elastic-agent-{{elastic_agent_version}}-linux-x86_64/"
+            - name: "Move elastic-agent binary"
+              block:
+                - name: "Copy binary"
+                  ansible.builtin.copy:
+                    src: /usr/bin/elastic-agent
+                    dest: "/usr/bin/elastic-agent-{{ institution }}-{{ lab_name }}"
+                    mode: '755'
+                    owner: root
+                    group: root
+                    remote_src: true
+                - name: "Delete original binary"
+                  ansible.builtin.file:
+                    path: /usr/bin/elastic-agent
+                    state: absent
+            - name: "Move elastic-agent service file"
+              block:
+                - name: "Copy service file"
+                  ansible.builtin.copy:
+                    src: /etc/systemd/system/elastic-agent.service
+                    dest: "/etc/systemd/system/elastic-agent-{{ institution }}-{{ lab_name }}.service"
+                    mode: '644'
+                    owner: root
+                    group: root
+                    remote_src: true
+                - name: "Delete original service file"
+                  ansible.builtin.file:
+                    path: /etc/systemd/system/elastic-agent.service
+                    state: absent
+            - name: "Adjust elastic-agent service file configuration"
+              ansible.builtin.replace:
+                path: "/etc/systemd/system/elastic-agent-{{ institution }}-{{ lab_name }}.service"
+                regexp: '/usr/bin/elastic-agent'
+                replace: "/usr/bin/elastic-agent-{{ institution }}-{{ lab_name }}"
+            - name: "Get port assignment base on number of agents installed"
+              block:
+              # https://unix.stackexchange.com/questions/55913/whats-the-easiest-way-to-find-an-unused-local-port
+              - name: Find unused port
+                ansible.builtin.shell: "comm -23 <(seq 40000 50000 | sort) <(ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1"
+                args:
+                  executable: /bin/bash
+                register: port
+              - name: "Get port number"
+                ansible.builtin.set_fact:
+                  port_number: "{{ port.stdout }}"
+            - name: "Adjust elastic-agent configuration"
+              ansible.builtin.blockinfile:
+                path: /opt/elastic-agent-{{ institution }}-{{ lab_name }}/Elastic/Agent/elastic-agent.yml
+                insertafter: 'EOF'
+                block: |
+                  agent.monitoring:
+                    enabled: false
+                    http:
+                      enabled: false
+                  agent.grpc:
+                    port: "{{ port_number }}" 
+            - name: "Start elastic-agent service"
+              ansible.builtin.systemd_service:
+                name: "elastic-agent-{{ institution }}-{{ lab_name }}"
+                state: started
+                enabled: yes
+                daemon_reload: yes
+          when: result.stat.isdir is undefined
+      when: action == "install"
+
+    - name: Delete agent
+      block:
+        - name: Check if Elastic Agent alredy removed
+          ansible.builtin.stat:
+            path: "/opt/elastic-agent-{{ institution }}-{{ lab_name }}"
+          register: result
+        - name: Delete Elastic Agent if not alredy removed 
+          block:
+            - name: Stop elastic-agent service
+              ansible.builtin.systemd_service:
+                name: "elastic-agent-{{ institution }}-{{ lab_name }}"
+                state: stopped
+                enabled: no
+                daemon_reload: yes
+            - name: Delete service file
+              ansible.builtin.file:
+                name: "/etc/systemd/system/elastic-agent-{{ institution }}-{{ lab_name }}.service"
+                state: absent
+            - name: Delete binary
+              ansible.builtin.file:
+                name: "/usr/bin/elastic-agent-{{ institution }}-{{ lab_name }}"
+                state: absent
+            - name: Delete installation directory
+              ansible.builtin.file:
+                name: "/opt/elastic-agent-{{ institution }}-{{ lab_name }}"
+                state: absent
+            - name: Delete ca certificate
+              ansible.builtin.file:
+                name: "/opt/certs/{{ institution }}-{{ lab_name }}/"
+                state: absent
+          when: result.stat.isdir is defined
+      when: action == "delete"
+
+    - name: Start/Stop/Restart Elastic Agent
+      block:
+        - name: Check if Elastic Agent alredy removed
+          ansible.builtin.stat:
+            path: "/opt/elastic-agent-{{ institution }}-{{ lab_name }}"
+          register: result
+        - name: Apply action
+          block:
+            - name: Start/Stop elastic-agent service
+              ansible.builtin.systemd_service:
+                name: "elastic-agent-{{ institution }}-{{ lab_name }}"
+                state: "{{action}}"
+              when: action != "status" 
+            - name: Get elastic-agent status
+              ansible.builtin.service_facts:
+            - name: Aux
+              ansible.builtin.set_fact:
+                service_name: "elastic-agent-{{ institution }}-{{ lab_name }}.service"
+            - name: Set status
+              ansible.builtin.set_fact:
+                agent_status: "{{ ansible_facts['services'][service_name]['state'] }}"
+            - name: Print status
+              ansible.builtin.debug:
+                var: agent_status
+          when: result.stat.isdir is defined
+      when: action == "started" or action == "stopped" or action == "restarted" or action == "status"

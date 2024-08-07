@@ -1,0 +1,335 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+- name: Finish playbook execution if Caldera already installed
+  block:
+    - name: Check if credentials file exists
+      ansible.builtin.stat:
+        path: /root/credentials
+      register: credentials
+    - name: End execution if credentials file exists
+      ansible.builtin.meta: end_play
+      when: credentials.stat.exists
+
+- name: Add hostname
+  lineinfile:
+    dest: /etc/hosts
+    insertafter: EOF
+    line: "{{caldera.ip}} {{ ansible_facts['fqdn'] }}"
+
+- name: Create certificates
+  block:
+    - name: Create certificates directory
+      ansible.builtin.file:
+        path: /opt/certs/
+        state: directory
+        recurse: yes
+        owner: root
+        group: root
+    - name: Create private key
+      community.crypto.openssl_privatekey:
+        path: /opt/certs/certificate.key
+    - name: Create certificate signing request (CSR) for self-signed certificate
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: /opt/certs/certificate.key
+        common_name: "{{ ansible_facts['fqdn'] }}"
+        country_name: UY
+        organization_name: GSI
+        subject_alt_name:
+          - "DNS:{{ ansible_facts['fqdn'] }}"
+          - "DNS:{{ caldera.ip }}"
+          - "DNS:127.0.0.1"
+      register: csr
+    - name: Create self-signed certificate from CSR
+      community.crypto.x509_certificate:
+        path: /opt/certs/certificate.crt
+        csr_content: "{{ csr.csr }}"
+        privatekey_path: /opt/certs/certificate.key
+        provider: selfsigned
+    - name: Get key content
+      ansible.builtin.command: cat /opt/certs/certificate.key
+      register: key
+    - name: Get certificate content
+      ansible.builtin.command: cat /opt/certs/certificate.crt
+      register: cert
+    - name: Generate certificate.pem for Caldera
+      ansible.builtin.copy:
+        dest: /opt/caldera/plugins/ssl/conf/certificate.pem
+        content: |
+          {{ key['stdout'] }}
+          {{ cert['stdout'] }}
+
+- name: Configure haproxy
+  block:
+    - name: Copy haproxy template
+      ansible.builtin.copy:
+        dest: /opt/caldera/plugins/ssl/conf/haproxy.conf
+        content: |
+          global
+            maxconn 20000
+            nbthread 4
+            ssl-default-bind-ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256
+            ssl-default-bind-options ssl-min-ver TLSv1.1 no-tls-tickets
+
+          defaults
+              timeout connect 10s
+              timeout client 30s
+              timeout server 30s
+              mode http
+              option forwardfor
+              option http-server-close
+
+          frontend caldera-https-mgmt
+              bind *:8443 ssl crt plugins/ssl/conf/certificate.pem
+              http-request add-header proxy_port 8443
+              http-request set-header X-Forwarded-Proto https
+              default_backend caldera_server
+
+          frontend caldera-https-agents
+              bind *:443 ssl crt plugins/ssl/conf/certificate.pem
+              http-request add-header proxy_port 8443
+              http-request set-header X-Forwarded-Proto https
+              acl beacon path_beg /beacon
+              acl file_upload path_beg /file/upload
+              acl file_download path_beg /file/download
+              use_backend caldera_server if beacon || file_upload || file_download
+
+          backend caldera_server
+              balance leastconn
+              cookie SERVERUSED insert indirect nocache
+              default-server maxconn 20
+              server caldera_main 127.0.0.1:8888 cookie caldera_main
+    - name: Allow Haproxy connect ports
+      ansible.builtin.command: setsebool -P haproxy_connect_any 1
+
+- name: Generate password
+  ansible.builtin.set_fact:
+    red_password: "{{ lookup('community.general.random_string', length=43, special=false) }}"
+    blue_password: "{{ lookup('community.general.random_string', length=43, special=false) }}"
+    red_api_key: "{{ lookup('community.general.random_string', length=43, special=false) }}"
+    blue_api_key: "{{ lookup('community.general.random_string', length=43, special=false) }}"
+
+- name: Copy Caldera configuration
+  ansible.builtin.copy:
+    dest: /opt/caldera/conf/local.yml
+    content: |
+      ability_refresh: 60
+      api_key_blue: {{ blue_api_key }}
+      api_key_red: {{ red_api_key }}
+      app.contact.dns.domain: {{ansible_facts['fqdn']}}
+      app.contact.dns.socket: {{ caldera.ip }}:8853
+      app.contact.ftp.host: {{ caldera.ip }}
+      app.contact.ftp.port: 2222
+      app.contact.ftp.pword: caldera
+      app.contact.ftp.server.dir: ftp_dir
+      app.contact.ftp.user: caldera_user
+      app.contact.gist: {{ lookup('community.general.random_string', length=43, special=false) }}
+      app.contact.html: /weather
+      app.contact.http: https://{{ caldera.ip }}:443
+      app.contact.slack.api_key: {{ lookup('community.general.random_string', length=43, special=false) }}
+      app.contact.slack.bot_id: SLACK_BOT_ID
+      app.contact.slack.channel_id: SLACK_CHANNEL_ID
+      app.contact.tcp: {{ caldera.ip }}:7010
+      app.contact.tunnel.ssh.host_key_file: REPLACE_WITH_KEY_FILE_PATH
+      app.contact.tunnel.ssh.host_key_passphrase: REPLACE_WITH_KEY_FILE_PASSPHRASE
+      app.contact.tunnel.ssh.socket: {{ caldera.ip }}:8022
+      app.contact.tunnel.ssh.user_name: sandcat
+      app.contact.tunnel.ssh.user_password: s4ndc4t!
+      app.contact.udp: {{ caldera.ip }}:7011
+      app.contact.websocket: {{ caldera.ip }}:7012
+      auth.login.handler.module: default
+      crypt_salt: {{ lookup('community.general.random_string', length=43, special=false) }}
+      encryption_key: {{ lookup('community.general.random_string', length=43, special=false) }}
+      exfil_dir: /tmp/caldera
+      host: 127.0.0.1
+      objects.planners.default: atomic
+      plugins:
+      - access
+      - atomic
+      - compass
+      - debrief
+      - fieldmanual
+      - manx
+      - response
+      - sandcat
+      - stockpile
+      - training
+      - ssl
+      port: 8888
+      reachable_host_traits:
+      - remote.host.fqdn
+      - remote.host.ip
+      reports_dir: /tmp
+      requirements:
+        go:
+          command: go version
+          type: installed_program
+          version: 1.19
+        python:
+          attr: version
+          module: sys
+          type: python_module
+          version: 3.8.0
+      users:
+        blue:
+          blue: {{ blue_password }}
+        red:
+          red: {{ red_password }}
+
+- name: Create Caldera launch script
+  ansible.builtin.copy:
+    dest: /opt/caldera/script.sh
+    content: |
+      #!/bin/bash
+      nohup python3.8 server.py &
+
+- name: Create Caldera service 
+  ansible.builtin.copy: 
+    dest: /etc/systemd/system/caldera.service
+    content: |
+      [Unit]
+      Description=Caldera
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      ExecStart=sh script.sh
+      WorkingDirectory=/opt/caldera/
+      Type=forking
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Import Caldera resources
+  ansible.builtin.include_tasks: import_resources.yml
+
+- name: Start and enable Caldera
+  ansible.builtin.systemd_service:
+    name: caldera
+    state: started
+    enabled: true
+
+- name: Configure firewalld
+  block:
+    - name: Configure firewalld - Add ports to default zone
+      ansible.posix.firewalld:
+        zone: public
+        port: "{{ item }}"
+        permanent: true
+        state: enabled
+      with_items:
+        - 443/tcp
+        - 7010/tcp
+        - 7011/udp
+    - name: Configure firewalld - Remove service from default zone
+      ansible.posix.firewalld:
+        zone: public
+        service: ssh
+        permanent: true
+        state: disabled
+      when: platform == "libvirt"
+    - name: Configure firewalld - Allow ssh from server
+      ansible.posix.firewalld:
+        zone: public
+        permanent: true
+        state: enabled
+        rich_rule: "rule family=ipv4 source address={{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.129/32 port port=22 protocol=tcp accept"
+      when: platform == "libvirt"
+    - name: Configure firewalld - Allow access to caldera from server
+      ansible.posix.firewalld:
+        zone: public
+        permanent: true
+        state: enabled
+        rich_rule: "rule family=ipv4 source address={{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.129/32 port port=8443 protocol=tcp accept"
+      when: platform == "libvirt"
+    - name: Configure firewalld - Add port to default zone
+      ansible.posix.firewalld:
+        zone: public
+        port: "8443/tcp"
+        permanent: true
+        state: enabled
+      when: platform == "aws"
+    - name: Configure firewalld - Reload rules
+      ansible.builtin.command: firewall-cmd --reload
+
+- name: Check if caldera is up
+  block:
+    - name: Copy script
+      ansible.builtin.template:
+        src: check-caldera.j2
+        dest: /tmp/check-caldera.sh
+    - name: Run checl-caldera script
+      ansible.builtin.shell: sh /tmp/check-caldera.sh
+    - name: Remove - check-caldera.sh
+      ansible.builtin.file:
+        path: /tmp/check-caldera.sh
+        state: absent
+
+- name: Install Caldera agent
+  block:
+    - name: Download Caldera agent
+      ansible.builtin.get_url:
+        url: "https://{{ ansible_facts['fqdn'] }}/file/download"
+        dest: /opt/caldera-agent
+        mode: '0770'
+        use_proxy: false
+        validate_certs: false
+        headers: 
+          file: sandcat.go
+          platform: linux
+    - name: Create Caldera agent service file
+      ansible.builtin.copy: 
+        dest: /etc/systemd/system/caldera-agent.service
+        content: |
+          [Unit]
+          Description=Caldera Agent
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          ExecStart=sh caldera-agent.sh
+          WorkingDirectory=/opt/
+          Type=forking
+
+          [Install]
+          WantedBy=multi-user.target
+    - name: Create Caldera agent launch script
+      ansible.builtin.copy:
+        dest: /opt/caldera-agent.sh
+        content: |
+          #!/bin/bash
+          nohup ./caldera-agent -server "https://{{ ansible_facts['fqdn'] }}" -group caldera -paw caldera -v &
+    - name: Start and enable Caldera agent
+      ansible.builtin.systemd_service:
+        name: caldera-agent
+        state: started
+        enabled: true
+
+- name: Import Caldera resources using API
+  ansible.builtin.include_tasks: import_resources_api.yml
+
+- name: Write password to file
+  ansible.builtin.copy:
+    dest: /root/credentials
+    content: |
+      red {{ red_password }}
+      blue {{ blue_password }}
+      red_api {{ red_api_key }}
+      blue_api {{ blue_api_key }}

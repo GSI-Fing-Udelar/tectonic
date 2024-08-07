@@ -1,0 +1,503 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Working for Elastic 8.14.3
+- name: Finish playbook execution if ELK already installed
+  block:
+  - name: Check if credentials file exists
+    ansible.builtin.stat:
+      path: /root/credentials
+    register: credentials
+  - name: End execution if credentials file exists
+    ansible.builtin.meta: end_play
+    when: credentials.stat.exists
+
+- name: Add hostname
+  lineinfile:
+    dest: /etc/hosts
+    insertafter: EOF
+    line: "{{elastic.ip}} {{ ansible_facts['fqdn'] }}"
+
+- name: Create Elasticsearch data directory
+  ansible.builtin.file:
+    path: /data/elasticsearch
+    state: directory
+    recurse: yes
+    mode: '0755'
+    owner: elasticsearch
+    group: elasticsearch
+
+- name: Configure firewalld
+  block:
+    - name: Configure firewalld - Add ports to default zone
+      ansible.posix.firewalld:
+        zone: public
+        port: "{{ item }}"
+        permanent: true
+        state: enabled
+      with_items:
+        - 5044/tcp
+        - 8220/tcp
+    - name: Configure firewalld - Remove ssh service from default zone
+      ansible.posix.firewalld:
+        zone: public
+        service: ssh
+        permanent: true
+        state: disabled
+      when: platform == "libvirt"
+    - name: Configure firewalld - Allow ssh from server
+      ansible.posix.firewalld:
+        zone: public
+        permanent: true
+        state: enabled
+        rich_rule: "rule family=ipv4 source address={{ (elastic.ip | split('.'))[0] }}.{{ (elastic.ip | split('.'))[1] }}.{{ (elastic.ip | split('.'))[2] }}.129/32 port port=22 protocol=tcp accept"
+      when: platform == "libvirt"
+    - name: Configure firewalld - Allow access to kibana from server
+      ansible.posix.firewalld:
+        zone: public
+        permanent: true
+        state: enabled
+        rich_rule: "rule family=ipv4 source address={{ (elastic.ip | split('.'))[0] }}.{{ (elastic.ip | split('.'))[1] }}.{{ (elastic.ip | split('.'))[2] }}.129/32 port port=5601 protocol=tcp accept"
+      when: platform == "libvirt"
+    - name: Configure firewalld - Allow access to Kibana
+      ansible.posix.firewalld:
+        zone: public
+        port: "5601/tcp"
+        permanent: true
+        state: enabled
+      when: platform == "aws"
+    - name: Configure firewalld - Reload rules
+      ansible.builtin.command: firewall-cmd --reload
+
+- name: Generate Elastic certificates
+  block:
+  - name: Generate Elastic CA
+    ansible.builtin.shell: /usr/share/elasticsearch/bin/elasticsearch-certutil ca --days 365 --pem --out /opt/ca.zip -s
+  - name: Unarchive ca.zip
+    ansible.builtin.unarchive:
+      src: /opt/ca.zip
+      dest: /opt
+      remote_src: yes
+  - name: Generate node certificate
+    ansible.builtin.shell: /usr/share/elasticsearch/bin/elasticsearch-certutil cert --ca-cert /opt/ca/ca.crt --ca-key /opt/ca/ca.key --days 365 --name {{ ansible_facts['fqdn'] }} --dns {{ ansible_facts['fqdn'] }} --ip {{ elastic.ip }} --pem --out /opt/cert.zip
+  - name: Unarchive cert.zip
+    ansible.builtin.unarchive:
+      src: /opt/cert.zip
+      dest: /opt
+      remote_src: yes
+  - name: Generate agent certificate
+    ansible.builtin.shell: /usr/share/elasticsearch/bin/elasticsearch-certutil cert --ca-cert /opt/ca/ca.crt --ca-key /opt/ca/ca.key --days 365 --name agent --dns agent --ip 127.0.0.1 --pem --out /opt/agent.zip
+  - name: Unarchive agent.zip
+    ansible.builtin.unarchive:
+      src: /opt/agent.zip
+      dest: /opt
+      remote_src: yes
+  - name: Copy CA for Elasticsearch
+    ansible.builtin.copy:
+      src: /opt/ca/ca.crt
+      dest: /etc/elasticsearch/certs/ca.crt
+      owner: elasticsearch
+      group: elasticsearch
+      mode: '0644'
+      remote_src: yes
+  - name: Copy certificate for Elasticsearch
+    ansible.builtin.copy:
+      src: "/opt/{{ ansible_facts['fqdn'] }}/{{ ansible_facts['fqdn']  }}.crt"
+      dest: /etc/elasticsearch/certs/elk.crt
+      owner: elasticsearch
+      group: elasticsearch
+      mode: '0644'
+      remote_src: yes
+  - name: Copy key for Elasticsearch
+    ansible.builtin.copy:
+      src: "/opt/{{ ansible_facts['fqdn'] }}/{{ ansible_facts['fqdn']  }}.key"
+      dest: /etc/elasticsearch/certs/elk.key
+      owner: elasticsearch
+      group: elasticsearch
+      mode: '0640'
+      remote_src: yes
+  - name: Create Kibana certificates directory
+    ansible.builtin.file:
+      path: /etc/kibana/certs
+      state: directory
+      mode: '0755'
+      owner: kibana
+      group: kibana
+  - name: Copy CA for Kibana
+    ansible.builtin.copy:
+      src: /opt/ca/ca.crt
+      dest: /etc/kibana/certs/ca.crt
+      owner: kibana
+      group: kibana
+      mode: '0644'
+      remote_src: yes
+  - name: Copy certificate for Kibana
+    ansible.builtin.copy:
+      src: "/opt/{{ ansible_facts['fqdn'] }}/{{ ansible_facts['fqdn']  }}.crt"
+      dest: /etc/kibana/certs/elk.crt
+      owner: kibana
+      group: kibana
+      mode: '0644'
+      remote_src: yes
+  - name: Copy key for Kibana
+    ansible.builtin.copy:
+      src: "/opt/{{ ansible_facts['fqdn'] }}/{{ ansible_facts['fqdn']  }}.key"
+      dest: /etc/kibana/certs/elk.key
+      owner: kibana
+      group: kibana
+      mode: '0640'
+      remote_src: yes
+  - name: Create Logstash certificates directory
+    ansible.builtin.file:
+      path: /etc/logstash/certs
+      state: directory
+      mode: '0755'
+      owner: logstash
+      group: logstash
+  - name: Copy CA for Logstash
+    ansible.builtin.copy:
+      src: /opt/ca/ca.crt
+      dest: /etc/logstash/certs/ca.crt
+      owner: logstash
+      group: logstash
+      mode: '0644'
+      remote_src: yes
+  - name: Copy certificate for Logstash
+    ansible.builtin.copy:
+      src: "/opt/{{ ansible_facts['fqdn'] }}/{{ ansible_facts['fqdn']  }}.crt"
+      dest: /etc/logstash/certs/elk.crt
+      owner: logstash
+      group: logstash
+      mode: '0644'
+      remote_src: yes
+  - name: Copy key for Logstash
+    ansible.builtin.copy:
+      src: "/opt/{{ ansible_facts['fqdn'] }}/{{ ansible_facts['fqdn']  }}.key"
+      dest: /etc/logstash/certs/elk.key
+      owner: logstash
+      group: logstash
+      mode: '0640'
+      remote_src: yes
+  - name: Convert key for Logstash
+    ansible.builtin.command: openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in /etc/logstash/certs/elk.key -out /etc/logstash/certs/elk.pkcs8.key
+  - name: Change key permission and owner for Logstash
+    ansible.builtin.file:
+      path: /etc/logstash/certs/elk.pkcs8.key
+      owner: logstash
+      group: logstash
+      mode: '0640'
+
+- name: Write Elasticsearch configuration file
+  ansible.builtin.template:
+    src: templates/elasticsearch.j2
+    dest: /etc/elasticsearch/elasticsearch.yml
+      
+- name: Start Elasticsearch service
+  ansible.builtin.service:
+    name: elasticsearch
+    state: started
+    enabled: yes
+
+- name: Reset superuser password
+  ansible.builtin.shell: "/usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic -a -f -s -b --url https://{{ ansible_facts['fqdn'] }}:9200"
+  register: elastic_superuser_password
+
+- name: Write superuser password to file
+  ansible.builtin.copy:
+    dest: /root/credentials
+    content: |
+      elastic {{ elastic_superuser_password.stdout }}
+
+- name: Reset kibana_system password
+  ansible.builtin.shell: "/usr/share/elasticsearch/bin/elasticsearch-reset-password -u kibana_system -a -f -s -b --url https://{{ ansible_facts['fqdn'] }}:9200"
+  register: kibana_system_password
+
+- name: Write Kibana configuration
+  ansible.builtin.template:
+    src: templates/kibana.j2
+    dest: /etc/kibana/kibana.yml
+
+- name: Start Kibana service
+  ansible.builtin.service:
+    name: kibana
+    state: started
+    enabled: yes
+
+- name: Write Logstash pipeline configuration file
+  ansible.builtin.template:
+    src: templates/logstash.j2
+    dest: /etc/logstash/conf.d/pipeline.conf
+      
+- name: Start Logstash service
+  ansible.builtin.service:
+    name: logstash
+    state: started
+    enabled: yes
+
+- name: Check Kibana status
+  block:
+  - name: Wait for kibana to be up
+    ansible.builtin.wait_for:
+      host: 0.0.0.0
+      port: 5601
+      delay: 10
+      connect_timeout: 5
+      sleep: 3
+      timeout: 300
+  - name: Copy check-kibana script
+    ansible.builtin.template:
+      src: templates/check-kibana.j2
+      dest: /tmp/check-kibana.sh
+  - name: Run check-kibana script
+    ansible.builtin.shell: sh /tmp/check-kibana.sh
+
+- name: Configure Fleet
+  block:
+  - name: Fleet - Get CA content
+    ansible.builtin.shell: cat /opt/ca/ca.crt
+    register: elastic_ca
+  - name: Fleet - Get agent crt content
+    ansible.builtin.shell: cat /opt/agent/agent.crt
+    register: elastic_agent_crt
+  - name: Fleet - Get agent key content
+    ansible.builtin.shell: cat /opt/agent/agent.key
+    register: elastic_agent_key
+  - name: Fleet - Configure elasticsearch output
+    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    vars:
+      url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/outputs"
+      method: "POST"
+      status_code: 200
+      body_format: "json"
+      user: elastic
+      password: "{{ elastic_superuser_password.stdout }}"
+      headers: 
+        "kbn-xsrf": "ansible"
+      body: "{ \"name\": \"elastic\", \"type\":\"elasticsearch\", \"hosts\":[ \"https://{{ elastic.ip }}:9200\" ], \"is_default\":false, \"is_default_monitoring\":false, \"preset\":\"balanced\", \"config_yaml\":\"ssl.certificate_authorities: |\\n    {{ elastic_ca.stdout_lines | join('\\n    ') }}\\nproxy_disabled: true\", \"ca_trusted_fingerprint\":\"\", \"proxy_id\":null }"
+  - name: Register result
+    ansible.builtin.set_fact:
+      elasticsearch_output_result: "{{ result }}"
+  - name: Fleet - Configure server host
+    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    vars:
+      url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/fleet_server_hosts"
+      method: "POST"
+      status_code: 200
+      body_format: "json"
+      user: elastic
+      password: "{{ elastic_superuser_password.stdout }}"
+      headers: 
+        "kbn-xsrf": "ansible"
+      body: "{ \"name\": \"fleet\", \"host_urls\":[ \"https://{{ elastic.ip }}:8220\" ], \"is_default\":true }"
+    register: result
+  - name: Register result
+    ansible.builtin.set_fact:
+      fleet_info : "{{ result }}"
+  - name: Fleet - Generate service token
+    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    vars:
+      url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/service_tokens?remote=false"
+      headers:
+        "kbn-xsrf": "ansible"
+      user: "elastic"
+      password: "{{ elastic_superuser_password.stdout }}"
+      method: "POST"
+      force_basic_auth: true
+      status_code: 200
+      body_format: "json"
+      body:
+  - name: Register result
+    ansible.builtin.set_fact:
+      elastic_result_service_token: "{{ result }}"
+  - name: Fleet - Configure policy
+    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    vars:
+      url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies"
+      headers:
+        "kbn-xsrf": "ansible"
+      user: elastic
+      password: "{{ elastic_superuser_password.stdout }}"
+      method: "POST"
+      body: "{ \"name\": \"Fleet\", \"description\": \"\", \"namespace\": \"default\", \"monitoring_enabled\": [], \"inactivity_timeout\": 1209600, \"is_protected\": false, \"agent_features\": [ { \"name\": \"fqdn\", \"enabled\": true } ] }"
+      force_basic_auth: true
+      status_code: 200
+      body_format: "json"
+  - name: Register result
+    ansible.builtin.set_fact:
+      elastic_result_policy: "{{ result }}"
+  - name: Fleet - Configure integration
+    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    vars:
+      url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
+      headers:
+        "kbn-xsrf": "ansible"
+      user: "elastic"
+      password: "{{ elastic_superuser_password.stdout }}"
+      method: "POST"
+      body: "{ \"policy_id\": \"{{ elastic_result_policy['json']['item']['id'] }}\", \"package\" : { \"name\": \"fleet_server\" , \"version\": \"1.5.0\"}, \"name\": \"fleet_server-1\", \"description\": \"\" , \"namespace\": \"default\", \"inputs\": {\"fleet_server-fleet-server\": { \"enabled\": true, \"vars\": { \"custom\": \"\" }, \"streams\": {} } } }"
+      force_basic_auth: true
+      status_code: 200
+      body_format: "json"
+  - name: Fleet - Configure Logstash output
+    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    vars:
+      url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/outputs"
+      headers:
+        "kbn-xsrf": "ansible"
+      user: "elastic"
+      password: "{{ elastic_superuser_password.stdout }}"
+      method: "POST"
+      body: "{\"name\":\"Logstash\",\"type\":\"logstash\",\"hosts\":[\"{{ elastic.ip }}:5044\"],\"is_default\":true,\"is_default_monitoring\":true,\"config_yaml\":\"proxy_disabled: true\\nssl.verification_mode: certificate\",\"ssl\":{\"certificate\":\"{{ elastic_agent_crt.stdout_lines | join('\\n') }}\",\"certificate_authorities\":[\"{{ elastic_ca.stdout_lines | join('\\n') }}\"]},\"secrets\":{\"ssl\":{\"key\":\"{{ elastic_agent_key.stdout_lines | join('\\n') }}\"}},\"proxy_id\":null}"
+      force_basic_auth: true
+      status_code: 200
+      body_format: "json"
+  - name: Fleet - Adjust policy output
+    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    vars:
+      url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies/{{ elastic_result_policy['json']['item']['id'] }}"
+      headers:
+        "kbn-xsrf": "ansible"
+      user: "elastic"
+      password: "{{ elastic_superuser_password.stdout }}"
+      method: "PUT"
+      body: "{ \"name\": \"Fleet\", \"description\": \"\", \"namespace\": \"default\", \"monitoring_enabled\": [], \"inactivity_timeout\": 1209600, \"is_protected\": false, \"data_output_id\": \"{{ elasticsearch_output_result['json']['item']['id'] }}\",\"monitoring_output_id\": \"{{ elasticsearch_output_result['json']['item']['id'] }}\" }"
+      force_basic_auth: true
+      status_code: 200
+      body_format: "json"
+  - name: Register result
+    ansible.builtin.set_fact:
+      result_policy: "{{ result }}"
+  - name: Fleet - Install agent
+    ansible.builtin.shell: "elastic-agent enroll --url=https://{{ elastic.ip }}:8220 --fleet-server-es=https://{{ elastic.ip }}:9200 --fleet-server-service-token={{ elastic_result_service_token['json']['value'] }} --fleet-server-policy={{ elastic_result_policy['json']['item']['id'] }} --certificate-authorities=/opt/ca/ca.crt --fleet-server-es-ca=/opt/ca/ca.crt --fleet-server-cert=/opt/{{ ansible_facts['fqdn'] }}/{{ ansible_facts['fqdn'] }}.crt --fleet-server-cert-key=/opt/{{ ansible_facts['fqdn'] }}/{{ ansible_facts['fqdn'] }}.key --fleet-server-port=8220 --proxy-disabled --force"
+  - name: Fleet - Enable service
+    ansible.builtin.service:
+      name: elastic-agent
+      enabled: yes
+      state: started
+
+- name: Deploy Packetbeat default policy
+  block:
+  - name: Packetbeat - Configure policy
+    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    vars:
+      url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies"
+      headers:
+        "kbn-xsrf": "ansible"
+      user: elastic
+      password: "{{ elastic_superuser_password.stdout }}"
+      method: "POST"
+      body: "{ \"name\": \"{{ elastic.policy_name }}\", \"description\": \"\", \"namespace\": \"default\", \"monitoring_enabled\": [], \"inactivity_timeout\": 1209600, \"is_protected\": false, \"agent_features\": [ { \"name\": \"fqdn\", \"enabled\": true } ] }"
+      force_basic_auth: true
+      status_code: 200
+      body_format: "json"
+  - name: Register result
+    ansible.builtin.set_fact:
+      elastic_result_policy: "{{ result  }}"
+  - name: Packetbeat - Configure integration
+    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    vars:
+      url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
+      headers:
+        "kbn-xsrf": "ansible"
+      user: elastic
+      password: "{{ elastic_superuser_password.stdout }}"
+      method: "POST"
+      body: "{ \"policy_id\": \"{{ elastic_result_policy['json']['item']['id'] }}\", \"package\": { \"name\": \"network_traffic\", \"version\": \"1.21.0\" }, \"name\": \"{{ elastic.policy_name }}\", \"description\": \"\", \"namespace\": \"default\", \"inputs\": { \"network-packet\": { \"enabled\": true, \"vars\": { \"never_install\": false }, \"streams\": { \"network_traffic.amqp\": { \"enabled\": true, \"vars\": { \"port\": [ 5672 ], \"geoip_enrich\": true, \"tags\": [] } }, \"network_traffic.cassandra\": { \"enabled\": true, \"vars\": { \"port\": [ 9042 ], \"geoip_enrich\": true, \"ignored_ops\": [], \"tags\": [] } }, \"network_traffic.dhcpv4\": { \"enabled\": true, \"vars\": { \"port\": [ 67, 68 ], \"geoip_enrich\": true, \"tags\": [] } }, \"network_traffic.dns\": { \"enabled\": true, \"vars\": { \"port\": [ 53 ], \"geoip_enrich\": true, \"tags\": [] } }, \"network_traffic.flow\": { \"enabled\": true, \"vars\": { \"geoip_enrich\": true, \"period\": \"10s\", \"timeout\": \"30s\", \"tags\": [] } }, \"network_traffic.http\": { \"enabled\": true, \"vars\": { \"port\": [ 80, 8080, 8000, 5000, 8002 ], \"hide_keywords\": [], \"send_headers\": [], \"redact_headers\": [], \"include_body_for\": [], \"include_request_body_for\": [], \"include_response_body_for\": [], \"send_request\": true, \"send_response\": true, \"tags\": [] } }, \"network_traffic.icmp\": { \"enabled\": true, \"vars\": { \"geoip_enrich\": true, \"tags\": [] } }, \"network_traffic.memcached\": { \"enabled\": true, \"vars\": { \"port\": [ 11211 ], \"geoip_enrich\": true, \"tags\": [] } }, \"network_traffic.mongodb\": { \"enabled\": true, \"vars\": { \"port\": [ 27017 ], \"geoip_enrich\": true, \"tags\": [] } }, \"network_traffic.mysql\": { \"enabled\": true, \"vars\": { \"port\": [ 3306, 3307 ], \"geoip_enrich\": true, \"tags\": [] } }, \"network_traffic.nfs\": { \"enabled\": true, \"vars\": { \"port\": [ 2049 ], \"geoip_enrich\": true, \"tags\": [] } }, \"network_traffic.pgsql\": { \"enabled\": true, \"vars\": { \"port\": [ 5432 ], \"geoip_enrich\": true, \"tags\": [] } }, \"network_traffic.redis\": { \"enabled\": true, \"vars\": { \"port\": [ 6379 ], \"geoip_enrich\": true, \"tags\": [] } }, \"network_traffic.sip\": { \"enabled\": true, \"vars\": { \"port\": [ 5060 ], \"geoip_enrich\": true, \"use_tcp\": true, \"tags\": [] } }, \"network_traffic.thrift\": { \"enabled\": true, \"vars\": { \"port\": [ 9090 ], \"geoip_enrich\": true, \"idl_files\": [], \"tags\": [] } }, \"network_traffic.tls\": { \"enabled\": true, \"vars\": { \"port\": [ 443, 993, 995, 5223, 8443, 8883, 9243 ], \"geoip_enrich\": true, \"fingerprints\": [], \"tags\": [] } } } } } }"
+      force_basic_auth: true
+      status_code: 200
+      body_format: "json"
+  when: elastic.monitor_type == "traffic" and elastic.deploy_policy
+
+- name: Deploy Endpoint default policy
+  block:
+  - name: Endpoint - Configure policy
+    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    vars:
+      url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies?sys_monitoring=true"
+      headers:
+        "kbn-xsrf": "ansible"
+      user: "elastic"
+      password: "{{ elastic_superuser_password.stdout }}"
+      method: "POST"
+      body: "{ \"name\": \"{{ elastic.policy_name }}\", \"description\": \"\", \"namespace\": \"default\", \"monitoring_enabled\": [], \"inactivity_timeout\": 1209600, \"is_protected\": false, \"agent_features\": [ { \"name\": \"fqdn\", \"enabled\": true } ] }"
+      force_basic_auth: true
+      status_code: 200
+      body_format: "json"
+  - name: Register result
+    ansible.builtin.set_fact:
+      elastic_result_policy: "{{ result  }}"
+  - name: Endpoint - Configure integration Elastic Defend
+    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    vars:
+      url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
+      headers:
+        "kbn-xsrf": "ansible"
+      user: "elastic"
+      password: "{{ elastic_superuser_password.stdout }}"
+      method: "POST"
+      body: "{ \"name\": \"{{ elastic.policy_name }}\", \"description\": \"\", \"namespace\": \"default\", \"policy_id\": \"{{ elastic_result_policy['json']['item']['id'] }}\", \"enabled\": true, \"inputs\": [ { \"enabled\": true, \"streams\": [], \"type\": \"ENDPOINT_INTEGRATION_CONFIG\", \"config\": { \"_config\": { \"value\": { \"type\": \"endpoint\", \"endpointConfig\": { \"preset\": \"DataCollection\" } } } } } ], \"package\": { \"name\": \"endpoint\", \"title\": \"Elastic Defend\", \"version\": \"8.14.0\" } }"
+      force_basic_auth: true
+      status_code: 200
+      body_format: "json"
+  - name: Endpoint - Configure integration Auditd Manager
+    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    vars:
+      url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
+      headers:
+        "kbn-xsrf": "ansible"
+      user: "elastic"
+      password: "{{ elastic_superuser_password.stdout }}"
+      method: "POST"
+      body: "{ \"policy_id\": \"{{ elastic_result_policy['json']['item']['id'] }}\", \"package\": { \"name\": \"auditd_manager\", \"version\": \"1.16.3\" }, \"name\": \"auditd_manager-1\", \"description\": \"\", \"namespace\": \"\", \"inputs\": { \"auditd-audit/auditd\": { \"enabled\": true, \"streams\": { \"auditd_manager.auditd\": { \"enabled\": true, \"vars\": { \"socket_type\": \"\", \"immutable\": false, \"resolve_ids\": true, \"failure_mode\": \"silent\", \"preserve_original_event\": false, \"backlog_limit\": 8192, \"rate_limit\": 0, \"include_warnings\": false, \"backpressure_strategy\": \"auto\", \"tags\": [ \"auditd_manager-auditd\" ] } } } } } }"
+      force_basic_auth: true
+      status_code: 200
+      body_format: "json"
+  when: elastic.monitor_type == "endpoint" and elastic.deploy_policy
+
+- name: Check Fleet status
+  block:
+  - name: Wait for Fleet to be up
+    ansible.builtin.wait_for:
+      host: 0.0.0.0
+      port: 8220
+      delay: 10
+      connect_timeout: 5
+      sleep: 3
+      timeout: 300
+  - name: Copy check-fleet script
+    ansible.builtin.template:
+      src: templates/check-fleet.j2
+      dest: /tmp/check-fleet.sh
+  - name: Run check-fleet script
+    ansible.builtin.shell: sh /tmp/check-fleet.sh
+
+- name: Cleanup
+  block:
+    - name: Cleanup - Remove check-fleet.sh
+      ansible.builtin.file:
+        path: /tmp/check-fleet.sh
+        state: absent
+    - name: Cleanup - Remove check-kibana.sh
+      ansible.builtin.file:
+        path: /tmp/check-kibana.sh
+        state: absent
+
+- name: Import resources
+  ansible.builtin.include_tasks: import_resources.yml

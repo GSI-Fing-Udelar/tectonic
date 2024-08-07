@@ -1,0 +1,11 @@
+<powershell>
+# Configure SSH public keys
+$content = @"
+${authorized_keys}
+"@
+$content | Set-Content -Path "$Env:ProgramData\ssh\administrators_authorized_keys"
+
+# Configure hostname
+Rename-Computer -NewName ${hostname} -Restart
+
+</powershell>

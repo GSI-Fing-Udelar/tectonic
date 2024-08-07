@@ -1,0 +1,7 @@
+#!/bin/bash
+application=""
+while [[ ${application} != "Caldera" ]]
+do 
+    application=`curl -x GET https://{{ ansible_facts["fqdn"] }}:8443/api/v2/health --noproxy "*" -k -s -H 'accept: application/json' -H 'KEY:{{ red_api_key }}' | jq '.application' | tr -d \"`
+    sleep 5 
+done

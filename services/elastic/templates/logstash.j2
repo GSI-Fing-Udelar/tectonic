@@ -1,0 +1,21 @@
+input {
+  elastic_agent {
+    port => 5044
+    ssl => true
+    ssl_certificate_authorities => ["/etc/logstash/certs/ca.crt"]
+    ssl_certificate => "/etc/logstash/certs/elk.crt"
+    ssl_key => "/etc/logstash/certs/elk.pkcs8.key"
+    ssl_verify_mode => "force_peer"
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => "https://{{ ansible_facts['fqdn'] }}:9200"
+    user => "elastic"
+    password => "{{ elastic_superuser_password.stdout }}"
+    data_stream => true
+    ssl => true
+    cacert => "/etc/logstash/certs/ca.crt"
+  }
+}

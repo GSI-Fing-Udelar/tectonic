@@ -1,0 +1,29 @@
+{
+    "name": "security",
+    "description": "",
+    "namespace": "default",
+    "policy_id": "08b2b410-3920-11ee-ba92-fd58736bda62",
+    "enabled": true,
+    "inputs": [
+        {
+            "enabled": true,
+            "streams": [],
+            "type": "ENDPOINT_INTEGRATION_CONFIG",
+            "config": {
+                "_config": {
+                    "value": {
+                        "type": "endpoint",
+                        "endpointConfig": {
+                            "preset": "EDRComplete"
+                        }
+                    }
+                }
+            }
+        }
+    ],
+    "package": {
+        "name": "endpoint",
+        "title": "Elastic Defend",
+        "version": "8.9.1"
+    }
+}

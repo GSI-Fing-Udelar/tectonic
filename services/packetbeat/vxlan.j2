@@ -1,0 +1,2 @@
+ip link add vxlan0 type vxlan id {{ packetbeat_vlan_id }} dev {{ interface_name.stdout_lines[0] }} dstport 4789
+ip link set vxlan0 up

@@ -1,0 +1,51 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+- name: "Download Elastic agent"
+  hosts: all
+
+  tasks:
+  - name: Download agent on Linux
+    block:
+      - name: Linux - Make surge tar is installed
+        ansible.builtin.package:
+          name: tar
+      - name: Linux - Download Elastic Agent
+        ansible.builtin.unarchive:
+          src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ elastic_version }}-linux-x86_64.tar.gz"
+          dest: /opt
+          remote_src: yes
+      - name: Linux - Rename Elastic agent directory
+        ansible.builtin.command: "mv /opt/elastic-agent-{{ elastic_version }}-linux-x86_64/ /opt/elastic-agent/"
+    when: ansible_facts['os_family'] != "Windows"
+  - name: Download agent on Windows
+    block:
+      - name: Windows - Download Elastic agent
+        ansible.windows.win_get_url:
+          url: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ elastic_version }}-windows-x86_64.zip"
+          dest: C:\
+      - name: Windows - Unzip Elastic agent files 
+        ansible.builtin.win_unzip:
+          src: "C:\\elastic-agent{{ elastic_version }}-windows-x86_64.zip"
+          dest: C:\
+          delete_archive: yes
+      - name: Windows - Rename Elastic agent directory
+        ansible.builtin.win_command: "Rename-Item -path C:\\elastic-agent{{ elastic_version }}-windows-x86_64 -NewName elastic-agent"
+    when: ansible_facts['os_family'] == "Windows"

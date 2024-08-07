@@ -1,0 +1,94 @@
+{
+    "policy_id": "08b2b410-3920-11ee-ba92-fd58736bda62",
+    "package": {
+        "name": "apache",
+        "version": "1.14.0"
+    },
+    "name": "apache-1",
+    "description": "",
+    "namespace": "default",
+    "inputs": {
+        "apache-logfile": {
+            "enabled": true,
+            "streams": {
+                "apache.access": {
+                    "enabled": true,
+                    "vars": {
+                        "paths": [
+                            "/var/log/apache2/access.log*",
+                            "/var/log/apache2/other_vhosts_access.log*",
+                            "/var/log/httpd/access_log*"
+                        ],
+                        "tags": [
+                            "apache-access"
+                        ],
+                        "preserve_original_event": false
+                    }
+                },
+                "apache.error": {
+                    "enabled": true,
+                    "vars": {
+                        "paths": [
+                            "/var/log/apache2/error.log*",
+                            "/var/log/httpd/error_log*"
+                        ],
+                        "tags": [
+                            "apache-error"
+                        ],
+                        "preserve_original_event": false
+                    }
+                }
+            }
+        },
+        "apache-httpjson": {
+            "enabled": false,
+            "vars": {
+                "url": "https://server.example.com:8089",
+                "ssl": "#certificate_authorities:\n#  - |\n#    -----BEGIN CERTIFICATE-----\n#    MIIDCjCCAfKgAwIBAgITJ706Mu2wJlKckpIvkWxEHvEyijANBgkqhkiG9w0BAQsF\n#    ADAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwIBcNMTkwNzIyMTkyOTA0WhgPMjExOTA2\n#    MjgxOTI5MDRaMBQxEjAQBgNVBAMMCWxvY2FsaG9zdDCCASIwDQYJKoZIhvcNAQEB\n#    BQADggEPADCCAQoCggEBANce58Y/JykI58iyOXpxGfw0/gMvF0hUQAcUrSMxEO6n\n#    fZRA49b4OV4SwWmA3395uL2eB2NB8y8qdQ9muXUdPBWE4l9rMZ6gmfu90N5B5uEl\n#    94NcfBfYOKi1fJQ9i7WKhTjlRkMCgBkWPkUokvBZFRt8RtF7zI77BSEorHGQCk9t\n#    /D7BS0GJyfVEhftbWcFEAG3VRcoMhF7kUzYwp+qESoriFRYLeDWv68ZOvG7eoWnP\n#    PsvZStEVEimjvK5NSESEQa9xWyJOmlOKXhkdymtcUd/nXnx6UTCFgnkgzSdTWV41\n#    CI6B6aJ9svCTI2QuoIq2HxX/ix7OvW1huVmcyHVxyUECAwEAAaNTMFEwHQYDVR0O\n#    BBYEFPwN1OceFGm9v6ux8G+DZ3TUDYxqMB8GA1UdIwQYMBaAFPwN1OceFGm9v6ux\n#    8G+DZ3TUDYxqMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAG5D\n#    874A4YI7YUwOVsVAdbWtgp1d0zKcPRR+r2OdSbTAV5/gcS3jgBJ3i1BN34JuDVFw\n#    3DeJSYT3nxy2Y56lLnxDeF8CUTUtVQx3CuGkRg1ouGAHpO/6OqOhwLLorEmxi7tA\n#    H2O8mtT0poX5AnOAhzVy7QW0D/k4WaoLyckM5hUa6RtvgvLxOwA0U+VGurCDoctu\n#    8F4QOgTAWyh8EZIwaKCliFRSynDpv3JTUwtfZkxo6K6nce1RhCWFAsMvDZL8Dgc0\n#    yvgJ38BRsFOtkRuAGSf6ZUwTO8JJRRIFnpUzXflAnGivK9M13D5GEQMmIl6U9Pvk\n#    sxSmbIUfc2SGJGCJD4I=\n#    -----END CERTIFICATE-----\n"
+            },
+            "streams": {
+                "apache.access": {
+                    "enabled": false,
+                    "vars": {
+                        "interval": "10s",
+                        "search": "search sourcetype=\"access*\"",
+                        "tags": [
+                            "forwarded",
+                            "apache-access"
+                        ],
+                        "preserve_original_event": false
+                    }
+                },
+                "apache.error": {
+                    "enabled": false,
+                    "vars": {
+                        "interval": "10s",
+                        "search": "search sourcetype=apache:error OR sourcetype=apache_error",
+                        "tags": [
+                            "forwarded",
+                            "apache-error"
+                        ],
+                        "preserve_original_event": false
+                    }
+                }
+            }
+        },
+        "apache-apache/metrics": {
+            "enabled": false,
+            "vars": {
+                "hosts": [
+                    "http://127.0.0.1"
+                ]
+            },
+            "streams": {
+                "apache.status": {
+                    "enabled": false,
+                    "vars": {
+                        "period": "30s",
+                        "server_status_path": "/server-status"
+                    }
+                }
+            }
+        }
+    }
+}

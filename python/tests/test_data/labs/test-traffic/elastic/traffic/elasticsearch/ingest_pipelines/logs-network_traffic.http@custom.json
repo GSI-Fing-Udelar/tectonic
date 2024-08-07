@@ -1,0 +1,12 @@
+{
+  "processors": [
+    {
+      "grok": {
+        "field": "source.ip",
+        "patterns": [
+          "%{INT}.%{INT}.%{INT:group.number}.%{INT}"
+        ]
+      }
+    }
+  ]
+}

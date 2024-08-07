@@ -1,0 +1,51 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+- name: Import agent policy
+  ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+  vars:
+    url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies"
+    method: "POST"
+    status_code: 200
+    body_format: "json"
+    user: elastic
+    password: "{{ elastic_superuser_password.stdout }}"
+    headers: 
+      "kbn-xsrf": "ansible"
+    body: "{{ lookup('ansible.builtin.file', policy) }}"
+- name: Get policy id
+  ansible.builtin.set_fact:
+    policy_id: "{{ result['json']['item']['id'] }}"
+- name: Import agent policy integrations
+  ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+  vars:
+    url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
+    method: "POST"
+    status_code: 200
+    body_format: "json"
+    user: elastic
+    password: "{{ elastic_superuser_password.stdout }}"
+    headers: 
+      "kbn-xsrf": "ansible"
+    body: "{{ lookup('ansible.builtin.file', integration) | from_json | ansible.builtin.combine({'policy_id':policy_id})}}"
+  with_fileglob:
+    - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/fleet/policy_integrations/{{ policy | basename | regex_replace('\\.json','') }}/*.json"
+  loop_control:
+    loop_var: integration

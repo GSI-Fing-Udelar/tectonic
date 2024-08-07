@@ -1,0 +1,7 @@
+#!/bin/bash
+status=""
+while [[ ${status} != "available" ]]
+do 
+    status=`curl https://{{ ansible_facts["fqdn"] }}:5601/api/status --noproxy "*" -k -s | jq '.status.overall.level' | tr -d \"`
+    sleep 5 
+done

@@ -1,0 +1,41 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+---
+base_lab: test-endpoint
+teacher_pubkey_dir: ./teacher_pubkeys
+instance_number: 2
+
+create_student_passwords: true
+random_seed: Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941
+student_prefix: student
+student_pubkey_dir: ./student_pubkeys
+
+elastic_settings:
+  enable: yes
+  vcpu: 8
+  memory: 16384
+  disk: 110
+
+caldera_settings:
+  enable: yes
+  vcpu: 2
+  memory: 2048
+  disk: 20

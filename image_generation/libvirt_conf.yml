@@ -1,0 +1,68 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+- name: "Proxy configuration and qemu-guest-agent installation for libvirt"
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Proxy configuration
+      block:
+        - name: "Profile proxy"
+          ansible.builtin.copy:
+            dest: /etc/profile.d/proxy.sh
+            content: | 
+              export http_proxy={{ proxy }}
+              export https_proxy={{ proxy }}
+          when: ansible_facts['os_family'] != "Windows"
+
+        - name: "Apt proxy"
+          ansible.builtin.copy:
+            dest: /etc/apt/apt.conf.d/proxy.conf
+            content: | 
+              Acquire::http::Proxy "{{ proxy }}";
+              Acquire::https::Proxy "{{ proxy }}";
+          when: ansible_facts['os_family'] == 'Debian'
+
+        - name: "Dnf proxy"
+          ansible.builtin.lineinfile:
+            path: /etc/dnf/dnf.conf
+            regexp: '^proxy='
+            line: "proxy={{ proxy }}"
+          when: ansible_facts['os_family'] == 'RedHat' or ansible_facts['os_family'] == 'Fedora'
+      when: proxy is defined
+
+    # Install qemu-guest-agent
+    - name: "Update repos"
+      ansible.builtin.apt:
+        update_cache: yes
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: "Install qemu-guest-agent"
+      ansible.builtin.package:
+        name: qemu-guest-agent
+      when: ansible_facts['os_family'] != "Windows"
+
+    - name: "Start qemu guest agent"
+      ansible.builtin.service:
+        name: qemu-guest-agent
+        enabled: yes
+        state: started
+      when: ansible_facts['os_family'] != "Windows"

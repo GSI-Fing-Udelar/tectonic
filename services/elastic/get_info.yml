@@ -1,0 +1,99 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+---
+- name: "Get Elastic Info"
+  hosts: elastic
+  become: true
+
+  tasks:
+    - name: Get password
+      block:
+        - name: Cat password file
+          ansible.builtin.shell: cat /root/credentials
+          register: password
+        - name: Set credentials
+          ansible.builtin.set_fact:
+            credentials: "{{ password.stdout | split }}"
+
+    - name: Get agent status
+      block:
+        - name: Get agent status
+          ansible.builtin.uri:
+            url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agents?getStatusSummary=true"
+            method: "GET"
+            status_code: 200
+            user: "{{ credentials[0] }}"
+            password: "{{ credentials[1] }}"
+            force_basic_auth: true
+            headers: 
+              "kbn-xsrf": "ansible"
+            use_proxy: false
+            validate_certs: false
+            timeout: 360
+          register: result
+        - name: Get result
+          ansible.builtin.set_fact:
+            agents_status: "{{ result['json']['statusSummary'] }}"
+        - name: Print agents status
+          ansible.builtin.debug:
+            var: agents_status
+      when: action == "agents_status"
+
+    - name: Get token by policy name
+      block:
+        - name: Get policy id
+          ansible.builtin.uri:
+            url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies?kuery=name:\"{{ policy_name }}\""
+            method: "GET"
+            status_code: 200
+            user: "{{ credentials[0] }}"
+            password: "{{ credentials[1] }}"
+            force_basic_auth: true
+            headers: 
+              "kbn-xsrf": "ansible"
+            use_proxy: false
+            validate_certs: false
+            timeout: 360
+          register: result
+        - name: Get policy_id result
+          ansible.builtin.set_fact:
+            policy_id: "{{ result['json']['items'][0]['id'] }}"
+        - name: Get token for policy
+          ansible.builtin.uri:
+            url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/enrollment_api_keys?kuery=policy_id:\"{{ policy_id }}\""
+            method: "GET"
+            status_code: 200
+            user: "{{ credentials[0] }}"
+            password: "{{ credentials[1] }}"
+            force_basic_auth: true
+            headers: 
+              "kbn-xsrf": "ansible"
+            use_proxy: false
+            validate_certs: false
+            timeout: 360
+          register: result
+        - name: Get token result
+          ansible.builtin.set_fact:
+            token: "{{ result['json']['list'][0]['api_key'] }}"
+        - name: Print token
+          ansible.builtin.debug:
+            var: token
+      when: action == "get_token_by_policy_name"

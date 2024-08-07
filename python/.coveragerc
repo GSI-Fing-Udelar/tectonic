@@ -1,0 +1,6 @@
+[run]
+# enables branch coverage
+branch = True
+# list of directories/packages to cover
+source =
+    src/tectonic

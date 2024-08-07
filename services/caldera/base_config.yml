@@ -1,0 +1,81 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+---
+- name: "Install Caldera"
+  hosts: caldera
+  become: true
+  gather_facts: true
+  
+  tasks:
+    - name: Set hostname
+      ansible.builtin.hostname:
+        name: caldera
+
+    - name: Install node repo
+      ansible.builtin.shell: "curl -sL https://rpm.nodesource.com/setup_18.x | bash"
+
+    - name: Install software
+      ansible.builtin.package:
+        name:
+          - git
+          - python38
+          - nodejs
+          - haproxy
+          - gcc
+          - firewalld
+          - jq
+          - nmap
+        state: present
+
+    - name: Update pip
+      ansible.builtin.command: python3.8 -m pip install --upgrade pip
+
+    - name: Download Caldera
+      ansible.builtin.git:
+        repo: https://github.com/mitre/caldera.git
+        dest: /opt/caldera/
+        version: "{{ caldera_version }}"
+
+    - name: Install Caldera requirements
+      ansible.builtin.command: python3.8 -m pip install -r /opt/caldera/requirements.txt
+
+    - name: Adjust Magma URL
+      ansible.builtin.copy:
+        dest: /opt/caldera/plugins/magma/.env
+        content: |
+          VITE_CALDERA_URL=https://
+
+    - name: Install Magma dependencies
+      community.general.npm:
+        path: /opt/caldera/plugins/magma
+        executable: /usr/bin/npm
+        state: present
+      ignore_errors: true
+      
+    - name: Build Magma
+      ansible.builtin.command: npm run build
+      args:
+        chdir: /opt/caldera/plugins/magma
+
+    - name: Change SELinux mode
+      ansible.posix.selinux:
+        policy: targeted
+        state: permissive

@@ -1,0 +1,55 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+---
+- name: "Get Caldera Info"
+  hosts: caldera
+  become: true
+
+  tasks:
+    - name: Get password
+      block:
+        - name: Cat password file
+          ansible.builtin.shell: cat /root/credentials | grep red_api
+          register: password
+        - name: Set credentials
+          ansible.builtin.set_fact:
+            credentials: "{{ password.stdout | split }}"
+
+    - name: Get agent status
+      block:
+        - name: Get agent status
+          ansible.builtin.uri:
+            url: "https://{{ ansible_facts['fqdn'] }}:8443/api/v2/agents" #TODO: see what the response is like when there are a large number of agents. pagination?
+            method: "GET"
+            status_code: 200
+            headers: 
+              "KEY": "{{ credentials[1]}}"
+            use_proxy: false
+            validate_certs: false
+            timeout: 360
+          register: result
+        - name: Get result
+          ansible.builtin.set_fact:
+            agents_status: "{{ result['json'] }}"
+        - name: Print agents status
+          ansible.builtin.debug:
+            var: agents_status
+      when: action == "agents_status"

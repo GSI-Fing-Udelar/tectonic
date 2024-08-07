@@ -1,0 +1,23 @@
+# Managed by Ansible
+
+cluster.name: elk
+node.name: "{{ ansible_facts['fqdn'] }}"
+path.data: "/data/elasticsearch"
+path.logs: "/var/log/elasticsearch"
+network.host: "0.0.0.0"
+http.port: "9200"
+http.host: "0.0.0.0"
+xpack.security.enabled: true
+xpack.security.enrollment.enabled: true
+xpack.security.http.ssl:
+  enabled: true
+  key: /etc/elasticsearch/certs/elk.key
+  certificate: /etc/elasticsearch/certs/elk.crt
+  certificate_authorities: /etc/elasticsearch/certs/ca.crt
+xpack.security.transport.ssl:
+    enabled: true
+    verification_mode: certificate
+    key: /etc/elasticsearch/certs/elk.key
+    certificate: /etc/elasticsearch/certs/elk.crt
+    certificate_authorities: /etc/elasticsearch/certs/ca.crt
+cluster.initial_master_nodes: ["{{ ansible_facts['fqdn'] }}"]

@@ -1,0 +1,314 @@
+<!--
+    Tectonic - An academic Cyber Range
+    Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+    Uruguay
+
+    This file is part of Tectonic.
+
+    Tectonic is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Tectonic is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<!-- Example files from https://github.com/virt-manager/virt-manager/blob/dfc484b2d503550df490c6ac3f81d84f5d99d3e4/tests/data/testdriver/ -->
+<node>
+
+  <!-- driver content roughly matching what test:///default provides -->
+  <cpu>
+    <nodes>2</nodes>
+    <sockets>2</sockets>
+    <cores>2</cores>
+    <threads>2</threads>
+    <active>16</active>
+    <mhz>4000</mhz>
+    <model>i686</model>
+  </cpu>
+  <memory>10000000</memory>
+
+
+
+<domain type='test' id='1'>
+  <name>test</name>
+  <uuid>6695eb01-f6a4-8304-79aa-97f2502e193f</uuid>
+  <memory unit='KiB'>8388608</memory>
+  <currentMemory unit='KiB'>2097152</currentMemory>
+  <vcpu placement='static'>2</vcpu>
+  <os>
+    <type arch='i686'>hvm</type>
+    <boot dev='hd'/>
+  </os>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <devices>
+    <disk type='volume' device='disk'>
+      <source pool='pool-dir' volume='test'/>
+      <target dev='vda' bus='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
+    </disk>
+    <interface type='network'>
+      <mac address='aa:bb:cc:dd:ee:ff'/>
+      <source network='default'/>
+      <target dev='testnet1'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x0'/>
+    </interface>
+    <memballoon model='virtio'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
+    </memballoon>
+  </devices>
+</domain>
+
+<domain type='test' id='2'>
+  <name>udelar-lab01-1-attacker</name>
+  <uuid>6695eb01-f6a4-8304-79bb-97f2502e193f</uuid>
+  <memory unit='KiB'>8388608</memory>
+  <currentMemory unit='KiB'>2097152</currentMemory>
+  <vcpu placement='static'>2</vcpu>
+  <os>
+    <type arch='i686'>hvm</type>
+    <boot dev='hd'/>
+  </os>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <devices>
+    <disk type='file' device='disk'>
+      <source file='/guest/diskimage2'/>
+      <target dev='vda' bus='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
+    </disk>
+    <interface type='network'>
+      <mac address='aa:bb:cc:dd:ee:aa'/>
+      <source network='default'/>
+      <target dev='testnet0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x0'/>
+    </interface>
+    <memballoon model='virtio'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
+    </memballoon>
+  </devices>
+</domain>
+
+<domain type='test' id='3'>
+  <name>no_net</name>
+  <uuid>6695eb01-f6a4-8304-79aa-97f2502e1932</uuid>
+  <memory unit='KiB'>8388608</memory>
+  <currentMemory unit='KiB'>2097152</currentMemory>
+  <vcpu placement='static'>2</vcpu>
+  <os>
+    <type arch='i686'>hvm</type>
+    <boot dev='hd'/>
+  </os>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+</domain>
+
+<domain type='test' id='4'>
+  <name>lo_net</name>
+  <uuid>6695eb01-f6a4-8304-79aa-97f2502e1933</uuid>
+  <memory unit='KiB'>8388608</memory>
+  <currentMemory unit='KiB'>2097152</currentMemory>
+  <vcpu placement='static'>2</vcpu>
+  <os>
+    <type arch='i686'>hvm</type>
+    <boot dev='hd'/>
+  </os>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <devices>
+    <interface type='user'>
+      <mac address='00:00:00:00:00:00'/>
+      <target dev='lo'/>
+    </interface>
+  </devices>
+</domain>
+
+<domain type='test' id='5'>
+  <name>udelar-lab01-elastic</name>
+  <uuid>6695eb01-f6a4-8304-79bb-97f2502e1935</uuid>
+  <memory unit='KiB'>8388608</memory>
+  <currentMemory unit='KiB'>2097152</currentMemory>
+  <vcpu placement='static'>2</vcpu>
+  <os>
+    <type arch='i686'>hvm</type>
+    <boot dev='hd'/>
+  </os>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <devices>
+    <disk type='file' device='disk'>
+      <source file='/guest/diskimage2'/>
+      <target dev='vda' bus='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
+    </disk>
+    <interface type='network'>
+      <mac address='aa:bb:cc:dd:ee:ab'/>
+      <source network='services'/>
+      <target dev='testnet0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x0'/>
+    </interface>
+    <memballoon model='virtio'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
+    </memballoon>
+  </devices>
+</domain>
+
+<domain type='test' id='6'>
+  <name>udelar-lab01-caldera</name>
+  <uuid>c18ef3c7-5217-469f-b0f1-49258816a949</uuid>
+  <memory unit='KiB'>8388608</memory>
+  <currentMemory unit='KiB'>2097152</currentMemory>
+  <vcpu placement='static'>2</vcpu>
+  <os>
+    <type arch='i686'>hvm</type>
+    <boot dev='hd'/>
+  </os>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <devices>
+    <disk type='file' device='disk'>
+      <source file='/guest/diskimage2'/>
+      <target dev='vda' bus='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
+    </disk>
+    <interface type='network'>
+      <mac address='52:54:00:12:b0:6c'/>
+      <source network='services'/>
+      <target dev='testnet2'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x0'/>
+    </interface>
+    <memballoon model='virtio'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
+    </memballoon>
+  </devices>
+</domain>
+
+<network>
+  <name>default</name>
+  <uuid>dd8fe884-6c02-601e-7551-cca97df1c5df</uuid>
+  <forward mode='nat'/>
+  <bridge name='virbr0' stp='on' delay='0'/>
+  <ip address='10.0.0.0' netmask='255.255.0.0'>
+    <dhcp>
+      <range start='10.0.1.4' end='10.0.1.100'/>
+    </dhcp>
+  </ip>
+</network>
+
+<network>
+  <name>services</name>
+  <uuid>3f886354-f27a-4cc5-8482-a9f32854f170</uuid>
+  <forward mode='nat'/>
+  <bridge name='virbr1' stp='on' delay='0'/>
+  <ip address='192.168.5.0' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.5.2' end='192.168.5.254'/>
+    </dhcp>
+  </ip>
+</network>
+
+<pool type='dir'>
+  <name>pool-dir</name>
+  <uuid>dfe224cb-28fb-8dd0-c4b2-64eb3f0f4566</uuid>
+  <capacity unit='bytes'>107374182400</capacity>
+  <allocation unit='bytes'>0</allocation>
+  <available unit='bytes'>107374182400</available>
+  <source>
+  </source>
+  <target>
+    <path>/pool-dir</path>
+  </target>
+
+<volume type='file'>
+  <name>test</name>
+  <key>/pool-dir/test</key>
+  <capacity unit='bytes'>86000000000</capacity>
+  <allocation unit='bytes'>60870610944</allocation>
+  <physical unit='bytes'>60869902336</physical>
+</volume>
+
+</pool>
+
+<device>
+  <name>computer</name>
+  <capability type='system'>
+    <hardware>
+      <vendor>Libvirt</vendor>
+      <version>Test driver</version>
+      <serial>123456</serial>
+      <uuid>11111111-2222-3333-4444-555555555555</uuid>
+    </hardware>
+    <firmware>
+      <vendor>Libvirt</vendor>
+      <version>Test Driver</version>
+      <release_date>01/22/2007</release_date>
+    </firmware>
+  </capability>
+</device>
+<device>
+  <name>scsi_host1</name>
+  <parent>computer</parent>
+  <capability type='scsi_host'>
+    <host>1</host>
+    <unique_id>0</unique_id>
+    <capability type='fc_host'>
+      <wwnn>2000000012341234</wwnn>
+      <wwpn>1000000012341234</wwpn>
+      <fabric_wwn>2000000043214321</fabric_wwn>
+    </capability>
+    <capability type='vport_ops'>
+      <max_vports>0</max_vports>
+      <vports>0</vports>
+    </capability>
+  </capability>
+</device>
+<device>
+  <name>scsi_host2</name>
+  <parent>computer</parent>
+  <capability type='scsi_host'>
+    <host>2</host>
+    <unique_id>1</unique_id>
+    <capability type='fc_host'>
+      <wwnn>2000000056785678</wwnn>
+      <wwpn>1000000056785678</wwpn>
+      <fabric_wwn>2000000087658765</fabric_wwn>
+    </capability>
+    <capability type='vport_ops'>
+      <max_vports>0</max_vports>
+      <vports>0</vports>
+    </capability>
+  </capability>
+</device>
+<device>
+  <name>scsi_host11</name>
+  <parent>scsi_host1</parent>
+  <capability type='scsi_host'>
+    <host>11</host>
+    <unique_id>10</unique_id>
+    <capability type='fc_host'>
+      <wwnn>2000000034563456</wwnn>
+      <wwpn>1000000034563456</wwpn>
+      <fabric_wwn>2000000043214321</fabric_wwn>
+    </capability>
+  </capability>
+</device>
+
+</node>

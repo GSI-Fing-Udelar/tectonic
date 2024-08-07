@@ -1,0 +1,62 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+- name: Configure packetbeat
+  hosts: packetbeat
+  become: true
+
+  tasks:
+    - name: "Download elastic agent"
+      ansible.builtin.get_url:
+        url: https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{elastic_version}}-linux-x86_64.tar.gz
+        dest: /opt/elastic-agent-{{elastic_version}}-linux-x86_64.tar.gz
+        mode: "0440"
+    - name: Extract elastic agent
+      ansible.builtin.unarchive:
+        src: /opt/elastic-agent-{{elastic_version}}-linux-x86_64.tar.gz
+        dest: /opt
+        remote_src: yes
+    - name: Get interface name
+      ansible.builtin.shell: 'ip a | sed -nr "s/2: (.*?): .*/\1/p"'
+      register: interface_name
+    - name: "Copy service file"
+      ansible.builtin.copy:
+        src: ./vxlan.service
+        dest: /etc/systemd/system/vxlan.service
+        owner: root
+        group: root
+        mode: "0660"
+    - name: "Copy script"
+      ansible.builtin.template:
+        src: ./vxlan.j2
+        dest: /usr/local/bin/vxlan.sh
+        owner: root
+        group: root
+        mode: "0700"
+    - name: Enable and start vxlan service
+      ansible.builtin.systemd_service:
+        state: started
+        enabled: true
+        daemon_reload: true
+        name: vxlan
+    - name: Delete unused file
+      ansible.builtin.file:
+        path: /opt/elastic-agent-{{elastic_version}}-linux-x86_64.tar.gz
+        state: absent

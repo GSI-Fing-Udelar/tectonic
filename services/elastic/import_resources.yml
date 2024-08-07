@@ -1,0 +1,124 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+- name: Import Elasticsearch resources
+  block:
+    - name: Import ingest pipelines
+      ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+      vars:
+        url: "https://{{ ansible_facts['fqdn'] }}:9200/_ingest/pipeline/{{ item | basename | regex_replace('\\.json','') }}"
+        method: "PUT"
+        status_code: 200
+        body_format: "json"
+        user: elastic
+        password: "{{ elastic_superuser_password.stdout }}"
+        headers: 
+          "kbn-xsrf": "ansible"
+        body: "{{ lookup('ansible.builtin.file', item) }}"
+      with_fileglob:
+        - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/elasticsearch/ingest_pipelines/*.json"
+    - name: Import component templates
+      ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+      vars:
+        url: "https://{{ ansible_facts['fqdn'] }}:9200/_component_template/{{ item | basename | regex_replace('\\.json','') }}"
+        method: "PUT"
+        status_code: 200
+        body_format: "json"
+        user: elastic
+        password: "{{ elastic_superuser_password.stdout }}"
+        headers: 
+          "kbn-xsrf": "ansible"
+        body: "{{ lookup('ansible.builtin.file', item) }}"
+      with_fileglob:
+        - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/elasticsearch/component_templates/*.json"
+    - name: Import ILM policies
+      ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+      vars:
+        url: "https://{{ ansible_facts['fqdn'] }}:9200/_ilm/policy/{{ item | basename | regex_replace('\\.json','') }}"
+        method: "PUT"
+        status_code: 200
+        body_format: "json"
+        user: elastic
+        password: "{{ elastic_superuser_password.stdout }}"
+        headers: 
+          "kbn-xsrf": "ansible"
+        body: "{{ lookup('ansible.builtin.file', item) }}"
+      with_fileglob:
+        - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/elasticsearch/ilm_policies/*.json"
+    - name: Import index templates
+      ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+      vars:
+        url: "https://{{ ansible_facts['fqdn'] }}:9200/_index_template/{{ item | basename | regex_replace('\\.json','') }}"
+        method: "PUT"
+        status_code: 200
+        body_format: "json"
+        user: elastic
+        password: "{{ elastic_superuser_password.stdout }}"
+        headers: 
+          "kbn-xsrf": "ansible"
+        body: "{{ lookup('ansible.builtin.file', item) }}"
+      with_fileglob:
+        - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/elasticsearch/index_templates/*.json"
+
+- name: Import Fleet resources
+  ansible.builtin.include_tasks: import_resources_fleet.yml
+  with_fileglob:
+    - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/fleet/agent_policies/*.json"
+  loop_control:
+    loop_var: policy
+
+- name: Import Kibana resources
+  block:
+    - name: Import saved objects
+      ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+      vars:
+        url: "https://{{ ansible_facts['fqdn'] }}:5601/api/saved_objects/_import?overwrite=true"
+        method: "POST"
+        status_code: 200
+        body_format: "form-multipart"
+        user: elastic
+        password: "{{ elastic_superuser_password.stdout }}"
+        headers: 
+          "kbn-xsrf": "ansible"
+        body: 
+          file:
+            content: "{{ lookup('ansible.builtin.file', item) }}"
+            filename: "{{ item | ansible.builtin.basename }}"
+            mime_type: "application/octet-stream"
+      with_fileglob:
+        - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/kibana/saved_objects/*.ndjson"
+    - name: Import siem rules
+      ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+      vars:
+        url: "https://{{ ansible_facts['fqdn'] }}:5601/api/detection_engine/rules/_import?overwrite=true&overwrite_exceptions=true&overwrite_action_connectors=true"
+        method: "POST"
+        status_code: 200
+        body_format: "form-multipart"
+        user: elastic
+        password: "{{ elastic_superuser_password.stdout }}"
+        headers: 
+          "kbn-xsrf": "ansible"
+        body: 
+          file:
+            content: "{{ lookup('ansible.builtin.file', item) }}"
+            filename: "{{ item | ansible.builtin.basename }}"
+            mime_type: "application/octet-stream"
+      with_fileglob:
+        - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/kibana/security_rules/*.ndjson"  

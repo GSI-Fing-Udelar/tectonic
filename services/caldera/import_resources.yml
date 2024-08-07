@@ -1,0 +1,85 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+- name: Import objectives
+  block:
+    - name: Check if objectives exists
+      ansible.builtin.stat:
+        path: "{{ caldera.description_path }}/caldera/objectives/"
+      delegate_to: localhost
+      register: objectives
+      become: false
+    - name: Import objectives
+      ansible.builtin.copy:
+        src: "{{ caldera.description_path }}/caldera/objectives/"
+        dest: /opt/caldera/data/objectives/
+      when: objectives.stat.exists
+- name: Import sources
+  block:
+    - name: Check if sources exists
+      ansible.builtin.stat:
+        path: "{{ caldera.description_path }}/caldera/sources/"
+      delegate_to: localhost
+      register: sources
+      become: false
+    - name: Import sources
+      ansible.builtin.copy:
+        src: "{{ caldera.description_path }}/caldera/sources/"
+        dest: /opt/caldera/data/sources/
+      when: sources.stat.exists
+- name: Import payloads
+  block:
+    - name: Check if payloads exists
+      ansible.builtin.stat:
+        path: "{{ caldera.description_path }}/caldera/payloads/"
+      delegate_to: localhost
+      register: payloads
+      become: false
+    - name: Import payloads
+      ansible.builtin.copy:
+        src: "{{ caldera.description_path }}/caldera/payloads/"
+        dest: /opt/caldera/data/payloads/
+      when: payloads.stat.exists
+- name: Import abilities
+  block:
+    - name: Check if abilities exists
+      ansible.builtin.stat:
+        path: "{{ caldera.description_path }}/caldera/abilities/"
+      delegate_to: localhost
+      register: abilities
+      become: false
+    - name: Import abilities
+      ansible.builtin.copy:
+        src: "{{ caldera.description_path }}/caldera/abilities/"
+        dest: /opt/caldera/data/abilities/
+      when: abilities.stat.exists
+- name: Import adversaries
+  block:
+    - name: Check if adversaries exists
+      ansible.builtin.stat:
+        path: "{{ caldera.description_path }}/caldera/adversaries/"
+      delegate_to: localhost
+      register: adversaries
+      become: false
+    - name: Import adversaries
+      ansible.builtin.copy:
+        src: "{{ caldera.description_path }}/caldera/adversaries/"
+        dest: /opt/caldera/data/adversaries/
+      when: adversaries.stat.exists
