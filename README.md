@@ -141,7 +141,7 @@ Please contact us at <tectonic@fing.edu.uy>.
 ## License
 
 Tectonic is licensed under the GNU General Public License v3.0 or
-later. See COPYING to see the full text.
+later. See LICENSE to see the full text.
 
 
 
