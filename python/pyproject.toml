@@ -13,7 +13,7 @@ dependencies = [
     "cffi",
     "charset-normalizer",
     "click",
-    "cryptography==41.0.3",
+    "cryptography==42.0.4",
     "decorator",
     "deprecated",
     "fabric",
