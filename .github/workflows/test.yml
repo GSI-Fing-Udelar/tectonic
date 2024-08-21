@@ -1,0 +1,35 @@
+---
+name: Regression Tests
+
+on: [push, pull_request]
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+
+    steps:
+      - name: "Checkout repo"
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get install -qq -y libvirt0 libvirt-dev
+          python -m pip install --upgrade pip
+          pip install -r python/requirements.txt
+
+      - name: Test with pytest
+        run: |
+          pip install -r python/requirements-dev.txt
+          pytest python/tests --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+
