@@ -27,7 +27,7 @@ six==1.16.0
 urllib3==1.26.19
 wrapt==1.15.0
 ansible-runner==2.3.4
-ansible==7.7.0
+ansible==8.5.0
 libvirt-python==9.9.0
 elasticsearch~=8.11.1
 packaging~=23.2
