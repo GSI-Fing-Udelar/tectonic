@@ -73,7 +73,7 @@ include = ["tectonic"]
 
 [tool.setuptools.package-data]
 # Include all files in the terraform directory
-"terraform" = ["../terraform/*"]
+"*" = ["terraform", "ansible", "services", "image_generation"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
