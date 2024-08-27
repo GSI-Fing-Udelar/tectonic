@@ -61,7 +61,7 @@ dev = [
 [project.urls]
 Homepage = "https://cyberrange.fing.edu.uy/"
 Documentation = "https://readthedocs.org"
-Repository = "https://gitlab.fing.edu.uy/GSI/CyberRange/tectonic.git"
+Repository = "https://github.com/GSI-Fing-Udelar/tectonic.git"
 
 [build-system]
 requires = ["setuptools >= 61.0.0"]
@@ -70,6 +70,10 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src/"]
 include = ["tectonic"]
+
+[tool.setuptools.package-data]
+# Include all files in the terraform directory
+"terraform" = ["../terraform/*"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
