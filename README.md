@@ -1,4 +1,5 @@
 # Tectonic - An Academic Cyber Range
+[![Regression Tests](https://github.com/GSI-Fing-Udelar/tectonic/actions/workflows/test.yml/badge.svg)](https://github.com/GSI-Fing-Udelar/tectonic/actions/workflows/test.yml)
 
 ## Overview
 Tectonic is a cyber range designed to provide realistic cybersecurity
@@ -52,7 +53,7 @@ The following are the requirements to run Tectonic:
 - Ansible 2.15
 - Terraform 1.6
 - Packer 1.9
-- Python modules (see [requirements.txt](python/requirements.txt))
+- Python modules (see [pyproject.toml](pyproject.toml))
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) 
 - GitLab credentials
 - Optionally AWS credentials
@@ -71,26 +72,18 @@ states are stored.
 
 ### Python environment setup
 
-You can install this module using the following command in the `python` directory:
-```bash
-cd python
-python3 -m pip install .
-```
-
-or for a development user installation:
+You can install this module using the following command:
 
 ```bash
-cd python
-python3 -m pip install pipenv
-pipenv install --dev -r requirements-dev.txt
-pipenv install --dev -e .
+python3 -m pip install poetry
+poetry install
 ```
 
 
 ## Tectonic Configuration File
 Tectonic behaviour can be configured using an ini file with a
 `config` section. You can find an example configuration file with the
-default values [here](./python/tectonic.ini). Please see the [ini
+default values [here](./tectonic.ini). Please see the [ini
 file documentation](docs/ini_config.md) for details on the available
 options.
 
