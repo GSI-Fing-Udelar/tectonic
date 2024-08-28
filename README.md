@@ -55,7 +55,7 @@ The following are the requirements to run Tectonic:
 - Packer 1.9
 - Python modules (see [pyproject.toml](pyproject.toml))
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) 
-- GitLab credentials
+- GitLab credentials (optional for Terraform state storage)
 - Optionally AWS credentials
 
 Please see the [detailed instructions](docs/installation.md) for more
