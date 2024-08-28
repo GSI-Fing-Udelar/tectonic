@@ -9,7 +9,6 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        poetry-version: ['1.8.3']
         python-version: ['3.9', '3.10', '3.11', '3.12']
 
     steps:
@@ -25,7 +24,7 @@ jobs:
       - name: Install poetry
         uses: abatilo/actions-poetry@v3
         with:
-          poetry-version: ${{ matrix.poetry-version }}
+          poetry-version: '1.8.3'
 
       - name: Install dependencies
         run: |
