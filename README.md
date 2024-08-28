@@ -23,7 +23,9 @@ different use cases carried out by student users and instructors. The
 components are organized in five layers, each fulfilling a particular
 function in the platform's operation.
 
-<img src="docs/architecture.png" width="500">
+<p align="center">
+    <img src="docs/architecture.png" width="500">
+</p>
 
 The underlying infrastructure constitutes the real-world
 infrastructure on which the systems and networks that form the basis
