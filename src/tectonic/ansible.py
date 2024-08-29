@@ -22,6 +22,8 @@ import logging
 import pprint
 from pathlib import Path
 import ansible_runner
+import importlib.resources as tectonic_resources
+import playbooks
 
 
 logger = logging.getLogger(__name__)
@@ -183,8 +185,7 @@ class Ansible:
     def wait_for_connections(self, instances=None, guests=None, copies=None, only_instances=True, exclude=[], username=None, inventory=None):
         """Wait for machines to respond to ssh connections for ansible."""
 
-        playbook = Path(__file__).parent.parent.parent.joinpath('ansible').joinpath('wait_for_connection.yml').resolve().as_posix()
-
+        playbook = tectonic_resources.files(playbooks) / 'wait_for_connection.yml'
         return self.run(
             instances=instances, guests=guests, copies=copies,
             only_instances=only_instances,

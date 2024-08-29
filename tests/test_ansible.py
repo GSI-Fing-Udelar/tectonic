@@ -21,6 +21,7 @@
 import logging
 
 import re
+import os
 from pathlib import Path
 
 import libvirt_qemu
@@ -189,7 +190,7 @@ def test_run_error(mocker, ansible_libvirt):
     with pytest.raises(tectonic.ansible.AnsibleException) as exception:
         ansible_libvirt.run(quiet=True)
 
-def test_wait_for_connections(mocker, ansible_libvirt, ansible_path):
+def test_wait_for_connections(mocker, ansible_libvirt, base_tectonic_path):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
 
     result = ansible_runner.Runner(config=None)
@@ -202,7 +203,7 @@ def test_wait_for_connections(mocker, ansible_libvirt, ansible_path):
 
     ansible_libvirt.wait_for_connections()
     mock.assert_called_once_with(inventory=inventory,
-                                 playbook=f"{ansible_path}/wait_for_connection.yml",
+                                 playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
                                  quiet=True,
                                  verbosity=0,
                                  event_handler=mocker.ANY,

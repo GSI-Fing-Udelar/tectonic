@@ -11,9 +11,8 @@ poetry install
 ```
 
 Then you can either run `poetry run tectonic <options>` directly, or
-`poetry shell`
+`poetry shell` to have the `tectonic` cli command available.
 
-Then you will have the `tectonic` cli command available.
 
 ## Development
 

@@ -19,7 +19,7 @@ homepage = "https://cyberrange.fing.edu.uy/"
 documentation = "https://readthedocs.org"
 repository = "https://github.com/GSI-Fing-Udelar/tectonic.git"
 
-include = ["terraform", "ansible", "services", "image_generation"]
+include = ["terraform", "playbooks", "services", "image_generation"]
 
 [tool.poetry.urls]
 "Homepage" = "https://cyberrange.fing.edu.uy/"

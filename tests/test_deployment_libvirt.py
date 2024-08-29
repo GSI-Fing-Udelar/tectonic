@@ -46,8 +46,8 @@ def test_constructor(description):
         gitlab_backend_access_token="testtoken",
     )
 
-def test_generate_backend_config(libvirt_deployment):
-    answer = libvirt_deployment.generate_backend_config(libvirt_deployment.terraform_module_path)
+def test_generate_backend_config(libvirt_deployment, base_tectonic_path):
+    answer = libvirt_deployment.generate_backend_config(os.path.join(base_tectonic_path, 'terraform', 'modules', 'gsi-lab-libvirt'))
     assert len(answer) == 8
     assert 'address=https://gitlab.com/udelar-lab01-gsi-lab-libvirt' in answer
     assert 'lock_address=https://gitlab.com/udelar-lab01-gsi-lab-libvirt/lock' in answer
@@ -58,11 +58,11 @@ def test_generate_backend_config(libvirt_deployment):
     assert 'unlock_method=DELETE' in answer
 
 
-def test_terraform_apply(mocker, libvirt_deployment):
+def test_terraform_apply(mocker, libvirt_deployment, base_tectonic_path):
     variables = {"var1": "value1", "var2": "value2"}
     resources = {'libvirt_domain.machines["udelar-lab01-1-attacker"]'}
 
-    terraform_dir = libvirt_deployment.terraform_module_path
+    terraform_dir = os.path.join(base_tectonic_path, 'terraform', 'modules', 'gsi-lab-libvirt')
 
     mock = mocker.patch("tectonic.deployment.run_terraform_cmd")
     libvirt_deployment.terraform_apply(terraform_dir, variables, resources)
@@ -124,26 +124,26 @@ def test_get_deploy_services_vars(libvirt_deployment, terraform_dir, test_data_p
     }
 
 
-def test_deploy_cr_all_instances(mocker, libvirt_deployment):
+def test_deploy_cr_all_instances(mocker, libvirt_deployment, base_tectonic_path):
     mock = mocker.patch.object(libvirt_deployment, "terraform_apply")
-    libvirt_deployment._deploy_cr(libvirt_deployment.terraform_module_path, libvirt_deployment.get_deploy_cr_vars(), None)
-    mock.assert_called_once_with(libvirt_deployment.terraform_module_path,
+    libvirt_deployment._deploy_cr(os.path.join(base_tectonic_path, 'terraform', 'modules', 'gsi-lab-libvirt'), libvirt_deployment.get_deploy_cr_vars(), None)
+    mock.assert_called_once_with(os.path.join(base_tectonic_path, 'terraform', 'modules', 'gsi-lab-libvirt'),
         variables=libvirt_deployment.get_deploy_cr_vars(),
         resources=None,
     )
 
 
-def test_deploy_cr_instance_two(mocker, libvirt_deployment):
+def test_deploy_cr_instance_two(mocker, libvirt_deployment, base_tectonic_path):
     mock = mocker.patch.object(libvirt_deployment, "terraform_apply")
 
-    libvirt_deployment._deploy_cr(libvirt_deployment.terraform_module_path, libvirt_deployment.get_deploy_cr_vars(), [2])
+    libvirt_deployment._deploy_cr(os.path.join(base_tectonic_path, 'terraform', 'modules', 'gsi-lab-libvirt'), libvirt_deployment.get_deploy_cr_vars(), [2])
 
-    mock.assert_called_once_with(libvirt_deployment.terraform_module_path,
+    mock.assert_called_once_with(os.path.join(base_tectonic_path, 'terraform', 'modules', 'gsi-lab-libvirt'),
                                  variables=libvirt_deployment.get_deploy_cr_vars(),
                                  resources=libvirt_deployment.get_cr_resources_to_target_apply([2]),
                                  )
 
-def test_deploy_packetbeat(mocker, libvirt_deployment, ansible_path):
+def test_deploy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.129")
     mocker.patch.object(LibvirtDeployment, "_get_service_password", return_value={"elastic":"password"})
     mocker.patch.object(LibvirtDeployment,"_get_service_info",return_value=[{"token" : "1234567890abcdef"}])
@@ -184,14 +184,14 @@ def test_deploy_packetbeat(mocker, libvirt_deployment, ansible_path):
     assert len(mock.mock_calls) == 2
     mock.assert_has_calls([
         mocker.call(inventory=inventory,
-            playbook=os.path.join(ansible_path, "wait_for_connection.yml"),
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=inventory,
-            playbook=os.path.join(libvirt_deployment.base_dir, "services", "elastic", "agent_manage.yml"),
+            playbook=os.path.join(base_tectonic_path, "services", "elastic", "agent_manage.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -200,11 +200,11 @@ def test_deploy_packetbeat(mocker, libvirt_deployment, ansible_path):
     ])
 
 
-def test_terraform_destroy(mocker, libvirt_deployment):
+def test_terraform_destroy(mocker, libvirt_deployment, base_tectonic_path):
     variables = {"var1": "value1", "var2": "value2"}
     resources = {'libvirt_domain.machines["udelar-lab01-1-attacker"]'}
 
-    terraform_dir = libvirt_deployment.terraform_module_path
+    terraform_dir = os.path.join(base_tectonic_path, 'terraform', 'modules', 'gsi-lab-libvirt')
 
     mock = mocker.patch("tectonic.deployment.run_terraform_cmd")
     libvirt_deployment.terraform_destroy(terraform_dir, variables, resources)
@@ -223,7 +223,7 @@ def test_terraform_destroy(mocker, libvirt_deployment):
 
 
 
-def test_destroy_packetbeat(mocker, libvirt_deployment):
+def test_destroy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.129")
     mocker.patch.object(LibvirtDeployment, "_get_service_password", return_value={"elastic":"password"})
     result_ok = ansible_runner.Runner(config=None)
@@ -258,7 +258,7 @@ def test_destroy_packetbeat(mocker, libvirt_deployment):
     libvirt_deployment._destroy_packetbeat()
 
     mock.assert_called_once_with(inventory=inventory,
-        playbook=os.path.join(libvirt_deployment.base_dir, "services", "elastic", "agent_manage.yml"),
+        playbook=os.path.join(base_tectonic_path, "services", "elastic", "agent_manage.yml"),
         quiet=True,
         verbosity=0,
         event_handler=mocker.ANY,
@@ -266,32 +266,32 @@ def test_destroy_packetbeat(mocker, libvirt_deployment):
     )
 
 
-def test_destroy_cr_all_instances(mocker, libvirt_deployment):
+def test_destroy_cr_all_instances(mocker, libvirt_deployment, base_tectonic_path):
     mock = mocker.patch.object(libvirt_deployment, "terraform_destroy")
 
-    libvirt_deployment._destroy_cr(libvirt_deployment.terraform_module_path, libvirt_deployment.get_deploy_cr_vars(), None)
-    mock.assert_called_once_with(libvirt_deployment.terraform_module_path,
+    libvirt_deployment._destroy_cr(os.path.join(base_tectonic_path, 'terraform', 'modules', 'gsi-lab-libvirt'), libvirt_deployment.get_deploy_cr_vars(), None)
+    mock.assert_called_once_with(os.path.join(base_tectonic_path, 'terraform', 'modules', 'gsi-lab-libvirt'),
                                  variables=libvirt_deployment.get_deploy_cr_vars(),
                                  resources=None,
                                  )
 
 
-def test_destroy_cr_instance_two(mocker, libvirt_deployment):
+def test_destroy_cr_instance_two(mocker, libvirt_deployment, base_tectonic_path):
     mock = mocker.patch.object(libvirt_deployment, "terraform_destroy")
 
-    libvirt_deployment._destroy_cr(libvirt_deployment.terraform_module_path, libvirt_deployment.get_deploy_cr_vars(), [2])
-    mock.assert_called_once_with(libvirt_deployment.terraform_module_path,
+    libvirt_deployment._destroy_cr(os.path.join(base_tectonic_path, 'terraform', 'modules', 'gsi-lab-libvirt'), libvirt_deployment.get_deploy_cr_vars(), [2])
+    mock.assert_called_once_with(os.path.join(base_tectonic_path, 'terraform', 'modules', 'gsi-lab-libvirt'),
                                  variables=libvirt_deployment.get_deploy_cr_vars(),
                                  resources=libvirt_deployment.get_cr_resources_to_target_destroy([2]),
                                  )
 
-def test_terraform_recreate(mocker, libvirt_deployment):
+def test_terraform_recreate(mocker, libvirt_deployment, base_tectonic_path):
     machines = {'libvirt_domain.machines["udelar-lab01-1-attacker"]'}
 
-    terraform_dir = libvirt_deployment.terraform_module_path
+    terraform_dir = os.path.join(base_tectonic_path, 'terraform', 'modules', 'gsi-lab-libvirt')
 
     mock = mocker.patch("tectonic.deployment.run_terraform_cmd")
-    libvirt_deployment.terraform_recreate(machines)
+    libvirt_deployment.terraform_recreate(terraform_dir, machines)
     mock.assert_has_calls([mocker.call(mocker.ANY, "init", [],
                                        reconfigure=python_terraform.IsFlagged,
                                        backend_config=libvirt_deployment.generate_backend_config(terraform_dir)
@@ -438,7 +438,7 @@ def test_get_teacher_access_ip(libvirt_deployment):
     libvirt_deployment.description.teacher_access = "host"
 
 
-def test_student_access(mocker, libvirt_deployment, ansible_path):
+def test_student_access(mocker, libvirt_deployment, base_tectonic_path):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
 
     result_ok = ansible_runner.Runner(config=None)
@@ -472,7 +472,7 @@ def test_student_access(mocker, libvirt_deployment, ansible_path):
 
     libvirt_deployment.student_access(None)
     mock.assert_called_once_with(inventory=inventory,
-                                 playbook=f"{ansible_path}/trainees.yml",
+                                 playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
                                  quiet=True,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
@@ -480,7 +480,7 @@ def test_student_access(mocker, libvirt_deployment, ansible_path):
                                  )
 
 
-def test_student_access_no_passwords(mocker, libvirt_deployment, ansible_path):
+def test_student_access_no_passwords(mocker, libvirt_deployment, base_tectonic_path):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
 
     result_ok = ansible_runner.Runner(config=None)
@@ -510,7 +510,7 @@ def test_student_access_no_passwords(mocker, libvirt_deployment, ansible_path):
     libvirt_deployment.description.create_student_passwords = False
     libvirt_deployment.student_access(None)
     mock.assert_called_once_with(inventory=inventory,
-                                 playbook=f"{ansible_path}/trainees.yml",
+                                 playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
                                  quiet=True,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
@@ -519,7 +519,7 @@ def test_student_access_no_passwords(mocker, libvirt_deployment, ansible_path):
     libvirt_deployment.description.create_student_passwords = True
 
 
-def test_student_access_no_pubkeys(mocker, libvirt_deployment, ansible_path):
+def test_student_access_no_pubkeys(mocker, libvirt_deployment, base_tectonic_path):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
 
     result_ok = ansible_runner.Runner(config=None)
@@ -551,7 +551,7 @@ def test_student_access_no_pubkeys(mocker, libvirt_deployment, ansible_path):
     libvirt_deployment.description.student_pubkey_dir = None
     libvirt_deployment.student_access(None)
     mock.assert_called_once_with(inventory=inventory,
-                                 playbook=f"{ansible_path}/trainees.yml",
+                                 playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
                                  quiet=True,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
@@ -911,7 +911,7 @@ def test_list_instances(mocker, libvirt_deployment):
 └─────────────────────────┴─────────┘"""
     assert result.get_string() == expected
 
-def test_start(mocker, libvirt_deployment):
+def test_start(mocker, libvirt_deployment, base_tectonic_path):
     #No services
     libvirt_deployment.start([1], ["attacker"], None, False)
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-1-attacker")
@@ -935,7 +935,7 @@ def test_start(mocker, libvirt_deployment):
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-caldera")
     assert state == libvirt_deployment.client.STATES_MSG[libvirt.VIR_DOMAIN_RUNNING]
     mock.call(inventory=mocker.ANY,
-        playbook=os.path.join(libvirt_deployment.base_dir, "services", "elastic", "agent_manage.yml"),
+        playbook=os.path.join(base_tectonic_path, "services", "elastic", "agent_manage.yml"),
         quiet=True,
         verbosity=0,
         event_handler=mocker.ANY,
@@ -955,7 +955,7 @@ def test_start(mocker, libvirt_deployment):
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-caldera")
     assert state == libvirt_deployment.client.STATES_MSG[libvirt.VIR_DOMAIN_RUNNING]
 
-def test_shutdown(mocker, libvirt_deployment):
+def test_shutdown(mocker, libvirt_deployment, base_tectonic_path):
     #No services
     libvirt_deployment.shutdown([1], ["attacker"], None, False)
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-1-attacker")
@@ -979,7 +979,7 @@ def test_shutdown(mocker, libvirt_deployment):
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-caldera")
     assert state == libvirt_deployment.client.STATES_MSG[libvirt.VIR_DOMAIN_SHUTOFF]
     mock.call(inventory=mocker.ANY,
-        playbook=os.path.join(libvirt_deployment.base_dir, "services", "elastic", "agent_manage.yml"),
+        playbook=os.path.join(base_tectonic_path, "services", "elastic", "agent_manage.yml"),
         quiet=True,
         verbosity=0,
         event_handler=mocker.ANY,
@@ -999,7 +999,7 @@ def test_shutdown(mocker, libvirt_deployment):
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-caldera")
     assert state == libvirt_deployment.client.STATES_MSG[libvirt.VIR_DOMAIN_SHUTOFF]
 
-def test_reboot(mocker, libvirt_deployment):
+def test_reboot(mocker, libvirt_deployment, base_tectonic_path):
     #No services
     libvirt_deployment.description.deploy_elastic = True
     libvirt_deployment.reboot([1], ["attacker"], None, False)
@@ -1024,7 +1024,7 @@ def test_reboot(mocker, libvirt_deployment):
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-caldera")
     assert state == libvirt_deployment.client.STATES_MSG[libvirt.VIR_DOMAIN_RUNNING]
     mock.call(inventory=mocker.ANY,
-        playbook=os.path.join(libvirt_deployment.base_dir, "services", "elastic", "agent_manage.yml"),
+        playbook=os.path.join(base_tectonic_path, "services", "elastic", "agent_manage.yml"),
         quiet=True,
         verbosity=0,
         event_handler=mocker.ANY,
@@ -1049,7 +1049,7 @@ def test_reboot(mocker, libvirt_deployment):
     assert state == libvirt_deployment.client.STATES_MSG[libvirt.VIR_DOMAIN_RUNNING]
 
 
-def test_recreate(mocker, capsys, libvirt_deployment, ansible_path, labs_path):
+def test_recreate(mocker, capsys, libvirt_deployment, base_tectonic_path, labs_path):
     libvirt_deployment.description.monitor_type = "endpoint"
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.129")
@@ -1063,20 +1063,21 @@ def test_recreate(mocker, capsys, libvirt_deployment, ansible_path, labs_path):
 
     libvirt_deployment.recreate([1],["attacker"], None, False)
 
-    mock_terraform.assert_called_once_with(mocker.ANY)
+    mock_terraform.assert_called_once_with(Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-libvirt")),
+                                           mocker.ANY)
 
     # Test ansible got run with correct playbooks
     assert len(mock_ansible.mock_calls) == 9
     mock_ansible.assert_has_calls([
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/trainees.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1090,42 +1091,42 @@ def test_recreate(mocker, capsys, libvirt_deployment, ansible_path, labs_path):
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(libvirt_deployment.base_dir, "services", "elastic", "endpoint_install.yml"),
+            playbook=os.path.join(base_tectonic_path, "services", "elastic", "endpoint_install.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(libvirt_deployment.base_dir, "services", "caldera", "agent_install.yml"),
+            playbook=os.path.join(base_tectonic_path, "services", "caldera", "agent_install.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(libvirt_deployment.base_dir, "services", "caldera", "agent_install.yml"),
+            playbook=os.path.join(base_tectonic_path, "services", "caldera", "agent_install.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1142,7 +1143,7 @@ def test_recreate(mocker, capsys, libvirt_deployment, ansible_path, labs_path):
         "Configuring caldera agents...\n"
     ))
 
-def test_manage_packetbeat(mocker,libvirt_deployment):
+def test_manage_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
     result_ok = ansible_runner.Runner(config=None)
     result_ok.rc = 0
     result_ok.status = "successful"
@@ -1171,7 +1172,7 @@ def test_manage_packetbeat(mocker,libvirt_deployment):
             },
         }
     }
-    playbook = os.path.join(libvirt_deployment.base_dir, "services", "elastic", "agent_manage.yml")
+    playbook=os.path.join(base_tectonic_path, "services", "elastic", "agent_manage.yml")
     libvirt_deployment._manage_packetbeat("restarted")
     mock_ansible.assert_called_once_with(
         inventory=inventory,
@@ -1212,7 +1213,7 @@ def test_manage_packetbeat(mocker,libvirt_deployment):
         libvirt_deployment._manage_packetbeat("status")
     assert "Unable to apply action status for Packetbeat." in str(exception.value)
 
-def test_elastic_install_endpoint(mocker, libvirt_deployment, ansible_path):
+def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path):
     libvirt_deployment.description.monitor_type = "endpoint"
     libvirt_deployment.description.deploy_elastic = True
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.129")
@@ -1290,7 +1291,7 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, ansible_path):
     mock_ansible.assert_has_calls([
         mocker.call(
             inventory=inventory,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1298,7 +1299,7 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, ansible_path):
         ),
         mocker.call(
             inventory=inventory,
-            playbook=os.path.join(libvirt_deployment.base_dir, "services", "elastic", "endpoint_install.yml"),
+            playbook=os.path.join(base_tectonic_path, "services", "elastic", "endpoint_install.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1308,7 +1309,7 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, ansible_path):
     libvirt_deployment.description.monitor_type = "traffic"
 
 
-def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, ansible_path, test_data_path):
+def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, base_tectonic_path, test_data_path):
     # Deploy only instances
     libvirt_deployment.description.monitor_type = "traffic"
     libvirt_deployment.description.deploy_caldera = False
@@ -1324,21 +1325,21 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, ansible_path
     libvirt_deployment.deploy_infraestructure(None)
 
     mock_deployment.assert_called_once_with(
-        libvirt_deployment.terraform_module_path,
+        Path(os.path.join(base_tectonic_path, 'terraform', 'modules', 'gsi-lab-libvirt')),
         variables=libvirt_deployment.get_deploy_cr_vars(),
         resources=None,
     )
     assert len(mock_ansible.mock_calls) == 3
     mock_ansible.assert_has_calls([
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/trainees.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1373,11 +1374,11 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, ansible_path
 
     assert len(mock_deployment.mock_calls) == 2
     mock_deployment.assert_has_calls([
-        mocker.call(libvirt_deployment.terraform_services_module_path,
+        mocker.call(Path(os.path.join(base_tectonic_path, "services", "terraform", "services-libvirt")),
             variables=libvirt_deployment.get_deploy_services_vars(),
             resources=None,
         ),
-        mocker.call(libvirt_deployment.terraform_module_path,
+        mocker.call(Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-libvirt")),
             variables=libvirt_deployment.get_deploy_cr_vars(),
             resources=None,
         ),
@@ -1385,42 +1386,42 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, ansible_path
     assert len(mock_ansible.mock_calls) == 7
     mock_ansible.assert_has_calls([
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=libvirt_deployment.ansible_services_path,
+            playbook=os.path.join(base_tectonic_path, "services", "ansible", "configure_services.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(libvirt_deployment.base_dir, "services", "elastic", "agent_manage.yml"),
+            playbook=os.path.join(base_tectonic_path, "services", "elastic", "agent_manage.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/trainees.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1454,11 +1455,11 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, ansible_path
 
     assert len(mock_deployment.mock_calls) == 2
     mock_deployment.assert_has_calls([
-        mocker.call(libvirt_deployment.terraform_services_module_path,
+        mocker.call(Path(os.path.join(base_tectonic_path, "services", "terraform", "services-libvirt")),
             variables=libvirt_deployment.get_deploy_services_vars(),
             resources=None,
         ),
-        mocker.call(libvirt_deployment.terraform_module_path,
+        mocker.call(Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-libvirt")),
             variables=libvirt_deployment.get_deploy_cr_vars(),
             resources=None,
         ),
@@ -1466,28 +1467,28 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, ansible_path
     assert len(mock_ansible.mock_calls) == 7
     mock_ansible.assert_has_calls([
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=libvirt_deployment.ansible_services_path,
+            playbook=os.path.join(base_tectonic_path, "services", "ansible", "configure_services.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/trainees.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1501,14 +1502,14 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, ansible_path
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(libvirt_deployment.base_dir, "services", "elastic", "endpoint_install.yml"),
+            playbook=os.path.join(base_tectonic_path, "services", "elastic", "endpoint_install.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1533,11 +1534,11 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, ansible_path
 
     assert len(mock_deployment.mock_calls) == 2
     mock_deployment.assert_has_calls([
-        mocker.call(libvirt_deployment.terraform_services_module_path,
+        mocker.call(Path(os.path.join(base_tectonic_path, "services", "terraform", "services-libvirt")),
             variables=libvirt_deployment.get_deploy_services_vars(),
             resources=None,
         ),
-        mocker.call(libvirt_deployment.terraform_module_path,
+        mocker.call(Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-libvirt")),
             variables=libvirt_deployment.get_deploy_cr_vars(),
             resources=None,
         ),
@@ -1545,28 +1546,28 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, ansible_path
     assert len(mock_ansible.mock_calls) == 9
     mock_ansible.assert_has_calls([
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=libvirt_deployment.ansible_services_path,
+            playbook=os.path.join(base_tectonic_path, "services", "ansible", "configure_services.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/trainees.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1580,28 +1581,28 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, ansible_path
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(libvirt_deployment.base_dir, "services", "caldera", "agent_install.yml"),
+            playbook=os.path.join(base_tectonic_path, "services", "caldera", "agent_install.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(libvirt_deployment.base_dir, "services", "caldera", "agent_install.yml"),
+            playbook=os.path.join(base_tectonic_path, "services", "caldera", "agent_install.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1610,7 +1611,7 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, ansible_path
     ])
     assert capsys.readouterr().out == "Deploying Cyber Range services...\nWaiting for services to boot up...\nConfiguring services...\nDeploying Cyber Range instances...\nWaiting for machines to boot up...\nConfiguring student access...\nRunning after-clone configuration...\nConfiguring caldera agents...\n"
 
-def test_deploy_infraestructure_specific_instance(mocker, capsys, libvirt_deployment, ansible_path, test_data_path):
+def test_deploy_infraestructure_specific_instance(mocker, capsys, libvirt_deployment, base_tectonic_path, test_data_path):
     # Deploy caldera services using endpoint as monitor_type
     libvirt_deployment.description.deploy_elastic = False
     libvirt_deployment.description.deploy_caldera = True
@@ -1627,11 +1628,11 @@ def test_deploy_infraestructure_specific_instance(mocker, capsys, libvirt_deploy
 
     assert len(mock_deployment.mock_calls) == 2
     mock_deployment.assert_has_calls([
-        mocker.call(libvirt_deployment.terraform_services_module_path,
+        mocker.call(Path(os.path.join(base_tectonic_path, "services", "terraform", "services-libvirt")),
             variables=libvirt_deployment.get_deploy_services_vars(),
             resources=libvirt_deployment.get_services_resources_to_target_apply([1]),
         ),
-        mocker.call(libvirt_deployment.terraform_module_path,
+        mocker.call(Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-libvirt")),
             variables=libvirt_deployment.get_deploy_cr_vars(),
             resources=libvirt_deployment.get_cr_resources_to_target_apply([1]),
         ),
@@ -1639,28 +1640,28 @@ def test_deploy_infraestructure_specific_instance(mocker, capsys, libvirt_deploy
     assert len(mock_ansible.mock_calls) == 9
     mock_ansible.assert_has_calls([
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=libvirt_deployment.ansible_services_path,
+            playbook=os.path.join(base_tectonic_path, "services", "ansible", "configure_services.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/trainees.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1674,28 +1675,28 @@ def test_deploy_infraestructure_specific_instance(mocker, capsys, libvirt_deploy
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(libvirt_deployment.base_dir, "services", "caldera", "agent_install.yml"),
+            playbook=os.path.join(base_tectonic_path, "services", "caldera", "agent_install.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=f"{ansible_path}/wait_for_connection.yml",
+            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(libvirt_deployment.base_dir, "services", "caldera", "agent_install.yml"),
+            playbook=os.path.join(base_tectonic_path, "services", "caldera", "agent_install.yml"),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1704,7 +1705,7 @@ def test_deploy_infraestructure_specific_instance(mocker, capsys, libvirt_deploy
     ])
     assert capsys.readouterr().out == "Deploying Cyber Range services...\nWaiting for services to boot up...\nConfiguring services...\nDeploying Cyber Range instances...\nWaiting for machines to boot up...\nConfiguring student access...\nRunning after-clone configuration...\nConfiguring caldera agents...\n"    
     
-def test_destroy_infraestructure(mocker, capsys, libvirt_deployment):
+def test_destroy_infraestructure(mocker, capsys, libvirt_deployment, base_tectonic_path):
     #Destroy only infraestructure
     libvirt_deployment.description.monitor_type = "traffic"
     libvirt_deployment.description.deploy_elastic = False
@@ -1717,7 +1718,7 @@ def test_destroy_infraestructure(mocker, capsys, libvirt_deployment):
     libvirt_deployment.destroy_infraestructure(None)
 
     mock_deployment.assert_called_once_with(
-        libvirt_deployment.terraform_module_path,
+        Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-libvirt")),
         variables=libvirt_deployment.get_deploy_cr_vars(),
         resources=None,
     )
@@ -1740,17 +1741,17 @@ def test_destroy_infraestructure(mocker, capsys, libvirt_deployment):
 
     assert len(mock_deployment.mock_calls) == 2
     mock_deployment.assert_has_calls([
-        mocker.call(libvirt_deployment.terraform_module_path,
+        mocker.call(Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-libvirt")),
             variables=libvirt_deployment.get_deploy_cr_vars(),
             resources=None,
         ),
-        mocker.call(libvirt_deployment.terraform_services_module_path,
+        mocker.call(Path(os.path.join(base_tectonic_path, "services", "terraform", "services-libvirt")),
             variables=libvirt_deployment.get_deploy_services_vars(),
             resources=None,
         ),
     ])
     mock_ansible.assert_called_once_with(inventory=mocker.ANY,
-        playbook=os.path.join(libvirt_deployment.base_dir, "services", "elastic", "agent_manage.yml"),
+        playbook=os.path.join(base_tectonic_path, "services", "elastic", "agent_manage.yml"),
         quiet=True,
         verbosity=0,
         event_handler=mocker.ANY,
@@ -1769,11 +1770,11 @@ def test_destroy_infraestructure(mocker, capsys, libvirt_deployment):
 
     assert len(mock_deployment.mock_calls) == 2
     mock_deployment.assert_has_calls([
-        mocker.call(libvirt_deployment.terraform_module_path,
+        mocker.call(Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-libvirt")),
             variables=libvirt_deployment.get_deploy_cr_vars(),
             resources=None,
         ),
-        mocker.call(libvirt_deployment.terraform_services_module_path,
+        mocker.call(Path(os.path.join(base_tectonic_path, "services", "terraform", "services-libvirt")),
             variables=libvirt_deployment.get_deploy_services_vars(),
             resources=None,
         ),
@@ -1789,14 +1790,14 @@ def test_get_parameters(capsys, libvirt_deployment):
     assert "│    1     │ {'flags': 'Flag 2'} │" in captured.out
     assert "└──────────┴─────────────────────┘" in captured.out  
 
-def test_destroy_infraestructure_specific_instance(mocker, capsys, libvirt_deployment):
+def test_destroy_infraestructure_specific_instance(mocker, capsys, libvirt_deployment, base_tectonic_path):
     libvirt_deployment.description.deploy_elastic = False
     libvirt_deployment.description.deploy_caldera = False
     mock_terraform = mocker.patch.object(libvirt_deployment, "terraform_destroy")
     mock_libvirt = mocker.patch.object(libvirt_deployment.client, "delete_image")
     libvirt_deployment.destroy_infraestructure(instances=[1])
     mock_terraform.assert_called_once_with(
-        libvirt_deployment.terraform_module_path,
+        Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-libvirt")),
         variables=libvirt_deployment.get_deploy_cr_vars(),
         resources=['libvirt_domain.machines["udelar-lab01-1-attacker"]', 
                    'libvirt_domain.machines["udelar-lab01-1-victim-1"]', 
@@ -1840,7 +1841,7 @@ def test_destroy_infraestructure_specific_instance(mocker, capsys, libvirt_deplo
     ],any_order=False)
     assert capsys.readouterr().out == "Destroying Cyber Range instances...\n"
 
-def test_create_services_images_ok(mocker, libvirt_deployment, base_tectonic_path, services_packer, test_data_path):
+def test_create_services_images_ok(mocker, libvirt_deployment, base_tectonic_path, test_data_path):
     machines = {
         "caldera": {
             "base_os": "rocky8",
@@ -1876,8 +1877,9 @@ def test_create_services_images_ok(mocker, libvirt_deployment, base_tectonic_pat
     mock_cmd = mocker.patch.object(packerpy.PackerExecutable, "execute_cmd", return_value=(0, "success", ""))
     mock_build = mocker.patch.object(packerpy.PackerExecutable, "build", return_value=(0, "success", ""))
     libvirt_deployment.create_services_images({"caldera":True,"elastic":True, "packetbeat":False})
-    mock_cmd.assert_called_once_with("init", services_packer)
-    mock_build.assert_called_once_with(services_packer, var=variables)
+    packer_script = Path(os.path.join(base_tectonic_path, "services", "image_generation", "create_image.pkr.hcl"))
+    mock_cmd.assert_called_once_with("init", packer_script)
+    mock_build.assert_called_once_with(packer_script, var=variables)
 
 def test_get_services_network_data(libvirt_deployment):
     libvirt_deployment.description.deploy_caldera = True
@@ -2031,13 +2033,13 @@ def test_get_services_resources_to_target_apply(libvirt_deployment):
 def test_get_services_resources_to_target_destroy(libvirt_deployment):
     assert libvirt_deployment.get_services_resources_to_target_destroy([1]) == []
 
-def test_get_service_info(mocker, libvirt_deployment):
+def test_get_service_info(mocker, libvirt_deployment, base_tectonic_path):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
     result = ansible_runner.Runner(config=None)
     result.rc = 0
     result.status = "successful"
     mock_ansible = mocker.patch.object(ansible_runner.interface, "run", return_value=result)
-    playbook = os.path.join(Deployment.base_dir, "services", "elastic", "get_info.yml")
+    playbook = os.path.join(base_tectonic_path, "services", "elastic", "get_info.yml")
     inventory = {'elastic': {'hosts': {'udelar-lab01-elastic': {'ansible_host': None, 'ansible_user': 'rocky', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no', 'instance': None, 'copy': 1, 'parameter': {}, 'become_flags': '-i'}}, 'vars': {'ansible_become': True, 'basename': 'elastic', 'instances': 2, 'platform': 'libvirt', 'institution': 'udelar', 'lab_name': 'lab01', 'action': 'agents_status'}}}
     libvirt_deployment._get_service_info("elastic",playbook,{"action":"agents_status"})
     mock_ansible.assert_called_once_with(
