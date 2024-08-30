@@ -97,8 +97,8 @@ def test_create_cr_images_ok(mocker, aws_deployment, test_data_path):
         aws_deployment.client, "delete_security_groups"
     )
     aws_deployment.create_cr_images()
-    mock_cmd.assert_called_once_with("init", aws_deployment.cr_packer_path)
-    mock_build.assert_called_once_with(aws_deployment.cr_packer_path, var=variables),
+    mock_cmd.assert_called_once_with("init", str(aws_deployment.cr_packer_path))
+    mock_build.assert_called_once_with(str(aws_deployment.cr_packer_path), var=variables),
     mock_delete_sg.assert_called_once_with("Temporary group for Packer")
 
     aws_deployment.description.monitor_type = "endpoint"
@@ -149,8 +149,8 @@ def test_create_cr_images_ok(mocker, aws_deployment, test_data_path):
         aws_deployment.client, "delete_security_groups"
     )
     aws_deployment.create_cr_images()
-    mock_cmd.assert_called_once_with("init", aws_deployment.cr_packer_path)
-    mock_build.assert_called_once_with(aws_deployment.cr_packer_path, var=variables),
+    mock_cmd.assert_called_once_with("init", str(aws_deployment.cr_packer_path))
+    mock_build.assert_called_once_with(str(aws_deployment.cr_packer_path), var=variables),
     mock_delete_sg.assert_called_once_with("Temporary group for Packer")
 
 
@@ -738,8 +738,8 @@ def test_create_services_images_ok(mocker, aws_deployment, base_tectonic_path, t
         aws_deployment.client, "delete_security_groups"
     )
     aws_deployment.create_services_images({"caldera":True,"elastic":True,"packetbeat":True})
-    mock_cmd.assert_called_once_with("init", Path(os.path.join(base_tectonic_path, "services", "image_generation", "create_image.pkr.hcl")))
-    mock_build.assert_called_once_with(Path(os.path.join(base_tectonic_path, "services", "image_generation", "create_image.pkr.hcl")), 
+    mock_cmd.assert_called_once_with("init", os.path.join(base_tectonic_path, "services", "image_generation", "create_image.pkr.hcl"))
+    mock_build.assert_called_once_with(os.path.join(base_tectonic_path, "services", "image_generation", "create_image.pkr.hcl"), 
                                        var=variables),
     mock_delete_sg.assert_called_once_with("Temporary group for Packer")
 

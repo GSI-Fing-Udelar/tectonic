@@ -357,8 +357,8 @@ def test_create_cr_images_ok(mocker, libvirt_deployment, test_data_path):
     mock_cmd = mocker.patch.object(packerpy.PackerExecutable, "execute_cmd", return_value=(0, "success", ""))
     mock_build = mocker.patch.object(packerpy.PackerExecutable, "build", return_value=(0, "success", ""))
     libvirt_deployment.create_cr_images()
-    mock_cmd.assert_called_once_with("init", libvirt_deployment.cr_packer_path)
-    mock_build.assert_called_once_with(libvirt_deployment.cr_packer_path, var=variables)
+    mock_cmd.assert_called_once_with("init", str(libvirt_deployment.cr_packer_path))
+    mock_build.assert_called_once_with(str(libvirt_deployment.cr_packer_path), var=variables)
 
     #Test monitor_type == endpoint
     libvirt_deployment.description.monitor_type = "endpoint"
@@ -406,8 +406,8 @@ def test_create_cr_images_ok(mocker, libvirt_deployment, test_data_path):
     mock_cmd = mocker.patch.object(packerpy.PackerExecutable, "execute_cmd", return_value=(0, "success", ""))
     mock_build = mocker.patch.object(packerpy.PackerExecutable, "build", return_value=(0, "success", ""))
     libvirt_deployment.create_cr_images()
-    mock_cmd.assert_called_once_with("init", libvirt_deployment.cr_packer_path)
-    mock_build.assert_called_once_with(libvirt_deployment.cr_packer_path, var=variables),
+    mock_cmd.assert_called_once_with("init", str(libvirt_deployment.cr_packer_path))
+    mock_build.assert_called_once_with(str(libvirt_deployment.cr_packer_path), var=variables),
     libvirt_deployment.description.monitor_type = "traffic"
     libvirt_deployment.description.deploy_elastic = False
 
@@ -1878,8 +1878,8 @@ def test_create_services_images_ok(mocker, libvirt_deployment, base_tectonic_pat
     mock_build = mocker.patch.object(packerpy.PackerExecutable, "build", return_value=(0, "success", ""))
     libvirt_deployment.create_services_images({"caldera":True,"elastic":True, "packetbeat":False})
     packer_script = Path(os.path.join(base_tectonic_path, "services", "image_generation", "create_image.pkr.hcl"))
-    mock_cmd.assert_called_once_with("init", packer_script)
-    mock_build.assert_called_once_with(packer_script, var=variables)
+    mock_cmd.assert_called_once_with("init", str(packer_script))
+    mock_build.assert_called_once_with(str(packer_script), var=variables)
 
 def test_get_services_network_data(libvirt_deployment):
     libvirt_deployment.description.deploy_caldera = True

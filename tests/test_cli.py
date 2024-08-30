@@ -508,13 +508,13 @@ def test_tectonic_create_images(mocker,
     services_packer_file=Path(os.path.join(base_tectonic_path, "services", "image_generation", "create_image.pkr.hcl"))
     assert mock_packer_cmd.call_count == 2
     mock_packer_cmd.assert_has_calls([
-        mocker.call("init", services_packer_file),
-        mocker.call("init", cr_packer_file),
+        mocker.call("init", str(services_packer_file)),
+        mocker.call("init", str(cr_packer_file)),
     ])
     assert mock_packer_build.call_count == 2
     mock_packer_build.assert_has_calls([
-        mocker.call(services_packer_file, var=mocker.ANY),
-        mocker.call(cr_packer_file, var=mocker.ANY),
+        mocker.call(str(services_packer_file), var=mocker.ANY),
+        mocker.call(str(cr_packer_file), var=mocker.ANY),
     ])
     assert ("Creating services images ...\n"
             "Creating base images...\n") in result.output

@@ -243,13 +243,13 @@ class Deployment:
             variables (dict): variables of the Packer module.
         """
         p = packerpy.PackerExecutable(executable_path=self.packer_executable_path)
-        return_code, stdout, stderr = p.execute_cmd("init", packer_path)
+        return_code, stdout, stderr = p.execute_cmd("init", str(packer_path))
         if return_code != 0:
             raise TerraformRunException(
                 f"ERROR: packer init returned an error:\n{stdout.decode()}"
             )
 
-        return_code, stdout, stderr = p.build(packer_path, var=variables)
+        return_code, stdout, stderr = p.build(str(packer_path), var=variables)
         # return_code, stdout, stderr = p.build(packer_path, var=variables, on_error="abort")
         if return_code != 0:
             raise TerraformRunException(
