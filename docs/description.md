@@ -25,9 +25,6 @@ The scenario description is a YAML file with three main sections:
   + `default_os`: The default operating system to use for guests. Must
     be one of `ubuntu22`, `rocky8` or `kali`. Optional, default:
     `ubuntu22`.
-  + `deploy_elastic`: Whether to deploy elastic for evaluation.
-    Optional, default: `no`.
-	
 
 * A `guest_settings` section in which all guest machines of the lab
   are described. Each guest entry has these options (all are
