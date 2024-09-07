@@ -663,7 +663,7 @@ class Deployment:
         elastic_name = self.description.get_service_name("elastic")
         if self.get_instance_status(elastic_name) == "RUNNING":
             elastic_ip = self.get_ssh_hostname(elastic_name)
-            playbook = tectonic_resources.files(services.elastic) / 'get_info.yml',
+            playbook = tectonic_resources.files(services.elastic) / 'get_info.yml'
             result = self._get_service_info("elastic",playbook,{"action":"get_token_by_policy_name","policy_name":self.description.endpoint_policy_name})
             endpoint_token = result[0]["token"]
             extra_vars = {
