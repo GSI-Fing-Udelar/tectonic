@@ -1,3 +1,10 @@
 #!/bin/bash
 hostnamectl set-hostname ${hostname}
 echo "${authorized_keys}" > ~${username}/.ssh/authorized_keys
+#Resize rocky images
+if [ "${base_os}" == "rocky8" ]
+then
+    growpart /dev/xvda 5
+    pvresize -y -q /dev/xvda5
+    lvresize -y -q -r -l +100%FREE /dev/mapper/rocky-root
+fi

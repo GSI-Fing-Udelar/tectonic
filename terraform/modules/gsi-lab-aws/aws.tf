@@ -361,7 +361,8 @@ resource "aws_instance" "machines" {
     { 
       authorized_keys = var.authorized_keys, 
       hostname = each.value.hostname,
-      username = local.os_data[each.value.base_os]["username"]
+      username = local.os_data[each.value.base_os]["username"],
+      base_os = each.value.base_os,
     })
 
    root_block_device {
