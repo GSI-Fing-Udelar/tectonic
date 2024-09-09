@@ -37,6 +37,14 @@ packer {
       version = ">= 0.5.0"
       source  = "github.com/thomasklein94/libvirt"
     }
+    # podman = {
+    #   version = ">= v1.0.0"
+    #   source  = "github.com/Polpetta/podman"
+    # }
+    docker = {
+      version = ">= 1.0.8"
+      source = "github.com/hashicorp/docker"
+    }
   }
 }
 
@@ -46,7 +54,7 @@ variable "platform" {
   description = "Whether to create images in AWS or use libvirt."
 
   validation {
-    condition = can(regex("^(aws|libvirt)$", var.platform))
+    condition = can(regex("^(aws|libvirt|podman)$", var.platform))
     error_message = "Supported platforms are 'aws', 'libvirt'."
   }
 }
@@ -100,7 +108,9 @@ locals {
   machines = jsondecode(var.machines_json)
   os_data = jsondecode(var.os_data_json)
 
-  build_type = var.platform == "aws" ? "amazon-ebs" : "libvirt"
+  platform_to_buildtype = { "aws": "amazon-ebs", "libvirt": "libvirt", "podman":"docker" }
+
+  build_type = local.platform_to_buildtype[var.platform]
   machine_builds = [ for m, _ in local.machines : "${local.build_type}.${m}" ]
 
   win_machines = [ for name, m in local.machines :
@@ -175,6 +185,14 @@ source "libvirt" "machine" {
   shutdown_mode = "acpi"
 }
 
+source "docker" "machine" {
+  commit = true
+  discard = false
+  cap_add = [ "AUDIT_WRITE" ]
+  privileged = false
+  #systemd = true
+  pull = true
+}
 
 build {
   dynamic "source" {
@@ -247,6 +265,27 @@ build {
     }
   }
 
+  dynamic "source" {
+    for_each = { for machine_name, m in local.machines: machine_name => m if var.platform == "podman" }
+    labels   = [ "docker.machine" ]
+    content {
+      name = source.key
+      image = local.os_data[source.value["base_os"]]["podman_base_image"]
+      changes = local.os_data[source.value["base_os"]]["podman_entrypoint"]
+    }
+  }
+
+  provisioner "shell" {
+    inline = [
+      "apt-get update && apt-get install -y systemd sudo openssh-server iproute2",
+      "useradd -m -s /bin/bash ${local.os_data[local.machines[source.name]["base_os"]]["username"]} && usermod -aG sudo ${local.os_data[local.machines[source.name]["base_os"]]["username"]}",
+      "echo \"%sudo  ALL=(ALL) NOPASSWD: ALL\" > /etc/sudoers.d/sudo",
+      "mkdir /home/${local.os_data[local.machines[source.name]["base_os"]]["username"]}/.ssh; chmod 700 /home/${local.os_data[local.machines[source.name]["base_os"]]["username"]}/.ssh; chown ${local.os_data[local.machines[source.name]["base_os"]]["username"]} /home/${local.os_data[local.machines[source.name]["base_os"]]["username"]}/.ssh",
+      "touch /home/${local.os_data[local.machines[source.name]["base_os"]]["username"]}/.ssh/authorized_keys; chmod 600 /home/${local.os_data[local.machines[source.name]["base_os"]]["username"]}/.ssh/authorized_keys; chown ${local.os_data[local.machines[source.name]["base_os"]]["username"]}: /home/${local.os_data[local.machines[source.name]["base_os"]]["username"]}/.ssh/authorized_keys"
+    ]
+    except = var.platform != "podman" ? local.machine_builds : []
+  }
+
   provisioner "ansible" {
     playbook_file = "${abspath(path.root)}/libvirt_conf.yml"
     
@@ -274,7 +313,7 @@ build {
     extra_arguments = ["--extra-vars", "elastic_version=${var.elastic_version} ansible_become_flags=-i ansible_become=true ansible_no_target_syslog=${var.remove_ansible_logs}"]
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
 
-    except = local.not_endpoint_monitoring_machines
+    except = var.platform != "podman" ? local.not_endpoint_monitoring_machines : local.machine_builds 
   }
 
   provisioner "ansible" {
@@ -282,8 +321,8 @@ build {
       "${var.ansible_playbooks_path}/base_config.yml" :
       "/dev/null")
 
-    use_sftp = false
-    use_proxy = false
+    use_sftp = var.platform == "podman"
+    use_proxy = var.platform == "podman"
 
     host_alias = source.name
     user = local.os_data[local.machines[source.name]["base_os"]]["username"]
@@ -310,7 +349,13 @@ build {
       "sudo systemctl stop cloud-init",
       "sudo cloud-init clean --logs",
     ]
-    except = local.win_machines
+    except = var.platform != "podman" ? local.win_machines : local.machine_builds 
+  }
+
+  post-processor "docker-tag" {
+    repository =  "${var.institution}-${var.lab_name}/${source.name}"
+    tags = ["latest"]
+    except = var.platform != "podman" ? local.machine_builds : []
   }
 }
 

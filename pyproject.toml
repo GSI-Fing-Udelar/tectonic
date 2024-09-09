@@ -65,6 +65,7 @@ prettytable = "*"
 beautifulsoup4 = "*"
 bs4 = "*"
 freezegun = "*"
+podman = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.0"

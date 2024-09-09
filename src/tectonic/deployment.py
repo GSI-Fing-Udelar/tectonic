@@ -248,7 +248,6 @@ class Deployment:
             raise TerraformRunException(
                 f"ERROR: packer init returned an error:\n{stdout.decode()}"
             )
-
         return_code, stdout, stderr = p.build(str(packer_path), var=variables)
         # return_code, stdout, stderr = p.build(packer_path, var=variables, on_error="abort")
         if return_code != 0:

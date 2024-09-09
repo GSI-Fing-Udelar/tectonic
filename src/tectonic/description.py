@@ -75,7 +75,8 @@ class Description(object):
         endpoint_policy_name,
         internet_network_cidr_block,
         services_network_cidr_block,
-        keep_ansible_logs
+        keep_ansible_logs,
+        podman_uri
     ):
         """Create a Description object.
 
@@ -107,6 +108,7 @@ class Description(object):
             internet_network_cidr_block: CIDR of internet network.
             services_network_cidr_block: CIDR of services network.
             keep_ansible_logs: Keep Ansible logs on managed hosts.
+            podman_uri: URI for podman
 
         Returns:
              A Description object.
@@ -142,6 +144,7 @@ class Description(object):
         self.internet_network = internet_network_cidr_block
         self.services_network = services_network_cidr_block
         self.keep_ansible_logs = keep_ansible_logs
+        self.podman_uri = podman_uri
         self.services = {}
 
         self._load_lab_edition(path)
@@ -854,7 +857,7 @@ class Description(object):
                     return base + 1
                 else:
                     return base
-        elif self.platform == "aws":
+        elif self.platform == "aws" or self.platform == "podman":
             return 0
 
 
