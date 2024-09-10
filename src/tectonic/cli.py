@@ -56,7 +56,7 @@ import click
 
 from tectonic.deployment_aws import AWSDeployment
 from tectonic.deployment_libvirt import LibvirtDeployment
-from tectonic.deployment_podman import PodmanDeployment
+from tectonic.deployment_docker import DockerDeployment
 from tectonic.description import Description
 from tectonic.ansible import Ansible
 from tectonic.instance_type import InstanceType
@@ -252,7 +252,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 )
 @click.option(
     "--platform",
-    type=click.Choice(["aws", "libvirt", "podman"], case_sensitive=False),
+    type=click.Choice(["aws", "libvirt", "docker"], case_sensitive=False),
     default="aws",
     help="Deploy the cyber range to this platform.",
 )
@@ -408,10 +408,10 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     help="Keep Ansible logs on managed hosts.",
 )
 @click.option(
-    "--podman_uri",
+    "--docker_uri",
     default="unix:///var/run/docker.sock",
     show_default=True,
-    help="URI to connect to server, if using podman",
+    help="URI to connect to server, if using docker",
 )
 @click.argument("lab_edition_file", type=click.Path(exists=True, dir_okay=False))
 @click.pass_context
@@ -446,7 +446,7 @@ def tectonic(
     internet_network_cidr_block,
     services_network_cidr_block,
     keep_ansible_logs,
-    podman_uri
+    docker_uri
 ):
     """Deploy or manage a cyber range according to LAB_EDITION_FILE."""
     logfile = PurePosixPath(lab_edition_file).parent.joinpath("tectonic.log")
@@ -487,7 +487,7 @@ def tectonic(
         internet_network_cidr_block,
         services_network_cidr_block,
         keep_ansible_logs,
-        podman_uri
+        docker_uri
     )
 
     if platform == "aws":
@@ -506,8 +506,8 @@ def tectonic(
             gitlab_backend_access_token=gitlab_backend_access_token,
             packer_executable_path=packer_executable_path,
         )
-    elif platform == "podman":
-        ctx.obj["deployment"] = PodmanDeployment(
+    elif platform == "docker":
+        ctx.obj["deployment"] = DockerDeployment(
             ctx.obj["description"],
             gitlab_backend_url=gitlab_backend_url,
             gitlab_backend_username=gitlab_backend_username,

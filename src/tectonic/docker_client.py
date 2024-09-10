@@ -18,23 +18,23 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-import podman
+import docker
 
 
-class PodmanClientException(Exception):
+class DockerClientException(Exception):
     pass
 
 class Client:
     
     def __init__(self, description):
         self.description = description
-        self.connection = podman.PodmanClient(base_url=self.description.podman_uri)
+        self.connection = docker.DockerClient(base_url=self.description.docker_uri)
 
     def get_instance_status(self, instance_name):
         try:
             container_info = self.connection.containers.get(instance_name)
             return container_info.status
         except Exception as exception:
-            raise PodmanClientException(f"{exception}")
+            raise DockerClientException(f"{exception}")
 
     

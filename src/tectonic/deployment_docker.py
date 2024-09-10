@@ -22,7 +22,7 @@ import json
 import click
 
 from tectonic.deployment import Deployment, DeploymentException
-from tectonic.podman_client import Client
+from tectonic.docker_client import Client
 from tectonic.constants import OS_DATA
 from tectonic.utils import create_table
 
@@ -32,10 +32,10 @@ import terraform.modules
 
 
 
-class DeploymentPodmanException(DeploymentException):
+class DeploymentDockerException(DeploymentException):
     pass
 
-class PodmanDeployment(Deployment):
+class DockerDeployment(Deployment):
 
     def __init__(
         self,
@@ -67,7 +67,7 @@ class PodmanDeployment(Deployment):
             "default_os": self.description.default_os,
             "os_data_json": json.dumps(OS_DATA),
             "configure_dns": self.description.configure_dns,
-            "docker_uri": self.description.podman_uri,
+            "docker_uri": self.description.docker_uri,
             }
 
     def can_delete_image(self, image_name):
@@ -88,7 +88,7 @@ class PodmanDeployment(Deployment):
         """
 
         click.echo("Deploying Cyber Range instances...")
-        self._deploy_cr(tectonic_resources.files(terraform.modules) / 'gsi-lab-podman',
+        self._deploy_cr(tectonic_resources.files(terraform.modules) / 'gsi-lab-docker',
                         self.get_deploy_cr_vars(),
                         instances)
 
@@ -97,10 +97,9 @@ class PodmanDeployment(Deployment):
         Destroy cyber range infraestructure
         """
         click.echo("Destroying Cyber Range instances...")
-        self._destroy_cr(tectonic_resources.files(terraform.modules) / 'gsi-lab-podman',
+        self._destroy_cr(tectonic_resources.files(terraform.modules) / 'gsi-lab-docker',
                          self.get_deploy_cr_vars(),
                          instances)
-        # Error al eliminar contenedores. Ver https://github.com/containers/podman/issues/20547
         
     def get_cyberrange_data(self):
         """Get information about cyber range"""
@@ -109,7 +108,7 @@ class PodmanDeployment(Deployment):
                 #TODO
                 return
         except Exception as exception:
-            raise DeploymentPodmanException(f"{exception}")
+            raise DeploymentDockerException(f"{exception}")
         
     def get_instance_status(self, instance_name):
         """Returns a dictionary with the instance status."""

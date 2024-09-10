@@ -47,10 +47,8 @@ resource "docker_container" "machines" {
     file = "/home/${local.os_data[each.value.base_os]["username"]}/.ssh/authorized_keys"
     content = var.authorized_keys
   }
-
-  capabilities {
-    add = [ "AUDIT_WRITE" ]
-  }
+  
+  privileged = true
   
   dynamic "networks_advanced" {
     for_each = each.value.interfaces
