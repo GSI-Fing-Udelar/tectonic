@@ -27,7 +27,8 @@ OS_DATA = {
         "username": "ubuntu",
         "cloud_image_url": "https://cloud-images.ubuntu.com/releases/22.04/release-20230616/ubuntu-22.04-server-cloudimg-amd64.img",
         "cloud_image_checksum": "fe102bfb3d3d917d31068dd9a4bd8fcaeb1f529edda86783f8524fdc1477ee29",
-        "docker_base_image": "ubuntu:22.04",
+        # "docker_base_image": "ubuntu:22.04",
+        "docker_base_image": "python:3.10",
         "docker_entrypoint": [ "ENTRYPOINT [ \"/usr/bin/systemd\", \"--system\" ]" ]
     },
     "rocky8": {
