@@ -287,7 +287,7 @@ build {
     use_proxy = var.platform == "docker"
 
     host_alias = source.name
-    user = local.os_data[local.machines[source.name]["base_os"]]["username"]
+    user = var.platform == "docker" ? "root" : local.os_data[local.machines[source.name]["base_os"]]["username"]
 
     extra_arguments = var.libvirt_proxy != null ? ["--extra-vars", "proxy=${var.libvirt_proxy} platform=${var.platform}"] : ["--extra-vars", "platform=${var.platform}"]
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
@@ -300,7 +300,7 @@ build {
     use_proxy = var.platform == "docker"
 
     host_alias = source.name
-    user = local.os_data[local.machines[source.name]["base_os"]]["username"]
+    user = var.platform == "docker" ? "root" : local.os_data[local.machines[source.name]["base_os"]]["username"]
 
     extra_arguments = ["--extra-vars", "elastic_version=${var.elastic_version} ansible_become_flags=-i ansible_become=true ansible_no_target_syslog=${var.remove_ansible_logs}"]
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
@@ -317,7 +317,7 @@ build {
     use_proxy = var.platform == "docker"
 
     host_alias = source.name
-    user = local.os_data[local.machines[source.name]["base_os"]]["username"]
+    user = var.platform == "docker" ? "root" : local.os_data[local.machines[source.name]["base_os"]]["username"]
 
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
 

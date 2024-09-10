@@ -25,6 +25,7 @@ from tectonic.deployment import Deployment, DeploymentException
 from tectonic.docker_client import Client
 from tectonic.constants import OS_DATA
 from tectonic.utils import create_table
+from tectonic.ansible import Ansible
 
 import importlib.resources as tectonic_resources
 
@@ -86,11 +87,21 @@ class DockerDeployment(Deployment):
         """
         Deploy cyber range infraestructure
         """
+        ansible = Ansible(self)
 
         click.echo("Deploying Cyber Range instances...")
         self._deploy_cr(tectonic_resources.files(terraform.modules) / 'gsi-lab-docker',
                         self.get_deploy_cr_vars(),
                         instances)
+        
+        click.echo("Waiting for machines to boot up...")
+        ansible.wait_for_connections(instances=instances)
+
+        click.echo("Configuring student access...")
+        self.student_access(instances)
+
+        click.echo("Running after-clone configuration...")
+        ansible.run(instances, quiet=True)
 
     def destroy_infraestructure(self, instances):
         """

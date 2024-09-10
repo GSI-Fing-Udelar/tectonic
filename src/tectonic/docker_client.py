@@ -32,9 +32,28 @@ class Client:
 
     def get_instance_status(self, instance_name):
         try:
-            container_info = self.connection.containers.get(instance_name)
-            return container_info.status
+            container = self.connection.containers.get(instance_name)
+            return container.status
+        except docker.errors.NotFound:
+            return "UNKNOWN"
         except Exception as exception:
             raise DockerClientException(f"{exception}")
+        
+    def get_machine_private_ip(self, name):
+        """Returns the private IP address of a domain.
+
+           If the domain has more than one IP address, the first
+           address inside network_cidr_block is returned.
+
+        """
+        try:
+            container = self.connection.containers.get(name)
+            for network in container.attrs["NetworkSettings"]["Networks"]:
+                return container.attrs["NetworkSettings"]["Networks"][network]["IPAddress"]
+            return None #Raise exception?
+        except Exception as exception:
+            raise DockerClientException(f"{exception}")
+        
+        
 
     

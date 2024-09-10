@@ -89,12 +89,14 @@ class Ansible:
                                 "instances": description.instance_number,
                                 "platform": description.platform,
                                 "institution": description.institution,
-                                "lab_name": description.lab_name
+                                "lab_name": description.lab_name,
+                                "ansible_connection" : "community.docker.docker_api" if description.platform == "docker" else "ssh", #export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES on macos
+                                "docker_host": description.docker_uri,
                             } | extra_vars,
                 }
 
             inventory[base_name]["hosts"][machine] = {
-                "ansible_host": hostname,
+                "ansible_host": hostname if description.platform != "docker" else machine,
                 "ansible_user": ansible_username,
                 "ansible_ssh_common_args": ssh_args,
                 "instance": description.get_instance_number(machine),
@@ -175,7 +177,8 @@ class Ansible:
             quiet=quiet,
             verbosity=verbosity,
             event_handler=self._ansible_callback,
-            extravars=extravars
+            extravars=extravars,
+
         )
         logger.info(self.output)
 
