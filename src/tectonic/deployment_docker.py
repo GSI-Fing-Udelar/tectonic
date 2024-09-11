@@ -72,12 +72,32 @@ class DockerDeployment(Deployment):
             }
 
     def can_delete_image(self, image_name):
-        # TODO
+        """
+        Return true if the image is not being used by any machine.
+
+        Parameters:
+          image_name (str): name of the image
+
+        Returns:
+          bool: true if the image is not being used by any machine or false otherwise
+        """
+        image = self.client.get_image(image_name)
+        if image:
+            image_id = image[0]
+            instances_images_ids = self.client.get_machines_imageid()
+            for instance_image_id in instances_images_ids:
+                if image_id == instance_image_id:
+                    return False
         return True
 
     def delete_cr_images(self, guests=None):
-        #TODO
-        return
+        guests = guests or self.description.guest_settings.keys()
+        for guest_name in guests:
+            try: 
+                print(self.description.get_image_name(guest_name))
+                self.client.delete_image(self.description.get_image_name(guest_name))
+            except Exception as exception:
+                raise DeploymentDockerException(f"{exception}")
 
     def create_cr_images(self, guests=None):
         #self.delete_cr_images(guests)
@@ -140,3 +160,43 @@ class DockerDeployment(Deployment):
             return
         else:
             return "No services were deployed."
+        
+    def start_instance(self, instance_name):
+        self.client.start_instance(instance_name)
+
+    def stop_instance(self, instance_name):
+        self.client.stop_instance(instance_name)
+
+    def reboot_instance(self, instance_name):
+        self.client.reboot_instance(instance_name)
+
+    def shutdown(self, instances, guests, copies, stop_services):
+        if stop_services:
+            click.echo(f"Shutting down services...")
+            #TODO             
+        machines_to_shutdown = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy()) 
+        for machine in machines_to_shutdown:
+            click.echo(f"Shutting down instance {machine}...")
+            self.stop_instance(machine)
+            
+    def start(self, instances, guests, copies, start_services):
+        if start_services:
+            click.echo(f"Booting up services...")
+            #TODO
+        machines_to_start = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())  
+        for machine in machines_to_start:
+            click.echo(f"Booting up instance {machine}...")
+            self.start_instance(machine)
+
+    def reboot(self, instances, guests, copies, reboot_services):
+        if reboot_services:
+            click.echo(f"Rebooting services...")
+            #TODO
+        machines_to_reboot = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
+        for machine in machines_to_reboot:
+            click.echo(f"Rebooting instance {machine}...")
+            self.reboot_instance(machine)
+
+    def connect_to_instance(self, instance_name, username):
+        username = username or self.description.get_guest_username(self.description.get_base_name(instance_name))
+        self.client.connect(instance_name, username)

@@ -19,6 +19,7 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import docker
+import subprocess
 
 
 class DockerClientException(Exception):
@@ -30,6 +31,13 @@ class Client:
         self.description = description
         self.connection = docker.DockerClient(base_url=self.description.docker_uri)
 
+    def __del__(self):
+        if self.connection is not None:
+            try:
+                self.connection.close()
+            except:
+                pass
+
     def get_instance_status(self, instance_name):
         try:
             container = self.connection.containers.get(instance_name)
@@ -40,10 +48,11 @@ class Client:
             raise DockerClientException(f"{exception}")
         
     def get_machine_private_ip(self, name):
-        """Returns the private IP address of a domain.
+        """
+        Returns the private IP address of a domain.
 
-           If the domain has more than one IP address, the first
-           address inside network_cidr_block is returned.
+        If the domain has more than one IP address, the first
+        address inside network_cidr_block is returned.
 
         """
         try:
@@ -54,6 +63,51 @@ class Client:
         except Exception as exception:
             raise DockerClientException(f"{exception}")
         
+    def delete_image(self, image_name):
+        """
+        Delete base image
+
+        """
+        try:
+            self.connection.images.remove(image_name)
+        except Exception as exception:
+            raise DockerClientException(f"{exception}")
         
+    def start_instance(self, instance_name):
+        """
+        Starts a stopped instance.
+        """
+        try:
+            container = self.connection.containers.get(instance_name)
+            container.start()
+        except Exception as exception:
+            raise DockerClientException(f"{exception}")
+
+    def stop_instance(self, instance_name):
+        """
+        Stops a running instance.
+        """
+        try:
+            container = self.connection.containers.get(instance_name)
+            container.stop()
+        except Exception as exception:
+            raise DockerClientException(f"{exception}")
+        
+    def reboot_instance(self, instance_name):
+        """
+        Reboots a running instance.
+        """
+        try:
+            container = self.connection.containers.get(instance_name)
+            container.restart()
+        except Exception as exception:
+            raise DockerClientException(f"{exception}")   
+
+    def connect(self, instance_name, username):
+        """
+        Connect to contaienr
+        """
+        # TODO
+    
 
     
