@@ -346,7 +346,7 @@ build {
   }
 
   post-processor "docker-tag" {
-    repository =  "${var.institution}-${var.lab_name}/${source.name}"
+    repository =  "${var.institution}-${var.lab_name}-${source.name}"
     tags = ["latest"]
     except = var.platform != "docker" ? local.machine_builds : []
   }
