@@ -280,6 +280,8 @@ build {
 
     extra_arguments = var.libvirt_proxy != null ? ["--extra-vars", "proxy=${var.libvirt_proxy} platform=${var.platform}"] : ["--extra-vars", "platform=${var.platform}"]
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
+    
+    except = var.platform == "aws" ? local.machine_builds : []
   }
 
   provisioner "shell" {
