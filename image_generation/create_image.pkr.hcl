@@ -284,18 +284,6 @@ build {
     except = var.platform == "aws" ? local.machine_builds : []
   }
 
-  provisioner "shell" {
-    inline = [
-      "apt-get update && apt-get install -y init sudo openssh-server iproute2",
-      "useradd -m -s /bin/bash ${local.os_data[local.machines[source.name]["base_os"]]["username"]} && usermod -aG sudo ${local.os_data[local.machines[source.name]["base_os"]]["username"]}",
-      "echo \"%sudo  ALL=(ALL) NOPASSWD: ALL\" > /etc/sudoers.d/sudo",
-      "mkdir /home/${local.os_data[local.machines[source.name]["base_os"]]["username"]}/.ssh; chmod 700 /home/${local.os_data[local.machines[source.name]["base_os"]]["username"]}/.ssh; chown ${local.os_data[local.machines[source.name]["base_os"]]["username"]} /home/${local.os_data[local.machines[source.name]["base_os"]]["username"]}/.ssh",
-      "touch /home/${local.os_data[local.machines[source.name]["base_os"]]["username"]}/.ssh/authorized_keys; chmod 600 /home/${local.os_data[local.machines[source.name]["base_os"]]["username"]}/.ssh/authorized_keys; chown ${local.os_data[local.machines[source.name]["base_os"]]["username"]}: /home/${local.os_data[local.machines[source.name]["base_os"]]["username"]}/.ssh/authorized_keys"
-    ]
-    except = var.platform != "docker" ? local.machine_builds : []
-  }
-
-
   provisioner "ansible" {
     playbook_file = "${abspath(path.root)}/elastic_agent.yml"
 
