@@ -184,8 +184,8 @@ source "libvirt" "machine" {
 source "docker" "machine" {
   commit = true
   discard = false
-  #privileged = false
-  pull = false
+  privileged = true
+  pull = true
 }
 
 build {
