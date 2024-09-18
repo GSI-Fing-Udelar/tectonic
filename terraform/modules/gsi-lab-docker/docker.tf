@@ -37,11 +37,17 @@ resource "docker_container" "machines" {
 
   name  = each.key
   image = data.docker_image.base_images[each.value.base_name].id
+  
   memory = lookup(each.value, "memory", "1024")
+  memory_swap = 2048
+  # TODO: limit cpu resources
+  # cpu_set = "0-${lookup(each.value, "vcpu", "1")}"
+  # TODO: not working for all filesystems, see https://github.com/moby/moby/issues/46823 (not working on MacOS)
+  # storage_opts = {
+  #   "size":"${lookup(each.value, "disk", 10)}G"
+  # }
 
-  #TODO
-  #cpu_set = lookup(each.value, "vcpu", "0-1")
-  #storage_opts = ?
+  hostname = each.value.hostname
 
   upload {
     file = "/home/${local.os_data[each.value.base_os]["username"]}/.ssh/authorized_keys"
@@ -50,6 +56,7 @@ resource "docker_container" "machines" {
   
   privileged = true
   
+  network_mode = "bridge"
   dynamic "networks_advanced" {
     for_each = each.value.interfaces
     content {
@@ -59,3 +66,5 @@ resource "docker_container" "machines" {
     
   }
 }
+
+#TODO: DNS
