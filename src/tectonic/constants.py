@@ -42,7 +42,7 @@ OS_DATA = {
         #"cloud_image_url": "http://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2",
         "cloud_image_url": "file:///data/isos/Rocky-8-GenericCloud.latest.x86_64.qcow2",
         "cloud_image_checksum": "d17f15a7649dd064795306c114b90fc5062e7d5fefa9e9f0bd6b7ce1aeac3ae5",
-        "docker_base_image": "gsitectonic/rocky8",
+        "docker_base_image": "gsitectonic/rocky8_new",
         "docker_entrypoint": [ "ENTRYPOINT [ \"/usr/sbin/init\" ]" ]
     },
     "kali": {

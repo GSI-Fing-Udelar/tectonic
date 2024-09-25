@@ -28,6 +28,7 @@
     - name: Set hostname
       ansible.builtin.hostname:
         name: caldera
+      when: platform != "docker"
 
     - name: Install node repo
       ansible.builtin.shell: "curl -sL https://rpm.nodesource.com/setup_18.x | bash"
@@ -79,3 +80,4 @@
       ansible.posix.selinux:
         policy: targeted
         state: permissive
+      when: platform != "docker"

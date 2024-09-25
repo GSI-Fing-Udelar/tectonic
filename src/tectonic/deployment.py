@@ -28,6 +28,7 @@ import click
 from bs4 import BeautifulSoup
 import requests
 import re
+import math
 
 import packerpy
 import python_terraform
@@ -291,7 +292,7 @@ class Deployment:
             "instance_number": self.description.instance_number,
             "institution": self.description.institution,
             "lab_name": self.description.lab_name,
-            "libvirt_proxy": self.description.libvirt_proxy,
+            "proxy": self.description.proxy,
             "libvirt_storage_pool": self.description.libvirt_storage_pool,
             "libvirt_uri": self.description.libvirt_uri,
             "machines_json": json.dumps(machines),
@@ -625,7 +626,7 @@ class Deployment:
             "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 else "",
             "ansible_ssh_common_args": self.description.ansible_ssh_common_args,
             "aws_region": self.description.aws_region,
-            "libvirt_proxy": self.description.libvirt_proxy,
+            "proxy": self.description.proxy,
             "libvirt_storage_pool": self.description.libvirt_storage_pool,
             "libvirt_uri": self.description.libvirt_uri,
             "machines_json": json.dumps(machines),
@@ -635,7 +636,8 @@ class Deployment:
             #TODO: pass variables as a json as part of each host
             "elastic_version": self.description.elastic_stack_version, 
             "elastic_latest_version": "yes" if self.description.is_elastic_stack_latest_version else "no",
-            "caldera_version": "master",
+            "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
+            "caldera_version": self.description.caldera_version,
             "packetbeat_vlan_id": self.description.packetbeat_vlan_id,
         }
         self._create_packer_images(tectonic_resources.files(services_image_resources) / 'create_image.pkr.hcl', args)

@@ -70,13 +70,14 @@ class Description(object):
         libvirt_bridge,
         libvirt_external_network,
         libvirt_bridge_base_ip,
-        libvirt_proxy,
+        proxy,
         instance_type,
         endpoint_policy_name,
         internet_network_cidr_block,
         services_network_cidr_block,
         keep_ansible_logs,
-        docker_uri
+        docker_uri,
+        caldera_version
     ):
         """Create a Description object.
 
@@ -102,13 +103,14 @@ class Description(object):
             libvirt_bridge: Name of the bridge for libvirt.
             libvirt_external_network: External network for libvirt.
             libvirt_bridge_base_ip: Base IP for the libvirt bridge.
-            libvirt_proxy: Proxy for libvirt.
+            proxy: Proxy for libvirt.
             instance_type: An InstanceType object to compute the correct size of machine.
             endpoint_policy_name: Name of the Agent policy.
             internet_network_cidr_block: CIDR of internet network.
             services_network_cidr_block: CIDR of services network.
             keep_ansible_logs: Keep Ansible logs on managed hosts.
-            docker_uri: URI for docker
+            docker_uri: URI for docker.
+            caldera_version: Caldera version
 
         Returns:
              A Description object.
@@ -138,13 +140,14 @@ class Description(object):
         self.libvirt_bridge = libvirt_bridge
         self.libvirt_external_network = libvirt_external_network
         self.libvirt_bridge_base_ip = libvirt_bridge_base_ip
-        self.libvirt_proxy = libvirt_proxy
+        self.proxy = proxy
         self.instance_type = instance_type
         self.endpoint_policy_name = endpoint_policy_name
         self.internet_network = internet_network_cidr_block
         self.services_network = services_network_cidr_block
         self.keep_ansible_logs = keep_ansible_logs
         self.docker_uri = docker_uri
+        self.caldera_version = caldera_version
         self.services = {}
 
         self._load_lab_edition(path)
@@ -870,6 +873,15 @@ class Description(object):
         """
         self.elastic_stack_version = version
         self.is_elastic_stack_latest_version = True
+
+    def set_caldera_version(self, version):
+        """
+        Set Caldera version
+
+        Parameters:
+            version (str): Caldera version
+        """
+        self.caldera_version = version
 
     def _get_guest_advanced_options_file(self, base_name):
         """

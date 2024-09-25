@@ -383,7 +383,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
          "point would get 192.168.44.11, and so on.",
 )
 @click.option(
-    "--libvirt_proxy",
+    "--proxy",
     required=False,
     help="Guest machines proxy configuration URI for libvirt.",
 )
@@ -413,6 +413,11 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     show_default=True,
     help="URI to connect to server, if using docker",
 )
+@click.option(
+    "--caldera_version",
+    default="latest",
+    help="Caldera version",
+)
 @click.argument("lab_edition_file", type=click.Path(exists=True, dir_okay=False))
 @click.pass_context
 def tectonic(
@@ -440,13 +445,14 @@ def tectonic(
     libvirt_bridge,
     libvirt_external_network,
     libvirt_bridge_base_ip,
-    libvirt_proxy,
+    proxy,
     lab_edition_file,
     endpoint_policy_name,
     internet_network_cidr_block,
     services_network_cidr_block,
     keep_ansible_logs,
-    docker_uri
+    docker_uri,
+    caldera_version
 ):
     """Deploy or manage a cyber range according to LAB_EDITION_FILE."""
     logfile = PurePosixPath(lab_edition_file).parent.joinpath("tectonic.log")
@@ -481,13 +487,14 @@ def tectonic(
         libvirt_bridge,
         libvirt_external_network,
         libvirt_bridge_base_ip,
-        libvirt_proxy,
+        proxy,
         instance_type,
         endpoint_policy_name,
         internet_network_cidr_block,
         services_network_cidr_block,
         keep_ansible_logs,
-        docker_uri
+        docker_uri,
+        caldera_version
     )
 
     if platform == "aws":
@@ -521,6 +528,9 @@ def tectonic(
 
     if elastic_stack_version == "latest" and ctx.obj["description"].deploy_elastic:
         ctx.obj["description"].set_elastic_stack_version(ctx.obj["deployment"].get_elastic_latest_version())
+
+    if caldera_version == "latest" and ctx.obj["description"].deploy_caldera:
+        ctx.obj["description"].set_caldera_version("master")
 
 
 @tectonic.command()

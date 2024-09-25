@@ -20,6 +20,7 @@
 
 import docker
 import subprocess
+from ipaddress import ip_network, ip_address
 
 
 class DockerClientException(Exception):
@@ -41,7 +42,7 @@ class Client:
     def get_instance_status(self, instance_name):
         try:
             container = self.connection.containers.get(instance_name)
-            return container.status
+            return container.status.upper()
         except docker.errors.NotFound:
             return "UNKNOWN"
         except Exception as exception:
@@ -56,9 +57,21 @@ class Client:
 
         """
         try:
+            lab_network = ip_network(self.description.network_cidr_block)
+            services_network = ip_network(self.description.services_network)
+            services_list = []
+            for service in self.description.get_services_to_deploy():
+                services_list.append(self.description.get_service_name(service))
+
             container = self.connection.containers.get(name)
             for network in container.attrs["NetworkSettings"]["Networks"]:
-                return container.attrs["NetworkSettings"]["Networks"][network]["IPAddress"]
+                ip_addr = container.attrs["NetworkSettings"]["Networks"][network]["IPAddress"]
+                if name in services_list:
+                    if ip_address(ip_addr) in services_network:
+                        return ip_addr
+                else:
+                    if ip_address(ip_addr) in lab_network:
+                        return ip_addr
             return None #Raise exception?
         except Exception as exception:
             raise DockerClientException(f"{exception}")
@@ -71,7 +84,8 @@ class Client:
         try:
             self.connection.images.remove(image_name)
         except Exception as exception:
-            raise DockerClientException(f"{exception}")
+            if type(exception) != docker.errors.ImageNotFound:
+                raise DockerClientException(f"{exception}")
         
     def start_instance(self, instance_name):
         """

@@ -18,20 +18,23 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-#Create subnetworks
+# Base images already exist, here we create a volume for each
+# guest, using the base image as a template
+
+#Create services networks
 resource "docker_network" "subnets" {
   for_each = local.subnetworks
 
   name = "${each.key}"
   driver = "bridge"
-  internal = true
+  internal = "${lookup(each.value, "mode")}" != "nat"
   ipam_config {
-    subnet = each.value
+    subnet = lookup(each.value, "cidr") #each.value
   }
 
 }
 
-# Create the machines
+# Create services machines
 resource "docker_container" "machines" {
   for_each = local.guest_data
 
@@ -39,14 +42,15 @@ resource "docker_container" "machines" {
   image = data.docker_image.base_images[each.value.base_name].id
   
   memory = lookup(each.value, "memory", "1024")
-  # TODO: limit cpu resources
-  # cpu_set = "0-${lookup(each.value, "vcpu", "1")}"
-  # TODO: not working for all filesystems, see https://github.com/moby/moby/issues/46823 (not working on MacOS)
-  # storage_opts = {
-  #   "size":"${lookup(each.value, "disk", 10)}G"
-  # }
-
+  
   hostname = each.value.hostname
+
+  ports {
+    internal = lookup(each.value, "port")
+    external = lookup(each.value, "port")
+    ip = "0.0.0.0"
+    protocol = "tcp"
+  }
 
   upload {
     file = "/home/${local.os_data[each.value.base_os]["username"]}/.ssh/authorized_keys"
@@ -56,7 +60,6 @@ resource "docker_container" "machines" {
   privileged = true
   
   network_mode = "bridge"
-
   dynamic "networks_advanced" {
     for_each = each.value.interfaces
     content {
@@ -64,12 +67,4 @@ resource "docker_container" "machines" {
       ipv4_address = networks_advanced.value.private_ip
     }
   }
-
-  dynamic "networks_advanced" { 
-    for_each = each.value.is_in_services_network ? ["services-nic"] : []
-    content { 
-      name = "${var.institution}-${var.lab_name}-services"
-    }
-  }
-
 }
