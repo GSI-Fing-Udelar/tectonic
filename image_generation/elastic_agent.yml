@@ -24,16 +24,26 @@
   tasks:
   - name: Download agent on Linux
     block:
-      - name: Linux - Make surge tar is installed
+      - name: Set architecture
+        block:
+          - name: x86_64
+            ansible.builtin.set_fact:
+              architecture: "x86_64"
+            when: ansible_facts['architecture'] == "x86_64"
+          - name: arm64 or aarch64
+            ansible.builtin.set_fact:
+              architecture: "arm64"
+            when: ansible_facts['architecture'] == "arm64" or ansible_facts['architecture'] == "aarch64"
+      - name: Linux - Make sure tar is installed
         ansible.builtin.package:
           name: tar
       - name: Linux - Download Elastic Agent
         ansible.builtin.unarchive:
-          src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ elastic_version }}-linux-x86_64.tar.gz"
+          src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ elastic_version }}-linux-{{ architecture }}.tar.gz"
           dest: /opt
           remote_src: yes
       - name: Linux - Rename Elastic agent directory
-        ansible.builtin.command: "mv /opt/elastic-agent-{{ elastic_version }}-linux-x86_64/ /opt/elastic-agent/"
+        ansible.builtin.command: "mv /opt/elastic-agent-{{ elastic_version }}-linux-{{ architecture }}/ /opt/elastic-agent/"
     when: ansible_facts['os_family'] != "Windows"
   - name: Download agent on Windows
     block:

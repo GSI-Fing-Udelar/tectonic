@@ -19,10 +19,10 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
-import os
 import click
 import ipaddress
 import datetime
+import math
 
 from tectonic.deployment import Deployment, DeploymentException
 from tectonic.libvirt_client import Client
@@ -333,7 +333,7 @@ class LibvirtDeployment(Deployment):
         if start_services:
             click.echo(f"Booting up services...")
             for service in self.description.get_services_to_deploy():
-                self.reboot_instance(self.description.get_service_name(service))
+                self.start_instance(self.description.get_service_name(service))
                 if service == "elastic" and self.description.monitor_type == "traffic":
                     self._manage_packetbeat("started")
         machines_to_start = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())  
@@ -405,9 +405,10 @@ class LibvirtDeployment(Deployment):
                     "monitor_type": self.description.monitor_type,
                     "deploy_policy": self.description.elastic_deploy_default_policy,
                     "policy_name": self.description.packetbeat_policy_name if self.description.monitor_type == "traffic" else self.description.endpoint_policy_name,
-                    "http_proxy" : self.description.libvirt_proxy,
+                    "http_proxy" : self.description.proxy,
                     "description_path": self.description.description_dir,
-                    "ip": str(ipaddress.IPv4Network(self.description.services_network)[2])
+                    "ip": str(ipaddress.IPv4Network(self.description.services_network)[2]),
+                    "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
                 },
                 "caldera":{
                     "ip": str(ipaddress.IPv4Network(self.description.services_network)[4]),

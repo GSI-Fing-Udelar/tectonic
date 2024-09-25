@@ -134,7 +134,7 @@ variable "libvirt_storage_pool" {
   default     = "default"
   description = "Libvirt Storage pool to store the configured image."
 }
-variable "libvirt_proxy" {
+variable "proxy" {
   type        = string
   default     = null
   description = "Guest machines proxy configuration URI for libvirt."
@@ -184,7 +184,7 @@ source "libvirt" "machine" {
 source "docker" "machine" {
   commit = true
   discard = false
-  #privileged = false
+  privileged = true
   pull = false
 }
 
@@ -278,7 +278,7 @@ build {
     host_alias = source.name
     user = var.platform == "docker" ? "root" : local.os_data[local.machines[source.name]["base_os"]]["username"]
 
-    extra_arguments = var.libvirt_proxy != null ? ["--extra-vars", "proxy=${var.libvirt_proxy} platform=${var.platform}"] : ["--extra-vars", "platform=${var.platform}"]
+    extra_arguments = var.proxy != null ? ["--extra-vars", "proxy=${var.proxy} platform=${var.platform}"] : ["--extra-vars", "platform=${var.platform}"]
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
     
     except = var.platform == "aws" ? local.machine_builds : []
@@ -296,7 +296,7 @@ build {
     extra_arguments = ["--extra-vars", "elastic_version=${var.elastic_version} ansible_become_flags=-i ansible_become=true ansible_no_target_syslog=${var.remove_ansible_logs}"]
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
 
-    except = var.platform != "docker" ? local.not_endpoint_monitoring_machines : local.machine_builds 
+    except = local.not_endpoint_monitoring_machines
   }
 
   provisioner "ansible" {

@@ -19,11 +19,10 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
-import os
-from pathlib import Path
 import click
 import ipaddress
 import datetime
+import math
 
 from tectonic.aws import Client
 from tectonic.constants import *
@@ -643,9 +642,10 @@ class AWSDeployment(Deployment):
                     "monitor_type": self.description.monitor_type,
                     "deploy_policy": self.description.elastic_deploy_default_policy,
                     "policy_name": self.description.packetbeat_policy_name if self.description.monitor_type == "traffic" else self.description.endpoint_policy_name,
-                    "http_proxy" : self.description.libvirt_proxy,
+                    "http_proxy" : self.description.proxy,
                     "description_path": self.description.description_dir,
                     "ip": self.client.get_machine_private_ip(self.description.get_service_name("elastic")),
+                    "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
                 },
                 "caldera":{
                     "ip": self.client.get_machine_private_ip(self.description.get_service_name("caldera")),
