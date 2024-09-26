@@ -110,7 +110,7 @@ class Description(object):
             services_network_cidr_block: CIDR of services network.
             keep_ansible_logs: Keep Ansible logs on managed hosts.
             docker_uri: URI for docker.
-            caldera_version: Caldera version
+            caldera_version: Caldera version.
 
         Returns:
              A Description object.
@@ -149,9 +149,7 @@ class Description(object):
         self.docker_uri = docker_uri
         self.caldera_version = caldera_version
         self.services = {}
-
         self._load_lab_edition(path)
-
         self.description_dir = Path(self.description_file).parent.resolve().as_posix()
         self.ansible_playbooks_path = (
             Path(self.description_dir).joinpath("ansible").resolve().as_posix()

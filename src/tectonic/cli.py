@@ -416,7 +416,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 @click.option(
     "--caldera_version",
     default="latest",
-    help="Caldera version",
+    help="Caldera version.",
 )
 @click.argument("lab_edition_file", type=click.Path(exists=True, dir_okay=False))
 @click.pass_context
@@ -452,7 +452,7 @@ def tectonic(
     services_network_cidr_block,
     keep_ansible_logs,
     docker_uri,
-    caldera_version
+    caldera_version,
 ):
     """Deploy or manage a cyber range according to LAB_EDITION_FILE."""
     logfile = PurePosixPath(lab_edition_file).parent.joinpath("tectonic.log")
@@ -494,7 +494,7 @@ def tectonic(
         services_network_cidr_block,
         keep_ansible_logs,
         docker_uri,
-        caldera_version
+        caldera_version,
     )
 
     if platform == "aws":
@@ -526,10 +526,10 @@ def tectonic(
 
     ctx.obj["ansible"] = Ansible(ctx.obj["deployment"])
 
-    if elastic_stack_version == "latest" and ctx.obj["description"].deploy_elastic:
+    if elastic_stack_version == "latest":
         ctx.obj["description"].set_elastic_stack_version(ctx.obj["deployment"].get_elastic_latest_version())
 
-    if caldera_version == "latest" and ctx.obj["description"].deploy_caldera:
+    if caldera_version == "latest":
         ctx.obj["description"].set_caldera_version("master")
 
 

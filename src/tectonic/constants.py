@@ -28,7 +28,6 @@ OS_DATA = {
         "cloud_image_url": "https://cloud-images.ubuntu.com/releases/22.04/release-20230616/ubuntu-22.04-server-cloudimg-amd64.img",
         "cloud_image_checksum": "fe102bfb3d3d917d31068dd9a4bd8fcaeb1f529edda86783f8524fdc1477ee29",
         "docker_base_image": "gsitectonic/ubuntu22",
-        "docker_entrypoint": [ "ENTRYPOINT [ \"/usr/bin/systemd\", \"--system\" ]" ]
     },
     "ubuntu22_deep_learning": {
         "ami_filter": "*Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*",
@@ -42,8 +41,7 @@ OS_DATA = {
         #"cloud_image_url": "http://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2",
         "cloud_image_url": "file:///data/isos/Rocky-8-GenericCloud.latest.x86_64.qcow2",
         "cloud_image_checksum": "d17f15a7649dd064795306c114b90fc5062e7d5fefa9e9f0bd6b7ce1aeac3ae5",
-        "docker_base_image": "gsitectonic/rocky8_new",
-        "docker_entrypoint": [ "ENTRYPOINT [ \"/usr/sbin/init\" ]" ]
+        "docker_base_image": "gsitectonic/rocky8",
     },
     "kali": {
         "ami_filter": "kali-last-snapshot-amd64*",
