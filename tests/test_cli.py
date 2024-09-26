@@ -20,6 +20,8 @@
 
 import pytest
 import io
+import os
+from pathlib import Path
 import responses
 import click
 from click.testing import CliRunner
@@ -38,6 +40,9 @@ from tectonic.deployment import Deployment
 from tectonic.libvirt_client import Client as LibvirtClient
 from tectonic.deployment_libvirt import LibvirtDeployment
 
+import importlib.resources as tectonic_resources
+
+
 def test_tectonic_help(tectonic_config):
     runner = CliRunner()
     result = runner.invoke(tectonic_cli, ['--config', tectonic_config, '--help'])
@@ -47,7 +52,7 @@ def test_tectonic_help(tectonic_config):
 
 @responses.activate
 def test_tectonic_deploy(mocker, monkeypatch,
-                           base_tectonic_path, ansible_path, labs_path,
+                           base_tectonic_path, labs_path,
                            tectonic_config,
                            lab_edition_file,
                            ec2_client,
@@ -91,10 +96,10 @@ def test_tectonic_deploy(mocker, monkeypatch,
         assert result.exit_code == 0
         assert mock_terraform.call_count == 2
         mock_terraform.assert_has_calls([
-            mocker.call(f"{base_tectonic_path}/terraform/modules/gsi-lab-aws",
+            mocker.call(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
                         variables=mocker.ANY,
                         resources=None),
-            mocker.call(f"{base_tectonic_path}/services/terraform/services-aws",
+            mocker.call(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-aws',
                         variables=mocker.ANY,
                         resources=None),
         ])
@@ -102,42 +107,42 @@ def test_tectonic_deploy(mocker, monkeypatch,
             assert len(mock_ansible.mock_calls) == 7
             mock_ansible.assert_has_calls([
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/wait_for_connection.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars, 
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{base_tectonic_path}/services/ansible/configure_services.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/wait_for_connection.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{base_tectonic_path}/services/elastic/agent_manage.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/wait_for_connection.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/trainees.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
@@ -164,28 +169,28 @@ def test_tectonic_deploy(mocker, monkeypatch,
             assert len(mock_ansible.mock_calls) == 7
             mock_ansible.assert_has_calls([
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/wait_for_connection.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{base_tectonic_path}/services/ansible/configure_services.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/wait_for_connection.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/trainees.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
@@ -199,14 +204,14 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/wait_for_connection.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{base_tectonic_path}/services/elastic/endpoint_install.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
@@ -237,10 +242,10 @@ def test_tectonic_deploy(mocker, monkeypatch,
         assert result.exit_code == 0
         assert mock_terraform.call_count == 2
         mock_terraform.assert_has_calls([
-            mocker.call(f"{base_tectonic_path}/services/terraform/services-libvirt",
+            mocker.call(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-libvirt',
                     variables=mocker.ANY,
                     resources=None),
-            mocker.call(f"{base_tectonic_path}/terraform/modules/gsi-lab-libvirt",
+            mocker.call(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt',
                         variables=mocker.ANY,
                         resources=None),
         ])
@@ -248,42 +253,42 @@ def test_tectonic_deploy(mocker, monkeypatch,
             assert len(mock_ansible.mock_calls) == 7
             mock_ansible.assert_has_calls([
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/wait_for_connection.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{base_tectonic_path}/services/ansible/configure_services.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/wait_for_connection.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{base_tectonic_path}/services/elastic/agent_manage.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/wait_for_connection.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/trainees.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
@@ -310,28 +315,28 @@ def test_tectonic_deploy(mocker, monkeypatch,
             assert len(mock_ansible.mock_calls) == 7
             mock_ansible.assert_has_calls([
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/wait_for_connection.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{base_tectonic_path}/services/ansible/configure_services.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/wait_for_connection.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/trainees.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
@@ -345,14 +350,14 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{ansible_path}/wait_for_connection.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
                 ),
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{base_tectonic_path}/services/elastic/endpoint_install.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
@@ -384,7 +389,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
 
 @responses.activate
 def test_tectonic_destroy(mocker, monkeypatch,
-                            base_tectonic_path, ansible_path, labs_path,
+                            base_tectonic_path, labs_path,
                             tectonic_config,
                             lab_edition_file,
                             ec2_client,
@@ -430,10 +435,10 @@ def test_tectonic_destroy(mocker, monkeypatch,
     assert mock_terraform.call_count == 2
     if platform == "aws":
         mock_terraform.assert_has_calls([
-            mocker.call(f"{base_tectonic_path}/services/terraform/services-aws",
+            mocker.call(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-aws',
                         variables=mocker.ANY,
                         resources=None),
-            mocker.call(f"{base_tectonic_path}/terraform/modules/gsi-lab-aws",
+            mocker.call(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
                         variables=mocker.ANY,
                         resources=None),
         ])
@@ -442,10 +447,10 @@ def test_tectonic_destroy(mocker, monkeypatch,
             "Destroying Cyber Range instances...\n") == result.output
     elif platform == "libvirt":
         mock_terraform.assert_has_calls([
-            mocker.call(f"{base_tectonic_path}/terraform/modules/gsi-lab-libvirt",
+            mocker.call(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt',
                 variables=mocker.ANY,
                 resources=None),
-            mocker.call(f"{base_tectonic_path}/services/terraform/services-libvirt",
+            mocker.call(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-libvirt',
                         variables=mocker.ANY,
                         resources=None),
         ])
@@ -453,7 +458,7 @@ def test_tectonic_destroy(mocker, monkeypatch,
             assert len(mock_ansible.mock_calls) == 1
             mock_ansible.assert_has_calls([
                 mocker.call(inventory=mocker.ANY,
-                    playbook=f"{base_tectonic_path}/services/elastic/agent_manage.yml",
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
@@ -502,17 +507,17 @@ def test_tectonic_create_images(mocker,
     assert result.exception is None
     assert result.exit_code == 0
 
-    cr_packer_file=f"{base_tectonic_path}/image_generation/create_image.pkr.hcl"
-    services_packer_file=f"{base_tectonic_path}/services/image_generation/create_image.pkr.hcl"
+    cr_packer_file=tectonic_resources.files('tectonic') / 'image_generation' / 'create_image.pkr.hcl'
+    services_packer_file=tectonic_resources.files('tectonic') / 'services' / 'image_generation' / 'create_image.pkr.hcl'
     assert mock_packer_cmd.call_count == 2
     mock_packer_cmd.assert_has_calls([
-        mocker.call("init", services_packer_file),
-        mocker.call("init", cr_packer_file),
+        mocker.call("init", str(services_packer_file)),
+        mocker.call("init", str(cr_packer_file)),
     ])
     assert mock_packer_build.call_count == 2
     mock_packer_build.assert_has_calls([
-        mocker.call(services_packer_file, var=mocker.ANY),
-        mocker.call(cr_packer_file, var=mocker.ANY),
+        mocker.call(str(services_packer_file), var=mocker.ANY),
+        mocker.call(str(cr_packer_file), var=mocker.ANY),
     ])
     assert ("Creating services images ...\n"
             "Creating base images...\n") in result.output
@@ -838,9 +843,9 @@ def test_tectonic_console(mocker,
 
 @responses.activate
 def test_tectonic_run_ansible(mocker,
-                                test_data_path,
-                                tectonic_config,
-                                lab_edition_file):
+                              test_data_path,
+                              tectonic_config,
+                              lab_edition_file):
     responses.add(responses.GET,
         'https://api.elastic-cloud.com/api/v1/regions/us-east-1/stack/versions?show_deleted=false',
         json={"stacks": [{"version": "8.10.4", "template": {
@@ -885,9 +890,9 @@ def test_tectonic_run_ansible(mocker,
 
 @responses.activate
 def test_tectonic_student_access(mocker,
-                                   ansible_path,
-                                   tectonic_config,
-                                   lab_edition_file):
+                                 tectonic_config,
+                                 base_tectonic_path,
+                                 lab_edition_file):
     responses.add(responses.GET,
         'https://api.elastic-cloud.com/api/v1/regions/us-east-1/stack/versions?show_deleted=false',
         json={"stacks": [{"version": "8.10.4", "template": {
@@ -922,7 +927,7 @@ def test_tectonic_student_access(mocker,
     assert result.exception is None
     assert result.exit_code == 0
     mock.assert_called_once_with(inventory=mocker.ANY,
-                                 playbook=f"{ansible_path}/trainees.yml",
+                                 playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
                                  quiet=True,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
@@ -941,11 +946,12 @@ def test_tectonic_student_access(mocker,
 
 @responses.activate
 def test_tectonic_recreate(mocker, monkeypatch,
-                             base_tectonic_path, ansible_path, labs_path,
-                             tectonic_config,
-                             lab_edition_file,
-                             ec2_client,
-                             aws_secrets):
+                           test_data_path,
+                           base_tectonic_path, labs_path,
+                           tectonic_config,
+                           lab_edition_file,
+                           ec2_client,
+                           aws_secrets):
 
     # Get the platform from the config file
     cfg = ConfigParser()
@@ -981,41 +987,43 @@ def test_tectonic_recreate(mocker, monkeypatch,
     assert result.exception is None
     assert result.exit_code == 0
 
-    mock_terraform.assert_called_once_with(mocker.ANY)
+    platform = cfg["config"]["platform"]
+    mock_terraform.assert_called_once_with(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / f"gsi-lab-{platform}",
+                                           mocker.ANY)
 
     if monitor_type == "endpoint":
         assert len(mock_ansible.mock_calls) == 5
         mock_ansible.assert_has_calls([
             mocker.call(inventory=mocker.ANY,
-                playbook=f"{ansible_path}/wait_for_connection.yml",
+                playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                 quiet=True,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
             ),
             mocker.call(inventory=mocker.ANY,
-                playbook=f"{ansible_path}/trainees.yml",
+                playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
                 quiet=True,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
             ),
             mocker.call(inventory=mocker.ANY,
-                playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
+                playbook=f"{test_data_path}/labs/test-{monitor_type}/ansible/after_clone.yml",
                 quiet=True,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
             ),
             mocker.call(inventory=mocker.ANY,
-                playbook=f"{ansible_path}/wait_for_connection.yml",
+                playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                 quiet=True,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
             ),
             mocker.call(inventory=mocker.ANY,
-                playbook=f"{base_tectonic_path}/services/elastic/endpoint_install.yml",
+                playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
                 quiet=True,
                 verbosity=0,
                 event_handler=mocker.ANY,
@@ -1033,14 +1041,14 @@ def test_tectonic_recreate(mocker, monkeypatch,
         assert len(mock_ansible.mock_calls) == 3
         mock_ansible.assert_has_calls([
             mocker.call(inventory=mocker.ANY,
-                        playbook=f"{ansible_path}/wait_for_connection.yml",
+                        playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
                         quiet=True,
                         verbosity=0,
                         event_handler=mocker.ANY,
                         extravars=extravars,
                         ),
             mocker.call(inventory=mocker.ANY,
-                        playbook=f"{ansible_path}/trainees.yml",
+                        playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
                         quiet=True,
                         verbosity=0,
                         event_handler=mocker.ANY,

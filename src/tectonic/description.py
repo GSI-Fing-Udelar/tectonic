@@ -112,15 +112,13 @@ class Description(object):
              A Description object.
         """
         self.lab_edition_file = Path(path).resolve().as_posix()
-        base_dir = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../.."))
+        base_dir = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../.."))
         
         self.lab_repo_uri = lab_repo_uri
         if self.lab_repo_uri and not Path(self.lab_repo_uri).is_absolute():
             self.lab_repo_uri = Path(base_dir).joinpath(
                 self.lab_repo_uri
             )
-            print(self.lab_repo_uri)
-
         self.platform = platform
         self.teacher_access = teacher_access
         self.configure_dns = configure_dns

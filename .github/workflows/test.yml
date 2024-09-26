@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12']
 
     steps:
       - name: "Checkout repo"
@@ -21,15 +21,18 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
 
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v3
+        with:
+          poetry-version: '1.8.3'
+
       - name: Install dependencies
         run: |
           sudo apt-get -qq update
           sudo apt-get install -qq -y libvirt0 libvirt-dev
-          python -m pip install --upgrade pip
-          pip install -r python/requirements.txt
 
       - name: Test with pytest
         run: |
-          pip install -r python/requirements-dev.txt
-          pytest python/tests --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+          poetry install
+          poetry run pytest -vs
 

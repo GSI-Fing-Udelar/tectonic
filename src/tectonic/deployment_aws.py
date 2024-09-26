@@ -19,8 +19,6 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
-import os
-from pathlib import Path
 import click
 import ipaddress
 import datetime
@@ -32,6 +30,10 @@ from tectonic.ssh import interactive_shell
 from tectonic.utils import create_table
 from tectonic.ansible import Ansible
 
+import importlib.resources as tectonic_resources
+    
+
+
 class DeploymentAWSException(Exception):
     pass
 
@@ -39,12 +41,7 @@ class DeploymentAWSException(Exception):
 class AWSDeployment(Deployment):
     """Deployment class for AWS."""
 
-    terraform_module_path = os.path.join(Deployment.base_dir, "terraform", "modules", "gsi-lab-aws")
-    terraform_services_module_path = os.path.join(Deployment.base_dir, "services", "terraform", "services-aws")
-
     EIC_ENDPOINT_SSH_PROXY = "aws ec2-instance-connect open-tunnel --instance-id %h"
-
-    base_dir = Path(__file__).resolve().parent.parent.parent.parent.as_posix()
 
     def __init__(
         self,
@@ -575,7 +572,7 @@ class AWSDeployment(Deployment):
         machines = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
         resources_to_recreate = self.get_resources_to_recreate(instances, guests, copies)
         click.echo("Recreating machines...")
-        self.terraform_recreate(resources_to_recreate)
+        self.terraform_recreate(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws', resources_to_recreate)
 
         click.echo("Waiting for machines to boot up...")
         ansible = Ansible(self)
@@ -621,11 +618,15 @@ class AWSDeployment(Deployment):
 
         ansible = Ansible(self)
         click.echo("Deploying Cyber Range instances...")
-        self._deploy_cr(self.terraform_module_path, self.get_deploy_cr_vars(), instances)
-        
+        self._deploy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
+                        self.get_deploy_cr_vars(),
+                        instances)
+
         if len(self.description.get_services_to_deploy()) > 0: #Deploy services
             click.echo("Deploying Cyber Range services...")
-            self._deploy_services(self.terraform_services_module_path, self.get_deploy_services_vars(), instances)
+            self._deploy_services(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-aws',
+                                  self.get_deploy_services_vars(),
+                                  instances)
 
             click.echo("Waiting for services to boot up...")
             services_to_deploy = []
@@ -676,10 +677,14 @@ class AWSDeployment(Deployment):
         """
         if len(self.description.get_services_to_deploy()) > 0: #Destroy services
             click.echo("Destroying Cyber Range services...")
-            self._destroy_services(self.terraform_services_module_path, self.get_deploy_services_vars(), instances)
+            self._destroy_services(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-aws',
+                                  self.get_deploy_services_vars(),
+                                  instances)
 
         click.echo("Destroying Cyber Range instances...")
-        self._destroy_cr(self.terraform_module_path, self.get_deploy_cr_vars(), instances)
+        self._destroy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
+                         self.get_deploy_cr_vars(),
+                         instances)
 
     def create_services_images(self, services):
         self.delete_services_images(services)
@@ -736,7 +741,7 @@ class AWSDeployment(Deployment):
                 else:
                     try:
                         if self.get_instance_status(elastic_name) == "RUNNING":
-                            playbook = os.path.join(Deployment.base_dir, "services", "elastic", "get_info.yml")
+                            playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml'
                             result = self._get_service_info("elastic",playbook,{"action":"agents_status"})
                             agents_status = result[0]['agents_status']
                             for key in agents_status:
@@ -752,7 +757,7 @@ class AWSDeployment(Deployment):
                 rows.append([caldera_name, self.get_instance_status(caldera_name)])
                 try:
                     if self.get_instance_status(caldera_name) == "RUNNING":
-                        playbook = os.path.join(Deployment.base_dir, "services", "caldera", "get_info.yml")
+                        playbook = tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'get_info.yml'
                         result = self._get_service_info("caldera",playbook,{"action":"agents_status"})
                         response = result[0]['agents_status']
                         agents_status = {"alive": 0, "dead": 0, "pending_kill":0}
@@ -861,7 +866,7 @@ class AWSDeployment(Deployment):
             elastic_name = self.description.get_service_name("elastic")
             if self.get_instance_status(elastic_name) == "RUNNING":
                 elastic_ip = self.get_ssh_hostname(elastic_name)
-                playbook = os.path.join(Deployment.base_dir, "services", "elastic", "get_info.yml")
+                playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml'
                 result = self._get_service_info("elastic",playbook,{"action":"get_token_by_policy_name","policy_name":self.description.packetbeat_policy_name})
                 agent_token = result[0]["token"]
                 ansible = Ansible(deployment=self)
@@ -878,7 +883,9 @@ class AWSDeployment(Deployment):
                     },
                 )
                 ansible.wait_for_connections(inventory=inventory)
-                ansible.run(inventory=inventory,playbook=os.path.join(self.base_dir, "services", "elastic", "agent_manage.yml"),quiet=True)
+                ansible.run(inventory = inventory,
+                            playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml',
+                            quiet = True)
             else:
                 click.echo(f"Unable to connect to Elastic. Check if machine is running.")
         except Exception as e:

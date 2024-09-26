@@ -224,12 +224,7 @@ def base_tests_path():
 
 @pytest.fixture(scope="session")
 def base_tectonic_path():
-    return Path(__file__).parent.parent.parent.absolute().as_posix()
-
-@pytest.fixture(scope="session")
-def services_packer():
-    return os.path.join(Path(__file__).parent.parent.parent.absolute().as_posix(), "services", "image_generation", "create_image.pkr.hcl")
-
+    return Path(__file__).parent.parent.absolute()
 
 @pytest.fixture(scope="session")
 def test_data_path(base_tests_path):
@@ -239,12 +234,6 @@ def test_data_path(base_tests_path):
 @pytest.fixture(scope="session")
 def labs_path(test_data_path):
     return Path(test_data_path).joinpath("labs/").absolute().as_posix()
-
-
-@pytest.fixture(scope="session")
-def ansible_path(base_tests_path):
-    return Path(base_tests_path).parent.joinpath("ansible/").absolute().as_posix()
-
 
 @pytest.fixture(scope="session")
 def description(labs_path, terraform_dir, test_data_path):
