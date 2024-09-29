@@ -265,6 +265,7 @@ build {
     content {
       name = source.key
       image = local.os_data[source.value["base_os"]]["docker_base_image"]
+      run_command = ["-d", "-i", "-t", "--entrypoint=${local.os_data[source.value["base_os"]]["docker_entrypoint"]}", "--", "{{.Image}}"]
     }
   }
 
