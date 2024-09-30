@@ -27,6 +27,9 @@ a main `config` section and sections for `aws`, `libvirt` and
 * `debug`: Show debug messages during execution (also shows stack
   trace on error). Default: `yes`.
 * `keep_ansible_logs`: Keep Ansible logs on guests. Default: `no`.
+* `proxy`: Proxy configuration to use inside guest machines,
+  if necessary for web access. Default: no proxy.
+
 
 ### [aws] section:
 * `aws_region`: The region to deploy instances in AWS. Default:
@@ -56,8 +59,6 @@ a main `config` section and sections for `aws`, `libvirt` and
 * `libvirt_external_network`: CIDR block of the external bridged
   network, if appropriate. Static IP addresses are assigned
   sequentially to lab entry points. Default: `192.168.44.0/25`.
-* `libvirt_proxy`: Proxy configuration to use inside guest machines,
-  if necessary for web access. Default: no proxy.
 
 ### [elastic] section:
 * `elastic_stack_version`: Elastic Stack version to use. Use `latest` for latest version or assign a specific version. Default: `latest`.
