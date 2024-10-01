@@ -22,6 +22,7 @@ import json
 import click
 import ipaddress
 import datetime
+import math
 
 from tectonic.aws import Client
 from tectonic.constants import *
@@ -31,6 +32,10 @@ from tectonic.utils import create_table
 from tectonic.ansible import Ansible
 
 import importlib.resources as tectonic_resources
+import terraform.modules
+import services.elastic
+import services.caldera
+import services.terraform
     
 
 
@@ -572,7 +577,7 @@ class AWSDeployment(Deployment):
         machines = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
         resources_to_recreate = self.get_resources_to_recreate(instances, guests, copies)
         click.echo("Recreating machines...")
-        self.terraform_recreate(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws', resources_to_recreate)
+        self.terraform_recreate(tectonic_resources.files(terraform.modules) / "gsi-lab-aws", resources_to_recreate)
 
         click.echo("Waiting for machines to boot up...")
         ansible = Ansible(self)
@@ -618,13 +623,13 @@ class AWSDeployment(Deployment):
 
         ansible = Ansible(self)
         click.echo("Deploying Cyber Range instances...")
-        self._deploy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
+        self._deploy_cr(tectonic_resources.files(terraform.modules) / 'gsi-lab-aws',
                         self.get_deploy_cr_vars(),
                         instances)
 
         if len(self.description.get_services_to_deploy()) > 0: #Deploy services
             click.echo("Deploying Cyber Range services...")
-            self._deploy_services(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-aws',
+            self._deploy_services(tectonic_resources.files(services.terraform) / 'services-aws',
                                   self.get_deploy_services_vars(),
                                   instances)
 
@@ -637,9 +642,10 @@ class AWSDeployment(Deployment):
                     "monitor_type": self.description.monitor_type,
                     "deploy_policy": self.description.elastic_deploy_default_policy,
                     "policy_name": self.description.packetbeat_policy_name if self.description.monitor_type == "traffic" else self.description.endpoint_policy_name,
-                    "http_proxy" : self.description.libvirt_proxy,
+                    "http_proxy" : self.description.proxy,
                     "description_path": self.description.description_dir,
                     "ip": self.client.get_machine_private_ip(self.description.get_service_name("elastic")),
+                    "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
                 },
                 "caldera":{
                     "ip": self.client.get_machine_private_ip(self.description.get_service_name("caldera")),
@@ -677,12 +683,12 @@ class AWSDeployment(Deployment):
         """
         if len(self.description.get_services_to_deploy()) > 0: #Destroy services
             click.echo("Destroying Cyber Range services...")
-            self._destroy_services(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-aws',
+            self._destroy_services(tectonic_resources.files(services.terraform) / 'services-aws',
                                   self.get_deploy_services_vars(),
                                   instances)
 
         click.echo("Destroying Cyber Range instances...")
-        self._destroy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
+        self._destroy_cr(tectonic_resources.files(terraform.modules) / 'gsi-lab-aws',
                          self.get_deploy_cr_vars(),
                          instances)
 
@@ -741,7 +747,7 @@ class AWSDeployment(Deployment):
                 else:
                     try:
                         if self.get_instance_status(elastic_name) == "RUNNING":
-                            playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml'
+                            playbook = tectonic_resources.files(services.elastic) / 'get_info.yml'
                             result = self._get_service_info("elastic",playbook,{"action":"agents_status"})
                             agents_status = result[0]['agents_status']
                             for key in agents_status:
@@ -757,7 +763,7 @@ class AWSDeployment(Deployment):
                 rows.append([caldera_name, self.get_instance_status(caldera_name)])
                 try:
                     if self.get_instance_status(caldera_name) == "RUNNING":
-                        playbook = tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'get_info.yml'
+                        playbook = tectonic_resources.files(services.caldera) / 'get_info.yml'
                         result = self._get_service_info("caldera",playbook,{"action":"agents_status"})
                         response = result[0]['agents_status']
                         agents_status = {"alive": 0, "dead": 0, "pending_kill":0}
@@ -815,7 +821,7 @@ class AWSDeployment(Deployment):
                         }
                     },
                     "disk": self.description.services["elastic"]["disk"],
-                    "instance_type": self.description.instance_type.get_guest_instance_type(self.description.services["elastic"]["memory"],self.description.services["elastic"]["vcpu"],False,self.description.monitor_type),
+                    "instance_type": self.description.instance_type.get_guest_instance_type(self.description.services["elastic"]["memory"],self.description.services["elastic"]["vcpu"],False,False,self.description.monitor_type),
                 }
             if self.description.monitor_type == "traffic":
                 guest_data[self.description.get_service_name("packetbeat")] = {
@@ -857,7 +863,7 @@ class AWSDeployment(Deployment):
                         }
                     },
                     "disk": self.description.services["caldera"]["disk"],
-                    "instance_type": self.description.instance_type.get_guest_instance_type(self.description.services["caldera"]["memory"],self.description.services["caldera"]["vcpu"],False,self.description.monitor_type),
+                    "instance_type": self.description.instance_type.get_guest_instance_type(self.description.services["caldera"]["memory"],self.description.services["caldera"]["vcpu"],False,False,self.description.monitor_type),
                 }
         return guest_data
         
@@ -866,7 +872,7 @@ class AWSDeployment(Deployment):
             elastic_name = self.description.get_service_name("elastic")
             if self.get_instance_status(elastic_name) == "RUNNING":
                 elastic_ip = self.get_ssh_hostname(elastic_name)
-                playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml'
+                playbook = tectonic_resources.files(services.elastic) / 'get_info.yml'
                 result = self._get_service_info("elastic",playbook,{"action":"get_token_by_policy_name","policy_name":self.description.packetbeat_policy_name})
                 agent_token = result[0]["token"]
                 ansible = Ansible(deployment=self)
@@ -884,7 +890,7 @@ class AWSDeployment(Deployment):
                 )
                 ansible.wait_for_connections(inventory=inventory)
                 ansible.run(inventory = inventory,
-                            playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml',
+                            playbook = tectonic_resources.files(services.elastic) / 'agent_manage.yml',
                             quiet = True)
             else:
                 click.echo(f"Unable to connect to Elastic. Check if machine is running.")

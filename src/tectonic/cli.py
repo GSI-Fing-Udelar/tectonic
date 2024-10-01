@@ -56,6 +56,7 @@ import click
 
 from tectonic.deployment_aws import AWSDeployment
 from tectonic.deployment_libvirt import LibvirtDeployment
+from tectonic.deployment_docker import DockerDeployment
 from tectonic.description import Description
 from tectonic.ansible import Ansible
 from tectonic.instance_type import InstanceType
@@ -251,7 +252,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 )
 @click.option(
     "--platform",
-    type=click.Choice(["aws", "libvirt"], case_sensitive=False),
+    type=click.Choice(["aws", "libvirt", "docker"], case_sensitive=False),
     default="aws",
     help="Deploy the cyber range to this platform.",
 )
@@ -382,7 +383,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
          "point would get 192.168.44.11, and so on.",
 )
 @click.option(
-    "--libvirt_proxy",
+    "--proxy",
     required=False,
     help="Guest machines proxy configuration URI for libvirt.",
 )
@@ -405,6 +406,17 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     "--keep_ansible_logs/--no-keep_ansible_logs",
     default="False",
     help="Keep Ansible logs on managed hosts.",
+)
+@click.option(
+    "--docker_uri",
+    default="unix:///var/run/docker.sock",
+    show_default=True,
+    help="URI to connect to server, if using docker",
+)
+@click.option(
+    "--caldera_version",
+    default="latest",
+    help="Caldera version.",
 )
 @click.argument("lab_edition_file", type=click.Path(exists=True, dir_okay=False))
 @click.pass_context
@@ -433,12 +445,14 @@ def tectonic(
     libvirt_bridge,
     libvirt_external_network,
     libvirt_bridge_base_ip,
-    libvirt_proxy,
+    proxy,
     lab_edition_file,
     endpoint_policy_name,
     internet_network_cidr_block,
     services_network_cidr_block,
-    keep_ansible_logs
+    keep_ansible_logs,
+    docker_uri,
+    caldera_version,
 ):
     """Deploy or manage a cyber range according to LAB_EDITION_FILE."""
     logfile = PurePosixPath(lab_edition_file).parent.joinpath("tectonic.log")
@@ -473,12 +487,14 @@ def tectonic(
         libvirt_bridge,
         libvirt_external_network,
         libvirt_bridge_base_ip,
-        libvirt_proxy,
+        proxy,
         instance_type,
         endpoint_policy_name,
         internet_network_cidr_block,
         services_network_cidr_block,
-        keep_ansible_logs
+        keep_ansible_logs,
+        docker_uri,
+        caldera_version,
     )
 
     if platform == "aws":
@@ -497,13 +513,24 @@ def tectonic(
             gitlab_backend_access_token=gitlab_backend_access_token,
             packer_executable_path=packer_executable_path,
         )
+    elif platform == "docker":
+        ctx.obj["deployment"] = DockerDeployment(
+            ctx.obj["description"],
+            gitlab_backend_url=gitlab_backend_url,
+            gitlab_backend_username=gitlab_backend_username,
+            gitlab_backend_access_token=gitlab_backend_access_token,
+            packer_executable_path=packer_executable_path,
+        )
     else:
         raise Exception(f"Unsupported platform {platform}.")
 
     ctx.obj["ansible"] = Ansible(ctx.obj["deployment"])
 
-    if elastic_stack_version == "latest" and ctx.obj["description"].deploy_elastic:
+    if elastic_stack_version == "latest":
         ctx.obj["description"].set_elastic_stack_version(ctx.obj["deployment"].get_elastic_latest_version())
+
+    if caldera_version == "latest":
+        ctx.obj["description"].set_caldera_version("master")
 
 
 @tectonic.command()

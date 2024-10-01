@@ -53,16 +53,16 @@
     - name: "Update repos"
       ansible.builtin.apt:
         update_cache: yes
-      when: ansible_facts['os_family'] == 'Debian'
+      when: ansible_facts['os_family'] == 'Debian' and platform == "libvirt"
 
     - name: "Install qemu-guest-agent"
       ansible.builtin.package:
         name: qemu-guest-agent
-      when: ansible_facts['os_family'] != "Windows"
+      when: ansible_facts['os_family'] != "Windows" and platform == "libvirt"
 
     - name: "Start qemu guest agent"
       ansible.builtin.service:
         name: qemu-guest-agent
         enabled: yes
         state: started
-      when: ansible_facts['os_family'] != "Windows"
+      when: ansible_facts['os_family'] != "Windows" and platform == "libvirt"

@@ -37,6 +37,10 @@ packer {
       version = ">= 0.5.0"
       source  = "github.com/thomasklein94/libvirt"
     }
+    docker = {
+      version = ">= 1.0.8"
+      source = "github.com/hashicorp/docker"
+    }
   }
 }
 
@@ -46,7 +50,7 @@ variable "platform" {
   description = "Whether to create images in AWS or use libvirt."
 
   validation {
-    condition = can(regex("^(aws|libvirt)$", var.platform))
+    condition = can(regex("^(aws|libvirt|docker)$", var.platform))
     error_message = "Supported platforms are 'aws', 'libvirt'."
   }
 }
@@ -100,7 +104,9 @@ locals {
   machines = jsondecode(var.machines_json)
   os_data = jsondecode(var.os_data_json)
 
-  build_type = var.platform == "aws" ? "amazon-ebs" : "libvirt"
+  platform_to_buildtype = { "aws": "amazon-ebs", "libvirt": "libvirt", "docker":"docker" }
+
+  build_type = local.platform_to_buildtype[var.platform]
   machine_builds = [ for m, _ in local.machines : "${local.build_type}.${m}" ]
 
   win_machines = [ for name, m in local.machines :
@@ -128,7 +134,7 @@ variable "libvirt_storage_pool" {
   default     = "default"
   description = "Libvirt Storage pool to store the configured image."
 }
-variable "libvirt_proxy" {
+variable "proxy" {
   type        = string
   default     = null
   description = "Guest machines proxy configuration URI for libvirt."
@@ -175,6 +181,12 @@ source "libvirt" "machine" {
   shutdown_mode = "acpi"
 }
 
+source "docker" "machine" {
+  commit = true
+  discard = false
+  privileged = true
+  pull = false
+}
 
 build {
   dynamic "source" {
@@ -247,29 +259,38 @@ build {
     }
   }
 
+  dynamic "source" {
+    for_each = { for machine_name, m in local.machines: machine_name => m if var.platform == "docker" }
+    labels   = [ "docker.machine" ]
+    content {
+      name = source.key
+      image = local.os_data[source.value["base_os"]]["docker_base_image"]
+    }
+  }
+
   provisioner "ansible" {
     playbook_file = "${abspath(path.root)}/libvirt_conf.yml"
     
-    use_sftp = false
-    use_proxy = false
+    use_sftp = var.platform == "docker"
+    use_proxy = var.platform == "docker"
 
     host_alias = source.name
-    user = local.os_data[local.machines[source.name]["base_os"]]["username"]
+    user = var.platform == "docker" ? "root" : local.os_data[local.machines[source.name]["base_os"]]["username"]
 
-    extra_arguments = var.libvirt_proxy != null ? ["--extra-vars", "proxy=${var.libvirt_proxy}"] : []
+    extra_arguments = var.proxy != null ? ["--extra-vars", "proxy=${var.proxy} platform=${var.platform}"] : ["--extra-vars", "platform=${var.platform}"]
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
-
-    except = var.platform != "libvirt" ? local.machine_builds : []
+    
+    except = var.platform == "aws" ? local.machine_builds : []
   }
 
   provisioner "ansible" {
     playbook_file = "${abspath(path.root)}/elastic_agent.yml"
 
-    use_sftp = false
-    use_proxy = false
+    use_sftp = var.platform == "docker"
+    use_proxy = var.platform == "docker"
 
     host_alias = source.name
-    user = local.os_data[local.machines[source.name]["base_os"]]["username"]
+    user = var.platform == "docker" ? "root" : local.os_data[local.machines[source.name]["base_os"]]["username"]
 
     extra_arguments = ["--extra-vars", "elastic_version=${var.elastic_version} ansible_become_flags=-i ansible_become=true ansible_no_target_syslog=${var.remove_ansible_logs}"]
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
@@ -282,11 +303,11 @@ build {
       "${var.ansible_playbooks_path}/base_config.yml" :
       "/dev/null")
 
-    use_sftp = false
-    use_proxy = false
+    use_sftp = var.platform == "docker"
+    use_proxy = var.platform == "docker"
 
     host_alias = source.name
-    user = local.os_data[local.machines[source.name]["base_os"]]["username"]
+    user = var.platform == "docker" ? "root" : local.os_data[local.machines[source.name]["base_os"]]["username"]
 
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
 
@@ -310,7 +331,13 @@ build {
       "sudo systemctl stop cloud-init",
       "sudo cloud-init clean --logs",
     ]
-    except = local.win_machines
+    except = var.platform != "docker" ? local.win_machines : local.machine_builds 
+  }
+
+  post-processor "docker-tag" {
+    repository =  "${var.institution}-${var.lab_name}-${source.name}"
+    tags = ["latest"]
+    except = var.platform != "docker" ? local.machine_builds : []
   }
 }
 

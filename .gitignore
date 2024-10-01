@@ -60,3 +60,5 @@ Pipfile.lock
 build/
 .coverage
 codeclimate.json
+
+poetry.lock

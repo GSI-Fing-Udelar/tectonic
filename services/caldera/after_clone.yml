@@ -33,6 +33,7 @@
     dest: /etc/hosts
     insertafter: EOF
     line: "{{caldera.ip}} {{ ansible_facts['fqdn'] }}"
+  when: platform != "docker"
 
 - name: Create certificates
   block:
@@ -75,6 +76,8 @@
         content: |
           {{ key['stdout'] }}
           {{ cert['stdout'] }}
+  vars:
+    ansible_python_interpreter: /usr/bin/python3.8
 
 - name: Configure haproxy
   block:
@@ -118,6 +121,7 @@
               server caldera_main 127.0.0.1:8888 cookie caldera_main
     - name: Allow Haproxy connect ports
       ansible.builtin.command: setsebool -P haproxy_connect_any 1
+      when: platform != "docker"
 
 - name: Generate password
   ansible.builtin.set_fact:
@@ -226,6 +230,24 @@
     state: started
     enabled: true
 
+- name: Set Gateway IP
+  block:
+    - name: Get IP for gateway.docker.internal
+      ansible.builtin.command: dig gateway.docker.internal A +noall +answer +short
+      register: docker_gateway_ip
+      when: platform == "docker"
+    - name: Set gateway_ip
+      block:
+        - name: Set gateway_ip for Docker
+          ansible.builtin.set_fact:
+            gateway_ip: "{{ docker_gateway_ip['stdout'] }}"
+          when: platform == "docker"
+        - name: Set gateway_ip for Libvirt
+          ansible.builtin.set_fact:
+            gateway_ip: "{{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.129"
+          when: platform == "libvirt"
+  when: platform == "libvirt" or platform == "docker"
+
 - name: Configure firewalld
   block:
     - name: Configure firewalld - Add ports to default zone
@@ -244,21 +266,21 @@
         service: ssh
         permanent: true
         state: disabled
-      when: platform == "libvirt"
+      when: platform == "libvirt" or platform == "docker"
     - name: Configure firewalld - Allow ssh from server
       ansible.posix.firewalld:
         zone: public
         permanent: true
         state: enabled
-        rich_rule: "rule family=ipv4 source address={{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.129/32 port port=22 protocol=tcp accept"
-      when: platform == "libvirt"
+        rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port=22 protocol=tcp accept"
+      when: platform == "libvirt" or platform == "docker"
     - name: Configure firewalld - Allow access to caldera from server
       ansible.posix.firewalld:
         zone: public
         permanent: true
         state: enabled
-        rich_rule: "rule family=ipv4 source address={{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.129/32 port port=8443 protocol=tcp accept"
-      when: platform == "libvirt"
+        rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port=8443 protocol=tcp accept"
+      when: platform == "libvirt" or platform == "docker"
     - name: Configure firewalld - Add port to default zone
       ansible.posix.firewalld:
         zone: public

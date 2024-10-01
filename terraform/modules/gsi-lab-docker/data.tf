@@ -1,4 +1,4 @@
-#
+
 # Tectonic - An academic Cyber Range
 # Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
 # Uruguay
@@ -17,19 +17,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
-- name: "Install Caldera agent"
-  hosts: all
-  become: true
-  gather_facts: true
 
-  tasks:
-    - name: Check if agent alredy installed
-      ansible.builtin.stat:
-        path: "/tmp/agent-{{ caldera_agent_type }}"
-      register: result
-    - name: Install agent
-      block:
-        - name: Install agent 
-          ansible.builtin.shell: "cd /tmp; server='https://{{ caldera_ip }}:443'; curl --noproxy \"*\" -k -s -X POST -H \"file:sandcat.go\" -H \"platform:linux\" $server/file/download > agent-{{ caldera_agent_type }}; chmod +x agent-{{ caldera_agent_type }}; nohup ./agent-{{ caldera_agent_type }} -server $server -group {{ caldera_agent_type }} -paw {{ ansible_facts['fqdn'] }}-{{ caldera_agent_type }} &"
-      when: not result.stat.exists
+data "docker_image" "base_images" {
+  for_each = toset(local.guest_basenames)
+
+  name = "${var.institution}-${var.lab_name}-${each.key}"
+}

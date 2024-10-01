@@ -23,6 +23,8 @@ import pprint
 from pathlib import Path
 import ansible_runner
 import importlib.resources as tectonic_resources
+import playbooks
+
 
 logger = logging.getLogger(__name__)
 
@@ -87,12 +89,14 @@ class Ansible:
                                 "instances": description.instance_number,
                                 "platform": description.platform,
                                 "institution": description.institution,
-                                "lab_name": description.lab_name
+                                "lab_name": description.lab_name,
+                                "ansible_connection" : "community.docker.docker_api" if description.platform == "docker" else "ssh", #export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES on macos
+                                "docker_host": description.docker_uri,
                             } | extra_vars,
                 }
 
             inventory[base_name]["hosts"][machine] = {
-                "ansible_host": hostname,
+                "ansible_host": hostname if description.platform != "docker" else machine,
                 "ansible_user": ansible_username,
                 "ansible_ssh_common_args": ssh_args,
                 "instance": description.get_instance_number(machine),
@@ -173,7 +177,8 @@ class Ansible:
             quiet=quiet,
             verbosity=verbosity,
             event_handler=self._ansible_callback,
-            extravars=extravars
+            extravars=extravars,
+
         )
         logger.info(self.output)
 
@@ -183,7 +188,7 @@ class Ansible:
     def wait_for_connections(self, instances=None, guests=None, copies=None, only_instances=True, exclude=[], username=None, inventory=None):
         """Wait for machines to respond to ssh connections for ansible."""
 
-        playbook = tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'
+        playbook = tectonic_resources.files(playbooks) / 'wait_for_connection.yml'
         return self.run(
             instances=instances, guests=guests, copies=copies,
             only_instances=only_instances,

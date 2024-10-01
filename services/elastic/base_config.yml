@@ -30,6 +30,7 @@
     - name: Set hostname
       ansible.builtin.hostname:
         name: elastic
+      when: platform != "docker"
 
     - name: Install packages
       ansible.builtin.package:
@@ -66,20 +67,29 @@
           - logstash
           - elastic-agent
         state: present
-      when: elastic_latest_version
+      when: elastic_latest_version == "yes"
 
     - name: Install Elastic specific version
       ansible.builtin.package:
         name: 
-          - "elasticsearch={{ elastic_version }}" 
-          - "kibana={{ elastic_version }}"
-          - "logstash={{ elastic_version }}"
-          - "elastic-agent={{ elastic_version }}"
+          - "elasticsearch-{{ elastic_version }}" 
+          - "kibana-{{ elastic_version }}"
+          - "logstash-{{ elastic_version }}"
+          - "elastic-agent-{{ elastic_version }}"
         state: present
-      when: not elastic_latest_version
+      when: elastic_latest_version == "no"
 
     - name : Start firewalld
       ansible.builtin.service:
         name: firewalld
         state: started
         enabled: yes
+      when: platform != "docker"
+
+    - name: Set elasticsearch memory limit
+      ansible.builtin.copy:
+        dest: /etc/elasticsearch/jvm.options.d/memory.options
+        content: |
+          -Xms{{ elasticsearch_memory }}g
+          -Xmx{{ elasticsearch_memory }}g
+      when: platform == "docker"
