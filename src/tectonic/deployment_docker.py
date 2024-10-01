@@ -32,6 +32,10 @@ from tectonic.ansible import Ansible
 
 import importlib.resources as tectonic_resources
 
+import terraform.modules
+import services.terraform
+
+
 
 class DeploymentDockerException(DeploymentException):
     pass
@@ -141,7 +145,7 @@ class DockerDeployment(Deployment):
         if len(self.description.get_services_to_deploy()) > 0: #Deploy services
             click.echo("Deploying Cyber Range services...")
             self._deploy_services(
-                tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-docker',
+                tectonic_resources.files(services.terraform) / 'services-docker',
                 self.get_deploy_services_vars(),
                 instances
             )
@@ -178,7 +182,7 @@ class DockerDeployment(Deployment):
                 self._deploy_packetbeat()
 
         click.echo("Deploying Cyber Range instances...")
-        self._deploy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-docker',
+        self._deploy_cr(tectonic_resources.files(terraform.modules) / 'gsi-lab-docker',
                         self.get_deploy_cr_vars(),
                         instances)
         
@@ -205,7 +209,7 @@ class DockerDeployment(Deployment):
         """
         click.echo("Destroying Cyber Range instances...")
         self._destroy_cr(
-            tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-docker',
+            tectonic_resources.files(terraform.modules) / 'gsi-lab-docker',
             self.get_deploy_cr_vars(),
             instances
         )
@@ -213,7 +217,7 @@ class DockerDeployment(Deployment):
         if instances is None and len(self.description.get_services_to_deploy()) > 0:
             click.echo("Destroying Cyber Range services...")
             self._destroy_services(
-                tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-docker',
+                tectonic_resources.files(services.terraform) / 'services-docker',
                 self.get_deploy_services_vars(),
                 instances
             )
@@ -416,7 +420,7 @@ class DockerDeployment(Deployment):
                 else:
                     try:
                         if elastic_status == "RUNNING":
-                            playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml'
+                            playbook = tectonic_resources.files(services.elastic) / 'get_info.yml'
                             result = self._get_service_info("elastic",playbook,{"action":"agents_status"})
                             agents_status = result[0]['agents_status']
                             for key in agents_status:
@@ -432,7 +436,7 @@ class DockerDeployment(Deployment):
                 rows.append([caldera_name, self.get_instance_status(caldera_name)])
                 try:
                     if self.get_instance_status(caldera_name) == "RUNNING":
-                        playbook = tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'get_info.yml'
+                        playbook = tectonic_resources.files(services.caldera) / 'get_info.yml'
                         result = self._get_service_info("caldera",playbook,{"action":"agents_status"})
                         response = result[0]['agents_status']
                         agents_status = {"alive": 0, "dead": 0, "pending_kill":0}
@@ -462,7 +466,7 @@ class DockerDeployment(Deployment):
         machines = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
         resources_to_recreate = self.get_resources_to_recreate(instances, guests, copies)
         click.echo("Recreating machines...")
-        self.terraform_recreate(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-docker', resources_to_recreate)
+        self.terraform_recreate(tectonic_resources.files(terraform.modules) / "gsi-lab-docker", resources_to_recreate)
 
         click.echo("Waiting for machines to boot up...")
         ansible = Ansible(self)

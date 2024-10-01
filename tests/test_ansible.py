@@ -32,9 +32,6 @@ from tectonic.libvirt_client import Client as LibvirtClient
 from tectonic.aws import Client as AWSClient
 import tectonic.ansible
 
-import importlib.resources as tectonic_resources
-
-
 def test_ansible_callback_appends_output_test(ansible_libvirt):
     event = {'stdout': "my text"}
     ret = ansible_libvirt._ansible_callback(event_data=event)
@@ -206,7 +203,7 @@ def test_wait_for_connections(mocker, ansible_libvirt, base_tectonic_path):
 
     ansible_libvirt.wait_for_connections()
     mock.assert_called_once_with(inventory=inventory,
-                                 playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
+                                 playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
                                  quiet=True,
                                  verbosity=0,
                                  event_handler=mocker.ANY,

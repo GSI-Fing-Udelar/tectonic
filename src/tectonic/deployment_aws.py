@@ -32,6 +32,10 @@ from tectonic.utils import create_table
 from tectonic.ansible import Ansible
 
 import importlib.resources as tectonic_resources
+import terraform.modules
+import services.elastic
+import services.caldera
+import services.terraform
     
 
 
@@ -573,7 +577,7 @@ class AWSDeployment(Deployment):
         machines = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
         resources_to_recreate = self.get_resources_to_recreate(instances, guests, copies)
         click.echo("Recreating machines...")
-        self.terraform_recreate(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws', resources_to_recreate)
+        self.terraform_recreate(tectonic_resources.files(terraform.modules) / "gsi-lab-aws", resources_to_recreate)
 
         click.echo("Waiting for machines to boot up...")
         ansible = Ansible(self)
@@ -619,13 +623,13 @@ class AWSDeployment(Deployment):
 
         ansible = Ansible(self)
         click.echo("Deploying Cyber Range instances...")
-        self._deploy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
+        self._deploy_cr(tectonic_resources.files(terraform.modules) / 'gsi-lab-aws',
                         self.get_deploy_cr_vars(),
                         instances)
 
         if len(self.description.get_services_to_deploy()) > 0: #Deploy services
             click.echo("Deploying Cyber Range services...")
-            self._deploy_services(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-aws',
+            self._deploy_services(tectonic_resources.files(services.terraform) / 'services-aws',
                                   self.get_deploy_services_vars(),
                                   instances)
 
@@ -679,12 +683,12 @@ class AWSDeployment(Deployment):
         """
         if len(self.description.get_services_to_deploy()) > 0: #Destroy services
             click.echo("Destroying Cyber Range services...")
-            self._destroy_services(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-aws',
+            self._destroy_services(tectonic_resources.files(services.terraform) / 'services-aws',
                                   self.get_deploy_services_vars(),
                                   instances)
 
         click.echo("Destroying Cyber Range instances...")
-        self._destroy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
+        self._destroy_cr(tectonic_resources.files(terraform.modules) / 'gsi-lab-aws',
                          self.get_deploy_cr_vars(),
                          instances)
 
@@ -743,7 +747,7 @@ class AWSDeployment(Deployment):
                 else:
                     try:
                         if self.get_instance_status(elastic_name) == "RUNNING":
-                            playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml'
+                            playbook = tectonic_resources.files(services.elastic) / 'get_info.yml'
                             result = self._get_service_info("elastic",playbook,{"action":"agents_status"})
                             agents_status = result[0]['agents_status']
                             for key in agents_status:
@@ -759,7 +763,7 @@ class AWSDeployment(Deployment):
                 rows.append([caldera_name, self.get_instance_status(caldera_name)])
                 try:
                     if self.get_instance_status(caldera_name) == "RUNNING":
-                        playbook = tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'get_info.yml'
+                        playbook = tectonic_resources.files(services.caldera) / 'get_info.yml'
                         result = self._get_service_info("caldera",playbook,{"action":"agents_status"})
                         response = result[0]['agents_status']
                         agents_status = {"alive": 0, "dead": 0, "pending_kill":0}
@@ -868,7 +872,7 @@ class AWSDeployment(Deployment):
             elastic_name = self.description.get_service_name("elastic")
             if self.get_instance_status(elastic_name) == "RUNNING":
                 elastic_ip = self.get_ssh_hostname(elastic_name)
-                playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml'
+                playbook = tectonic_resources.files(services.elastic) / 'get_info.yml'
                 result = self._get_service_info("elastic",playbook,{"action":"get_token_by_policy_name","policy_name":self.description.packetbeat_policy_name})
                 agent_token = result[0]["token"]
                 ansible = Ansible(deployment=self)
@@ -886,7 +890,7 @@ class AWSDeployment(Deployment):
                 )
                 ansible.wait_for_connections(inventory=inventory)
                 ansible.run(inventory = inventory,
-                            playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml',
+                            playbook = tectonic_resources.files(services.elastic) / 'agent_manage.yml',
                             quiet = True)
             else:
                 click.echo(f"Unable to connect to Elastic. Check if machine is running.")

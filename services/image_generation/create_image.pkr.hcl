@@ -232,7 +232,6 @@ build {
     content {
       name = source.key
       image = local.os_data[source.value["base_os"]]["docker_base_image"]
-      run_command = ["-d", "-i", "-t", "--entrypoint=${local.os_data[source.value["base_os"]]["docker_entrypoint"]}", "--", "{{.Image}}"]
     }
   }
 
@@ -244,7 +243,7 @@ build {
     user = var.platform == "docker" ? "root" : local.os_data[local.machines[source.name]["base_os"]]["username"]
     extra_arguments = concat(
       var.proxy != null ? ["--extra-vars", "proxy=${var.proxy} platform=${var.platform}"] : ["--extra-vars", "platform=${var.platform}"],
-      ["--extra-vars", "ansible_no_target_syslog=${var.remove_ansible_logs}"],
+      ["--extra-vars", "ansible_no_target_syslog=${var.remove_ansible_logs}"]
     )
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
 
