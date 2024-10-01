@@ -821,7 +821,7 @@ class AWSDeployment(Deployment):
                         }
                     },
                     "disk": self.description.services["elastic"]["disk"],
-                    "instance_type": self.description.instance_type.get_guest_instance_type(self.description.services["elastic"]["memory"],self.description.services["elastic"]["vcpu"],False,self.description.monitor_type),
+                    "instance_type": self.description.instance_type.get_guest_instance_type(self.description.services["elastic"]["memory"],self.description.services["elastic"]["vcpu"],False,False,self.description.monitor_type),
                 }
             if self.description.monitor_type == "traffic":
                 guest_data[self.description.get_service_name("packetbeat")] = {
@@ -863,7 +863,7 @@ class AWSDeployment(Deployment):
                         }
                     },
                     "disk": self.description.services["caldera"]["disk"],
-                    "instance_type": self.description.instance_type.get_guest_instance_type(self.description.services["caldera"]["memory"],self.description.services["caldera"]["vcpu"],False,self.description.monitor_type),
+                    "instance_type": self.description.instance_type.get_guest_instance_type(self.description.services["caldera"]["memory"],self.description.services["caldera"]["vcpu"],False,False,self.description.monitor_type),
                 }
         return guest_data
         

@@ -802,6 +802,7 @@ class Description(object):
 
                     memory = self.get_guest_attr(base_name, "memory", 1024)
                     vcpus = self.get_guest_attr(base_name, "vcpu", 1)
+                    gpu = self.get_guest_attr(base_name, "gpu", False)
                     monitor = self.get_guest_attr(base_name, "monitor", False)
                     is_in_services_network = self.is_in_services_network(base_name)
                     is_entry_point = self.get_guest_attr(base_name, "entry_point", False)
@@ -821,6 +822,7 @@ class Description(object):
                         "disk": self.get_guest_attr(base_name, "disk", 10),
                         "instance_type": self.instance_type.get_guest_instance_type(memory,
                                                                                     vcpus,
+                                                                                    gpu,
                                                                                     monitor,
                                                                                     self.monitor_type
                                                                                     ),

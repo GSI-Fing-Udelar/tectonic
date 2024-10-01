@@ -281,6 +281,7 @@ class Deployment:
                 machines[guest_name]["instance_type"] = self.description.instance_type.get_guest_instance_type(
                     self.description.get_guest_attr(guest_name, "memory", 1),
                     self.description.get_guest_attr(guest_name, "vcpu", 1),
+                    self.description.get_guest_attr(guest_name, "gpu", False),
                     monitor,
                     self.description.monitor_type,
                 )
@@ -619,7 +620,7 @@ class Deployment:
                 elif self.description.platform == "aws":
                     machines[service]["disk"] = self.description.services[service]["disk"]
                     if service in ["caldera", "elastic"]:
-                        machines[service]["instance_type"] = self.description.instance_type.get_guest_instance_type(self.description.services[service]["memory"], self.description.services[service]["vcpu"], False, self.description.monitor_type)
+                        machines[service]["instance_type"] = self.description.instance_type.get_guest_instance_type(self.description.services[service]["memory"], self.description.services[service]["vcpu"], False, False, self.description.monitor_type)
                     elif service == "packetbeat":
                         machines[service]["instance_type"] = "t2.micro"
         args = {

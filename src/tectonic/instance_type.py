@@ -28,7 +28,7 @@ class InstanceType:
     def __init__(self, default_instance_type=None):
         self.default_instance_type = default_instance_type
 
-    def get_guest_instance_type(self, memory, vcpus, monitor, monitor_type):
+    def get_guest_instance_type(self, memory, vcpus, gpu, monitor, monitor_type):
         """Default is to not have an instance type. Platform dependent
         subclasses will compute the correct instance type for the
         machine.

@@ -43,16 +43,22 @@ class InstanceTypeAWS(InstanceType):
         ],
     }
 
-    def get_guest_instance_type(self, memory, vcpus, monitor, monitor_type):
+    def get_guest_instance_type(self, memory, vcpus, gpu, monitor, monitor_type):
         """Returns a big enough AWS instance type for the given memory
         and cpus.
 
-        A t2 instance will be used, unless monitor traffic is true, in
-        which case a t3 instance will be used.
+        If gpu is True, a g4dn.xlarge instance is used.
+
+        Otherwise, an appropriate t2 instance will be used, unless
+        monitor traffic is true, in which case a t3 instance will be
+        used.
 
         If no suitable instance type can be used, None is returned.
 
         """
+        if gpu:
+            return 'g4dn.xlarge'
+
         if (
             not memory
             and not vcpus

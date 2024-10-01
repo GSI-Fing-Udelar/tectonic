@@ -29,6 +29,11 @@ OS_DATA = {
         "cloud_image_checksum": "fe102bfb3d3d917d31068dd9a4bd8fcaeb1f529edda86783f8524fdc1477ee29",
         "docker_base_image": "gsitectonic/ubuntu22",
     },
+    "ubuntu22_deep_learning": {
+        "ami_filter": "*Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*",
+        "owner": "898082745236",
+        "username": "ubuntu",
+    },
     "rocky8": {
         "ami_filter": "Rocky*8.8*x86_64",
         "owner": "792107900819",
