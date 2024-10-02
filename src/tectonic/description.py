@@ -561,7 +561,9 @@ class Description(object):
             instances = []
         infrastructure_guests_names = []
         if self.platform == "aws":
-            infrastructure_guests_names = ["student_access"]
+            infrastructure_guests_names = []
+            if self.is_student_access():
+                infrastructure_guests_names.append("student_access")
             if self.teacher_access == "host":
                 infrastructure_guests_names.append("teacher_access")
         for service in self.get_services_to_deploy():
@@ -724,6 +726,18 @@ class Description(object):
         """
         for guest in self.guest_settings.values():
             if guest and guest.get("internet_access"):
+                return True
+        return False
+    
+    def is_student_access(self):
+        """
+        Return if student access is required
+
+        Returns:
+            bool: True if student access is required for any guest; False otherwhise.
+        """
+        for guest in self.guest_settings.values():
+            if guest and guest.get("entry_point"):
                 return True
         return False
 

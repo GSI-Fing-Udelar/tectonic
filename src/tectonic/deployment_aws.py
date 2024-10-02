@@ -109,7 +109,9 @@ class AWSDeployment(Deployment):
     def get_cyberrange_data(self):
         """Get information about cyber range"""
         headers = ["Name", "Value"]
-        rows = [["Student Access IP", self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-student_access")]]
+        rows = []
+        if self.description.is_student_access():
+            rows.append(["Student Access IP", self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-student_access")])
         if self.description.teacher_access == "host":
             rows.append(["Teacher Access IP", self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-teacher_access")])
         if len(self.description.get_services_to_deploy()) > 0:
@@ -452,7 +454,7 @@ class AWSDeployment(Deployment):
 
         resources = [
             "module.vpc",
-            "aws_instance.student_access",
+            "aws_instance.student_access[0]",
             "aws_security_group.bastion_host_sg",
             "aws_security_group.teacher_access_sg",
             "aws_key_pair.admin_pubkey",
@@ -507,7 +509,7 @@ class AWSDeployment(Deployment):
         resource_to_recreate = []
         if student_access_name in machines_to_recreate:
             machines_to_recreate.remove(student_access_name)
-            resource_to_recreate.append("aws_instance.student_access")
+            resource_to_recreate.append("aws_instance.student_access[0]")
         if teacher_access_name in machines_to_recreate:
             machines_to_recreate.remove(teacher_access_name)
             resource_to_recreate.append("aws_instance.teacher_access_host[0]")
@@ -613,7 +615,8 @@ class AWSDeployment(Deployment):
 
         """
         entry_points = [ base_name for base_name, guest in self.description.guest_settings.items() if guest.get("entry_point") ]
-        entry_points.append("student_access")
+        if self.description.is_student_access():
+            entry_points.append("student_access")
         self._student_access(instances, entry_points)
 
     def deploy_infraestructure(self, instances):
@@ -662,7 +665,7 @@ class AWSDeployment(Deployment):
 
         click.echo("Waiting for machines to boot up...")
         ansible.wait_for_connections(instances=instances)
-
+        
         click.echo("Configuring student access...")
         self.student_access(instances)
 

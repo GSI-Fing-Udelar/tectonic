@@ -391,6 +391,7 @@ resource "null_resource" "wait_for_machines" {
 }
 
 resource "aws_instance" "student_access" {
+  count = local.student_access ? 1 : 0
   ami = data.aws_ami.student_access_host.id
 
   instance_type = var.aws_default_instance_type
