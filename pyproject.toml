@@ -63,7 +63,7 @@ six = "*"
 urllib3 = "*"
 wrapt = "*"
 ansible-runner = "*"
-ansible = "8.5.0"
+ansible = "8.7.0"
 libvirt-python = "*"
 elasticsearch = "*"
 packaging = "*"
@@ -81,7 +81,7 @@ pytest-env = "*"
 fabric = { version = "*", extras = ["pytest"] }
 pylint = "*"
 black = "*"
-moto = { version = "4.2.13", extras = ["ec2"] }
+moto = { version = "4.2.14", extras = ["ec2"] }
 responses = "*"
 freezegun = "*"
 
