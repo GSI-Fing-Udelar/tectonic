@@ -12,14 +12,20 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 packages = [
-    { include = "tectonic", from = "src" }
+    { include = "tectonic" }
 ]
 
 homepage = "https://cyberrange.fing.edu.uy/"
 documentation = "https://readthedocs.org"
 repository = "https://github.com/GSI-Fing-Udelar/tectonic.git"
 
-include = ["terraform", "playbooks", "services", "image_generation"]
+include = [
+	{ path="tectonic/terraform", format = ["sdist", "wheel"] },
+	{ path="tectonic/playbooks", format = ["sdist", "wheel"] },
+	{ path="tectonic/services", format = ["sdist", "wheel"] },
+	{ path="tectonic/image_generation", format = ["sdist", "wheel"] },
+]
+
 
 [tool.poetry.urls]
 "Homepage" = "https://cyberrange.fing.edu.uy/"
