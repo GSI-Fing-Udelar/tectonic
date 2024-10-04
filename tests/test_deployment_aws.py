@@ -78,7 +78,7 @@ def test_create_cr_images_ok(mocker, aws_deployment, test_data_path):
         "instance_number": 2,
         "institution": "udelar",
         "lab_name": "lab01",
-        "libvirt_proxy": "http://proxy.fing.edu.uy:3128",
+        "proxy": "http://proxy.fing.edu.uy:3128",
         "libvirt_storage_pool": "pool-dir",
         "libvirt_uri": f"test:///{test_data_path}/libvirt_config.xml",
         "machines_json": json.dumps(machines),
@@ -130,7 +130,7 @@ def test_create_cr_images_ok(mocker, aws_deployment, test_data_path):
         "instance_number": 2,
         "institution": "udelar",
         "lab_name": "lab01",
-        "libvirt_proxy": "http://proxy.fing.edu.uy:3128",
+        "proxy": "http://proxy.fing.edu.uy:3128",
         "libvirt_storage_pool": "pool-dir",
         "libvirt_uri": f"test:///{test_data_path}/libvirt_config.xml",
         "machines_json": json.dumps(machines),
@@ -490,7 +490,7 @@ def test_get_cr_resources_to_target_apply(aws_deployment):
         "aws_security_group.bastion_host_sg",
         "aws_instance.teacher_access_host[0]",
         "aws_security_group.teacher_access_sg",
-        "aws_instance.student_access",
+        "aws_instance.student_access[0]",
         "aws_key_pair.admin_pubkey",
         "aws_security_group.entry_point_sg",
         "module.vpc",
@@ -584,7 +584,7 @@ def test_get_resources_to_recreate(aws_deployment):
 
     resources = aws_deployment.get_resources_to_recreate(None, ("student_access", "teacher_access"), None)
     assert set(resources) == set(
-        ["aws_instance.student_access", "aws_instance.teacher_access_host[0]"]
+        ["aws_instance.student_access[0]", "aws_instance.teacher_access_host[0]"]
     )
   
     resources = aws_deployment.get_resources_to_recreate(None, None, None)
@@ -600,7 +600,7 @@ def test_get_resources_to_recreate(aws_deployment):
                 compare.append(
                     f'aws_instance.machines["udelar-lab01-{instance}-{guest}"]'
                 )
-    compare.append("aws_instance.student_access")
+    compare.append("aws_instance.student_access[0]")
     compare.append("aws_instance.teacher_access_host[0]")
     assert set(resources) == set(compare)
 
@@ -716,7 +716,7 @@ def test_create_services_images_ok(mocker, aws_deployment, base_tectonic_path, t
         "ansible_scp_extra_args": "'-O'" if tectonic.ssh.ssh_version() >= 9 else "",
         "ansible_ssh_common_args": "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no",
         "aws_region": "us-east-1",
-        "libvirt_proxy": "http://proxy.fing.edu.uy:3128",
+        "proxy": "http://proxy.fing.edu.uy:3128",
         "libvirt_storage_pool": "pool-dir",
         "libvirt_uri": f"test:///{test_data_path}/libvirt_config.xml",
         "machines_json": json.dumps(machines),
@@ -724,8 +724,9 @@ def test_create_services_images_ok(mocker, aws_deployment, base_tectonic_path, t
         "platform": "aws",
         "remove_ansible_logs": str(not aws_deployment.description.keep_ansible_logs),
         "elastic_version": "7.10.2",
+        'elasticsearch_memory': None,
         "elastic_latest_version": "no",
-        "caldera_version": "master",
+        "caldera_version": "latest",
         "packetbeat_vlan_id": "1"
     }
     mock_cmd = mocker.patch.object(
@@ -1198,7 +1199,9 @@ def test_deploy_packetbeat(mocker, aws_deployment, base_tectonic_path):
             'vars': {
                 'action': 'install',
                 'ansible_become': True,
+                'ansible_connection': 'ssh',
                 'basename': 'packetbeat',
+                'docker_host': 'unix:///var/run/docker.sock',
                 'elastic_agent_version': '7.10.2',
                 'elastic_url': 'https://10.0.0.31:8220',
                 'instances': 2,
@@ -1240,7 +1243,7 @@ def test_elastic_install_endpoint(mocker, aws_deployment, base_tectonic_path):
     result_ok.rc = 0
     result_ok.status = "successful"
     mock_ansible = mocker.patch.object(ansible_runner.interface, "run", return_value=result_ok)
-    inventory = {'victim': {'hosts': {'udelar-lab01-1-victim-1': {'ansible_host': None, 'ansible_user': 'administrator', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p ubuntu@127.0.0.1"', 'instance': 1, 'copy': 1, 'parameter': {'flags': 'Flag 2'}, 'ansible_shell_type': 'powershell', 'ansible_become_method': 'runas', 'ansible_become_user': 'administrator'}, 'udelar-lab01-1-victim-2': {'ansible_host': None, 'ansible_user': 'administrator', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p ubuntu@127.0.0.1"', 'instance': 1, 'copy': 2, 'parameter': {'flags': 'Flag 2'}, 'ansible_shell_type': 'powershell', 'ansible_become_method': 'runas', 'ansible_become_user': 'administrator'}}, 'vars': {'ansible_become': True, 'basename': 'victim', 'instances': 2, 'platform': 'aws', 'institution': 'udelar', 'lab_name': 'lab01', 'token': '1234567890abcdef', 'elastic_url': 'https://10.0.0.31:8220'}}, 'server': {'hosts': {'udelar-lab01-1-server': {'ansible_host': None, 'ansible_user': 'ubuntu', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p ubuntu@127.0.0.1"', 'instance': 1, 'copy': 1, 'parameter': {'flags': 'Flag 2'}, 'become_flags': '-i'}}, 'vars': {'ansible_become': True, 'basename': 'server', 'instances': 2, 'platform': 'aws', 'institution': 'udelar', 'lab_name': 'lab01', 'token': '1234567890abcdef', 'elastic_url': 'https://10.0.0.31:8220'}}}
+    inventory = {'victim': {'hosts': {'udelar-lab01-1-victim-1': {'ansible_host': None, 'ansible_user': 'administrator', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p ubuntu@127.0.0.1"', 'instance': 1, 'copy': 1, 'parameter': {'flags': 'Flag 2'}, 'ansible_shell_type': 'powershell', 'ansible_become_method': 'runas', 'ansible_become_user': 'administrator'}, 'udelar-lab01-1-victim-2': {'ansible_host': None, 'ansible_user': 'administrator', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p ubuntu@127.0.0.1"', 'instance': 1, 'copy': 2, 'parameter': {'flags': 'Flag 2'}, 'ansible_shell_type': 'powershell', 'ansible_become_method': 'runas', 'ansible_become_user': 'administrator'}}, 'vars': {'ansible_become': True, 'ansible_connection': 'ssh', 'basename': 'victim', 'docker_host': 'unix:///var/run/docker.sock', 'instances': 2, 'platform': 'aws', 'institution': 'udelar', 'lab_name': 'lab01', 'token': '1234567890abcdef', 'elastic_url': 'https://10.0.0.31:8220'}}, 'server': {'hosts': {'udelar-lab01-1-server': {'ansible_host': None, 'ansible_user': 'ubuntu', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p ubuntu@127.0.0.1"', 'instance': 1, 'copy': 1, 'parameter': {'flags': 'Flag 2'}, 'become_flags': '-i'}}, 'vars': {'ansible_become': True, 'ansible_connection': 'ssh', 'basename': 'server', 'docker_host': 'unix:///var/run/docker.sock', 'instances': 2, 'platform': 'aws', 'institution': 'udelar', 'lab_name': 'lab01', 'token': '1234567890abcdef', 'elastic_url': 'https://10.0.0.31:8220'}}}
     aws_deployment._elastic_install_endpoint([1])
     assert len(mock_ansible.mock_calls) == 2
     mock_ansible.assert_has_calls([

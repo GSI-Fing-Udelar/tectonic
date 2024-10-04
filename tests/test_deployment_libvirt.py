@@ -168,7 +168,9 @@ def test_deploy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
             },
             "vars": {
                 "ansible_become":True,
+                "ansible_connection": "ssh",
                 "basename":"localhost",
+                "docker_host": "unix:///var/run/docker.sock",
                 "action": "install",
                 "elastic_url": "https://10.0.0.129:8220",
                 "token": "1234567890abcdef",
@@ -245,7 +247,9 @@ def test_destroy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
             },
             "vars": {
                 "ansible_become":True,
+                "ansible_connection": "ssh",
                 "basename":"localhost",
+                "docker_host": "unix:///var/run/docker.sock",
                 "action": "delete",
                 "institution": "udelar",
                 "lab_name": "lab01",
@@ -344,7 +348,7 @@ def test_create_cr_images_ok(mocker, libvirt_deployment, test_data_path):
         "instance_number": 2,
         "institution": "udelar",
         "lab_name": "lab01",
-        "libvirt_proxy": "http://proxy.fing.edu.uy:3128",
+        "proxy": "http://proxy.fing.edu.uy:3128",
         "libvirt_storage_pool": "pool-dir",
         "libvirt_uri": f"test:///{test_data_path}/libvirt_config.xml",
         "machines_json": json.dumps(machines),
@@ -394,7 +398,7 @@ def test_create_cr_images_ok(mocker, libvirt_deployment, test_data_path):
         "instance_number": 2,
         "institution": "udelar",
         "lab_name": "lab01",
-        "libvirt_proxy": "http://proxy.fing.edu.uy:3128",
+        "proxy": "http://proxy.fing.edu.uy:3128",
         "libvirt_storage_pool": "pool-dir",
         "libvirt_uri": f"test:///{test_data_path}/libvirt_config.xml",
         "machines_json": json.dumps(machines),
@@ -1163,7 +1167,9 @@ def test_manage_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
             },
             "vars": {
                 "ansible_become": True,
+                "ansible_connection": "ssh",
                 "basename": "localhost",
+                "docker_host": "unix:///var/run/docker.sock",
                 "instances": 2,
                 "action": "restarted",
                 "institution": libvirt_deployment.description.institution,
@@ -1235,7 +1241,9 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
             },
             "vars": {
                 "ansible_become": True,
+                'ansible_connection': 'ssh',
                 "basename": "server",
+                'docker_host': 'unix:///var/run/docker.sock',
                 "elastic_url": "https://10.0.0.129:8220",
                 "instances": libvirt_deployment.description.instance_number,
                 "token": "1234567890abcdef",
@@ -1272,7 +1280,9 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
             },
             "vars": {
                 "ansible_become": True,
+                "ansible_connection": "ssh",
                 "basename": "victim",
+                "docker_host": "unix:///var/run/docker.sock",
                 "elastic_url": "https://10.0.0.129:8220",
                 "instances": libvirt_deployment.description.instance_number,
                 "token": "1234567890abcdef",
@@ -1862,7 +1872,7 @@ def test_create_services_images_ok(mocker, libvirt_deployment, base_tectonic_pat
         "ansible_scp_extra_args": "'-O'" if tectonic.ssh.ssh_version() >= 9 else "",
         "ansible_ssh_common_args": "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no",
         "aws_region": "us-east-1",
-        "libvirt_proxy": "http://proxy.fing.edu.uy:3128",
+        "proxy": "http://proxy.fing.edu.uy:3128",
         "libvirt_storage_pool": "pool-dir",
         "libvirt_uri": f"test:///{test_data_path}/libvirt_config.xml",
         "machines_json": json.dumps(machines),
@@ -1870,8 +1880,9 @@ def test_create_services_images_ok(mocker, libvirt_deployment, base_tectonic_pat
         "platform": "libvirt",
         "remove_ansible_logs": str(not libvirt_deployment.description.keep_ansible_logs),
         "elastic_version": "7.10.2",
+        'elasticsearch_memory': None,
         "elastic_latest_version": "no",
-        "caldera_version": "master",
+        "caldera_version": "latest",
         "packetbeat_vlan_id": "1"
     }
     mock_cmd = mocker.patch.object(packerpy.PackerExecutable, "execute_cmd", return_value=(0, "success", ""))
@@ -2039,8 +2050,8 @@ def test_get_service_info(mocker, libvirt_deployment, base_tectonic_path):
     result.rc = 0
     result.status = "successful"
     mock_ansible = mocker.patch.object(ansible_runner.interface, "run", return_value=result)
-    playbook = os.path.join(base_tectonic_path, "services", "elastic", "get_info.yml")
-    inventory = {'elastic': {'hosts': {'udelar-lab01-elastic': {'ansible_host': None, 'ansible_user': 'rocky', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no', 'instance': None, 'copy': 1, 'parameter': {}, 'become_flags': '-i'}}, 'vars': {'ansible_become': True, 'basename': 'elastic', 'instances': 2, 'platform': 'libvirt', 'institution': 'udelar', 'lab_name': 'lab01', 'action': 'agents_status'}}}
+    playbook = str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml')
+    inventory = {'elastic': {'hosts': {'udelar-lab01-elastic': {'ansible_host': None, 'ansible_user': 'rocky', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no', 'instance': None, 'copy': 1, 'parameter': {}, 'become_flags': '-i'}}, 'vars': {'ansible_become': True, 'ansible_connection': 'ssh', 'basename': 'elastic', 'docker_host': 'unix:///var/run/docker.sock', 'instances': 2, 'platform': 'libvirt', 'institution': 'udelar', 'lab_name': 'lab01', 'action': 'agents_status'}}}
     libvirt_deployment._get_service_info("elastic",playbook,{"action":"agents_status"})
     mock_ansible.assert_called_once_with(
         inventory=inventory,
