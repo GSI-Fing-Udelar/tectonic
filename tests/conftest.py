@@ -65,7 +65,7 @@ libvirt_student_access = bridge
 libvirt_bridge = lab_ens
 libvirt_external_network = 192.168.44.10/25
 libvirt_bridge_base_ip = 10
-libvirt_proxy=http://proxy.fing.edu.uy:3128
+proxy=http://proxy.fing.edu.uy:3128
 
 [aws]
 aws_region = us-east-1
