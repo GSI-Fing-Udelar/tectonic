@@ -38,12 +38,6 @@ from tectonic.constants import OS_DATA
 from tectonic.utils import create_table
 
 import importlib.resources as tectonic_resources
-import playbooks
-import image_generation
-import services as services_resources
-import services.ansible
-import services.elastic
-import services.image_generation as services_image_resources
 
 
 class DeploymentException(Exception):
@@ -69,8 +63,8 @@ class Deployment:
 
     # These will be instantiated by the subclass.
     client = None
-    ansible_services_path = tectonic_resources.files(services.ansible) / 'configure_services.yml'
-    cr_packer_path = tectonic_resources.files(image_generation) / 'create_image.pkr.hcl'
+    ansible_services_path = tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'
+    cr_packer_path = tectonic_resources.files('tectonic') / 'image_generation' / 'create_image.pkr.hcl'
 
     def __init__(
         self,
@@ -348,7 +342,7 @@ class Deployment:
         Generates pseudo-random passwords and/or sets public SSH keys for the users.
         Returns a dictionary of created users.
         """
-        playbook = tectonic_resources.files(playbooks) / "trainees.yml"
+        playbook = tectonic_resources.files('tectonic') / 'playbooks' / "trainees.yml"
         
         users = self.get_student_access_users()
         only_instances = True
@@ -610,7 +604,7 @@ class Deployment:
             if services[service]:
                 machines[service] = {
                     "base_os": self.description.get_service_base_os(service),
-                    "ansible_playbook": str(tectonic_resources.files(services_resources) / service / 'base_config.yml'),
+                    "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / service / 'base_config.yml'),
                 }
                 if self.description.platform == "libvirt":
                         machines[service]["vcpu"] = self.description.services[service]["vcpu"]
@@ -640,7 +634,7 @@ class Deployment:
             "caldera_version": self.description.caldera_version,
             "packetbeat_vlan_id": self.description.packetbeat_vlan_id,
         }
-        self._create_packer_images(tectonic_resources.files(services_image_resources) / 'create_image.pkr.hcl', args)
+        self._create_packer_images(tectonic_resources.files('tectonic') / 'services' / 'image_generation' / 'create_image.pkr.hcl', args)
 
     def delete_services_images(self, services):
         """Delete services images."""
@@ -664,7 +658,7 @@ class Deployment:
         elastic_name = self.description.get_service_name("elastic")
         if self.get_instance_status(elastic_name) == "RUNNING":
             elastic_ip = self.get_ssh_hostname(elastic_name)
-            playbook = tectonic_resources.files(services.elastic) / 'get_info.yml'
+            playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml'
             result = self._get_service_info("elastic",playbook,{"action":"get_token_by_policy_name","policy_name":self.description.endpoint_policy_name})
             endpoint_token = result[0]["token"]
             extra_vars = {
@@ -678,7 +672,7 @@ class Deployment:
             machines = self.description.parse_machines(instances=instances, guests=guests_to_monitor)
             inventory = ansible.build_inventory(machine_list=machines, extra_vars=extra_vars)
             ansible.wait_for_connections(inventory=inventory)
-            ansible.run(inventory=inventory,playbook=tectonic_resources.files(services.elastic) / "endpoint_install.yml",quiet=True)
+            ansible.run(inventory=inventory,playbook=tectonic_resources.files('tectonic') / 'services' / 'elastic' / "endpoint_install.yml",quiet=True)
         else:
             raise DeploymentException("Elastic machine is not running. Unable to install endpoints.")
 
@@ -703,7 +697,7 @@ class Deployment:
             inventory_red = ansible.build_inventory(machine_list=machines_red, extra_vars=extra_vars)
             ansible.wait_for_connections(inventory=inventory_red)
             ansible.run(inventory = inventory_red,
-                        playbook = tectonic_resources.files(services.caldera) / 'agent_install.yml',
+                        playbook = tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml',
                         quiet = True)
 
         extra_vars["caldera_agent_type"] = "blue"
@@ -713,7 +707,7 @@ class Deployment:
             inventory_blue = ansible.build_inventory(machine_list=machines_blue, extra_vars=extra_vars)
             ansible.wait_for_connections(inventory=inventory_blue)
             ansible.run(inventory = inventory_blue,
-                        playbook = tectonic_resources.files(services.caldera) / 'agent_install.yml',
+                        playbook = tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml',
                         quiet = True)
 
     def _get_services_guest_data(self):
@@ -738,7 +732,7 @@ class Deployment:
             ansible.run(
                 instances=None,
                 guests=[service_base_name],
-                playbook = tectonic_resources.files(playbooks) / 'services_get_password.yml',
+                playbook = tectonic_resources.files('tectonic') / 'playbooks' / 'services_get_password.yml',
                 only_instances=False,
                 username=OS_DATA[self.description.get_service_base_os(service_base_name)]["username"],
                 quiet=True

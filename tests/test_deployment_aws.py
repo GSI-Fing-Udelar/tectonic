@@ -33,6 +33,9 @@ from tectonic.aws import AWSClientException, Client as AWSClient
 from tectonic.deployment import TerraformRunException
 from tectonic.deployment_aws import *
 
+import importlib.resources as tectonic_resources
+
+
 def test_constructor(description):
     deploy_elastic = description.deploy_elastic
     description.deploy_elastic = False
@@ -490,7 +493,7 @@ def test_get_cr_resources_to_target_apply(aws_deployment):
         "aws_security_group.bastion_host_sg",
         "aws_instance.teacher_access_host[0]",
         "aws_security_group.teacher_access_sg",
-        "aws_instance.student_access[0]",
+        "aws_instance.student_access",
         "aws_key_pair.admin_pubkey",
         "aws_security_group.entry_point_sg",
         "module.vpc",
@@ -584,7 +587,7 @@ def test_get_resources_to_recreate(aws_deployment):
 
     resources = aws_deployment.get_resources_to_recreate(None, ("student_access", "teacher_access"), None)
     assert set(resources) == set(
-        ["aws_instance.student_access[0]", "aws_instance.teacher_access_host[0]"]
+        ["aws_instance.student_access", "aws_instance.teacher_access_host[0]"]
     )
   
     resources = aws_deployment.get_resources_to_recreate(None, None, None)
@@ -600,7 +603,7 @@ def test_get_resources_to_recreate(aws_deployment):
                 compare.append(
                     f'aws_instance.machines["udelar-lab01-{instance}-{guest}"]'
                 )
-    compare.append("aws_instance.student_access[0]")
+    compare.append("aws_instance.student_access")
     compare.append("aws_instance.teacher_access_host[0]")
     assert set(resources) == set(compare)
 
@@ -695,19 +698,19 @@ def test_create_services_images_ok(mocker, aws_deployment, base_tectonic_path, t
     machines = {
         "caldera": {
             "base_os": "rocky8",
-            "ansible_playbook": os.path.join(base_tectonic_path, "services", "caldera", "base_config.yml"),
+            "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'base_config.yml'),
             "disk": 20,
             "instance_type": "t2.medium"
         },
         "elastic": {
             "base_os": "rocky8",
-            "ansible_playbook": os.path.join(base_tectonic_path, "services", "elastic", "base_config.yml"),
+            "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'base_config.yml'),
             "disk": 110,
             "instance_type": "t2.2xlarge"
         },
         "packetbeat": {
             "base_os": "ubuntu22",
-            "ansible_playbook": os.path.join(base_tectonic_path, "services", "packetbeat", "base_config.yml"),
+            "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / 'packetbeat' / 'base_config.yml'),
             "disk": 10,
             "instance_type": "t2.micro",
         }
@@ -739,8 +742,8 @@ def test_create_services_images_ok(mocker, aws_deployment, base_tectonic_path, t
         aws_deployment.client, "delete_security_groups"
     )
     aws_deployment.create_services_images({"caldera":True,"elastic":True,"packetbeat":True})
-    mock_cmd.assert_called_once_with("init", os.path.join(base_tectonic_path, "services", "image_generation", "create_image.pkr.hcl"))
-    mock_build.assert_called_once_with(os.path.join(base_tectonic_path, "services", "image_generation", "create_image.pkr.hcl"), 
+    mock_cmd.assert_called_once_with("init", str(tectonic_resources.files('tectonic') / 'services' / 'image_generation' / 'create_image.pkr.hcl'))
+    mock_build.assert_called_once_with(str(tectonic_resources.files('tectonic') / 'services' / 'image_generation' / 'create_image.pkr.hcl'),
                                        var=variables),
     mock_delete_sg.assert_called_once_with("Temporary group for Packer")
 
@@ -1068,7 +1071,7 @@ def test_student_access(mocker, aws_deployment, base_tectonic_path):
     aws_deployment.student_access(None)
     mock.assert_called_once_with(
         inventory=inventory,
-        playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
+        playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
         quiet=True,
         verbosity=0,
         event_handler=mocker.ANY,
@@ -1216,7 +1219,7 @@ def test_deploy_packetbeat(mocker, aws_deployment, base_tectonic_path):
     assert len(mock_ansible.mock_calls) == 2
     mock_ansible.assert_has_calls([
         mocker.call(inventory=inventory,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1224,7 +1227,7 @@ def test_deploy_packetbeat(mocker, aws_deployment, base_tectonic_path):
         ),
         mocker.call(
             inventory=inventory,
-            playbook=os.path.join(base_tectonic_path, "services", "elastic", "agent_manage.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1248,7 +1251,7 @@ def test_elastic_install_endpoint(mocker, aws_deployment, base_tectonic_path):
     assert len(mock_ansible.mock_calls) == 2
     mock_ansible.assert_has_calls([
         mocker.call(inventory=inventory,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1256,7 +1259,7 @@ def test_elastic_install_endpoint(mocker, aws_deployment, base_tectonic_path):
         ),
         mocker.call(
             inventory=inventory,
-            playbook=os.path.join(base_tectonic_path, "services", "elastic", "endpoint_install.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1285,18 +1288,19 @@ def test_recreate(mocker, monkeypatch, capsys, aws_deployment, base_tectonic_pat
 
     aws_deployment.recreate([1],["attacker"], None, False)
 
-    mock_terraform.assert_called_once_with(Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-aws")), mocker.ANY)
+    mock_terraform.assert_called_once_with(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws', mocker.ANY)
+
     assert len(mock_ansible.mock_calls) == 9
     mock_ansible.assert_has_calls([
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1310,42 +1314,42 @@ def test_recreate(mocker, monkeypatch, capsys, aws_deployment, base_tectonic_pat
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "services", "elastic", "endpoint_install.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "services", "caldera", "agent_install.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "services", "caldera", "agent_install.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1372,7 +1376,7 @@ def test_destroy_infraestructure(mocker, capsys, aws_deployment, base_tectonic_p
     aws_deployment.destroy_infraestructure(None)
 
     mock_deployment.assert_called_once_with(
-        Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-aws")),
+        tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
         variables=aws_deployment.get_deploy_cr_vars(),
         resources=None,
     )
@@ -1387,11 +1391,11 @@ def test_destroy_infraestructure(mocker, capsys, aws_deployment, base_tectonic_p
 
     assert len(mock_deployment.mock_calls) == 2
     mock_deployment.assert_has_calls([
-        mocker.call(Path(os.path.join(base_tectonic_path, "services", "terraform", "services-aws")),
+        mocker.call(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-aws',
             variables=aws_deployment.get_deploy_services_vars(),
             resources=None,
         ),
-        mocker.call(Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-aws")),
+        mocker.call(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
             variables=aws_deployment.get_deploy_cr_vars(),
             resources=None,
         ),
@@ -1403,11 +1407,11 @@ def test_destroy_infraestructure(mocker, capsys, aws_deployment, base_tectonic_p
     aws_deployment.destroy_infraestructure([1])
     assert len(mock_deployment.mock_calls) == 2
     mock_deployment.assert_has_calls([
-            mocker.call(Path(os.path.join(base_tectonic_path, "services", "terraform", "services-aws")),
+            mocker.call(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-aws',
             variables=aws_deployment.get_deploy_services_vars(),
             resources=aws_deployment.get_services_resources_to_target_destroy([1]),
         ),
-        mocker.call(Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-aws")),
+        mocker.call(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
             variables=aws_deployment.get_deploy_cr_vars(),
             resources=aws_deployment.get_cr_resources_to_target_destroy([1]),
         ),
@@ -1430,21 +1434,21 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, base_tectonic_pa
     aws_deployment.deploy_infraestructure(None)
 
     mock_deployment.assert_called_once_with(
-        Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-aws")),
+        tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
         variables=aws_deployment.get_deploy_cr_vars(),
         resources=None,
     )
     assert len(mock_ansible.mock_calls) == 3
     mock_ansible.assert_has_calls([
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
-            quiet=True,
-            verbosity=0,
-            event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1479,11 +1483,11 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, base_tectonic_pa
     aws_deployment.deploy_infraestructure(None)
     assert len(mock_deployment.mock_calls) == 2
     mock_deployment.assert_has_calls([
-        mocker.call(Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-aws")),
+        mocker.call(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
             variables=aws_deployment.get_deploy_cr_vars(),
             resources=None,
         ),
-        mocker.call(Path(os.path.join(base_tectonic_path, "services", "terraform", "services-aws")),
+        mocker.call(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-aws',
             variables=aws_deployment.get_deploy_services_vars(),
             resources=None,
         ),
@@ -1491,42 +1495,42 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, base_tectonic_pa
     assert len(mock_ansible.mock_calls) == 7
     mock_ansible.assert_has_calls([
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "services", "ansible", "configure_services.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "services", "elastic", "agent_manage.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1562,11 +1566,11 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, base_tectonic_pa
 
     assert len(mock_deployment.mock_calls) == 2
     mock_deployment.assert_has_calls([
-        mocker.call(Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-aws")),
+        mocker.call(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
             variables=aws_deployment.get_deploy_cr_vars(),
             resources=None,
         ),
-        mocker.call(Path(os.path.join(base_tectonic_path, "services", "terraform", "services-aws")),
+        mocker.call(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-aws',
             variables=aws_deployment.get_deploy_services_vars(),
             resources=None,
         ),
@@ -1574,28 +1578,28 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, base_tectonic_pa
     assert len(mock_ansible.mock_calls) == 7
     mock_ansible.assert_has_calls([
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "services", "ansible", "configure_services.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1609,14 +1613,14 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, base_tectonic_pa
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "services", "elastic", "endpoint_install.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1644,11 +1648,11 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, base_tectonic_pa
 
     assert len(mock_deployment.mock_calls) == 2
     mock_deployment.assert_has_calls([
-        mocker.call(Path(os.path.join(base_tectonic_path, "terraform", "modules", "gsi-lab-aws")),
+        mocker.call(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws',
             variables=aws_deployment.get_deploy_cr_vars(),
             resources=None,
         ),
-        mocker.call(Path(os.path.join(base_tectonic_path, "services", "terraform", "services-aws")),
+        mocker.call(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-aws',
             variables=aws_deployment.get_deploy_services_vars(),
             resources=None,
         ),
@@ -1656,28 +1660,28 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, base_tectonic_pa
     assert len(mock_ansible.mock_calls) == 9
     mock_ansible.assert_has_calls([
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "services", "ansible", "configure_services.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "trainees.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
@@ -1691,28 +1695,28 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, base_tectonic_pa
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "services", "caldera", "agent_install.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "playbooks", "wait_for_connection.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs }
         ),
         mocker.call(inventory=mocker.ANY,
-            playbook=os.path.join(base_tectonic_path, "services", "caldera", "agent_install.yml"),
+            playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
