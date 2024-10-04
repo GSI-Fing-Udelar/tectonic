@@ -1,0 +1,77 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":separateMultipleMajorReleases",
+    "schedule:daily"
+  ],
+  "commitMessageSuffix": " in {{packageFile}}",
+  "dependencyDashboardAutoclose": true,
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "assignees": [
+      "@GSI-Fing-Udelar/tectonic-core"
+    ],
+    "labels": [
+      "security"
+    ]
+  },
+  "packageRules": [
+    {
+      "groupName": "github-actions",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "automerge": true
+    },
+    {
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-minor-patch",
+      "matchSourceUrlPrefixes": [
+        "https://github.com/"
+      ],
+      "prBodyDefinitions": {
+        "OpenSSF": "[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/{{sourceRepo}}/badge)](https://securityscorecards.dev/viewer/?uri=github.com/{{sourceRepo}})"
+      },
+      "prBodyColumns": [
+        "Package",
+        "Type",
+        "Update",
+        "Change",
+        "Pending",
+        "OpenSSF"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "automerge": true
+    },
+    {
+      "matchDepTypes": [
+        "devDependencies"
+      ],
+      "automerge": true
+    },
+    {
+      "groupName": "all major dependencies",
+      "groupSlug": "all-major",
+      "matchPackagePatterns": [
+        "*"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "prBodyColumns": [
+        "Package",
+        "Type",
+        "Update",
+        "Change",
+        "Pending"
+      ]
+    }
+  ]
+}
