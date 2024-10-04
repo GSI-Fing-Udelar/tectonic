@@ -12,14 +12,20 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 packages = [
-    { include = "tectonic", from = "src" }
+    { include = "tectonic" }
 ]
 
 homepage = "https://cyberrange.fing.edu.uy/"
 documentation = "https://readthedocs.org"
 repository = "https://github.com/GSI-Fing-Udelar/tectonic.git"
 
-include = ["terraform", "playbooks", "services", "image_generation"]
+include = [
+	{ path="tectonic/terraform", format = ["sdist", "wheel"] },
+	{ path="tectonic/playbooks", format = ["sdist", "wheel"] },
+	{ path="tectonic/services", format = ["sdist", "wheel"] },
+	{ path="tectonic/image_generation", format = ["sdist", "wheel"] },
+]
+
 
 [tool.poetry.urls]
 "Homepage" = "https://cyberrange.fing.edu.uy/"
@@ -57,7 +63,7 @@ six = "*"
 urllib3 = "*"
 wrapt = "*"
 ansible-runner = "*"
-ansible = "8.5.0"
+ansible = "8.7.0"
 libvirt-python = "*"
 elasticsearch = "*"
 packaging = "*"
@@ -75,7 +81,7 @@ pytest-env = "*"
 fabric = { version = "*", extras = ["pytest"] }
 pylint = "*"
 black = "*"
-moto = { version = "4.2.13", extras = ["ec2"] }
+moto = { version = "4.2.14", extras = ["ec2"] }
 responses = "*"
 freezegun = "*"
 
