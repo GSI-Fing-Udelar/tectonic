@@ -28,9 +28,6 @@
     {
       "groupName": "all non-major dependencies",
       "groupSlug": "all-minor-patch",
-      "matchSourceUrlPrefixes": [
-        "https://github.com/"
-      ],
       "prBodyDefinitions": {
         "OpenSSF": "[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/{{sourceRepo}}/badge)](https://securityscorecards.dev/viewer/?uri=github.com/{{sourceRepo}})"
       },
@@ -48,7 +45,10 @@
         "pin",
         "digest"
       ],
-      "automerge": true
+      "automerge": true,
+      "matchSourceUrls": [
+        "https://github.com/{/,}**"
+      ]
     },
     {
       "matchDepTypes": [
@@ -59,9 +59,6 @@
     {
       "groupName": "all major dependencies",
       "groupSlug": "all-major",
-      "matchPackagePatterns": [
-        "*"
-      ],
       "matchUpdateTypes": [
         "major"
       ],
@@ -71,6 +68,9 @@
         "Update",
         "Change",
         "Pending"
+      ],
+      "matchPackageNames": [
+        "*"
       ]
     }
   ]
