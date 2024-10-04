@@ -257,12 +257,14 @@ def description(labs_path, terraform_dir, test_data_path):
         libvirt_bridge="lab_ens",
         libvirt_external_network="192.168.44.10/25",
         libvirt_bridge_base_ip=10,
-        libvirt_proxy="http://proxy.fing.edu.uy:3128",
+        proxy="http://proxy.fing.edu.uy:3128",
         instance_type=InstanceTypeAWS("t2.micro"),
         endpoint_policy_name="Endpoint",
         internet_network_cidr_block="10.0.0.0/25",
         services_network_cidr_block="10.0.0.128/25",
-        keep_ansible_logs=False
+        keep_ansible_logs=False,
+        docker_uri='unix:///var/run/docker.sock',
+        caldera_version='latest',
     )
     yield desc
 

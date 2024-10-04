@@ -28,17 +28,19 @@ from tectonic.instance_type_aws import InstanceTypeAWS
 
 def test_instance_type():
     instance_type = InstanceType()
-    assert instance_type.get_guest_instance_type(1024, 1, False, "traffic") is None
+    assert instance_type.get_guest_instance_type(1024, 1, False, False, "traffic") is None
 
     instance_type = InstanceType("some_instance_type")
-    assert instance_type.get_guest_instance_type(1024, 1, False, "traffic") == "some_instance_type"
+    assert instance_type.get_guest_instance_type(1024, 1, False, False, "traffic") == "some_instance_type"
 
 def test_instance_type_aws():
     instance_type = InstanceTypeAWS("t2.micro")
-    assert instance_type.get_guest_instance_type(None, 2, False, "traffic") == "t2.medium"
-    assert instance_type.get_guest_instance_type(1024, 2, True, "traffic") == "t3.micro"
-    assert instance_type.get_guest_instance_type(1024, 2, True, "endpoint") == "t2.medium"
-    assert instance_type.get_guest_instance_type(None, None, False, "traffic") == "t2.micro"
-    assert instance_type.get_guest_instance_type(None, None, True, "traffic") == "t3.micro"
-    assert instance_type.get_guest_instance_type(None, None, True, "endpoint") == "t2.micro"
-    assert instance_type.get_guest_instance_type(50000, None, False, "traffic") == "t2.2xlarge"
+    assert instance_type.get_guest_instance_type(None, 2, False, False, "traffic") == "t2.medium"
+    assert instance_type.get_guest_instance_type(1024, 2, False, True, "traffic") == "t3.micro"
+    assert instance_type.get_guest_instance_type(1024, 2, False, True, "endpoint") == "t2.medium"
+    assert instance_type.get_guest_instance_type(None, None, False, False, "traffic") == "t2.micro"
+    assert instance_type.get_guest_instance_type(None, None, False, True, "traffic") == "t3.micro"
+    assert instance_type.get_guest_instance_type(None, None, False, True, "endpoint") == "t2.micro"
+    assert instance_type.get_guest_instance_type(50000, None, False, False, "traffic") == "t2.2xlarge"
+    
+    assert instance_type.get_guest_instance_type(1024, 2, True, True, "endpoint") == "g4dn.xlarge"
