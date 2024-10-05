@@ -80,7 +80,7 @@ pytest-env = "*"
 fabric = { version = "*", extras = ["pytest"] }
 pylint = "*"
 black = "*"
-moto = { version = "4.2.14", extras = ["ec2"] }
+moto = { version = "5.0.16", extras = ["ec2"] }
 responses = "*"
 freezegun = "*"
 
