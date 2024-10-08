@@ -274,7 +274,7 @@ build {
       "sudo systemctl stop cloud-init",
       "sudo cloud-init clean --logs",
     ]
-    except = var.platform != "docker" ? local.win_machines : local.machine_builds 
+    except = var.platform != "docker" ? [] : local.machine_builds 
   }
 
   post-processor "docker-tag" {
