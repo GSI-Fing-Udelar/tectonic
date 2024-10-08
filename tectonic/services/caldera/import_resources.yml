@@ -83,3 +83,16 @@
         src: "{{ caldera.description_path }}/caldera/adversaries/"
         dest: /opt/caldera/data/adversaries/
       when: adversaries.stat.exists
+- name: Import files
+  block:
+    - name: Check if files exists
+      ansible.builtin.stat:
+        path: "{{ caldera.description_path }}/caldera/files/"
+      delegate_to: localhost
+      register: files
+      become: false
+    - name: Import files
+      ansible.builtin.copy:
+        src: "{{ caldera.description_path }}/caldera/files/"
+        dest: /opt/files/
+      when: files.stat.exists
