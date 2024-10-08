@@ -13,7 +13,9 @@ caldera
 ├── operations
 │   └── <operation_name>.json
 └── sources
-    └── <source_id>.yml
+│   └── <source_id>.json
+└── files
+    └── <file>
 
 ```
 ## Abilities
@@ -45,5 +47,8 @@ Operations run abilities on agent groups. To define an operation, a JSON must be
 
 ## Sources
 A fact is an identifiable piece of information about a given computer. Facts can be used to perform variable assignment within abilities. A fact source is a collection of facts that you have grouped together. A fact source can be applied to an operation when you start it, which gives the operation facts to fill in variables with. To export facts sources just copy the directory `CALDERA_INSTALLATION_PATH/data/sources/`. Facts sources are defined in YAML files whose name corresponds to the unique identifier of the fact source.
+
+## Files
+Extra files to be used in abilities. These files are copied to the `/opt/files` directory on the caldera host.
 
 
