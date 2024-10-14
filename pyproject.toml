@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "tectonic"
+name = "tectonic-cyberrange"
 version = "0.1.0"
 authors = ["GSI-Fing-Udelar"]
 description = "A Python package for the Tectonic project."
