@@ -280,7 +280,7 @@ class Deployment:
                 )
         args = {
             "ansible_playbooks_path": self.description.ansible_playbooks_path,
-            "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 else "",
+            "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.description.platform != "docker" else "",
             "ansible_ssh_common_args": self.description.ansible_ssh_common_args,
             "aws_region": self.description.aws_region,
             "instance_number": self.description.instance_number,
@@ -617,7 +617,7 @@ class Deployment:
                     elif service == "packetbeat":
                         machines[service]["instance_type"] = "t2.micro"
         args = {
-            "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 else "",
+            "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.description.platform != "docker" else "",
             "ansible_ssh_common_args": self.description.ansible_ssh_common_args,
             "aws_region": self.description.aws_region,
             "proxy": self.description.proxy,
