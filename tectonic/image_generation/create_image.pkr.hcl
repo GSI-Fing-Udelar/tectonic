@@ -266,7 +266,7 @@ build {
       name = source.key
       image = local.os_data[source.value["base_os"]]["docker_base_image"]
       exec_user = local.os_data[source.value["base_os"]]["username"]
-      run_command = ["-d", "-i", "-t", "--entrypoint=${local.os_data[source.value["base_os"]]["entrypoint"]}", "--", "{{.Image}}"]
+      run_command = ["-d", "-i", "-t", "--name", "${var.institution}-${var.lab_name}-${source.key}", "--entrypoint=${local.os_data[source.value["base_os"]]["entrypoint"]}", "--", "{{.Image}}"]
     }
   }
 
