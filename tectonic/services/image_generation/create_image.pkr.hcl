@@ -1,3 +1,24 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+
 packer {
   required_plugins {
     amazon = {
@@ -232,18 +253,24 @@ build {
     content {
       name = source.key
       image = local.os_data[source.value["base_os"]]["docker_base_image"]
+      exec_user = local.os_data[source.value["base_os"]]["username"]
+      run_command = ["-d", "-i", "-t", "--name", "${source.key}", "--entrypoint=${local.os_data[source.value["base_os"]]["entrypoint"]}", "--", "{{.Image}}"]
     }
   }
 
   provisioner "ansible" {
     playbook_file = "${abspath(path.root)}/../../image_generation/libvirt_conf.yml"
+
     use_sftp = var.platform == "docker"
     use_proxy = var.platform == "docker"
+
     host_alias = source.name
-    user = var.platform == "docker" ? "root" : local.os_data[local.machines[source.name]["base_os"]]["username"]
+    user = local.os_data[local.machines[source.name]["base_os"]]["username"]
+
     extra_arguments = concat(
+      var.ansible_scp_extra_args != "" ? ["--scp-extra-args", "${var.ansible_scp_extra_args}"] : [],
       var.proxy != null ? ["--extra-vars", "proxy=${var.proxy} platform=${var.platform}"] : ["--extra-vars", "platform=${var.platform}"],
-      ["--extra-vars", "ansible_no_target_syslog=${var.remove_ansible_logs}"]
+      ["--extra-vars", "ansible_no_target_syslog=${var.remove_ansible_logs}"],
     )
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
 
@@ -252,10 +279,13 @@ build {
 
   provisioner "ansible" {
     playbook_file = fileexists("${local.machines[source.name]["ansible_playbook"]}") ? "${local.machines[source.name]["ansible_playbook"]}" : "/dev/null"
+    
     use_sftp = var.platform == "docker"
     use_proxy = var.platform == "docker"
+    
     host_alias = source.name
-    user = var.platform == "docker" ? "root" : local.os_data[local.machines[source.name]["base_os"]]["username"]
+    user = local.os_data[local.machines[source.name]["base_os"]]["username"]
+    
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
     extra_arguments = concat(
       ["--extra-vars", "basename=${source.name} platform=${var.platform} ansible_become=true ansible_become_flags=-i ansible_no_target_syslog=${var.remove_ansible_logs}"],

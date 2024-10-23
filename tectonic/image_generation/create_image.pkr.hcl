@@ -265,6 +265,8 @@ build {
     content {
       name = source.key
       image = local.os_data[source.value["base_os"]]["docker_base_image"]
+      exec_user = local.os_data[source.value["base_os"]]["username"]
+      run_command = ["-d", "-i", "-t", "--name", "${var.institution}-${var.lab_name}-${source.key}", "--entrypoint=${local.os_data[source.value["base_os"]]["entrypoint"]}", "--", "{{.Image}}"]
     }
   }
 
@@ -275,9 +277,12 @@ build {
     use_proxy = var.platform == "docker"
 
     host_alias = source.name
-    user = var.platform == "docker" ? "root" : local.os_data[local.machines[source.name]["base_os"]]["username"]
+    user = local.os_data[local.machines[source.name]["base_os"]]["username"]
 
-    extra_arguments = var.proxy != null ? ["--extra-vars", "proxy=${var.proxy} platform=${var.platform}"] : ["--extra-vars", "platform=${var.platform}"]
+    extra_arguments = concat(
+      var.proxy != null ? ["--extra-vars", "proxy=${var.proxy} platform=${var.platform}"] : ["--extra-vars", "platform=${var.platform}"],
+      var.ansible_scp_extra_args != "" ? ["--scp-extra-args", "${var.ansible_scp_extra_args}"] : [],
+    )
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
     
     except = var.platform == "aws" ? local.machine_builds : []
@@ -290,9 +295,12 @@ build {
     use_proxy = var.platform == "docker"
 
     host_alias = source.name
-    user = var.platform == "docker" ? "root" : local.os_data[local.machines[source.name]["base_os"]]["username"]
+    user = local.os_data[local.machines[source.name]["base_os"]]["username"]
 
-    extra_arguments = ["--extra-vars", "elastic_version=${var.elastic_version} ansible_become_flags=-i ansible_become=true ansible_no_target_syslog=${var.remove_ansible_logs}"]
+    extra_arguments = concat(
+      ["--extra-vars", "elastic_version=${var.elastic_version} ansible_become_flags=-i ansible_become=true ansible_no_target_syslog=${var.remove_ansible_logs}"],
+      var.ansible_scp_extra_args != "" ? ["--scp-extra-args", "${var.ansible_scp_extra_args}"] : [],
+    )
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
 
     except = local.not_endpoint_monitoring_machines
@@ -307,7 +315,7 @@ build {
     use_proxy = var.platform == "docker"
 
     host_alias = source.name
-    user = var.platform == "docker" ? "root" : local.os_data[local.machines[source.name]["base_os"]]["username"]
+    user = local.os_data[local.machines[source.name]["base_os"]]["username"]
 
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
 
