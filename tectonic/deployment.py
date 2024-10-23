@@ -287,7 +287,6 @@ class Deployment:
             "instance_number": self.description.instance_number,
             "institution": self.description.institution,
             "lab_name": self.description.lab_name,
-            "proxy": self.description.proxy,
             "libvirt_storage_pool": self.description.libvirt_storage_pool,
             "libvirt_uri": self.description.libvirt_uri,
             "machines_json": json.dumps(machines),
@@ -296,6 +295,8 @@ class Deployment:
             "remove_ansible_logs": str(not self.description.keep_ansible_logs),
             "elastic_version": self.description.elastic_stack_version
         }
+        if self.description.proxy is not None:
+            args["proxy"] = self.description.proxy
         self._create_packer_images(self.cr_packer_path, args)
 
     def get_teacher_access_username(self):

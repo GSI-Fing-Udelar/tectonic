@@ -50,15 +50,14 @@ among others.
 ## Installation Instructions
 The following are the requirements to run Tectonic:
 
-- Linux or Mac OS
-- Python 3.11
-- Ansible 2.15
+- Linux, Mac OS or WSL
+- Python 3.10 or newer
+- Poetry
 - Terraform 1.6
 - Packer 1.9
-- Python modules (see [pyproject.toml](pyproject.toml))
+- Docker
+- Libvirt
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) 
-- GitLab credentials (optional for Terraform state storage)
-- Optionally AWS credentials
 
 Please see the [detailed instructions](docs/installation.md) for more
 information.
