@@ -295,7 +295,7 @@ class Deployment:
             "remove_ansible_logs": str(not self.description.keep_ansible_logs),
             "elastic_version": self.description.elastic_stack_version
         }
-        if self.description.proxy is not None:
+        if self.description.proxy is not None and self.description.proxy != "":
             args["proxy"] = self.description.proxy
         self._create_packer_images(self.cr_packer_path, args)
 
