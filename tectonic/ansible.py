@@ -74,6 +74,17 @@ class Ansible:
         if proxy_command:
             ssh_args += f' -o ProxyCommand="{proxy_command}"'
 
+        networks = {}
+        for machine in description.parse_machines():
+            instance = description.get_instance_number(machine)
+            base_name = description.get_base_name(machine)
+            if instance not in networks:
+                networks[instance] = {}
+            for _, interface in (description.get_guest_data())[machine]["interfaces"].items():
+                if interface["network_name"] not in networks[instance]:
+                    networks[instance][interface["network_name"]] = {}
+                networks[instance][interface["network_name"]][base_name] = interface
+
         for machine in machine_list:
             base_name = description.get_base_name(machine)
             ansible_username = username or description.get_guest_username(base_name)
@@ -94,12 +105,14 @@ class Ansible:
                             } | extra_vars,
                 }
 
+            instance = description.get_instance_number(machine)
             inventory[base_name]["hosts"][machine] = {
                 "ansible_host": hostname if description.platform != "docker" else machine,
                 "ansible_user": ansible_username,
                 "ansible_ssh_common_args": ssh_args,
-                "instance": description.get_instance_number(machine),
+                "instance": instance,
                 "copy": description.get_copy(machine),
+                "networks": networks[instance] if instance else networks,
                 "parameter": parameters[description.get_instance_number(machine)] if description.get_instance_number(machine) else {}
             }
 

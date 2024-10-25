@@ -166,6 +166,7 @@ def test_deploy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
                     "become_flags":"-i",
                     "copy":1,
                     "instance":None,
+                    'networks': mocker.ANY, 
                     "parameter":{},
                 }
             },
@@ -245,6 +246,7 @@ def test_destroy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
                     "become_flags":"-i",
                     "copy":1,
                     "instance":None,
+                    'networks': mocker.ANY, 
                     "parameter":{},
                 }
             },
@@ -1164,6 +1166,7 @@ def test_manage_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
                     "ansible_ssh_common_args": libvirt_deployment.description.ansible_ssh_common_args,
                     "instance": None,
                     "copy": 1,
+                    'networks': mocker.ANY, 
                     "parameter": {},
                     "become_flags": "-i",
                 }
@@ -1239,6 +1242,7 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
                     "become_flags": "-i",
                     "copy": 1,
                     "instance": 1,
+                    'networks': mocker.ANY, 
                     "parameter" : {'flags': 'Flag 2'}
                 }
             },
@@ -1266,6 +1270,7 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
                     "ansible_become_method": "runas",
                     "ansible_become_user": "administrator",
                     "ansible_shell_type": "powershell",
+                    'networks': mocker.ANY, 
                     "parameter" : {'flags': 'Flag 2'}
 
                 },
@@ -1278,6 +1283,7 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
                     "ansible_become_method": "runas",
                     "ansible_become_user": "administrator",
                     "ansible_shell_type": "powershell",
+                    'networks': mocker.ANY, 
                     "parameter" : {'flags': 'Flag 2'}
                 }
             },
@@ -2054,7 +2060,7 @@ def test_get_service_info(mocker, libvirt_deployment, base_tectonic_path):
     result.status = "successful"
     mock_ansible = mocker.patch.object(ansible_runner.interface, "run", return_value=result)
     playbook = str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml')
-    inventory = {'elastic': {'hosts': {'udelar-lab01-elastic': {'ansible_host': None, 'ansible_user': 'rocky', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no', 'instance': None, 'copy': 1, 'parameter': {}, 'become_flags': '-i'}}, 'vars': {'ansible_become': True, 'ansible_connection': 'ssh', 'basename': 'elastic', 'docker_host': 'unix:///var/run/docker.sock', 'instances': 2, 'platform': 'libvirt', 'institution': 'udelar', 'lab_name': 'lab01', 'action': 'agents_status'}}}
+    inventory = {'elastic': {'hosts': {'udelar-lab01-elastic': {'ansible_host': None, 'ansible_user': 'rocky', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no', 'instance': None, 'copy': 1, 'networks': mocker.ANY, 'parameter': {}, 'become_flags': '-i'}}, 'vars': {'ansible_become': True, 'ansible_connection': 'ssh', 'basename': 'elastic', 'docker_host': 'unix:///var/run/docker.sock', 'instances': 2, 'platform': 'libvirt', 'institution': 'udelar', 'lab_name': 'lab01', 'action': 'agents_status'}}}
     libvirt_deployment._get_service_info("elastic",playbook,{"action":"agents_status"})
     mock_ansible.assert_called_once_with(
         inventory=inventory,
