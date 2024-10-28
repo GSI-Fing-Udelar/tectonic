@@ -110,6 +110,7 @@ class Ansible:
                 "ansible_host": hostname if description.platform != "docker" else machine,
                 "ansible_user": ansible_username,
                 "ansible_ssh_common_args": ssh_args,
+                "machine_name": machine,
                 "instance": instance,
                 "copy": description.get_copy(machine),
                 "networks": networks[instance] if instance else networks,
