@@ -114,7 +114,8 @@ class Ansible:
                 "instance": instance,
                 "copy": description.get_copy(machine),
                 "networks": networks[instance] if instance else networks,
-                "parameter": parameters[description.get_instance_number(machine)] if description.get_instance_number(machine) else {}
+                "parameter": parameters[description.get_instance_number(machine)] if description.get_instance_number(machine) else {},
+                "random_seed": description.random_seed,
             }
 
             if description.get_guest_attr(
