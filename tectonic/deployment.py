@@ -51,7 +51,7 @@ class TerraformRunException(Exception):
 def run_terraform_cmd(t, cmd, variables, **args):
     return_code, stdout, stderr = t.cmd(
         cmd, no_color=python_terraform.IsFlagged, var=variables, **args
-    )  # TODO: unused variables stdout
+    )
     if return_code != 0:
         error = f"ERROR: terraform {cmd} returned an error: {stderr}"
         raise TerraformRunException(error)
@@ -103,15 +103,18 @@ class Deployment:
         address = f"{self.gitlab_backend_url}/{self.description.institution}-{self.description.lab_name}-{tf_mod_name}"
 
         return [
-            f"address={address}",
-            f"lock_address={address}/lock",
-            f"unlock_address={address}/lock",
-            f"username={self.gitlab_backend_username}",
-            f"password={self.gitlab_backend_access_token}",
-            "lock_method=POST",
-            "unlock_method=DELETE",
-            "retry_wait_min=5",
+            f"path=terraform-states/{self.description.institution}-{self.description.lab_name}-{tf_mod_name}"
         ]
+        # return [
+        #     f"address={address}",
+        #     f"lock_address={address}/lock",
+        #     f"unlock_address={address}/lock",
+        #     f"username={self.gitlab_backend_username}",
+        #     f"password={self.gitlab_backend_access_token}",
+        #     "lock_method=POST",
+        #     "unlock_method=DELETE",
+        #     "retry_wait_min=5",
+        # ]
 
     def terraform_apply(self, terraform_dir, variables, resources=None):
         """
