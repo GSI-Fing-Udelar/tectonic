@@ -49,20 +49,26 @@
           when: ansible_facts['os_family'] == 'RedHat' or ansible_facts['os_family'] == 'Fedora'
       when: proxy is defined
 
-    # Install qemu-guest-agent
-    - name: "Update repos"
-      ansible.builtin.apt:
-        update_cache: yes
+    - name: Install qemu-guest-agent in libvirt
+      block:
+        - name: "Update repos"
+          ansible.builtin.apt:
+            update_cache: yes
+        - name: "Install packages"
+          ansible.builtin.package:
+            name: 
+              - qemu-guest-agent
+              - acpid
+        - name: "Start qemu guest agent"
+          ansible.builtin.service:
+            name: qemu-guest-agent
+            enabled: yes
+            state: started
+        - name: "Start acpid service"
+          ansible.builtin.service:
+            name: acpid
+            enabled: yes
+            state: started
+
       when: ansible_facts['os_family'] == 'Debian' and platform == "libvirt"
 
-    - name: "Install qemu-guest-agent"
-      ansible.builtin.package:
-        name: qemu-guest-agent
-      when: ansible_facts['os_family'] != "Windows" and platform == "libvirt"
-
-    - name: "Start qemu guest agent"
-      ansible.builtin.service:
-        name: qemu-guest-agent
-        enabled: yes
-        state: started
-      when: ansible_facts['os_family'] != "Windows" and platform == "libvirt"
