@@ -3,6 +3,7 @@ lambda_function.zip
 
 # Local .terraform directories
 **/.terraform/*
+**/terraform-states/*
 
 # .tfstate files
 *.tfstate
@@ -60,5 +61,3 @@ Pipfile.lock
 build/
 .coverage
 codeclimate.json
-
-poetry.lock

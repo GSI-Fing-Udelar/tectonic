@@ -252,7 +252,7 @@ class Description(object):
         self.base_institution = re.sub("[^a-zA-Z0-9]+", "", description["institution"])
         self.base_lab_name = re.sub("[^a-zA-Z0-9]+", "", description["lab_name"])
         self.default_os = description.get("default_os", self.default_os)
-        self.guest_settings = description.get("guest_settings", self.guest_settings)
+        self.guest_settings = {key.lower(): value for key, value in description.get("guest_settings", self.guest_settings).items()}
         self.topology = description.get("topology", self.topology)
 
         self._load_elastic_settings(description)
@@ -310,16 +310,16 @@ class Description(object):
                 raise DescriptionException(f"{self.base_lab} not found in {self.lab_repo_uri}.")
         self._load_description(self.description_file)
 
-        self.institution = re.sub(
+        self.institution = str.lower(re.sub(
             "[^a-zA-Z0-9]+",
             "",
             lab_edition_info.get("institution", self.base_institution),
-        )
-        self.lab_name = re.sub(
+        ))
+        self.lab_name = str.lower(re.sub(
             "[^a-zA-Z0-9]+",
             "",
             lab_edition_info.get("lab_edition_name", self.base_lab_name),
-        )
+        ))
 
         self.teacher_pubkey_dir = lab_edition_info.get("teacher_pubkey_dir")
         if self.teacher_pubkey_dir and not Path(self.teacher_pubkey_dir).is_absolute():

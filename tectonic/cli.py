@@ -327,19 +327,19 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 )
 @click.option(
     "--gitlab_backend_url",
-    required=True,
+    required=False,
     help="Gitlab terraform state url",
 )
 @click.option(
     "--gitlab_backend_username",
     envvar="GITLAB_USERNAME",
-    required=True,
+    required=False,
     help="Gitlab Username",
 )
 @click.option(
     "--gitlab_backend_access_token",
     envvar="GITLAB_ACCESS_TOKEN",
-    required=True,
+    required=False,
     help="Gitlab Access Token",
 )
 @click.option(
