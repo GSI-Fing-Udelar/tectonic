@@ -179,6 +179,7 @@ source "libvirt" "machine" {
     bus        = "sata"
   }
   shutdown_mode = "acpi"
+  shutdown_timeout = "30s"
 }
 
 source "docker" "machine" {
