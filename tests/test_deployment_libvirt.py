@@ -51,15 +51,8 @@ def test_constructor(description):
 
 def test_generate_backend_config(libvirt_deployment, base_tectonic_path):
     answer = libvirt_deployment.generate_backend_config(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt')
-    assert len(answer) == 8
-    assert 'address=https://gitlab.com/udelar-lab01-gsi-lab-libvirt' in answer
-    assert 'lock_address=https://gitlab.com/udelar-lab01-gsi-lab-libvirt/lock' in answer
-    assert 'unlock_address=https://gitlab.com/udelar-lab01-gsi-lab-libvirt/lock' in answer
-    assert 'username=testuser' in answer
-    assert 'password=testtoken' in answer
-    assert 'lock_method=POST' in answer
-    assert 'unlock_method=DELETE' in answer
-
+    assert len(answer) == 1
+    assert "path=terraform-states/udelar-lab01-gsi-lab-libvirt" in answer
 
 def test_terraform_apply(mocker, libvirt_deployment, base_tectonic_path):
     variables = {"var1": "value1", "var2": "value2"}
@@ -166,8 +159,10 @@ def test_deploy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
                     "become_flags":"-i",
                     "copy":1,
                     "instance":None,
-                    'networks': mocker.ANY, 
+                    'networks': mocker.ANY,
+                    'machine_name':'udelar-lab01-localhost',
                     "parameter":{},
+                    'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941',
                 }
             },
             "vars": {
@@ -247,7 +242,9 @@ def test_destroy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
                     "copy":1,
                     "instance":None,
                     'networks': mocker.ANY, 
+                    'machine_name':'udelar-lab01-localhost',
                     "parameter":{},
+                    'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941',
                 }
             },
             "vars": {
@@ -1167,7 +1164,9 @@ def test_manage_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
                     "instance": None,
                     "copy": 1,
                     'networks': mocker.ANY, 
-                    "parameter": {},
+                    'machine_name':'udelar-lab01-localhost',
+                    "parameter":{},
+                    'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941',
                     "become_flags": "-i",
                 }
             },
@@ -1243,7 +1242,9 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
                     "copy": 1,
                     "instance": 1,
                     'networks': mocker.ANY, 
-                    "parameter" : {'flags': 'Flag 2'}
+                    'machine_name': 'udelar-lab01-1-server',
+                    "parameter" : {'flags': 'Flag 2'},
+                    'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941',
                 }
             },
             "vars": {
@@ -1270,8 +1271,10 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
                     "ansible_become_method": "runas",
                     "ansible_become_user": "administrator",
                     "ansible_shell_type": "powershell",
-                    'networks': mocker.ANY, 
-                    "parameter" : {'flags': 'Flag 2'}
+                    'networks': mocker.ANY,
+                    'machine_name': 'udelar-lab01-1-victim-1',
+                    "parameter" : {'flags': 'Flag 2'},
+                    'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941'
 
                 },
                 "udelar-lab01-1-victim-2" : {
@@ -1284,7 +1287,9 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
                     "ansible_become_user": "administrator",
                     "ansible_shell_type": "powershell",
                     'networks': mocker.ANY, 
-                    "parameter" : {'flags': 'Flag 2'}
+                    'machine_name': 'udelar-lab01-1-victim-2',
+                    "parameter" : {'flags': 'Flag 2'},
+                    'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941'
                 }
             },
             "vars": {
@@ -2060,7 +2065,7 @@ def test_get_service_info(mocker, libvirt_deployment, base_tectonic_path):
     result.status = "successful"
     mock_ansible = mocker.patch.object(ansible_runner.interface, "run", return_value=result)
     playbook = str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml')
-    inventory = {'elastic': {'hosts': {'udelar-lab01-elastic': {'ansible_host': None, 'ansible_user': 'rocky', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no', 'instance': None, 'copy': 1, 'networks': mocker.ANY, 'parameter': {}, 'become_flags': '-i'}}, 'vars': {'ansible_become': True, 'ansible_connection': 'ssh', 'basename': 'elastic', 'docker_host': 'unix:///var/run/docker.sock', 'instances': 2, 'platform': 'libvirt', 'institution': 'udelar', 'lab_name': 'lab01', 'action': 'agents_status'}}}
+    inventory = {'elastic': {'hosts': {'udelar-lab01-elastic': {'ansible_host': None, 'ansible_user': 'rocky', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no', 'instance': None, 'copy': 1, 'networks': mocker.ANY, 'machine_name': 'udelar-lab01-elastic', 'parameter': {}, 'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941', 'become_flags': '-i'}}, 'vars': {'ansible_become': True, 'ansible_connection': 'ssh', 'basename': 'elastic', 'docker_host': 'unix:///var/run/docker.sock', 'instances': 2, 'platform': 'libvirt', 'institution': 'udelar', 'lab_name': 'lab01', 'action': 'agents_status'}}}
     libvirt_deployment._get_service_info("elastic",playbook,{"action":"agents_status"})
     mock_ansible.assert_called_once_with(
         inventory=inventory,

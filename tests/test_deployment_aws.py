@@ -179,17 +179,9 @@ def test_create_cr_images_error(mocker, aws_deployment):
 
 
 def test_generate_backend_config(aws_deployment):
-    terraform_dir = "/tmp/terraform"
-    answer = aws_deployment.generate_backend_config(terraform_dir)
-    assert len(answer) == 8
-    assert "address=https://gitlab.com/udelar-lab01-terraform" in answer
-    assert "lock_address=https://gitlab.com/udelar-lab01-terraform/lock" in answer
-    assert "unlock_address=https://gitlab.com/udelar-lab01-terraform/lock" in answer
-    assert "username=testuser" in answer
-    assert "password=testtoken" in answer
-    assert "lock_method=POST" in answer
-    assert "unlock_method=DELETE" in answer
-
+    answer = aws_deployment.generate_backend_config(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws')
+    assert len(answer) == 1
+    assert "path=terraform-states/udelar-lab01-gsi-lab-aws" in answer
 
 def test_get_deploy_cr_vars(aws_deployment):
     variables = aws_deployment.get_deploy_cr_vars()
@@ -1197,7 +1189,9 @@ def test_deploy_packetbeat(mocker, aws_deployment, base_tectonic_path):
                     'copy': 1,
                     'instance': None,
                     'networks': mocker.ANY, 
+                    'machine_name': 'udelar-lab01-packetbeat',
                     'parameter': {},
+                    'random_seed': "Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941",
                 }
             },
             'vars': {
@@ -1247,7 +1241,7 @@ def test_elastic_install_endpoint(mocker, aws_deployment, base_tectonic_path):
     result_ok.rc = 0
     result_ok.status = "successful"
     mock_ansible = mocker.patch.object(ansible_runner.interface, "run", return_value=result_ok)
-    inventory = {'victim': {'hosts': {'udelar-lab01-1-victim-1': {'ansible_host': None, 'ansible_user': 'administrator', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p ubuntu@127.0.0.1"', 'instance': 1, 'copy': 1, 'networks': mocker.ANY, 'parameter': {'flags': 'Flag 2'}, 'ansible_shell_type': 'powershell', 'ansible_become_method': 'runas', 'ansible_become_user': 'administrator'}, 'udelar-lab01-1-victim-2': {'ansible_host': None, 'ansible_user': 'administrator', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p ubuntu@127.0.0.1"', 'instance': 1, 'copy': 2, 'networks': mocker.ANY, 'parameter': {'flags': 'Flag 2'}, 'ansible_shell_type': 'powershell', 'ansible_become_method': 'runas', 'ansible_become_user': 'administrator'}}, 'vars': {'ansible_become': True, 'ansible_connection': 'ssh', 'basename': 'victim', 'docker_host': 'unix:///var/run/docker.sock', 'instances': 2, 'platform': 'aws', 'institution': 'udelar', 'lab_name': 'lab01', 'token': '1234567890abcdef', 'elastic_url': 'https://10.0.0.31:8220'}}, 'server': {'hosts': {'udelar-lab01-1-server': {'ansible_host': None, 'ansible_user': 'ubuntu', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p ubuntu@127.0.0.1"', 'instance': 1, 'copy': 1, 'networks': mocker.ANY, 'parameter': {'flags': 'Flag 2'}, 'become_flags': '-i'}}, 'vars': {'ansible_become': True, 'ansible_connection': 'ssh', 'basename': 'server', 'docker_host': 'unix:///var/run/docker.sock', 'instances': 2, 'platform': 'aws', 'institution': 'udelar', 'lab_name': 'lab01', 'token': '1234567890abcdef', 'elastic_url': 'https://10.0.0.31:8220'}}}
+    inventory = {'victim': {'hosts': {'udelar-lab01-1-victim-1': {'ansible_host': None, 'ansible_user': 'administrator', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p ubuntu@127.0.0.1"', 'instance': 1, 'copy': 1, 'networks': mocker.ANY, 'machine_name':'udelar-lab01-1-victim-1', 'parameter': {'flags': 'Flag 2'}, 'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941', 'ansible_shell_type': 'powershell', 'ansible_become_method': 'runas', 'ansible_become_user': 'administrator'}, 'udelar-lab01-1-victim-2': {'ansible_host': None, 'ansible_user': 'administrator', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p ubuntu@127.0.0.1"', 'instance': 1, 'copy': 2, 'networks': mocker.ANY, 'machine_name':'udelar-lab01-1-victim-2', 'parameter': {'flags': 'Flag 2'}, 'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941', 'ansible_shell_type': 'powershell', 'ansible_become_method': 'runas', 'ansible_become_user': 'administrator'}}, 'vars': {'ansible_become': True, 'ansible_connection': 'ssh', 'basename': 'victim', 'docker_host': 'unix:///var/run/docker.sock', 'instances': 2, 'platform': 'aws', 'institution': 'udelar', 'lab_name': 'lab01', 'token': '1234567890abcdef', 'elastic_url': 'https://10.0.0.31:8220'}}, 'server': {'hosts': {'udelar-lab01-1-server': {'ansible_host': None, 'ansible_user': 'ubuntu', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p ubuntu@127.0.0.1"', 'instance': 1, 'copy': 1, 'networks': mocker.ANY, 'machine_name':'udelar-lab01-1-server', 'parameter': {'flags': 'Flag 2'}, 'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941', 'become_flags': '-i'}}, 'vars': {'ansible_become': True, 'ansible_connection': 'ssh', 'basename': 'server', 'docker_host': 'unix:///var/run/docker.sock', 'instances': 2, 'platform': 'aws', 'institution': 'udelar', 'lab_name': 'lab01', 'token': '1234567890abcdef', 'elastic_url': 'https://10.0.0.31:8220'}}}
     aws_deployment._elastic_install_endpoint([1])
     assert len(mock_ansible.mock_calls) == 2
     mock_ansible.assert_has_calls([
