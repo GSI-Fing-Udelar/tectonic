@@ -225,7 +225,7 @@ class LibvirtDeployment(Deployment):
                 localhost_name = f"{self.description.institution}-{self.description.lab_name}-localhost"
                 inventory = ansible.build_inventory(
                     machine_list=[localhost_name],
-                    username="gsi",
+                    username=self.description.user_install_packetbeat,
                     extra_vars = {
                         "action": "install",
                         "elastic_url": f"https://{elastic_ip}:8220",
@@ -255,7 +255,7 @@ class LibvirtDeployment(Deployment):
         localhost_name = f"{self.description.institution}-{self.description.lab_name}-localhost"
         inventory = ansible.build_inventory(
             machine_list=[localhost_name],
-            username="gsi",
+            username=self.description.user_install_packetbeat,
             extra_vars={
                 "action": "delete",
                 "institution": self.description.institution,
@@ -281,7 +281,7 @@ class LibvirtDeployment(Deployment):
             localhost_name = f"{self.description.institution}-{self.description.lab_name}-localhost"
             inventory = ansible.build_inventory(
                 machine_list=[localhost_name],
-                username="gsi",
+                username=self.description.user_install_packetbeat,
                 extra_vars={
                     "action": action,
                     "institution": self.description.institution,
