@@ -247,7 +247,7 @@
               when: docker_gateway_ip['rc'] == 0
             - name: Set gateway_ip for Docker if gateway.docker.internal not exists
               ansible.builtin.set_fact:
-                gateway_ip: "{{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.129"
+                gateway_ip: "{{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.1"
               when: docker_gateway_ip['rc'] != 0
           when: platform == "docker"
         - name: Set gateway_ip for Libvirt
