@@ -28,20 +28,6 @@ a main `config` section and sections for `aws`, `libvirt` and
   trace on error). Default: `yes`.
 * `keep_ansible_logs`: Keep Ansible logs on guests. Default: `no`.
 
-### [aws] section:
-* `aws_region`: The region to deploy instances in AWS. Default:
-  `us-east-1`.
-* `aws_default_instance_type`: Default instance type to use for
-  machines. Can be overwritten in the per guest configuration in the
-  lab description file (attribute `instance_type`, see
-  [ref](description)). Default: `t2.micro`.
-* `teacher_access`: Type of teacher access to configure. Can be either
-  `host` (an instance that acts as a bastion host), or `endpoint` (an
-  EIC endpoint that connects to all instances in the lab). Default:
-  `host`.
-* `packetbeat_vlan_id`: VLAN id used for traffic mirroring. Default:
-  `1`.
-
 ### [libvirt] section:
 * `libvirt_uri`: URI to connect to libvirt server. Default:
   `qemu:///system`.
@@ -59,13 +45,35 @@ a main `config` section and sections for `aws`, `libvirt` and
 * `libvirt_proxy`: Proxy configuration to use inside guest machines,
   if necessary for web access. Default: no proxy.
 
+### [aws] section:
+* `aws_region`: The region to deploy instances in AWS. Default:
+  `us-east-1`.
+* `aws_default_instance_type`: Default instance type to use for
+  machines. Can be overwritten in the per guest configuration in the
+  lab description file (attribute `instance_type`, see
+  [ref](description)). Default: `t2.micro`.
+* `teacher_access`: Type of teacher access to configure. Can be either
+  `host` (an instance that acts as a bastion host), or `endpoint` (an
+  EIC endpoint that connects to all instances in the lab). Default:
+  `host`.
+* `packetbeat_vlan_id`: VLAN id used for traffic mirroring. Default:
+  `1`.
+
+### [docker] section:
+* `docker_uri`: URI to connect to docker server. Default: `unix:///var/run/docker.sock`
+* `docker_dns`: DNS server to use in internet network. leave empty to use Docker defaults. Default: `164.73.32.2`.
+
 ### [elastic] section:
-* `elastic_stack_version`: Elastic Stack version to use. Use `latest` for latest version or assign a specific version. Default: `latest`.
+* `elastic_stack_version`: Elastic Stack version to use. Use `latest` for latest version or assign a specific version. Default: `8.14.3`.
 * `packetbeat_policy_name`: Packetbeat policy agent name. Do not use this name for custom agent policies. Default: `Packetbeat`.
 * `endpoint_policy_name`: Endpoint policy agent name. Do not use this name for custom agent policies. Default: `Endpoint`.
+* `user_install_packetbeat`: When using Docker or Libvirt and traffic type as monitoring, Packetbeat must be deployed on the host. This variable modifies the user used by Ansible for this task. Default: `gsi`.
+
+### [caldera] section:
+* `caldera_version`: Caldera version to use. Use `latest` for latest version or assign a specific version. Default: `5.0.0`.
 
 You can find an example configuration file with the default values
-[here](./python/tectonic.ini).
+[here](./tectonic/tectonic.ini).
 
 The `tectonic` program also accepts command line arguments for all
 of these options. See `tectonic.py --help` for detailed information.

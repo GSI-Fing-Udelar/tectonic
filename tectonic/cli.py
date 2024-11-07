@@ -121,7 +121,7 @@ def load_config(ctx, param, config_file):
     options = {}
 
     # flatten the config file
-    for section in ["config", "aws", "libvirt", "elastic"]:
+    for section in ["config", "aws", "libvirt", "docker", "elastic", "caldera"]:
         try:
             options = options | dict(cfg[section])
         except KeyError:
@@ -322,7 +322,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 )
 @click.option(
     "--elastic_stack_version",
-    default="latest",
+    default="8.14.3",
     help="Elastc version",
 )
 @click.option(
@@ -393,6 +393,11 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     help="Agent policy name.",
 )
 @click.option(
+    "--user_install_packetbeat",
+    default="gsi",
+    help="User used to install Packetbeat",
+)
+@click.option(
     "--internet_network_cidr_block",
     default="192.168.4.0/24",
     help="CIDR internet network",
@@ -415,8 +420,14 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 )
 @click.option(
     "--caldera_version",
-    default="latest",
+    default="5.0.0",
     help="Caldera version.",
+)
+@click.option(
+    "--docker_dns",
+    default="8.8.8.8",
+    required=False,
+    help="DNS to use for internet networks on Docker",
 )
 @click.argument("lab_edition_file", type=click.Path(exists=True, dir_okay=False))
 @click.pass_context
@@ -448,11 +459,13 @@ def tectonic(
     proxy,
     lab_edition_file,
     endpoint_policy_name,
+    user_install_packetbeat,
     internet_network_cidr_block,
     services_network_cidr_block,
     keep_ansible_logs,
     docker_uri,
     caldera_version,
+    docker_dns,
 ):
     """Deploy or manage a cyber range according to LAB_EDITION_FILE."""
     logfile = PurePosixPath(lab_edition_file).parent.joinpath("tectonic.log")
@@ -490,11 +503,13 @@ def tectonic(
         proxy,
         instance_type,
         endpoint_policy_name,
+        user_install_packetbeat,
         internet_network_cidr_block,
         services_network_cidr_block,
         keep_ansible_logs,
         docker_uri,
         caldera_version,
+        docker_dns,
     )
 
     if platform == "aws":
