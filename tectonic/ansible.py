@@ -129,6 +129,29 @@ class Ansible:
                 # Make sure we load environment variables within sudo shell
                 inventory[base_name]["hosts"][machine]["become_flags"] = "-i"
         return inventory
+    
+    def build_inventory_localhost(self, username=None, extra_vars=None):
+        if extra_vars is None:
+            extra_vars = {}
+        return {
+            f"{self.deployment.description.institution}-{self.deployment.description.lab_name}-localhost" : {
+                "hosts": {
+                    "localhost": {
+                        "become_flags": "-i",
+                    }
+                },
+                "vars": {
+                    "ansible_become": True,
+                    "ansible_user": username or self.deployment.description.user_install_packetbeat,
+                    "basename": "localhost",
+                    "instances": self.deployment.description.instance_number,
+                    "platform": self.deployment.description.platform,
+                    "institution": self.deployment.description.institution,
+                    "lab_name": self.deployment.description.lab_name,
+                    "ansible_connection" : "local",
+                } | extra_vars,
+            }
+        }
 
     def run(self,
             instances=None,
