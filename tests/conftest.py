@@ -260,11 +260,13 @@ def description(labs_path, terraform_dir, test_data_path):
         proxy="http://proxy.fing.edu.uy:3128",
         instance_type=InstanceTypeAWS("t2.micro"),
         endpoint_policy_name="Endpoint",
+        user_install_packetbeat="gsi",
         internet_network_cidr_block="10.0.0.0/25",
         services_network_cidr_block="10.0.0.128/25",
         keep_ansible_logs=False,
         docker_uri='unix:///var/run/docker.sock',
         caldera_version='latest',
+        docker_dns="8.8.8.8",
     )
     yield desc
 
