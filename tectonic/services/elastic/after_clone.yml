@@ -29,6 +29,23 @@
     ansible.builtin.meta: end_play
     when: credentials.stat.exists
 
+- name: Configure dns
+  block:
+    - name: Create script
+      ansible.builtin.copy:
+        dest: /tmp/dns.sh
+        content: |
+          #!/bin/bash
+          echo "nameserver {{ elastic.dns }}" > /etc/resolv.conf
+        mode: '0777'
+    - name: Execute script
+      ansible.builtin.command: bash /tmp/dns.sh
+    - name: Remove script
+      ansible.builtin.file:
+        path: /tmp/dns.sh
+        state: absent
+  when: elastic.dns != ""
+
 - name: Add hostname
   lineinfile:
     dest: /etc/hosts
@@ -58,7 +75,6 @@
     - name: Get IP for gateway.docker.internal
       ansible.builtin.command: dig gateway.docker.internal A +noall +answer +short
       register: docker_gateway_ip
-      ignore_errors: true
       when: platform == "docker"
     - name: Set gateway_ip
       block:
@@ -67,11 +83,11 @@
             - name: Set gateway_ip for Docker if gateway.docker.internal exists
               ansible.builtin.set_fact:
                 gateway_ip: "{{ docker_gateway_ip['stdout'] }}"
-              when: docker_gateway_ip['rc'] == 0
+              when: docker_gateway_ip['stdout'] != ""
             - name: Set gateway_ip for Docker if gateway.docker.internal not exists
               ansible.builtin.set_fact:
-                gateway_ip: "{{ (elastic.ip | split('.'))[0] }}.{{ (elastic.ip | split('.'))[1] }}.{{ (elastic.ip | split('.'))[2] }}.129"
-              when: docker_gateway_ip['rc'] != 0
+                gateway_ip: "{{ (elastic.ip | split('.'))[0] }}.{{ (elastic.ip | split('.'))[1] }}.{{ (elastic.ip | split('.'))[2] }}.1"
+              when: docker_gateway_ip['stdout'] == ""
           when: platform == "docker"
         - name: Set gateway_ip for Libvirt
           ansible.builtin.set_fact:
