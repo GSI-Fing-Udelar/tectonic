@@ -73,11 +73,13 @@ class Description(object):
         proxy,
         instance_type,
         endpoint_policy_name,
+        user_install_packetbeat,
         internet_network_cidr_block,
         services_network_cidr_block,
         keep_ansible_logs,
         docker_uri,
-        caldera_version
+        caldera_version,
+        docker_dns,
     ):
         """Create a Description object.
 
@@ -106,11 +108,13 @@ class Description(object):
             proxy: Proxy for libvirt.
             instance_type: An InstanceType object to compute the correct size of machine.
             endpoint_policy_name: Name of the Agent policy.
+            user_install_packetbeat: User used to install Packetbeat.
             internet_network_cidr_block: CIDR of internet network.
             services_network_cidr_block: CIDR of services network.
             keep_ansible_logs: Keep Ansible logs on managed hosts.
             docker_uri: URI for docker.
             caldera_version: Caldera version.
+            docker_dns: DNS to use for internet networks on Docker.
 
         Returns:
              A Description object.
@@ -143,11 +147,13 @@ class Description(object):
         self.proxy = proxy
         self.instance_type = instance_type
         self.endpoint_policy_name = endpoint_policy_name
+        self.user_install_packetbeat = user_install_packetbeat
         self.internet_network = internet_network_cidr_block
         self.services_network = services_network_cidr_block
         self.keep_ansible_logs = keep_ansible_logs
         self.docker_uri = docker_uri
         self.caldera_version = caldera_version
+        self.docker_dns = docker_dns
         self.services = {}
         self._load_lab_edition(path)
         self.description_dir = Path(self.description_file).parent.resolve().as_posix()
