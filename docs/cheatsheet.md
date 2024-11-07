@@ -1,4 +1,4 @@
-# Tectonic: An Academic Cyberrange
+# Tectonic: An Academic Cyber Range
 ## Cheatsheet
 Tectonic is a cyber range designed to provide realistic cybersecurity
 scenarios for education and training through the deployment of
@@ -24,7 +24,7 @@ file (usually `<lab_name>.yml`.
   ```
   tectonic -c ~/tectonic.ini <lab_edition_file> destroy [--images]
   ```
-+ Show cyberrange information (access IP addresses, credentials):
++ Show cyber range information (access IP addresses, credentials):
   ```
   tectonic -c ~/tectonic.ini <lab_edition_file> info
   ```
@@ -49,7 +49,7 @@ Operations done on machines in the scenario, after it is deployed.
   tectonic -c ~/tectonic.ini <lab_edition_file> run-ansible -p <playbook> <machine_spec>
   ```
 
-### Machine specification
+#### Machine specification
 The above commands expect machine specification options, which can be
 a combination of: guest (base) name (`-g`), instance number(`-i`), and
 copy number (`-c`).
