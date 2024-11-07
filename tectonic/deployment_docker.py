@@ -160,6 +160,7 @@ class DockerDeployment(Deployment):
                     "description_path": self.description.description_dir,
                     "ip": str(ipaddress.IPv4Network(self.description.services_network)[2]),
                     "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
+                    "dns": self.description.docker_dns,
                 },
                 "caldera":{
                     "ip": str(ipaddress.IPv4Network(self.description.services_network)[4]),
@@ -564,3 +565,78 @@ class DockerDeployment(Deployment):
         for network in self._get_services_network_data():
             resources.append('docker_network.subnets["'f"{network}"'"]')
         return resources
+    
+    def _deploy_packetbeat(self):
+        try:
+            elastic_name = self.description.get_service_name("elastic")
+            if self.get_instance_status(elastic_name) == "RUNNING":
+                elastic_ip = self.get_ssh_hostname(elastic_name)
+                playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml'
+                result = self._get_service_info("elastic",playbook,{"action":"get_token_by_policy_name","policy_name":self.description.packetbeat_policy_name})
+                agent_token = result[0]["token"]
+                ansible = Ansible(deployment=self)
+                inventory = ansible.build_inventory_localhost(
+                    username=self.description.user_install_packetbeat,
+                    extra_vars = {
+                        "action": "install",
+                        "elastic_url": f"https://{elastic_ip}:8220",
+                        "token": agent_token,
+                        "elastic_agent_version": self.description.elastic_stack_version,
+                        "institution": self.description.institution,
+                        "lab_name": self.description.lab_name,
+                    },
+                )
+                ansible.wait_for_connections(inventory=inventory)
+                ansible.run(inventory = inventory,
+                    playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml',
+                    quiet = True
+                )
+            else:
+                click.echo(f"Unable to connect to Elastic. Check if machine is running.")
+        except Exception as e:
+            raise DeploymentDockerException(e)
+    
+    def _destroy_packetbeat(self, instances=None):
+        ansible = Ansible(deployment=self)
+        inventory = ansible.build_inventory_localhost(
+            username=self.description.user_install_packetbeat,
+            extra_vars = {
+                "action": "delete",
+                "institution": self.description.institution,
+                "lab_name": self.description.lab_name,
+            },
+        )
+        ansible.run(inventory = inventory,
+            playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml',
+            quiet=True
+        )
+
+    def _manage_packetbeat(self, action):
+        """
+        Get status of Packetbeat service.
+
+        Returns:
+          str: status of packetbeat service.
+        """
+        try:
+            ansible = Ansible(deployment=self)
+            inventory = ansible.build_inventory_localhost(
+                username=self.description.user_install_packetbeat,
+                extra_vars = {
+                    "action": action,
+                    "institution": self.description.institution,
+                    "lab_name": self.description.lab_name,
+                },
+            )
+            ansible.run(inventory = inventory,
+                        playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml',
+                        quiet = True)
+            if action == "status":
+                packetbeat_status = ansible.debug_outputs[0]["agent_status"]
+                if packetbeat_status == "stopped":
+                    packetbeat_status = "shutoff"
+                return packetbeat_status.upper()
+            else:
+                return None
+        except Exception as e:
+            raise DeploymentDockerException(f"Unable to apply action {action} for Packetbeat. Error {e}")
