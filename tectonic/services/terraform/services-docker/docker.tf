@@ -27,9 +27,9 @@ resource "docker_network" "subnets" {
 
   name = "${each.key}"
   driver = "bridge"
-  internal = "${lookup(each.value, "mode")}" != "nat"
+  internal = false # "${lookup(each.value, "mode")}" != "nat"
   ipam_config {
-    subnet = lookup(each.value, "cidr") #each.value
+    subnet = lookup(each.value, "cidr")
   }
 
 }
@@ -48,7 +48,7 @@ resource "docker_container" "machines" {
   ports {
     internal = lookup(each.value, "port")
     external = lookup(each.value, "port")
-    ip = "0.0.0.0"
+    ip = "127.0.0.1"
     protocol = "tcp"
   }
 

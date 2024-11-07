@@ -24,7 +24,7 @@ resource "docker_network" "subnets" {
 
   name = "${each.key}"
   driver = "bridge"
-  internal = true
+  internal = false #true
   ipam_config {
     subnet = each.value
   }
