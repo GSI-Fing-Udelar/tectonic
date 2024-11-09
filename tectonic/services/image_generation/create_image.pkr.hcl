@@ -120,7 +120,7 @@ variable "elastic_latest_version" {
 }
 
 variable "elasticsearch_memory" {
-  type = number
+  type = string
   description = "Elasticsearch JVM memory to use."
 }
 
