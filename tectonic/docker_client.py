@@ -30,7 +30,11 @@ class Client:
     
     def __init__(self, description):
         self.description = description
-        self.connection = docker.DockerClient(base_url=self.description.docker_uri)
+        try:
+            self.connection = docker.DockerClient(base_url=self.description.docker_uri)
+        except:
+            self.connection = None
+            raise DockerClientException(f"Cannot connect to docker server at {self.description.docker_uri}")
 
     def __del__(self):
         if self.connection is not None:
