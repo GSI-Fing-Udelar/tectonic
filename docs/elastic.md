@@ -126,3 +126,7 @@ Each subdirectory contains NDJSON files with the configuration of each Kibana re
 2. Click on *Detection rules (SIEM)*.
 3. Select all the rules you want to export. Make sure that this rules are enabled so that after being imported they are also enabled by default.
 4. Click on *Bulk actions* and then on *Export*. At this point the rules_export.ndjson file should have downloaded. Move this file to the directory *security_rules*. 
+
+
+#### Installation of Packetbeat
+When the instances monitoring type is traffic and the platform is libvirt or docker, Packetbeat must be configured on the host. In case you have any kind of network problem, you can download elastic-agent from the internet and unzip it in the directory /opt/elastic-agent-{{ elastic_agent_version }}-linux-x86_64/

@@ -64,13 +64,13 @@ a main `config` section and sections for `aws`, `libvirt` and
 * `docker_dns`: DNS server to use in internet network. leave empty to use Docker defaults. Default: `164.73.32.2`.
 
 ### [elastic] section:
-* `elastic_stack_version`: Elastic Stack version to use. Use `latest` for latest version or assign a specific version. Default: `8.14.3`.
+* `elastic_stack_version`: Elastic Stack version to use. Use `latest` for latest version or assign a specific version. Default: `8.14.3`. All tests were performed on version 8.14.3 so we recommend using it. However, it may also work for new Elastic features.
 * `packetbeat_policy_name`: Packetbeat policy agent name. Do not use this name for custom agent policies. Default: `Packetbeat`.
 * `endpoint_policy_name`: Endpoint policy agent name. Do not use this name for custom agent policies. Default: `Endpoint`.
 * `user_install_packetbeat`: When using Docker or Libvirt and traffic type as monitoring, Packetbeat must be deployed on the host. This variable modifies the user used by Ansible for this task. Keep in mind that this user needs to be able to escalate privileges to root without a password. To do this you can configure the sudoers file. Default: `gsi`. 
 
 ### [caldera] section:
-* `caldera_version`: Caldera version to use. Use `latest` for latest version or assign a specific version. Default: `5.0.0`.
+* `caldera_version`: Caldera version to use. Use `latest` for latest version or assign a specific version. Default: `5.0.0`. All tests were performed on version 5.0.0 so we recommend using it. However, it may also work for new Caldera features.
 
 You can find an example configuration file with the default values
 [here](./tectonic/tectonic.ini).
