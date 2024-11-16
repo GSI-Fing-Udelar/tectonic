@@ -93,7 +93,7 @@ An **agent policy** is a collection of inputs and settings that defines the data
     - Extension: JSON extension (.json)
     - Content: agent policy configuration in JSON format. Use the request body content.
 
-By default, a default policy named Packetbeat or Endpoint is deployed that allows monitoring of network events or hosts events in the scenario. If you use the name Packetbeat/Endpoint for your policy then you must set the variable elastic_deployment.deploy_default_policy to no. Otherwise your policy will collide with the default deployed policy for Packetbeat/Endpoint and the deployment will fail.
+By default, a default policy named Packetbeat or Endpoint is deployed that allows monitoring of network events or hosts events in the scenario. If you use the name Packetbeat/Endpoint for your custom policy then you must set the variable elastic_deployment.deploy_default_policy to no. Otherwise your policy will collide with the default deployed policy for Packetbeat/Endpoint and the deployment will fail.
 
 #### Policy Integrations
 **Elastic Agent integrations** provide a simple, unified way to collect data from popular apps and services, and protect systems from security threats. Integrations are added to an agent policy. To export policy integrations you must follow these steps:
@@ -105,7 +105,7 @@ By default, a default policy named Packetbeat or Endpoint is deployed that allow
     - Extension: JSON extension (.json)
     - Content: integration configuration in JSON format. Use the request body content.
 
-You can configure your own integrations for the default Packetbeat/Endpoint agent policy. For this you must create the *Packetbeat* or *Endpoint* subdirectory with the necessary integrations files. If you deploy the default Packetbeat or Endpoint integration, you cannot use the name "Packetbeat" or "Endpoint" for your integrations.
+You can configure your own integrations for the default Packetbeat/Endpoint agent policy. For this you must create the *Packetbeat* or *Endpoint* subdirectory with the necessary integrations files. If you deploy the default Packetbeat or Endpoint integration, you cannot use the name "Packetbeat" or "Endpoint" for your custom integrations.
 
 Make sure to deploy a policy whose name matches the value configured in the packetbeat_policy_name or endpoint_policy_name options in the teconic.ini file. Otherwise, the deployment will fail.
 
