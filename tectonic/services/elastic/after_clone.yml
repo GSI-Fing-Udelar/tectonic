@@ -44,7 +44,7 @@
       ansible.builtin.file:
         path: /tmp/dns.sh
         state: absent
-  when: elastic.dns != ""
+  when: elastic.dns is defined and elastic.dns != ""
 
 - name: Add hostname
   lineinfile:
