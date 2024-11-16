@@ -51,7 +51,7 @@ Operations done on machines in the scenario, after it is deployed.
 
 #### Machine specification
 The above commands expect machine specification options, which can be
-a combination of: guest (base) name (`-g`), instance number(`-i`), and
+a combination of: guest (base) name (`-g`), instance number (`-i`), and
 copy number (`-c`).
 
 For example, to reboot all copies of the machine `victim` of instances 3 and 4, one can run:
@@ -115,5 +115,5 @@ editor or run locally a text editor that supports remote connections,
 such as [VSCode](https://code.visualstudio.com/). Using the above ssh
 connection commands, VSCode can edit remote files, open a console and
 configure port forwardings. See
-https://code.visualstudio.com/docs/remote/ssh for more details.
+<https://code.visualstudio.com/docs/remote/ssh> for more details.
 
