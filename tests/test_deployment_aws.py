@@ -24,7 +24,6 @@ import json
 import fabric
 import invoke
 import ansible_runner
-import os
 from freezegun import freeze_time
 
 
@@ -1207,6 +1206,7 @@ def test_deploy_packetbeat(mocker, aws_deployment, base_tectonic_path):
                 'lab_name': 'lab01',
                 'platform': 'aws',
                 'token': '1234567890abcdef',
+                'proxy': 'http://proxy.fing.edu.uy:3128',
             },
         }
     }
