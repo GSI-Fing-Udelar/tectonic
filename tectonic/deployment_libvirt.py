@@ -233,6 +233,7 @@ class LibvirtDeployment(Deployment):
                         "elastic_agent_version": self.description.elastic_stack_version,
                         "institution": self.description.institution,
                         "lab_name": self.description.lab_name,
+                        "proxy": self.description.proxy,
                     },
                 )
                 inventory["localhost"]["hosts"]["localhost"] = inventory["localhost"]["hosts"][localhost_name]

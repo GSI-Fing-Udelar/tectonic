@@ -32,13 +32,6 @@
           register: result
         - name: Install Elastic Agent if not alredy installed 
           block:
-            - name: Create tmp dir
-              ansible.builtin.file:
-                path: /tmp/elastic-agent
-                state: directory
-                owner: root
-                group: root
-                mode: '0660'
             - name: "Check if agent binaries already downloaded"
               ansible.builtin.stat:
                 path: "/opt/elastic-agent-{{ elastic_agent_version }}-linux-x86_64/"
@@ -49,6 +42,9 @@
                 dest: /opt
                 remote_src: yes
               when: result_agent.stat.isdir is undefined
+              environment:
+                http_proxy: "{{ proxy | default(omit) }}"
+                https_proxy: "{{ proxy | default(omit) }}"
             - name: "Install agent"
               block: 
               - name: "Install agent"
