@@ -586,7 +586,6 @@ class DockerDeployment(Deployment):
                         "lab_name": self.description.lab_name,
                     },
                 )
-                ansible.wait_for_connections(inventory=inventory)
                 ansible.run(inventory = inventory,
                     playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml',
                     quiet = True
