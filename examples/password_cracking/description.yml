@@ -60,6 +60,8 @@ topology:
     members:
       - attacker
       - victim
+
+# Elastic service configuration
 elastic_settings:
   # Wheter to deploy this service. Default: no.
   enable: yes
@@ -67,4 +69,10 @@ elastic_settings:
   # packetbeat) or endpoint (monitor processes, network traces, files,
   # logs). Default: traffic.
   monitor_type: "endpoint"
-  size: small
+  # Wheter to deploy default policy. Default: yes.
+  deploy_default_policy: yes
+
+# Caldera service configuration
+caldera_settings:
+  # Wheter to deploy this service. Default: no.
+  enable: no
