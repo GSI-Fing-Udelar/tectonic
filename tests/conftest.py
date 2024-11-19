@@ -358,7 +358,7 @@ def aws_client(description, ec2_client, aws_secrets):
     client = AWSClient(description=description, connection=ec2_client, secrets_manager=aws_secrets)
     yield client
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def mock_docker_client():
     mock_client = MagicMock(docker.DockerClient)
 
