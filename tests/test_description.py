@@ -18,12 +18,9 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-from pprint import pprint
-
 import pytest
 
-from tectonic.description import Description, DescriptionException
-from pathlib import Path
+from tectonic.description import DescriptionException
 
 
 def test_description(description):
@@ -335,7 +332,7 @@ def test_is_in_service_network(description):
     description.deploy_elastic = True
     description.deploy_caldera = True
 
-def test_get_topology_netowrk(description):
+def test_get_topology_network(description):
     internal_network = description.get_topology_network("internal")
     assert internal_network["name"] == "internal"
     assert set(internal_network["members"]) == set(["attacker", "victim", "server"])

@@ -19,9 +19,7 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import socket
-
 import pytest
-
 
 from tectonic.aws import Client, AWSClientException
 
@@ -148,30 +146,6 @@ def test_get_image(aws_client):
 
 
 def test_delete_image(aws_client, aws_instance_name):
-    instance = aws_client.ec2_client.describe_instances(
-        Filters=[{"Name": "tag:Name", "Values": [aws_instance_name]}])["Reservations"][0][
-        "Instances"][0]
-
-    tags_name = [{"Key": "Name", "Value": "deleteme"}]
-    image = aws_client.ec2_client.create_image(
-        Name="deleteme",
-        TagSpecifications=[{"ResourceType": "image", "Tags": tags_name}],
-        BlockDeviceMappings=[
-            {
-                'DeviceName': '/dev/sdh',
-                'Ebs': {
-                    'VolumeSize': 100,
-                },
-            },
-            {
-                'DeviceName': '/dev/sdc',
-                'VirtualName': 'ephemeral1',
-            },
-        ],
-        InstanceId=instance["InstanceId"],
-        Description='image to delete',
-        NoReboot=True
-    )
     aws_client.delete_image("deleteme")
     images = aws_client.ec2_client.describe_images(
         Filters=[{"Name": "tag:Name", "Values": ["deleteme"]}]

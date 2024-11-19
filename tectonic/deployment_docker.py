@@ -584,9 +584,9 @@ class DockerDeployment(Deployment):
                         "elastic_agent_version": self.description.elastic_stack_version,
                         "institution": self.description.institution,
                         "lab_name": self.description.lab_name,
+                        "proxy": self.description.proxy,
                     },
                 )
-                ansible.wait_for_connections(inventory=inventory)
                 ansible.run(inventory = inventory,
                     playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml',
                     quiet = True

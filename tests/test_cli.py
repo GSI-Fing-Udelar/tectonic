@@ -20,8 +20,6 @@
 
 import pytest
 import io
-import os
-from pathlib import Path
 import responses
 import click
 from click.testing import CliRunner
@@ -389,7 +387,6 @@ def test_tectonic_deploy(mocker, monkeypatch,
 
 @responses.activate
 def test_tectonic_destroy(mocker, monkeypatch,
-                            base_tectonic_path, labs_path,
                             tectonic_config,
                             lab_edition_file,
                             ec2_client,
@@ -473,7 +470,6 @@ def test_tectonic_destroy(mocker, monkeypatch,
 @responses.activate
 def test_tectonic_create_images(mocker,
                                   monkeypatch,
-                                  base_tectonic_path,
                                   tectonic_config,
                                   lab_edition_file,
                                   ec2_client,
@@ -526,7 +522,6 @@ def test_tectonic_create_images(mocker,
 @responses.activate
 def test_tectonic_list(mocker,
                          monkeypatch,
-                         base_tectonic_path,
                          tectonic_config,
                          lab_edition_file,
                          ec2_client,
@@ -613,8 +608,7 @@ def test_tectonic_start(monkeypatch,
                           tectonic_config,
                           lab_edition_file,
                           ec2_client,
-                          aws_secrets,
-                          libvirt_client):
+                          aws_secrets):
 
     # Get the platform from the config file
     cfg = ConfigParser()
@@ -675,8 +669,7 @@ def test_tectonic_shutdown(monkeypatch,
                              tectonic_config,
                              lab_edition_file,
                              ec2_client,
-                             aws_secrets,
-                             libvirt_client):
+                             aws_secrets):
 
     # Get the platform from the config file
     cfg = ConfigParser()
@@ -731,8 +724,7 @@ def test_tectonic_reboot(monkeypatch,
                            tectonic_config,
                            lab_edition_file,
                            ec2_client,
-                           aws_secrets,
-                           libvirt_client):
+                           aws_secrets):
 
     # Get the platform from the config file
     cfg = ConfigParser()
@@ -891,7 +883,6 @@ def test_tectonic_run_ansible(mocker,
 @responses.activate
 def test_tectonic_student_access(mocker,
                                  tectonic_config,
-                                 base_tectonic_path,
                                  lab_edition_file):
     responses.add(responses.GET,
         'https://api.elastic-cloud.com/api/v1/regions/us-east-1/stack/versions?show_deleted=false',
@@ -947,7 +938,7 @@ def test_tectonic_student_access(mocker,
 @responses.activate
 def test_tectonic_recreate(mocker, monkeypatch,
                            test_data_path,
-                           base_tectonic_path, labs_path,
+                           labs_path,
                            tectonic_config,
                            lab_edition_file,
                            ec2_client,

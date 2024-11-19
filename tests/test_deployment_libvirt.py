@@ -20,7 +20,6 @@
 
 import pytest
 import json
-import os
 import python_terraform
 import libvirt_qemu
 import tectonic.ssh
@@ -49,12 +48,12 @@ def test_constructor(description):
         gitlab_backend_access_token="testtoken",
     )
 
-def test_generate_backend_config(libvirt_deployment, base_tectonic_path):
+def test_generate_backend_config(libvirt_deployment):
     answer = libvirt_deployment.generate_backend_config(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt')
     assert len(answer) == 1
     assert "path=terraform-states/udelar-lab01-gsi-lab-libvirt" in answer
 
-def test_terraform_apply(mocker, libvirt_deployment, base_tectonic_path):
+def test_terraform_apply(mocker, libvirt_deployment):
     variables = {"var1": "value1", "var2": "value2"}
     resources = {'libvirt_domain.machines["udelar-lab01-1-attacker"]'}
 
@@ -79,7 +78,7 @@ def test_terraform_apply(mocker, libvirt_deployment, base_tectonic_path):
                                        ),
                            ])
 
-def test_get_deploy_cr_vars(libvirt_deployment, terraform_dir, test_data_path):
+def test_get_deploy_cr_vars(libvirt_deployment, test_data_path):
     variables = libvirt_deployment.get_deploy_cr_vars()
     # do not compare authorized_keys as its order is not guaranteed
     variables.pop('authorized_keys', None)
@@ -103,7 +102,7 @@ def test_get_deploy_cr_vars(libvirt_deployment, terraform_dir, test_data_path):
         "services_network_base_ip": 9,
     }
 
-def test_get_deploy_services_vars(libvirt_deployment, terraform_dir, test_data_path):
+def test_get_deploy_services_vars(libvirt_deployment, test_data_path):
     variables = libvirt_deployment.get_deploy_services_vars()
     # do not compare authorized_keys as its order is not guaranteed
     variables.pop('authorized_keys', None)
@@ -120,7 +119,7 @@ def test_get_deploy_services_vars(libvirt_deployment, terraform_dir, test_data_p
     }
 
 
-def test_deploy_cr_all_instances(mocker, libvirt_deployment, base_tectonic_path):
+def test_deploy_cr_all_instances(mocker, libvirt_deployment):
     mock = mocker.patch.object(libvirt_deployment, "terraform_apply")
     libvirt_deployment._deploy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt', libvirt_deployment.get_deploy_cr_vars(), None)
     mock.assert_called_once_with(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt',
@@ -129,7 +128,7 @@ def test_deploy_cr_all_instances(mocker, libvirt_deployment, base_tectonic_path)
     )
 
 
-def test_deploy_cr_instance_two(mocker, libvirt_deployment, base_tectonic_path):
+def test_deploy_cr_instance_two(mocker, libvirt_deployment):
     mock = mocker.patch.object(libvirt_deployment, "terraform_apply")
 
     libvirt_deployment._deploy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt', libvirt_deployment.get_deploy_cr_vars(), [2])
@@ -139,7 +138,7 @@ def test_deploy_cr_instance_two(mocker, libvirt_deployment, base_tectonic_path):
                                  resources=libvirt_deployment.get_cr_resources_to_target_apply([2]),
                                  )
 
-def test_deploy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
+def test_deploy_packetbeat(mocker, libvirt_deployment):
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.129")
     mocker.patch.object(LibvirtDeployment, "_get_service_password", return_value={"elastic":"password"})
     mocker.patch.object(LibvirtDeployment,"_get_service_info",return_value=[{"token" : "1234567890abcdef"}])
@@ -178,6 +177,7 @@ def test_deploy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
                 "lab_name": "lab01",
                 "instances": 2,
                 'platform': 'libvirt',
+                'proxy': 'http://proxy.fing.edu.uy:3128',
             },
         }
     }
@@ -201,7 +201,7 @@ def test_deploy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
     ])
 
 
-def test_terraform_destroy(mocker, libvirt_deployment, base_tectonic_path):
+def test_terraform_destroy(mocker, libvirt_deployment):
     variables = {"var1": "value1", "var2": "value2"}
     resources = {'libvirt_domain.machines["udelar-lab01-1-attacker"]'}
 
@@ -224,7 +224,7 @@ def test_terraform_destroy(mocker, libvirt_deployment, base_tectonic_path):
 
 
 
-def test_destroy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
+def test_destroy_packetbeat(mocker, libvirt_deployment):
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.129")
     mocker.patch.object(LibvirtDeployment, "_get_service_password", return_value={"elastic":"password"})
     result_ok = ansible_runner.Runner(config=None)
@@ -272,7 +272,7 @@ def test_destroy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
     )
 
 
-def test_destroy_cr_all_instances(mocker, libvirt_deployment, base_tectonic_path):
+def test_destroy_cr_all_instances(mocker, libvirt_deployment):
     mock = mocker.patch.object(libvirt_deployment, "terraform_destroy")
 
     libvirt_deployment._destroy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt', libvirt_deployment.get_deploy_cr_vars(), None)
@@ -282,7 +282,7 @@ def test_destroy_cr_all_instances(mocker, libvirt_deployment, base_tectonic_path
                                  )
 
 
-def test_destroy_cr_instance_two(mocker, libvirt_deployment, base_tectonic_path):
+def test_destroy_cr_instance_two(mocker, libvirt_deployment):
     mock = mocker.patch.object(libvirt_deployment, "terraform_destroy")
 
     libvirt_deployment._destroy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt', libvirt_deployment.get_deploy_cr_vars(), [2])
@@ -291,7 +291,7 @@ def test_destroy_cr_instance_two(mocker, libvirt_deployment, base_tectonic_path)
                                  resources=libvirt_deployment.get_cr_resources_to_target_destroy([2]),
                                  )
 
-def test_terraform_recreate(mocker, libvirt_deployment, base_tectonic_path):
+def test_terraform_recreate(mocker, libvirt_deployment):
     machines = {'libvirt_domain.machines["udelar-lab01-1-attacker"]'}
 
     terraform_dir = tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt'
@@ -444,7 +444,7 @@ def test_get_teacher_access_ip(libvirt_deployment):
     libvirt_deployment.description.teacher_access = "host"
 
 
-def test_student_access(mocker, libvirt_deployment, base_tectonic_path):
+def test_student_access(mocker, libvirt_deployment):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
 
     result_ok = ansible_runner.Runner(config=None)
@@ -486,7 +486,7 @@ def test_student_access(mocker, libvirt_deployment, base_tectonic_path):
                                  )
 
 
-def test_student_access_no_passwords(mocker, libvirt_deployment, base_tectonic_path):
+def test_student_access_no_passwords(mocker, libvirt_deployment):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
 
     result_ok = ansible_runner.Runner(config=None)
@@ -525,7 +525,7 @@ def test_student_access_no_passwords(mocker, libvirt_deployment, base_tectonic_p
     libvirt_deployment.description.create_student_passwords = True
 
 
-def test_student_access_no_pubkeys(mocker, libvirt_deployment, base_tectonic_path):
+def test_student_access_no_pubkeys(mocker, libvirt_deployment):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
 
     result_ok = ansible_runner.Runner(config=None)
@@ -589,7 +589,7 @@ def test_get_cyberrange_data_elasticup(mocker, libvirt_deployment):
 └──────────────────────────────────┴─────────────────────────┘"""
     assert expected == table.get_string()
 
-def test_get_cyberrange_data_elasticdown(mocker, capsys, libvirt_deployment):
+def test_get_cyberrange_data_elasticdown(mocker, libvirt_deployment):
     libvirt_deployment.description.deploy_elastic = True
     libvirt_deployment.description.deploy_caldera = False
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value={"udelar-lab01-elastic": {"Status": "NOT RUNNING"}})
@@ -597,7 +597,7 @@ def test_get_cyberrange_data_elasticdown(mocker, capsys, libvirt_deployment):
     expected = """Unable to get Elastic info right now. Please make sure de Elastic machine is running."""
     assert expected == result
 
-def test_get_cyberrange_data_calderaup(mocker, capsys, libvirt_deployment):
+def test_get_cyberrange_data_calderaup(mocker, libvirt_deployment):
     libvirt_deployment.description.deploy_elastic = False
     libvirt_deployment.description.deploy_caldera = True
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value="RUNNING")
@@ -917,7 +917,7 @@ def test_list_instances(mocker, libvirt_deployment):
 └─────────────────────────┴─────────┘"""
     assert result.get_string() == expected
 
-def test_start(mocker, libvirt_deployment, base_tectonic_path):
+def test_start(mocker, libvirt_deployment):
     #No services
     libvirt_deployment.start([1], ["attacker"], None, False)
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-1-attacker")
@@ -961,7 +961,7 @@ def test_start(mocker, libvirt_deployment, base_tectonic_path):
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-caldera")
     assert state == libvirt_deployment.client.STATES_MSG[libvirt.VIR_DOMAIN_RUNNING]
 
-def test_shutdown(mocker, libvirt_deployment, base_tectonic_path):
+def test_shutdown(mocker, libvirt_deployment):
     #No services
     libvirt_deployment.shutdown([1], ["attacker"], None, False)
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-1-attacker")
@@ -1005,7 +1005,7 @@ def test_shutdown(mocker, libvirt_deployment, base_tectonic_path):
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-caldera")
     assert state == libvirt_deployment.client.STATES_MSG[libvirt.VIR_DOMAIN_SHUTOFF]
 
-def test_reboot(mocker, libvirt_deployment, base_tectonic_path):
+def test_reboot(mocker, libvirt_deployment):
     #No services
     libvirt_deployment.description.deploy_elastic = True
     libvirt_deployment.reboot([1], ["attacker"], None, False)
@@ -1055,7 +1055,7 @@ def test_reboot(mocker, libvirt_deployment, base_tectonic_path):
     assert state == libvirt_deployment.client.STATES_MSG[libvirt.VIR_DOMAIN_RUNNING]
 
 
-def test_recreate(mocker, capsys, libvirt_deployment, base_tectonic_path, labs_path):
+def test_recreate(mocker, capsys, libvirt_deployment, labs_path):
     libvirt_deployment.description.monitor_type = "endpoint"
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.129")
@@ -1149,7 +1149,7 @@ def test_recreate(mocker, capsys, libvirt_deployment, base_tectonic_path, labs_p
         "Configuring caldera agents...\n"
     ))
 
-def test_manage_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
+def test_manage_packetbeat(mocker, libvirt_deployment):
     result_ok = ansible_runner.Runner(config=None)
     result_ok.rc = 0
     result_ok.status = "successful"
@@ -1224,7 +1224,7 @@ def test_manage_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
         libvirt_deployment._manage_packetbeat("status")
     assert "Unable to apply action status for Packetbeat." in str(exception.value)
 
-def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path):
+def test_elastic_install_endpoint(mocker, libvirt_deployment):
     libvirt_deployment.description.monitor_type = "endpoint"
     libvirt_deployment.description.deploy_elastic = True
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.129")
@@ -1333,7 +1333,7 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
     libvirt_deployment.description.monitor_type = "traffic"
 
 
-def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, base_tectonic_path, test_data_path):
+def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, test_data_path):
     # Deploy only instances
     libvirt_deployment.description.monitor_type = "traffic"
     libvirt_deployment.description.deploy_caldera = False
@@ -1635,7 +1635,7 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, base_tectoni
     ])
     assert capsys.readouterr().out == "Deploying Cyber Range services...\nWaiting for services to boot up...\nConfiguring services...\nDeploying Cyber Range instances...\nWaiting for machines to boot up...\nConfiguring student access...\nRunning after-clone configuration...\nConfiguring caldera agents...\n"
 
-def test_deploy_infraestructure_specific_instance(mocker, capsys, libvirt_deployment, base_tectonic_path, test_data_path):
+def test_deploy_infraestructure_specific_instance(mocker, capsys, libvirt_deployment, test_data_path):
     # Deploy caldera services using endpoint as monitor_type
     libvirt_deployment.description.deploy_elastic = False
     libvirt_deployment.description.deploy_caldera = True
@@ -1729,7 +1729,7 @@ def test_deploy_infraestructure_specific_instance(mocker, capsys, libvirt_deploy
     ])
     assert capsys.readouterr().out == "Deploying Cyber Range services...\nWaiting for services to boot up...\nConfiguring services...\nDeploying Cyber Range instances...\nWaiting for machines to boot up...\nConfiguring student access...\nRunning after-clone configuration...\nConfiguring caldera agents...\n"    
     
-def test_destroy_infraestructure(mocker, capsys, libvirt_deployment, base_tectonic_path):
+def test_destroy_infraestructure(mocker, capsys, libvirt_deployment):
     #Destroy only infraestructure
     libvirt_deployment.description.monitor_type = "traffic"
     libvirt_deployment.description.deploy_elastic = False
@@ -1814,7 +1814,7 @@ def test_get_parameters(capsys, libvirt_deployment):
     assert "│    1     │ {'flags': 'Flag 2'} │" in captured.out
     assert "└──────────┴─────────────────────┘" in captured.out  
 
-def test_destroy_infraestructure_specific_instance(mocker, capsys, libvirt_deployment, base_tectonic_path):
+def test_destroy_infraestructure_specific_instance(mocker, capsys, libvirt_deployment):
     libvirt_deployment.description.deploy_elastic = False
     libvirt_deployment.description.deploy_caldera = False
     mock_terraform = mocker.patch.object(libvirt_deployment, "terraform_destroy")
@@ -1865,7 +1865,7 @@ def test_destroy_infraestructure_specific_instance(mocker, capsys, libvirt_deplo
     ],any_order=False)
     assert capsys.readouterr().out == "Destroying Cyber Range instances...\n"
 
-def test_create_services_images_ok(mocker, libvirt_deployment, base_tectonic_path, test_data_path):
+def test_create_services_images_ok(mocker, libvirt_deployment, test_data_path):
     machines = {
         "caldera": {
             "base_os": "rocky8",
@@ -2058,7 +2058,7 @@ def test_get_services_resources_to_target_apply(libvirt_deployment):
 def test_get_services_resources_to_target_destroy(libvirt_deployment):
     assert libvirt_deployment.get_services_resources_to_target_destroy([1]) == []
 
-def test_get_service_info(mocker, libvirt_deployment, base_tectonic_path):
+def test_get_service_info(mocker, libvirt_deployment):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
     result = ansible_runner.Runner(config=None)
     result.rc = 0

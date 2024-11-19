@@ -51,7 +51,7 @@ Operations done on machines in the scenario, after it is deployed.
 
 #### Machine specification
 The above commands expect machine specification options, which can be
-a combination of: guest (base) name (`-g`), instance number(`-i`), and
+a combination of: guest (base) name (`-g`), instance number (`-i`), and
 copy number (`-c`).
 
 For example, to reboot all copies of the machine `victim` of instances 3 and 4, one can run:
@@ -71,7 +71,7 @@ Instance and copy numbers can be specified either as a list: `1,2,3`, as a range
   `teacher_access_ip` is shown after scenario deployment and in
   the output of `tectonic info`.
 
-+ Student access:
++ Student access:  
   ```
   ssh -J traineeXX@<student_access_ip> <entry_point_ip>
   ```
@@ -90,18 +90,30 @@ Instance and copy numbers can be specified either as a list: `1,2,3`, as a range
   ```
   scp -J traineeXX@<student_access_ip> <source> <dest>
   ```
-  
+
+#### Port forwarding
+It is possible to forward ports to access services withing the
+scenario. To do that, use the `-L` option to `ssh`:
+```
+ssh -L localhost:<local-port>:<remote-ip>:<remote-port> <ssh-connection-options>
+```
+where `<ssh-connection-options>` connects to the scenario either as
+student or teacher, as above.
+
+For example, to forward local port 80443 to port 443 on machine 10.0.1.5, use:
+```
+ssh -L localhost:80443:10.0.1.5:443 <ssh-connection-options>
+```
+
+You can then connect to localhost:80443 to access port 443 on machine
+10.0.1.5.
 
   
-
-
-
-
-
-
-
-
-
-
-
+## File edition
+For editing files within a scenario, you can use a console based text
+editor or run locally a text editor that supports remote connections,
+such as [VSCode](https://code.visualstudio.com/). Using the above ssh
+connection commands, VSCode can edit remote files, open a console and
+configure port forwardings. See
+<https://code.visualstudio.com/docs/remote/ssh> for more details.
 
