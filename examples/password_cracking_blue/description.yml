@@ -1,0 +1,68 @@
+---
+# This is the specification file for the Password Cracking scenario.
+# It holds a static description of the lab that can be shared and
+# reused.
+
+# The institution that created the lab. Alphanumeric. Required.
+institution: udelar
+
+# The name of the lab. Must be alphanumeric. Required.
+lab_name: password_cracking_blue
+
+# The default operating system to use for guests. Must be one of
+# ubuntu22, rocky8, kali or windows_srv_2022. 
+# Optional, default: ubuntu22.
+default_os: ubuntu22
+
+# Guest machines of the scenario
+guest_settings:
+
+  # The attacker is the entry point from which trainees perform the
+  # attack.
+  attacker:
+    # Whether the trainees can access the machine through SSH or RDP.
+    # Default: no
+    entry_point: no
+    # Amount of RAM of the machine, in MB. Default: 1024.
+    memory: 1024
+    # Number of virtual CPUs of the machine. Default: 1.
+    vcpu: 1
+    # Amount of disk of the machine, in GB. Default: 10.
+    disk: 10
+    # The operating system of the guest (ubuntu22, rocky8, kali or
+    # windows_srv_2022). Default is default_os.
+    base_os: ubuntu22
+    # Whether the guest has internet access. Note that this might be
+    # expensive on AWS, since a NAT gateway is deployed in the lab
+    # VPC. It is not yet supported on libvirt. Default: no.
+    internet_access: no
+    # The number of copies of this guest to deploy in each instance.
+    # Default: 1.
+    copies: 1
+    # Whether to monitor this guest using Elastic Security.
+    monitor: no
+    # Whether a Caldera agent will be installed in the guest for
+    # attack simulation. Default: no.
+    red_team_agent: yes
+    # Whether a Caldera agent will be installed in the guest for
+    # defensive actions simulation. Default: no.
+    blue_team_agent: no
+
+  # The victim that must be attacked.
+  victim:
+    memory: 1536
+    monitor: no
+    entry_point: yes
+
+# Scenario network definition
+topology:
+  # One network named internal, with both machines connected.
+  - name: internal
+    members:
+      - attacker
+      - victim
+
+# Caldera service configuration
+caldera_settings:
+  # Wheter to deploy this service. Default: no.
+  enable: yes

