@@ -137,9 +137,11 @@ The necessary steps to solve the scenario are as follows:
    01i=^k{+`l3&8as$4zc2)d?[@-~ge7m1
    ```
 
+## Assessment
 
-
-
+The assessment is based on a set of Elastic Security SIEM rules. 
+As students progress through the resolution, they will generate alerts based on key events identified by these rules. 
+The alerts can be analyzed from the Security - Alerts menu in Kibana.
 
 
 
