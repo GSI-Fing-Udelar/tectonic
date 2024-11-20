@@ -1,3 +1,6 @@
+<!-- Compile with:
+    pandoc -V colorlinks=true -o cheatsheet.<ext> cheatsheet.md
+-->
 <h1 id="tectonic-an-academic-cyber-range">Tectonic: An Academic Cyber
 Range</h1>
 <h2 id="cheatsheet">Cheatsheet</h2>
@@ -35,13 +38,28 @@ deployed.</p>
 <li><p>Run an arbitrary ansible playbook:</p>
 <pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; run-ansible -p &lt;playbook&gt; &lt;machine_spec&gt;</code></pre></li>
 </ul>
+<h4 id="machine-names">Machine names</h4>
+<p>Machines in the cyber range are identified as follows:</p>
+<pre><code>&lt;institution&gt;-&lt;lab_name&gt;-&lt;instance&gt;-&lt;guest&gt;[-&lt;copy&gt;]</code></pre>
+<p>The copy value is optional and only appears in the name if there is
+more than one copy for the same guest.</p>
+<p>For example, copy 2 of the <code>server</code> guest of instance 3 of
+the lab <code>test_lab</code> and institution <code>test_inst</code>
+is:</p>
+<pre><code>test_inst-test_lab-3-server-2</code></pre>
+<p>As another example, the attacker guest, which consists of a single
+copy, of instance 2 of the lab test_lab and institution test_inst
+is:</p>
+<pre><code>test_inst-test_lab-2-attacker</code></pre>
 <h4 id="machine-specification">Machine specification</h4>
-<p>The above commands expect machine specification options, which can be
-a combination of: guest (base) name (<code>-g</code>), instance number
-(<code>-i</code>), and copy number (<code>-c</code>).</p>
+<p>Most commands accept machine specification options, which can be a
+combination of: instance number (<code>-i</code>), guest (base) name
+(<code>-g</code>), and copy number (<code>-c</code>).</p>
 <p>For example, to reboot all copies of the machine <code>victim</code>
 of instances 3 and 4, one can run:</p>
-<pre><code>  tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; [reboot|shutdown|start] -g victim -i 3,4</code></pre>
+<pre><code>  tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; reboot -g victim -i 3,4</code></pre>
+<p>this will reboot machines <code>test_inst-test_lab-3-victim</code>
+and <code>test_inst-test_lab-4-victim</code>.</p>
 <p>Instance and copy numbers can be specified either as a list:
 <code>1,2,3</code>, as a range: <code>5-10</code>, or as a combination:
 <code>2,4-6,8</code>.</p>
