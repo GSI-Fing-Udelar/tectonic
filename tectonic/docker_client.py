@@ -83,13 +83,11 @@ class Client:
     def delete_image(self, image_name):
         """
         Delete base image
-
         """
         try:
             self.connection.images.remove(image_name)
         except Exception as exception:
-            if type(exception) != docker.errors.ImageNotFound:
-                raise DockerClientException(f"{exception}")
+            raise DockerClientException(f"{exception}")
         
     def start_instance(self, instance_name):
         """
