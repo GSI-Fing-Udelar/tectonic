@@ -7,7 +7,7 @@
 institution: udelar
 
 # The name of the lab. Must be alphanumeric. Required.
-lab_name: password_cracking
+lab_name: password_cracking_blue
 
 # The default operating system to use for guests. Must be one of
 # ubuntu22, rocky8, kali or windows_srv_2022. 
@@ -22,7 +22,7 @@ guest_settings:
   attacker:
     # Whether the trainees can access the machine through SSH or RDP.
     # Default: no
-    entry_point: yes
+    entry_point: no
     # Amount of RAM of the machine, in MB. Default: 1024.
     memory: 1024
     # Number of virtual CPUs of the machine. Default: 1.
@@ -43,7 +43,7 @@ guest_settings:
     monitor: no
     # Whether a Caldera agent will be installed in the guest for
     # attack simulation. Default: no.
-    red_team_agent: no
+    red_team_agent: yes
     # Whether a Caldera agent will be installed in the guest for
     # defensive actions simulation. Default: no.
     blue_team_agent: no
@@ -51,7 +51,8 @@ guest_settings:
   # The victim that must be attacked.
   victim:
     memory: 1536
-    monitor: yes
+    monitor: no
+    entry_point: yes
 
 # Scenario network definition
 topology:
@@ -61,18 +62,7 @@ topology:
       - attacker
       - victim
 
-# Elastic service configuration
-elastic_settings:
-  # Wheter to deploy this service. Default: no.
-  enable: yes
-  # How to monitor instances. traffic (only network traffic with
-  # packetbeat) or endpoint (monitor processes, network traces, files,
-  # logs). Default: traffic.
-  monitor_type: "endpoint"
-  # Wheter to deploy default policy. Default: yes.
-  deploy_default_policy: yes
-
 # Caldera service configuration
 caldera_settings:
   # Wheter to deploy this service. Default: no.
-  enable: no
+  enable: yes

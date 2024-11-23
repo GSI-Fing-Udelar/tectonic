@@ -22,6 +22,7 @@ import json
 import click
 import ipaddress
 import datetime
+import time
 import math
 
 from tectonic.deployment import Deployment, DeploymentException
@@ -422,8 +423,8 @@ class DockerDeployment(Deployment):
                         if len(response) > 0:
                             for agent in response: #TODO: see what the response is like when there are a large number of agents. pagination?
                                 #Caldera uses this logic to define the state of the agent
-                                now = int((datetime.datetime.now(datetime.timezone.utc) - datetime.datetime(1970, 1, 1)).total_seconds() * 1000) #Milliseconds since epoch
-                                agent_last_seen = int((datetime.datetime.strptime(agent["last_seen"],"%Y-%m-%dT%H:%M:%SZ") - datetime.datetime(1970, 1, 1)).total_seconds() * 1000) #Milliseconds since epoch
+                                now = int(time.time() * 1000) #Milliseconds since epoch
+                                agent_last_seen = int((datetime.datetime.strptime(agent["last_seen"],"%Y-%m-%dT%H:%M:%SZ") - datetime.datetime(1970, 1, 1)).total_seconds() * 1000)
                                 difference = now - agent_last_seen
                                 if (difference <= 60000 and agent["sleep_min"] == 3 and agent["sleep_max"] == 3 and agent["watchdog"] == 1):
                                     agents_status["pending_kill"] = agents_status["pending_kill"] + 1

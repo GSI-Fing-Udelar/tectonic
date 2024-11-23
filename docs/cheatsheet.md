@@ -50,9 +50,25 @@ Operations done on machines in the scenario, after it is deployed.
   ```
 
 #### Machine specification
+Machines are identified as follows: 
+
+```
+<institution>-<lab_name>-<instance>-<guest>[-<copy>]
+``` 
+The copy value is optional and only appears in the name if there is more than one copy for the same guest.
+
+For example, copy 2 of the server guest of instance 3 of the lab test_lab and institution test_inst is:
+```
+test_inst-test_lab-3-server-2
+```
+
+As another example, the attacker guest, which consists of a single copy, of instance 2 of the lab test_lab and institution test_inst is:
+```
+test_inst-test_lab-2-attacker
+```
+
 The above commands expect machine specification options, which can be
-a combination of: guest (base) name (`-g`), instance number (`-i`), and
-copy number (`-c`).
+a combination of: instance number (`-i`), guest (base) name (`-g`), and copy number (`-c`).
 
 For example, to reboot all copies of the machine `victim` of instances 3 and 4, one can run:
 ```

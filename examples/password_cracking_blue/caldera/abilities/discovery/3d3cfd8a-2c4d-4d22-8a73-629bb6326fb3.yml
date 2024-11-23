@@ -1,0 +1,20 @@
+- requirements: []
+  name: Password Cracking - Get attacker IP
+  description: Get attacker IP
+  tactic: discovery
+  technique_id: T1082
+  technique_name: System Information Discovery
+  executors:
+  - cleanup: []
+    timeout: 60
+    platform: linux
+    name: sh
+    payloads: []
+    parsers:
+    - module: plugins.stockpile.app.parsers.basic
+      parserconfigs:
+      - source: attacker.host.ip
+        edge: ''
+        target: ''
+    command: hostname -I | grep -Po "\d+\.\d+\.\d+\.4"
+  id: 3d3cfd8a-2c4d-4d22-8a73-629bb6326fb3

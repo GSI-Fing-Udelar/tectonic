@@ -1,0 +1,15 @@
+- requirements: []
+  name: 'Password Cracking - Unshadow'
+  description: Unshadow passwd and shadow files
+  tactic: credential-access
+  technique_id: T1110
+  technique_name: Brute Force
+  executors:
+  - cleanup: []
+    timeout: 60
+    platform: linux
+    name: sh
+    payloads: []
+    parsers: []
+    command: unshadow /opt/passwd /opt/shadow.bak > /opt/tocrack
+  id: 8e175119-9f7c-4610-8fbc-7c24ec29f760
