@@ -318,7 +318,7 @@ def ansible_aws(aws_deployment):
     b = Ansible(aws_deployment)
     yield b
 
-@pytest.fixture(scope="session", params=["aws","libvirt"])
+@pytest.fixture(scope="session", params=["aws","libvirt", "docker"])
 def tectonic_config(request, tmp_path_factory, test_data_path):
     config_file = tmp_path_factory.mktemp('data') / f"{request.param}-config.ini"
     config_ini = test_config.replace(
