@@ -50,7 +50,7 @@ def test_get_instance_status(docker_client, mocker, description):
     status = client.get_instance_status("udelar-lab01-1-attacker")
     assert status == "RUNNING"
 
-    status = client.get_instance_status("udelar-lab01-1-victim")
+    status = client.get_instance_status("udelar-lab01-1-victim-1")
     assert status == "STOPPED"
 
     docker_client.containers.get.side_effect = docker.errors.NotFound("Container not found")
@@ -68,7 +68,7 @@ def test_get_machine_private_ip(docker_client, mocker, description):
     ip = client.get_machine_private_ip("udelar-lab01-1-attacker")
     assert ip == "10.0.1.4"
 
-    ip = client.get_machine_private_ip("udelar-lab01-1-victim")
+    ip = client.get_machine_private_ip("udelar-lab01-1-victim-1")
     assert ip == "10.0.1.5"
 
     ip = client.get_machine_private_ip("udelar-lab01-elastic")
@@ -88,10 +88,10 @@ def test_delete_image(docker_client, mocker, description):
     client.delete_image("udelar-lab01-attacker")
     docker_client.images.remove.assert_called_once_with("udelar-lab01-attacker")
 
-    # docker_client.images.get.side_effect = Exception("Unexpected error")
-    # with pytest.raises(DockerClientException) as exception:
-    #     client.delete_image("udelar-lab01-attacker")
-    # assert "Unexpected error" in str(exception.value)
+    docker_client.images.remove.side_effect = Exception("Unexpected error")
+    with pytest.raises(DockerClientException) as exception:
+        client.delete_image("udelar-lab01-attacker")
+    assert "Unexpected error" in str(exception.value)
 
 def test_start_instance(docker_client, mocker, description):
     mocker.patch("docker.DockerClient", return_value=docker_client)
