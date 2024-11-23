@@ -480,8 +480,6 @@ class DockerDeployment(Deployment):
     def get_cr_resources_to_target_apply(self, instances):
         resources = self._get_machines_resources_name(instances)
         resources = resources + self._get_subnet_resources_name(instances)
-        if self.description.configure_dns:
-            resources = resources + self._get_dns_resources_name(instances)
         return resources
 
     def get_cr_resources_to_target_destroy(self, instances):
@@ -489,8 +487,6 @@ class DockerDeployment(Deployment):
         resources = []
         for machine in machines:
             resources.append('docker_container.machines["' f"{machine}" '"]')
-        if self.description.configure_dns:
-            resources = resources + self._get_dns_resources_name(instances)
         return resources
     
     def _get_machines_resources_name(self, instances):
@@ -512,10 +508,6 @@ class DockerDeployment(Deployment):
                     '"]'
                 )
         return resources
-
-    def _get_dns_resources_name(self, instances):
-        # TODO
-        return []
     
     def get_services_resources_to_target_destroy(self, instances):
         """
