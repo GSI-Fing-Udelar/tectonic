@@ -90,7 +90,7 @@ def test_get_deploy_cr_vars(docker_deployment):
         "guest_data_json": json.dumps(docker_deployment.description.get_guest_data()),
         "default_os": "ubuntu22",
         "os_data_json": json.dumps(tectonic.constants.OS_DATA),
-        "configure_dns": True,
+        "configure_dns": docker_deployment.description.configure_dns,
         "docker_uri":"unix:///var/run/docker.sock"
     }
 
@@ -105,7 +105,7 @@ def test_get_deploy_services_vars(docker_deployment):
         "subnets_json": json.dumps(docker_deployment._get_services_network_data()),
         "guest_data_json": json.dumps(docker_deployment._get_services_guest_data()),
         "os_data_json": json.dumps(tectonic.constants.OS_DATA),
-        "configure_dns": True,
+        "configure_dns": docker_deployment.description.configure_dns,
         "docker_uri":"unix:///var/run/docker.sock",
     }
 
@@ -129,7 +129,7 @@ def test_deploy_cr_instance_two(mocker, docker_deployment):
                                  resources=docker_deployment.get_cr_resources_to_target_apply([2]),
                                  )
 
-def test_deploy_packetbeat(mocker, docker_deployment):
+def test_deploy_packetbeat(mocker, docker_deployment, capsys):
     mocker.patch.object(DockerDeployment,"get_ssh_hostname",return_value="10.0.0.129")
     mocker.patch.object(DockerDeployment, "_get_service_password", return_value={"elastic":"password"})
     mocker.patch.object(DockerDeployment,"_get_service_info",return_value=[{"token" : "1234567890abcdef"}])
@@ -151,6 +151,12 @@ def test_deploy_packetbeat(mocker, docker_deployment):
             extravars={"ansible_no_target_syslog" : not docker_deployment.description.keep_ansible_logs }
         )
     ])
+
+    # Elastic not running
+    mocker.patch.object(DockerClient,"get_instance_status",return_value="STOPPED")
+    docker_deployment._deploy_packetbeat()
+    captured = capsys.readouterr()
+    assert "Unable to connect to Elastic. Check if machine is running." in captured.out
 
 
 def test_terraform_destroy(mocker, docker_deployment):
@@ -520,7 +526,6 @@ def test_connect_to_instance(mocker, docker_deployment):
     mock_run.side_effect = Exception("Unexpected error")
     with pytest.raises(DockerClientException) as exception:
         docker_deployment.connect_to_instance("udelar-lab01-1-attacker", "ubuntu")
-        mock_run.assert_called_once()
     assert "Unexpected error" in str(exception.value)
 
 def test_get_ssh_proxy_command(docker_deployment):
@@ -538,7 +543,6 @@ def test_start_instance(docker_deployment, docker_client):
     docker_client.containers.get.side_effect = Exception("Unexpected error")
     with pytest.raises(DockerClientException) as exception:
         docker_deployment.start_instance("udelar-lab01-1-attacker")
-        assert docker_client.containers.get("udelar-lab01-1-attacker").start.call_count == 0
     assert "Unexpected error" in str(exception.value)
 
 def test_stop_instance(docker_deployment, docker_client):
@@ -548,7 +552,6 @@ def test_stop_instance(docker_deployment, docker_client):
     docker_client.containers.get.side_effect = Exception("Unexpected error")
     with pytest.raises(DockerClientException) as exception:
         docker_deployment.stop_instance("udelar-lab01-1-attacker")
-        assert docker_client.containers.get("udelar-lab01-1-attacker").stop.call_count == 0
     assert "Unexpected error" in str(exception.value)
 
 def test_reboot_instance(docker_deployment, docker_client):
@@ -558,7 +561,6 @@ def test_reboot_instance(docker_deployment, docker_client):
     docker_client.containers.get.side_effect = Exception("Unexpected error")
     with pytest.raises(DockerClientException) as exception:
         docker_deployment.reboot_instance("udelar-lab01-1-attacker")
-        assert docker_client.containers.get("udelar-lab01-1-attacker").restart.call_count == 0
     assert "Unexpected error" in str(exception.value)
 
 def test_delete_cr_images(mocker, docker_deployment, docker_client):
@@ -674,6 +676,38 @@ def test_get_services_status(mocker, docker_deployment):
 │ caldera-agents-pending_kill │    2    │
 └─────────────────────────────┴─────────┘"""
     assert expected == table.get_string()
+
+    #Caldera not running
+    docker_deployment.description.deploy_caldera = True
+    docker_deployment.description.deploy_elastic = False
+    mocker.patch.object(DockerClient,"get_instance_status",return_value="STOPPED")
+    table = docker_deployment.get_services_status()
+    expected = """┌──────────────────────┬─────────┐
+│         Name         │  Status │
+├──────────────────────┼─────────┤
+│ udelar-lab01-caldera │ STOPPED │
+└──────────────────────┴─────────┘"""
+    assert expected == table.get_string()
+
+    #Elastic not running
+    docker_deployment.description.deploy_caldera = False
+    docker_deployment.description.deploy_elastic = True
+    mocker.patch.object(DockerClient,"get_instance_status",return_value="STOPPED")
+    table = docker_deployment.get_services_status()
+    expected = """┌──────────────────────┬─────────┐
+│         Name         │  Status │
+├──────────────────────┼─────────┤
+│ udelar-lab01-elastic │ STOPPED │
+└──────────────────────┴─────────┘"""
+    assert expected == table.get_string()
+
+    #Elastic error
+    docker_deployment.description.deploy_caldera = False
+    docker_deployment.description.deploy_elastic = True
+    mocker.patch.object(DockerClient,"get_instance_status",return_value="RUNNING")
+    mocker.patch.object(DockerDeployment,"_get_service_info",return_value=Exception("Unexpected error."))
+    with pytest.raises(DeploymentDockerException):
+        docker_deployment.get_services_status()
 
 def test_list_instances(mocker, docker_deployment):
     mocker.patch.object(DockerClient, "get_instance_status", return_value="RUNNING")
@@ -1707,3 +1741,16 @@ def test_get_service_info(mocker, docker_deployment):
         event_handler=mocker.ANY,
         extravars={"ansible_no_target_syslog" : not docker_deployment.description.keep_ansible_logs }
     )
+
+def test_delete_services_images(mocker, docker_deployment, docker_client):
+    docker_deployment.delete_services_images({"elastic":True,"caldera":True})
+    assert docker_client.images.remove.call_count == 2
+    docker_client.images.remove.assert_has_calls([mocker.call("elastic"),
+                           mocker.call("caldera"),
+                           ])
+
+    docker_client.reset_mock()
+    docker_client.images.remove.side_effect = Exception("Unexpected error")
+    with pytest.raises(DeploymentDockerException):
+        docker_deployment.delete_services_images({"elastic":True,"caldera":True})
+    docker_client.images.remove.assert_called_once_with("elastic")

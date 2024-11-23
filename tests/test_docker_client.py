@@ -102,7 +102,6 @@ def test_start_instance(docker_client, mocker, description):
     docker_client.containers.get.side_effect = Exception("Unexpected error")
     with pytest.raises(DockerClientException) as exception:
         client.start_instance("udelar-lab01-1-attacker")
-        assert docker_client.containers.get("udelar-lab01-1-attacker").start.call_count == 0
     assert "Unexpected error" in str(exception.value)
 
 def test_stop_instance(docker_client, mocker, description):
@@ -114,7 +113,6 @@ def test_stop_instance(docker_client, mocker, description):
     docker_client.containers.get.side_effect = Exception("Unexpected error")
     with pytest.raises(DockerClientException) as exception:
         client.stop_instance("udelar-lab01-1-attacker")
-        assert docker_client.containers.get("udelar-lab01-1-attacker").stop.call_count == 0
     assert "Unexpected error" in str(exception.value)
 
 def test_reboot_instance(docker_client, mocker, description):
@@ -126,7 +124,6 @@ def test_reboot_instance(docker_client, mocker, description):
     docker_client.containers.get.side_effect = Exception("Unexpected error")
     with pytest.raises(DockerClientException) as exception:
         client.reboot_instance("udelar-lab01-1-attacker")
-        assert docker_client.containers.get("udelar-lab01-1-attacker").restart.call_count == 0
     assert "Unexpected error" in str(exception.value)
 
 
@@ -140,6 +137,5 @@ def test_connect(mocker, description, docker_client):
     mock_run.side_effect = Exception("Unexpected error")
     with pytest.raises(DockerClientException) as exception:
         client.connect("udelar-lab01-1-attacker", "ubuntu")
-        mock_run.assert_called_once()
     assert "Unexpected error" in str(exception.value)
   
