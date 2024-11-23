@@ -249,14 +249,7 @@ class DockerDeployment(Deployment):
             machine_status = self.get_instance_status(machine)
             rows.append([machine,machine_status])
         return create_table(headers,rows)
-    
-    def get_services_status(self):
-        if len(self.description.get_services_to_deploy()) > 0:
-            #TODO
-            return
-        else:
-            return "No services were deployed."
-        
+            
     def start_instance(self, instance_name):
         self.client.start_instance(instance_name)
 
