@@ -445,6 +445,37 @@ def docker_client():
             }
         }
     }
+    mock_container_9 = MagicMock()
+    mock_container_9.name = "udelar-lab01-caldera"
+    mock_container_9.status = "running"
+    mock_container_9.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+                "udelar-lab01-internet": {"IPAddress": "10.0.0.130"},
+                "udelar-lab01-services": {"IPAddress": "10.0.0.3"},
+            }
+        }
+    }
+    mock_container_10 = MagicMock()
+    mock_container_10.name = "udelar-lab01-1-server"
+    mock_container_10.status = "stopped"
+    mock_container_10.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+                "udelar-lab01-lan": {"IPAddress": "10.0.1.6"},
+            }
+        }
+    }
+    mock_container_11 = MagicMock()
+    mock_container_11.name = "udelar-lab01-2-server"
+    mock_container_11.status = "stopped"
+    mock_container_11.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+                "udelar-lab01-lan": {"IPAddress": "10.0.2.6"},
+            }
+        }
+    }
     mock_client.containers.get.side_effect = lambda name: {
         "udelar-lab01-1-attacker": mock_container_1,
         "udelar-lab01-1-victim-1": mock_container_2,
@@ -454,6 +485,9 @@ def docker_client():
         "udelar-lab01-2-attacker": mock_container_6,
         "udelar-lab01-2-victim-1": mock_container_7,
         "udelar-lab01-2-victim-2": mock_container_8,
+        "udelar-lab01-caldera": mock_container_9,
+        "udelar-lab01-1-server": mock_container_10,
+        "udelar-lab01-2-server": mock_container_11,
     }.get(name, None)
 
     mock_client.images.get.side_effect = lambda image_id: {
