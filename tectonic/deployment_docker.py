@@ -86,25 +86,6 @@ class DockerDeployment(Deployment):
             "docker_uri": self.description.docker_uri
         }
 
-    def can_delete_image(self, image_name):
-        """
-        Return true if the image is not being used by any machine.
-
-        Parameters:
-          image_name (str): name of the image
-
-        Returns:
-          bool: true if the image is not being used by any machine or false otherwise
-        """
-        image = self.client.get_image(image_name)
-        if image:
-            image_id = image[0]
-            instances_images_ids = self.client.get_machines_imageid()
-            for instance_image_id in instances_images_ids:
-                if image_id == instance_image_id:
-                    return False
-        return True
-
     def delete_cr_images(self, guests=None):
         """
         Delete guests base image.
