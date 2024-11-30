@@ -29,4 +29,4 @@
       when: '"elastic" in group_names'
     - name: Include Caldera playbook
       ansible.builtin.include_tasks: ../caldera/after_clone.yml
-      when: '"caldera"  in group_names'
+      when: '"caldera" in group_names'
