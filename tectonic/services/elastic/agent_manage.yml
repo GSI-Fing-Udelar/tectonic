@@ -21,7 +21,6 @@
 - name: "Manage Elastic Agent"
   hosts: all
   become: true
-  gather_facts: no
   
   tasks:
     - name: Install agent

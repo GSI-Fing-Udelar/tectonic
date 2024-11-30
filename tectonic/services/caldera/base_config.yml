@@ -22,7 +22,6 @@
 - name: "Install Caldera"
   hosts: caldera
   become: true
-  gather_facts: true
   
   tasks:
     - name: Set hostname

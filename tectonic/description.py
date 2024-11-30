@@ -80,6 +80,8 @@ class Description(object):
         docker_uri,
         caldera_version,
         docker_dns,
+        ansible_forks,
+        ansible_pipelining,
     ):
         """Create a Description object.
 
@@ -115,6 +117,8 @@ class Description(object):
             docker_uri: URI for docker.
             caldera_version: Caldera version.
             docker_dns: DNS to use for internet networks on Docker.
+            ansible_forks: Number of parallel connections for Ansible.
+            ansible_pipelining: Enable pipelining for Ansible.
 
         Returns:
              A Description object.
@@ -167,6 +171,8 @@ class Description(object):
         self.authorized_keys = self.read_pubkeys(
             self.teacher_pubkey_dir, ssh_public_key_file
         )
+        self.ansible_forks = ansible_forks
+        self.ansible_pipelining = ansible_pipelining
 
     def read_pubkeys(self, ssh_dir, default_pubkey=None):
         """

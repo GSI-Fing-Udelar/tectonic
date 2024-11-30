@@ -207,7 +207,8 @@ class Ansible:
             )
         self.output = ""
         self.debug_outputs = []
-        extravars = {"ansible_no_target_syslog" : not self.deployment.description.keep_ansible_logs }
+        extravars = { "ansible_no_target_syslog" : not self.deployment.description.keep_ansible_logs }
+        envvars = { "ANSIBLE_FORKS": self.deployment.description.ansible_forks, "ANSIBLE_HOST_KEY_CHECKING": "False", "ANSIBLE_PIPELINING": self.deployment.description.ansible_pipelining, "ANSIBLE_GATHERING": "explicit" }
         r = ansible_runner.interface.run(
             inventory=inventory,
             playbook=playbook,
@@ -215,7 +216,7 @@ class Ansible:
             verbosity=verbosity,
             event_handler=self._ansible_callback,
             extravars=extravars,
-
+            envvars=envvars,
         )
         logger.info(self.output)
 

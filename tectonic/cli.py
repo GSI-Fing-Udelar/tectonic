@@ -287,7 +287,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 @click.option(
     "--ansible_ssh_common_args",
     "-s",
-    default="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no",
+    default="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 ",
     help="SSH extra connection options for connection to the CR machines.",
 )  # TODO: check default value
 @click.option(
@@ -420,7 +420,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 )
 @click.option(
     "--caldera_version",
-    default="5.0.0",
+    default="latest",
     help="Caldera version.",
 )
 @click.option(
@@ -428,6 +428,18 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     default="8.8.8.8",
     required=False,
     help="DNS to use for internet networks on Docker",
+)
+@click.option(
+    "--ansible_forks",
+    default="10",
+    required=False,
+    help="Number of parallel connection for Ansible",
+)
+@click.option(
+    "--ansible_pipelining",
+    default="False",
+    required=False,
+    help="Enable pipelining for Ansible",
 )
 @click.argument("lab_edition_file", type=click.Path(exists=True, dir_okay=False))
 @click.pass_context
@@ -466,6 +478,8 @@ def tectonic(
     docker_uri,
     caldera_version,
     docker_dns,
+    ansible_forks,
+    ansible_pipelining
 ):
     """Deploy or manage a cyber range according to LAB_EDITION_FILE."""
     logfile = PurePosixPath(lab_edition_file).parent.joinpath("tectonic.log")
@@ -510,6 +524,8 @@ def tectonic(
         docker_uri,
         caldera_version,
         docker_dns,
+        ansible_forks,
+        ansible_pipelining,
     )
 
     if platform == "aws":
