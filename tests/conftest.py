@@ -47,11 +47,13 @@ network_cidr_block = 10.0.0.0/16
 internet_network_cidr_block = 10.0.0.0/25
 services_network_cidr_block = 10.0.0.128/25
 ssh_public_key_file = ~/.ssh/id_rsa.pub
-ansible_ssh_common_args = -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
+ansible_ssh_common_args = -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 
 configure_dns = no
 gitlab_backend_url = https://gitlab.fing.edu.uy/api/v4/projects/9886/terraform/state
 debug = yes
 keep_ansible_logs = no
+ansible_forks = 5
+ansible_pipelining = no
 
 
 [libvirt]
@@ -272,6 +274,8 @@ def description(labs_path, terraform_dir, test_data_path):
         docker_uri='unix:///var/run/docker.sock',
         caldera_version='latest',
         docker_dns="8.8.8.8",
+        ansible_forks="5",
+        ansible_pipelining=False,
     )
     yield desc
 

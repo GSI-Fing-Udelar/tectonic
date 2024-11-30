@@ -436,9 +436,8 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     help="Number of parallel connection for Ansible",
 )
 @click.option(
-    "--ansible_pipelining",
+    "--ansible_pipelining/--no-ansible_pipelining",
     default="False",
-    required=False,
     help="Enable pipelining for Ansible",
 )
 @click.argument("lab_edition_file", type=click.Path(exists=True, dir_okay=False))

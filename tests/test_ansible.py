@@ -133,7 +133,8 @@ def test_run_libvirt(mocker, capsys, ansible_libvirt, test_data_path):
                                  quiet=False,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
-                                 extravars={"ansible_no_target_syslog" : not ansible_libvirt.deployment.description.keep_ansible_logs }
+                                 extravars={"ansible_no_target_syslog" : not ansible_libvirt.deployment.description.keep_ansible_logs },
+                                 envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
                                 )
 
     # Test non-existent default playbook path
@@ -168,7 +169,8 @@ def test_run_custom_playbook(mocker, ansible_libvirt):
                                  quiet=False,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
-                                 extravars={"ansible_no_target_syslog" : not ansible_libvirt.deployment.description.keep_ansible_logs }
+                                 extravars={"ansible_no_target_syslog" : not ansible_libvirt.deployment.description.keep_ansible_logs },
+                                 envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
                                 )
 
 
@@ -205,5 +207,6 @@ def test_wait_for_connections(mocker, ansible_libvirt):
                                  quiet=True,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
-                                 extravars={"ansible_no_target_syslog" : not ansible_libvirt.deployment.description.keep_ansible_logs }
+                                 extravars={"ansible_no_target_syslog" : not ansible_libvirt.deployment.description.keep_ansible_logs },
+                                 envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
                                 )

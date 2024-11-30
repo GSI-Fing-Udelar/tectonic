@@ -63,6 +63,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
     cfg.read(tectonic_config)
     platform = cfg["config"]["platform"]
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
     monitor_type = open(lab_edition_file,"r").readlines()[2].split("-")[1].rstrip()  
 
     def patch_aws_client(self, region):
@@ -117,7 +118,8 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
-                    extravars=extravars, 
+                    extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
@@ -125,6 +127,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -132,6 +135,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
@@ -139,6 +143,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -146,6 +151,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -153,6 +159,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
@@ -160,6 +167,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
             ])
             assert ("Deploying Cyber Range instances...\n"
@@ -180,6 +188,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
@@ -187,6 +196,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -194,6 +204,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -201,6 +212,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
@@ -208,6 +220,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -215,6 +228,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
@@ -222,6 +236,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
             ])
             assert ("Deploying Cyber Range instances...\n"
@@ -264,6 +279,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
@@ -271,6 +287,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -278,6 +295,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
@@ -285,6 +303,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -292,6 +311,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -299,6 +319,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
@@ -306,6 +327,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
             ])
             assert ("Deploying Cyber Range services...\n"
@@ -326,6 +348,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
@@ -333,6 +356,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -340,6 +364,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -347,6 +372,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
@@ -354,6 +380,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -361,6 +388,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
@@ -368,6 +396,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
             ])
             assert ("Deploying Cyber Range services...\n"
@@ -407,6 +436,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
@@ -414,6 +444,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
@@ -421,6 +452,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -428,6 +460,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -435,6 +468,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
@@ -442,6 +476,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
             ])
             assert ("Deploying Cyber Range services...\n"
@@ -462,6 +497,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
@@ -469,6 +505,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -476,6 +513,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -483,6 +521,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
@@ -490,6 +529,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -497,6 +537,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
@@ -504,6 +545,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
             ])
             assert ("Deploying Cyber Range services...\n"
@@ -541,6 +583,7 @@ def test_tectonic_destroy(mocker, monkeypatch,
     cfg.read(tectonic_config)
     platform = cfg["config"]["platform"]
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
     monitor_type = open(lab_edition_file,"r").readlines()[2].split("-")[1].rstrip()  
 
     responses.add(responses.GET,
@@ -610,6 +653,7 @@ def test_tectonic_destroy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars,
                 ),
             ])
         assert ("Destroying Cyber Range instances...\n"
@@ -632,6 +676,7 @@ def test_tectonic_destroy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars,
                 ),
             ])
         assert ("Destroying Cyber Range instances...\n"
@@ -1101,6 +1146,7 @@ def test_tectonic_run_ansible(mocker,
     cfg = ConfigParser()
     cfg.read(tectonic_config)
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
 
     assert result.exception is None
     assert result.exit_code == 0
@@ -1110,6 +1156,7 @@ def test_tectonic_run_ansible(mocker,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
                                  extravars=extravars,
+                                 envvars=envvars,
                                 )
 
 
@@ -1160,6 +1207,7 @@ def test_tectonic_student_access(mocker,
     cfg = ConfigParser()
     cfg.read(tectonic_config)
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
 
     assert result.exception is None
     assert result.exit_code == 0
@@ -1169,6 +1217,7 @@ def test_tectonic_student_access(mocker,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
                                  extravars=extravars,
+                                 envvars=envvars,
                                 )
     assert (result.output == (
         "Configuring student access...\n\n"
@@ -1195,6 +1244,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
     cfg = ConfigParser()
     cfg.read(tectonic_config)
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
     monitor_type = open(lab_edition_file,"r").readlines()[2].split("-")[1].rstrip() 
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value="RUNNING")
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value="RUNNING")
@@ -1242,6 +1292,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
+                envvars=envvars,
             ),
             mocker.call(inventory=mocker.ANY,
                 playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -1249,6 +1300,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
+                envvars=envvars,
             ),
             mocker.call(inventory=mocker.ANY,
                 playbook=f"{test_data_path}/labs/test-{monitor_type}/ansible/after_clone.yml",
@@ -1256,6 +1308,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
+                envvars=envvars,
             ),
             mocker.call(inventory=mocker.ANY,
                 playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -1263,6 +1316,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
+                envvars=envvars,
             ),
             mocker.call(inventory=mocker.ANY,
                 playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
@@ -1270,6 +1324,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
+                envvars=envvars,
             ),
         ])
         assert (result.output == (
@@ -1288,6 +1343,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                         verbosity=0,
                         event_handler=mocker.ANY,
                         extravars=extravars,
+                        envvars=envvars,
                         ),
             mocker.call(inventory=mocker.ANY,
                         playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -1295,6 +1351,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                         verbosity=0,
                         event_handler=mocker.ANY,
                         extravars=extravars,
+                        envvars=envvars,
                         ),
             mocker.call(inventory=mocker.ANY,
                         playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
@@ -1302,6 +1359,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                         verbosity=0,
                         event_handler=mocker.ANY,
                         extravars=extravars,
+                        envvars=envvars,
                         ),
         ])
         assert (result.output == (
