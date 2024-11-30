@@ -19,7 +19,7 @@ a main `config` section and sections for `aws`, `libvirt` and
 * `ansible_ssh_common_args`: SSH arguments for ansible connetion.
   Proxy Jump configuration through bastion hosts is added
   automatically by Tectonic. Default: `-o
-  UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no`.
+  UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 `.
 * `configure_dns`: Whether to add the guest names to the lab DNS. The
   names are of the form `basename-instance[-copy]`. Default: `true`.
 * `gitlab_backend_url`: Gitlab terraform state url to use for state
@@ -27,6 +27,9 @@ a main `config` section and sections for `aws`, `libvirt` and
 * `debug`: Show debug messages during execution (also shows stack
   trace on error). Default: `yes`.
 * `keep_ansible_logs`: Keep Ansible logs on guests. Default: `no`.
+* `proxy`: Proxy URL. Default: `http://proxy.fing.edu.uy:3128`
+* `ansible_forks`: Number of parallel connection for Ansible. If you deploy many instances, increase this number so that the configurations applied with Ansible are faster. Default: `5`
+* `ansible_pipelining`: In Ansible you can reduce the number of SSH connections by enabling the pipelining. Default: `no`.
 
 ### [libvirt] section:
 * `libvirt_uri`: URI to connect to libvirt server. Default:

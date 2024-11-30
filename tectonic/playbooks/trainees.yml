@@ -34,6 +34,7 @@
 
 - name: "Create student users on student access host."
   hosts: student_access
+  gather_facts: true
 
   tasks:
     - name: "Create trainee users (optionally with password)"
@@ -97,6 +98,7 @@
 
 - name: "Create student users on the rest of the machines."
   hosts: all:!student_access
+  gather_facts: true
   vars:
     username: "{{ '%s%02d' | format(prefix, instance) }}"
 
@@ -205,5 +207,3 @@
       when: 
         - users[username].authorized_keys is defined
         - ansible_facts['os_family'] == "Windows"
-
-    
