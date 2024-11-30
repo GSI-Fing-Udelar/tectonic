@@ -1,3 +1,7 @@
+<!-- Compile with:
+	pandoc -V colorlinks=true -o cheatsheet.<ext> cheatsheet.md
+-->
+
 # Tectonic: An Academic Cyber Range
 ## Cheatsheet
 Tectonic is a cyber range designed to provide realistic cybersecurity
@@ -49,15 +53,15 @@ Operations done on machines in the scenario, after it is deployed.
   tectonic -c ~/tectonic.ini <lab_edition_file> run-ansible -p <playbook> <machine_spec>
   ```
 
-#### Machine specification
-Machines are identified as follows: 
+#### Machine names
+Machines in the cyber range are identified as follows: 
 
 ```
 <institution>-<lab_name>-<instance>-<guest>[-<copy>]
 ``` 
 The copy value is optional and only appears in the name if there is more than one copy for the same guest.
 
-For example, copy 2 of the server guest of instance 3 of the lab test_lab and institution test_inst is:
+For example, copy 2 of the `server` guest of instance 3 of the lab `test_lab` and institution `test_inst` is:
 ```
 test_inst-test_lab-3-server-2
 ```
@@ -67,15 +71,20 @@ As another example, the attacker guest, which consists of a single copy, of inst
 test_inst-test_lab-2-attacker
 ```
 
-The above commands expect machine specification options, which can be
-a combination of: instance number (`-i`), guest (base) name (`-g`), and copy number (`-c`).
+#### Machine specification
+
+Most commands accept machine specification options, which can be a
+combination of: instance number (`-i`), guest (base) name (`-g`), and
+copy number (`-c`).
 
 For example, to reboot all copies of the machine `victim` of instances 3 and 4, one can run:
 ```
-  tectonic -c ~/tectonic.ini <lab_edition_file> [reboot|shutdown|start] -g victim -i 3,4
+  tectonic -c ~/tectonic.ini <lab_edition_file> reboot -g victim -i 3,4
 ```
+this will reboot machines `test_inst-test_lab-3-victim` and `test_inst-test_lab-4-victim`.
 
-Instance and copy numbers can be specified either as a list: `1,2,3`, as a range: `5-10`, or as a combination: `2,4-6,8`. 
+Instance and copy numbers can be specified either as a list: `1,2,3`,
+as a range: `5-10`, or as a combination: `2,4-6,8`.
 
 
 ### Connectivity to the scenario
