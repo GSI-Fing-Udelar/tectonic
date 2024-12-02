@@ -30,6 +30,7 @@ a main `config` section and sections for `aws`, `libvirt` and
 * `proxy`: Proxy URL. Default: `http://proxy.fing.edu.uy:3128`
 * `ansible_forks`: Number of parallel connection for Ansible. If you deploy many instances, increase this number so that the configurations applied with Ansible are faster. Default: `5`
 * `ansible_pipelining`: In Ansible you can reduce the number of SSH connections by enabling the pipelining. Default: `no`.
+* `ansible_timeout`: Ansible connection timeout. Default: `10`.
 
 ### [libvirt] section:
 * `libvirt_uri`: URI to connect to libvirt server. Default:

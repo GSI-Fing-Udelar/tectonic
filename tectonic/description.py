@@ -82,6 +82,7 @@ class Description(object):
         docker_dns,
         ansible_forks,
         ansible_pipelining,
+        ansible_timeout
     ):
         """Create a Description object.
 
@@ -119,6 +120,7 @@ class Description(object):
             docker_dns: DNS to use for internet networks on Docker.
             ansible_forks: Number of parallel connections for Ansible.
             ansible_pipelining: Enable pipelining for Ansible.
+            ansible_timeout: Timeout for Ansible connections.
 
         Returns:
              A Description object.
@@ -173,6 +175,7 @@ class Description(object):
         )
         self.ansible_forks = ansible_forks
         self.ansible_pipelining = ansible_pipelining
+        self.ansible_timeout = ansible_timeout
 
     def read_pubkeys(self, ssh_dir, default_pubkey=None):
         """

@@ -372,7 +372,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 )
 @click.option(
     "--libvirt_external_network",
-    default="192.168.44.0/25",
+    default="192.168.0.0/25",
     help="CIDR block of the external bridged network, if appropriate. Static IP addresses are assigned sequentially "
          "to lab entry points.",
 )
@@ -394,7 +394,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 )
 @click.option(
     "--user_install_packetbeat",
-    default="gsi",
+    default="tectonic",
     help="User used to install Packetbeat",
 )
 @click.option(
@@ -440,6 +440,12 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     default="False",
     help="Enable pipelining for Ansible",
 )
+@click.option(
+    "--ansible_timeout",
+    default="10",
+    required=False,
+    help="Timeout for Ansible connection.",
+)
 @click.argument("lab_edition_file", type=click.Path(exists=True, dir_okay=False))
 @click.pass_context
 def tectonic(
@@ -478,7 +484,8 @@ def tectonic(
     caldera_version,
     docker_dns,
     ansible_forks,
-    ansible_pipelining
+    ansible_pipelining,
+    ansible_timeout
 ):
     """Deploy or manage a cyber range according to LAB_EDITION_FILE."""
     logfile = PurePosixPath(lab_edition_file).parent.joinpath("tectonic.log")
@@ -525,6 +532,7 @@ def tectonic(
         docker_dns,
         ansible_forks,
         ansible_pipelining,
+        ansible_timeout
     )
 
     if platform == "aws":

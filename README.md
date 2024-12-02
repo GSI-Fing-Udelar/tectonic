@@ -24,7 +24,7 @@ components are organized in five layers, each fulfilling a particular
 function in the platform's operation.
 
 <p align="center">
-    <img src="docs/architecture.png" width="500">
+    <img src="https://raw.githubusercontent.com/GSI-Fing-Udelar/tectonic/refs/heads/main/docs/architecture.png" width="500">
 </p>
 
 The underlying infrastructure constitutes the real-world
@@ -59,13 +59,13 @@ The following are the requirements to run Tectonic:
 - Libvirt
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) 
 
-Please see the [detailed instructions](docs/installation.md) for more
+Please see the [detailed instructions](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/docs/installation.md) for more
 information.
 
 ### Terraform state syncronization
 Terraform states are stored locally by default. It is possible to
 store them in a gitlab repo (see `gitlab_backend_url` option in the
-[ini file configuration](docs/ini_config.md)). It is necessary to have
+[ini file configuration](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/docs/ini_config.md)). It is necessary to have
 Maintainer privileges on this repo and a GitLab access token. There
 are two types of access token: personal or project-based. If the
 latter is used, it must be associated with the project where the
@@ -84,7 +84,7 @@ poetry install
 ## Tectonic Configuration File
 Tectonic behaviour can be configured using an ini file with a
 `config` section. You can find an example configuration file with the
-default values [here](./tectonic.ini). Please see the [ini
+default values [here](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/tectonic.ini). Please see the [ini
 file documentation](docs/ini_config.md) for details on the available
 options.
 
@@ -108,8 +108,8 @@ The scenario specification consists of the following resources:
 
 The lab edition file 
 
-Please check the [description documentation](docs/description.md) for
-more details. The [examples](examples/) directory contains some
+Please check the [description documentation](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/docs/description.md) for
+more details. The [examples](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/examples/) directory contains some
 example scenarios.
 
 ## Running Tectonic

@@ -54,6 +54,7 @@ debug = yes
 keep_ansible_logs = no
 ansible_forks = 5
 ansible_pipelining = no
+ansible_timeout = 10
 
 
 [libvirt]
@@ -276,6 +277,7 @@ def description(labs_path, terraform_dir, test_data_path):
         docker_dns="8.8.8.8",
         ansible_forks="5",
         ansible_pipelining=False,
+        ansible_timeout="10"
     )
     yield desc
 

@@ -63,7 +63,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
     cfg.read(tectonic_config)
     platform = cfg["config"]["platform"]
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
-    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
     monitor_type = open(lab_edition_file,"r").readlines()[2].split("-")[1].rstrip()  
 
     def patch_aws_client(self, region):
@@ -583,7 +583,7 @@ def test_tectonic_destroy(mocker, monkeypatch,
     cfg.read(tectonic_config)
     platform = cfg["config"]["platform"]
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
-    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
     monitor_type = open(lab_edition_file,"r").readlines()[2].split("-")[1].rstrip()  
 
     responses.add(responses.GET,
@@ -1146,7 +1146,7 @@ def test_tectonic_run_ansible(mocker,
     cfg = ConfigParser()
     cfg.read(tectonic_config)
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
-    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
 
     assert result.exception is None
     assert result.exit_code == 0
@@ -1207,7 +1207,7 @@ def test_tectonic_student_access(mocker,
     cfg = ConfigParser()
     cfg.read(tectonic_config)
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
-    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
 
     assert result.exception is None
     assert result.exit_code == 0
@@ -1244,7 +1244,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
     cfg = ConfigParser()
     cfg.read(tectonic_config)
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
-    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
     monitor_type = open(lab_edition_file,"r").readlines()[2].split("-")[1].rstrip() 
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value="RUNNING")
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value="RUNNING")

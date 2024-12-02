@@ -1067,7 +1067,7 @@ def test_student_access(mocker, aws_deployment):
         verbosity=0,
         event_handler=mocker.ANY,
         extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-        envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+        envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
     )
 
 @freeze_time("2022-01-01")
@@ -1220,7 +1220,7 @@ def test_deploy_packetbeat(mocker, aws_deployment):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(
             inventory=inventory,
@@ -1229,7 +1229,7 @@ def test_deploy_packetbeat(mocker, aws_deployment):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
     ])
 
@@ -1254,7 +1254,7 @@ def test_elastic_install_endpoint(mocker, aws_deployment, base_tectonic_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(
             inventory=inventory,
@@ -1263,7 +1263,7 @@ def test_elastic_install_endpoint(mocker, aws_deployment, base_tectonic_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
     ])
 
@@ -1298,7 +1298,7 @@ def test_recreate(mocker, monkeypatch, capsys, aws_deployment, base_tectonic_pat
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -1306,7 +1306,7 @@ def test_recreate(mocker, monkeypatch, capsys, aws_deployment, base_tectonic_pat
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=f"{labs_path}/test-endpoint/ansible/after_clone.yml",
@@ -1314,7 +1314,7 @@ def test_recreate(mocker, monkeypatch, capsys, aws_deployment, base_tectonic_pat
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -1322,7 +1322,7 @@ def test_recreate(mocker, monkeypatch, capsys, aws_deployment, base_tectonic_pat
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
@@ -1330,7 +1330,7 @@ def test_recreate(mocker, monkeypatch, capsys, aws_deployment, base_tectonic_pat
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -1338,7 +1338,7 @@ def test_recreate(mocker, monkeypatch, capsys, aws_deployment, base_tectonic_pat
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
@@ -1346,7 +1346,7 @@ def test_recreate(mocker, monkeypatch, capsys, aws_deployment, base_tectonic_pat
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -1354,7 +1354,7 @@ def test_recreate(mocker, monkeypatch, capsys, aws_deployment, base_tectonic_pat
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
@@ -1362,7 +1362,7 @@ def test_recreate(mocker, monkeypatch, capsys, aws_deployment, base_tectonic_pat
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
     ])
 
@@ -1455,7 +1455,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-                    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+                    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -1463,7 +1463,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=f"{test_data_path}/labs/test-traffic/ansible/after_clone.yml",
@@ -1471,7 +1471,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
     ])
     assert capsys.readouterr().out == "Deploying Cyber Range instances...\nWaiting for machines to boot up...\nConfiguring student access...\nRunning after-clone configuration...\n"
@@ -1512,7 +1512,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
@@ -1520,7 +1520,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -1528,7 +1528,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
@@ -1536,7 +1536,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -1544,7 +1544,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -1552,7 +1552,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=f"{test_data_path}/labs/test-traffic/ansible/after_clone.yml",
@@ -1560,7 +1560,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
     ])
     assert capsys.readouterr().out == "Deploying Cyber Range instances...\nDeploying Cyber Range services...\nWaiting for services to boot up...\nConfiguring services...\nWaiting for machines to boot up...\nConfiguring student access...\nRunning after-clone configuration...\n"
@@ -1602,7 +1602,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
@@ -1610,7 +1610,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -1618,7 +1618,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -1626,7 +1626,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=f"{test_data_path}/labs/test-traffic/ansible/after_clone.yml",
@@ -1634,7 +1634,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -1642,7 +1642,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
@@ -1650,7 +1650,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
     ])
     assert capsys.readouterr().out == "Deploying Cyber Range instances...\nDeploying Cyber Range services...\nWaiting for services to boot up...\nConfiguring services...\nWaiting for machines to boot up...\nConfiguring student access...\nRunning after-clone configuration...\nConfiguring elastic agents...\n"
@@ -1691,7 +1691,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
@@ -1699,7 +1699,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -1707,7 +1707,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -1715,7 +1715,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=f"{test_data_path}/labs/test-traffic/ansible/after_clone.yml",
@@ -1723,7 +1723,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -1731,7 +1731,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
@@ -1739,7 +1739,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -1747,7 +1747,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
@@ -1755,7 +1755,7 @@ def test_deploy_infraestructure(mocker, capsys, aws_deployment, test_data_path):
             verbosity=0,
             event_handler=mocker.ANY,
             extravars={"ansible_no_target_syslog" : not aws_deployment.description.keep_ansible_logs },
-            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit"}
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
     ])
     assert capsys.readouterr().out == "Deploying Cyber Range instances...\nDeploying Cyber Range services...\nWaiting for services to boot up...\nConfiguring services...\nWaiting for machines to boot up...\nConfiguring student access...\nRunning after-clone configuration...\nConfiguring caldera agents...\n"
