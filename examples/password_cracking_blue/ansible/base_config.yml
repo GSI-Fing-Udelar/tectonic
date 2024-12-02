@@ -1,0 +1,73 @@
+# The base config ansible playbook for the Password Cracking scenario.
+# This playbook is applied to the base image of each machine in the
+# scenario, before cloning for each trainee. Internet connection is
+# available.
+
+- name: "Password Cracking attacker configuration (for ubuntu 22.04)"
+  hosts: attacker
+  tasks:
+    - name: "Update repos"
+      ansible.builtin.apt:
+        update_cache: true
+      when: ansible_facts['distribution'] == "Ubuntu"
+
+    - name: "Install attacker tools"
+      ansible.builtin.package:
+        state: present
+        name:
+          - ftp
+          - hydra
+          - john
+          - sshpass
+    
+    - name: "Copy userlist"
+      ansible.builtin.copy:
+        src: files/userlist
+        dest: /opt
+        mode: '0644'
+
+    - name: "Copy ftp_commands"
+      ansible.builtin.copy:
+        src: files/ftp_commands
+        dest: /opt
+        mode: '0644'
+
+- name: "Password Cracking victim configuration (for ubuntu 22.04)"
+  hosts: victim
+  tasks:
+    - name: "Update repos"
+      ansible.builtin.apt:
+        update_cache: true
+      when: ansible_facts['distribution'] == "Ubuntu"
+
+    - name: "Enable SSH login with password"
+      block:
+        - name: "Find SSH config files"
+          ansible.builtin.find:
+            paths: /etc/ssh/sshd_config.d
+            file_type: file
+          register: ssh_config
+        - name: "Adjust SSH configuration files"
+          ansible.builtin.lineinfile:
+            path: "{{ item.path }}"
+            regex: "^\\s*PasswordAuthentication"
+            line: "PasswordAuthentication yes"
+          with_items:
+            - "{{ ssh_config['files'] }}"
+            - {path: '/etc/ssh/sshd_config'}
+
+    - name: "Install FTP server"
+      ansible.builtin.package:
+        state: present
+        name: vsftpd
+      notify: ["Enable FTP access for users in /etc/ftpusers independent of shell", "Disable chroot"]
+  handlers:
+
+    - name: "Enable FTP access for users in /etc/ftpusers independent of shell"
+      ansible.builtin.shell: |
+        sed -i "/pam_shells.so/d" /etc/pam.d/vsftpd
+        sed -i "s/sense=deny/sense=allow/g" /etc/pam.d/vsftpd
+
+    - name: "Disable chroot"
+      ansible.builtin.shell: |
+        sed -i "0,/#chroot_local_user/{s/^#chroot_local_user.*$/chroot_local_user=NO/}" /etc/vsftpd.conf

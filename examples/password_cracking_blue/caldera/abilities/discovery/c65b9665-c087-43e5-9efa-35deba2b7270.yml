@@ -1,0 +1,41 @@
+- tactic: discovery
+  technique_name: System Information Discovery
+  technique_id: T1082
+  name: Password Cracking - Get victim IP
+  description: Get victim IP
+  executors:
+  - name: sh
+    platform: linux
+    command: 'echo #{attacker.host.ip} | awk -F ''.'' ''{print$1"."$2"."$3"."5}'''
+    code: null
+    language: null
+    build_target: null
+    payloads: []
+    uploads: []
+    timeout: 60
+    parsers:
+    - module: plugins.stockpile.app.parsers.basic
+      parserconfigs:
+      - source: victim.host.ip
+        edge: ''
+        target: ''
+        custom_parser_vals: {}
+    cleanup: []
+    variations: []
+    additional_info: {}
+  requirements:
+  - module: plugins.stockpile.app.requirements.paw_provenance
+    relationship_match:
+    - source: attacker.host.ip
+      edge: ''
+      target: ''
+  privilege: ''
+  repeatable: false
+  buckets:
+  - discovery
+  additional_info: {}
+  access: {}
+  singleton: false
+  plugin: ''
+  delete_payload: true
+  id: c65b9665-c087-43e5-9efa-35deba2b7270

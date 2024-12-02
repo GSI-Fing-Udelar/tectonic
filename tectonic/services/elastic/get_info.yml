@@ -22,6 +22,7 @@
 - name: "Get Elastic Info"
   hosts: elastic
   become: true
+  gather_facts: true
 
   tasks:
     - name: Get password

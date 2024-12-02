@@ -22,6 +22,8 @@ import json
 import click
 import ipaddress
 import datetime
+import math
+import time
 
 from tectonic.deployment import Deployment, DeploymentException
 from tectonic.libvirt_client import Client
@@ -224,7 +226,7 @@ class LibvirtDeployment(Deployment):
                 localhost_name = f"{self.description.institution}-{self.description.lab_name}-localhost"
                 inventory = ansible.build_inventory(
                     machine_list=[localhost_name],
-                    username="gsi",
+                    username=self.description.user_install_packetbeat,
                     extra_vars = {
                         "action": "install",
                         "elastic_url": f"https://{elastic_ip}:8220",
@@ -232,6 +234,7 @@ class LibvirtDeployment(Deployment):
                         "elastic_agent_version": self.description.elastic_stack_version,
                         "institution": self.description.institution,
                         "lab_name": self.description.lab_name,
+                        "proxy": self.description.proxy,
                     },
                 )
                 inventory["localhost"]["hosts"]["localhost"] = inventory["localhost"]["hosts"][localhost_name]
@@ -254,7 +257,7 @@ class LibvirtDeployment(Deployment):
         localhost_name = f"{self.description.institution}-{self.description.lab_name}-localhost"
         inventory = ansible.build_inventory(
             machine_list=[localhost_name],
-            username="gsi",
+            username=self.description.user_install_packetbeat,
             extra_vars={
                 "action": "delete",
                 "institution": self.description.institution,
@@ -280,7 +283,7 @@ class LibvirtDeployment(Deployment):
             localhost_name = f"{self.description.institution}-{self.description.lab_name}-localhost"
             inventory = ansible.build_inventory(
                 machine_list=[localhost_name],
-                username="gsi",
+                username=self.description.user_install_packetbeat,
                 extra_vars={
                     "action": action,
                     "institution": self.description.institution,
@@ -352,7 +355,7 @@ class LibvirtDeployment(Deployment):
         machines = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
         resources_to_recreate = self.get_resources_to_recreate(instances, guests, copies)
         click.echo("Recreating machines...")
-        self.terraform_recreate(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt', resources_to_recreate)
+        self.terraform_recreate(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / "gsi-lab-libvirt", resources_to_recreate)
 
         click.echo("Waiting for machines to boot up...")
         ansible = Ansible(self)
@@ -400,9 +403,10 @@ class LibvirtDeployment(Deployment):
                     "monitor_type": self.description.monitor_type,
                     "deploy_policy": self.description.elastic_deploy_default_policy,
                     "policy_name": self.description.packetbeat_policy_name if self.description.monitor_type == "traffic" else self.description.endpoint_policy_name,
-                    "http_proxy" : self.description.libvirt_proxy,
+                    "http_proxy" : self.description.proxy,
                     "description_path": self.description.description_dir,
-                    "ip": str(ipaddress.IPv4Network(self.description.services_network)[2])
+                    "ip": str(ipaddress.IPv4Network(self.description.services_network)[2]),
+                    "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
                 },
                 "caldera":{
                     "ip": str(ipaddress.IPv4Network(self.description.services_network)[4]),
@@ -558,7 +562,7 @@ class LibvirtDeployment(Deployment):
                         if len(response) > 0:
                             for agent in response: #TODO: see what the response is like when there are a large number of agents. pagination?
                                 #Caldera uses this logic to define the state of the agent
-                                now = int((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds() * 1000) #Milliseconds since epoch
+                                now = int(time.time() * 1000) #Milliseconds since epoch
                                 agent_last_seen = int((datetime.datetime.strptime(agent["last_seen"],"%Y-%m-%dT%H:%M:%SZ") - datetime.datetime(1970, 1, 1)).total_seconds() * 1000) #Milliseconds since epoch
                                 difference = now - agent_last_seen
                                 if (difference <= 60000 and agent["sleep_min"] == 3 and agent["sleep_max"] == 3 and agent["watchdog"] == 1):

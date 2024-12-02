@@ -21,7 +21,7 @@
 - name: Import Elasticsearch resources
   block:
     - name: Import ingest pipelines
-      ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+      ansible.builtin.include_tasks: ../../playbooks/make_request.yml
       vars:
         url: "https://{{ ansible_facts['fqdn'] }}:9200/_ingest/pipeline/{{ item | basename | regex_replace('\\.json','') }}"
         method: "PUT"
@@ -35,7 +35,7 @@
       with_fileglob:
         - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/elasticsearch/ingest_pipelines/*.json"
     - name: Import component templates
-      ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+      ansible.builtin.include_tasks: ../../playbooks/make_request.yml
       vars:
         url: "https://{{ ansible_facts['fqdn'] }}:9200/_component_template/{{ item | basename | regex_replace('\\.json','') }}"
         method: "PUT"
@@ -49,7 +49,7 @@
       with_fileglob:
         - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/elasticsearch/component_templates/*.json"
     - name: Import ILM policies
-      ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+      ansible.builtin.include_tasks: ../../playbooks/make_request.yml
       vars:
         url: "https://{{ ansible_facts['fqdn'] }}:9200/_ilm/policy/{{ item | basename | regex_replace('\\.json','') }}"
         method: "PUT"
@@ -63,7 +63,7 @@
       with_fileglob:
         - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/elasticsearch/ilm_policies/*.json"
     - name: Import index templates
-      ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+      ansible.builtin.include_tasks: ../../playbooks/make_request.yml
       vars:
         url: "https://{{ ansible_facts['fqdn'] }}:9200/_index_template/{{ item | basename | regex_replace('\\.json','') }}"
         method: "PUT"
@@ -84,10 +84,28 @@
   loop_control:
     loop_var: policy
 
+- name: Import agent policy integrations
+  ansible.builtin.include_tasks: ../../playbooks/make_request.yml
+  vars:
+    url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
+    method: "POST"
+    status_code: 200
+    body_format: "json"
+    user: elastic
+    password: "{{ elastic_superuser_password.stdout }}"
+    headers: 
+      "kbn-xsrf": "ansible"
+    body: "{{ lookup('ansible.builtin.file', integration) | from_json | ansible.builtin.combine({'policy_id':elastic_result_policy['json']['item']['id']}) }}"
+  with_fileglob:
+    - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/fleet/policy_integrations/{{ elastic.policy_name }}/*.json"
+  loop_control:
+    loop_var: integration
+  when: elastic.deploy_policy
+
 - name: Import Kibana resources
   block:
     - name: Import saved objects
-      ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+      ansible.builtin.include_tasks: ../../playbooks/make_request.yml
       vars:
         url: "https://{{ ansible_facts['fqdn'] }}:5601/api/saved_objects/_import?overwrite=true"
         method: "POST"
@@ -105,7 +123,7 @@
       with_fileglob:
         - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/kibana/saved_objects/*.ndjson"
     - name: Import siem rules
-      ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+      ansible.builtin.include_tasks: ../../playbooks/make_request.yml
       vars:
         url: "https://{{ ansible_facts['fqdn'] }}:5601/api/detection_engine/rules/_import?overwrite=true&overwrite_exceptions=true&overwrite_action_connectors=true"
         method: "POST"

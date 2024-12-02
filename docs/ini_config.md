@@ -19,7 +19,7 @@ a main `config` section and sections for `aws`, `libvirt` and
 * `ansible_ssh_common_args`: SSH arguments for ansible connetion.
   Proxy Jump configuration through bastion hosts is added
   automatically by Tectonic. Default: `-o
-  UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no`.
+  UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 `.
 * `configure_dns`: Whether to add the guest names to the lab DNS. The
   names are of the form `basename-instance[-copy]`. Default: `true`.
 * `gitlab_backend_url`: Gitlab terraform state url to use for state
@@ -27,20 +27,10 @@ a main `config` section and sections for `aws`, `libvirt` and
 * `debug`: Show debug messages during execution (also shows stack
   trace on error). Default: `yes`.
 * `keep_ansible_logs`: Keep Ansible logs on guests. Default: `no`.
-
-### [aws] section:
-* `aws_region`: The region to deploy instances in AWS. Default:
-  `us-east-1`.
-* `aws_default_instance_type`: Default instance type to use for
-  machines. Can be overwritten in the per guest configuration in the
-  lab description file (attribute `instance_type`, see
-  [ref](description)). Default: `t2.micro`.
-* `teacher_access`: Type of teacher access to configure. Can be either
-  `host` (an instance that acts as a bastion host), or `endpoint` (an
-  EIC endpoint that connects to all instances in the lab). Default:
-  `host`.
-* `packetbeat_vlan_id`: VLAN id used for traffic mirroring. Default:
-  `1`.
+* `proxy`: Proxy URL. Default: `http://proxy.fing.edu.uy:3128`
+* `ansible_forks`: Number of parallel connection for Ansible. If you deploy many instances, increase this number so that the configurations applied with Ansible are faster. Default: `5`
+* `ansible_pipelining`: In Ansible you can reduce the number of SSH connections by enabling the pipelining. Default: `no`.
+* `ansible_timeout`: Ansible connection timeout. Default: `10`.
 
 ### [libvirt] section:
 * `libvirt_uri`: URI to connect to libvirt server. Default:
@@ -59,13 +49,35 @@ a main `config` section and sections for `aws`, `libvirt` and
 * `libvirt_proxy`: Proxy configuration to use inside guest machines,
   if necessary for web access. Default: no proxy.
 
+### [aws] section:
+* `aws_region`: The region to deploy instances in AWS. Default:
+  `us-east-1`.
+* `aws_default_instance_type`: Default instance type to use for
+  machines. Can be overwritten in the per guest configuration in the
+  lab description file (attribute `instance_type`, see
+  [ref](description)). Default: `t2.micro`.
+* `teacher_access`: Type of teacher access to configure. Can be either
+  `host` (an instance that acts as a bastion host), or `endpoint` (an
+  EIC endpoint that connects to all instances in the lab). Default:
+  `host`.
+* `packetbeat_vlan_id`: VLAN id used for traffic mirroring. Default:
+  `1`.
+
+### [docker] section:
+* `docker_uri`: URI to connect to docker server. Default: `unix:///var/run/docker.sock`
+* `docker_dns`: DNS server to use in internet network. leave empty to use Docker defaults. Default: `164.73.32.2`.
+
 ### [elastic] section:
-* `elastic_stack_version`: Elastic Stack version to use. Use `latest` for latest version or assign a specific version. Default: `latest`.
+* `elastic_stack_version`: Elastic Stack version to use. Use `latest` for latest version or assign a specific version. Default: `8.14.3`. All tests were performed on version 8.14.3 so we recommend using it. However, it may also work for new Elastic features.
 * `packetbeat_policy_name`: Packetbeat policy agent name. Do not use this name for custom agent policies. Default: `Packetbeat`.
 * `endpoint_policy_name`: Endpoint policy agent name. Do not use this name for custom agent policies. Default: `Endpoint`.
+* `user_install_packetbeat`: When using Docker or Libvirt and traffic type as monitoring, Packetbeat must be deployed on the host. This variable modifies the user used by Ansible for this task. Keep in mind that this user needs to be able to escalate privileges to root without a password. To do this you can configure the sudoers file. Default: `gsi`. 
+
+### [caldera] section:
+* `caldera_version`: Caldera version to use. Use `latest` for latest version or assign a specific version. Default: `5.0.0`. All tests were performed on version 5.0.0 so we recommend using it. However, it may also work for new Caldera features.
 
 You can find an example configuration file with the default values
-[here](./python/tectonic.ini).
+[here](./tectonic/tectonic.ini).
 
 The `tectonic` program also accepts command line arguments for all
 of these options. See `tectonic.py --help` for detailed information.

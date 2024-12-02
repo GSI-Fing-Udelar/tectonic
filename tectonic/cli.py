@@ -56,6 +56,7 @@ import click
 
 from tectonic.deployment_aws import AWSDeployment
 from tectonic.deployment_libvirt import LibvirtDeployment
+from tectonic.deployment_docker import DockerDeployment
 from tectonic.description import Description
 from tectonic.ansible import Ansible
 from tectonic.instance_type import InstanceType
@@ -120,7 +121,7 @@ def load_config(ctx, param, config_file):
     options = {}
 
     # flatten the config file
-    for section in ["config", "aws", "libvirt", "elastic"]:
+    for section in ["config", "aws", "libvirt", "docker", "elastic", "caldera"]:
         try:
             options = options | dict(cfg[section])
         except KeyError:
@@ -251,7 +252,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 )
 @click.option(
     "--platform",
-    type=click.Choice(["aws", "libvirt"], case_sensitive=False),
+    type=click.Choice(["aws", "libvirt", "docker"], case_sensitive=False),
     default="aws",
     help="Deploy the cyber range to this platform.",
 )
@@ -286,7 +287,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 @click.option(
     "--ansible_ssh_common_args",
     "-s",
-    default="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no",
+    default="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 ",
     help="SSH extra connection options for connection to the CR machines.",
 )  # TODO: check default value
 @click.option(
@@ -321,24 +322,24 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 )
 @click.option(
     "--elastic_stack_version",
-    default="latest",
+    default="8.14.3",
     help="Elastc version",
 )
 @click.option(
     "--gitlab_backend_url",
-    required=True,
+    required=False,
     help="Gitlab terraform state url",
 )
 @click.option(
     "--gitlab_backend_username",
     envvar="GITLAB_USERNAME",
-    required=True,
+    required=False,
     help="Gitlab Username",
 )
 @click.option(
     "--gitlab_backend_access_token",
     envvar="GITLAB_ACCESS_TOKEN",
-    required=True,
+    required=False,
     help="Gitlab Access Token",
 )
 @click.option(
@@ -371,7 +372,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 )
 @click.option(
     "--libvirt_external_network",
-    default="192.168.44.0/25",
+    default="192.168.0.0/25",
     help="CIDR block of the external bridged network, if appropriate. Static IP addresses are assigned sequentially "
          "to lab entry points.",
 )
@@ -382,7 +383,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
          "point would get 192.168.44.11, and so on.",
 )
 @click.option(
-    "--libvirt_proxy",
+    "--proxy",
     required=False,
     help="Guest machines proxy configuration URI for libvirt.",
 )
@@ -390,6 +391,11 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     "--endpoint_policy_name",
     default="Endpoint",
     help="Agent policy name.",
+)
+@click.option(
+    "--user_install_packetbeat",
+    default="tectonic",
+    help="User used to install Packetbeat",
 )
 @click.option(
     "--internet_network_cidr_block",
@@ -405,6 +411,40 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     "--keep_ansible_logs/--no-keep_ansible_logs",
     default="False",
     help="Keep Ansible logs on managed hosts.",
+)
+@click.option(
+    "--docker_uri",
+    default="unix:///var/run/docker.sock",
+    show_default=True,
+    help="URI to connect to server, if using docker",
+)
+@click.option(
+    "--caldera_version",
+    default="latest",
+    help="Caldera version.",
+)
+@click.option(
+    "--docker_dns",
+    default="8.8.8.8",
+    required=False,
+    help="DNS to use for internet networks on Docker",
+)
+@click.option(
+    "--ansible_forks",
+    default="10",
+    required=False,
+    help="Number of parallel connection for Ansible",
+)
+@click.option(
+    "--ansible_pipelining/--no-ansible_pipelining",
+    default="False",
+    help="Enable pipelining for Ansible",
+)
+@click.option(
+    "--ansible_timeout",
+    default="10",
+    required=False,
+    help="Timeout for Ansible connection.",
 )
 @click.argument("lab_edition_file", type=click.Path(exists=True, dir_okay=False))
 @click.pass_context
@@ -433,12 +473,19 @@ def tectonic(
     libvirt_bridge,
     libvirt_external_network,
     libvirt_bridge_base_ip,
-    libvirt_proxy,
+    proxy,
     lab_edition_file,
     endpoint_policy_name,
+    user_install_packetbeat,
     internet_network_cidr_block,
     services_network_cidr_block,
-    keep_ansible_logs
+    keep_ansible_logs,
+    docker_uri,
+    caldera_version,
+    docker_dns,
+    ansible_forks,
+    ansible_pipelining,
+    ansible_timeout
 ):
     """Deploy or manage a cyber range according to LAB_EDITION_FILE."""
     logfile = PurePosixPath(lab_edition_file).parent.joinpath("tectonic.log")
@@ -473,12 +520,19 @@ def tectonic(
         libvirt_bridge,
         libvirt_external_network,
         libvirt_bridge_base_ip,
-        libvirt_proxy,
+        proxy,
         instance_type,
         endpoint_policy_name,
+        user_install_packetbeat,
         internet_network_cidr_block,
         services_network_cidr_block,
-        keep_ansible_logs
+        keep_ansible_logs,
+        docker_uri,
+        caldera_version,
+        docker_dns,
+        ansible_forks,
+        ansible_pipelining,
+        ansible_timeout
     )
 
     if platform == "aws":
@@ -497,13 +551,24 @@ def tectonic(
             gitlab_backend_access_token=gitlab_backend_access_token,
             packer_executable_path=packer_executable_path,
         )
+    elif platform == "docker":
+        ctx.obj["deployment"] = DockerDeployment(
+            ctx.obj["description"],
+            gitlab_backend_url=gitlab_backend_url,
+            gitlab_backend_username=gitlab_backend_username,
+            gitlab_backend_access_token=gitlab_backend_access_token,
+            packer_executable_path=packer_executable_path,
+        )
     else:
         raise Exception(f"Unsupported platform {platform}.")
 
     ctx.obj["ansible"] = Ansible(ctx.obj["deployment"])
 
-    if elastic_stack_version == "latest" and ctx.obj["description"].deploy_elastic:
+    if elastic_stack_version == "latest":
         ctx.obj["description"].set_elastic_stack_version(ctx.obj["deployment"].get_elastic_latest_version())
+
+    if caldera_version == "latest":
+        ctx.obj["description"].set_caldera_version("master")
 
 
 @tectonic.command()

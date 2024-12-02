@@ -24,7 +24,7 @@ components are organized in five layers, each fulfilling a particular
 function in the platform's operation.
 
 <p align="center">
-    <img src="docs/architecture.png" width="500">
+    <img src="https://raw.githubusercontent.com/GSI-Fing-Udelar/tectonic/refs/heads/main/docs/architecture.png" width="500">
 </p>
 
 The underlying infrastructure constitutes the real-world
@@ -50,23 +50,22 @@ among others.
 ## Installation Instructions
 The following are the requirements to run Tectonic:
 
-- Linux or Mac OS
-- Python 3.11
-- Ansible 2.15
+- Linux, Mac OS or WSL
+- Python 3.10 or newer
+- Poetry
 - Terraform 1.6
 - Packer 1.9
-- Python modules (see [pyproject.toml](pyproject.toml))
+- Docker
+- Libvirt
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) 
-- GitLab credentials (optional for Terraform state storage)
-- Optionally AWS credentials
 
-Please see the [detailed instructions](docs/installation.md) for more
+Please see the [detailed instructions](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/docs/installation.md) for more
 information.
 
 ### Terraform state syncronization
 Terraform states are stored locally by default. It is possible to
 store them in a gitlab repo (see `gitlab_backend_url` option in the
-[ini file configuration](docs/ini_config.md)). It is necessary to have
+[ini file configuration](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/docs/ini_config.md)). It is necessary to have
 Maintainer privileges on this repo and a GitLab access token. There
 are two types of access token: personal or project-based. If the
 latter is used, it must be associated with the project where the
@@ -85,7 +84,7 @@ poetry install
 ## Tectonic Configuration File
 Tectonic behaviour can be configured using an ini file with a
 `config` section. You can find an example configuration file with the
-default values [here](./tectonic.ini). Please see the [ini
+default values [here](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/tectonic.ini). Please see the [ini
 file documentation](docs/ini_config.md) for details on the available
 options.
 
@@ -109,8 +108,8 @@ The scenario specification consists of the following resources:
 
 The lab edition file 
 
-Please check the [description documentation](docs/description.md) for
-more details. The [examples](examples/) directory contains some
+Please check the [description documentation](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/docs/description.md) for
+more details. The [examples](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/examples/) directory contains some
 example scenarios.
 
 ## Running Tectonic
@@ -124,6 +123,10 @@ To destroy a scenario use the `destroy` command.
 
 See `tectonic --help` for a full list of options, and `tectonic
 <command> -h` for help on individual commands.
+
+## Disclaimer About Platforms
+
+Tectonic provides support for scenario deployments using Docker as the base platform. However, it is important to note that using Docker as base platform in production environments is not recommended since Tectonic deploys containers in privileged mode. This means that when a user has root access within a container, they can also gain root access to the host system, which can create significant security issues. Therefore, caution is crucial when using Docker as a base platform, especially in scenarios involving attacks. It is advisable to utilize Docker primarily for the generation and testing of new scenarios. For production environments, we recommend to utilize Libvirt or AWS as base platform, both of which are fully supported by Tectonic.
 
 ## Authors
 

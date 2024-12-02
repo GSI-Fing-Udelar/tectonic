@@ -28,6 +28,7 @@ import click
 from bs4 import BeautifulSoup
 import requests
 import re
+import math
 
 import packerpy
 import python_terraform
@@ -50,7 +51,7 @@ class TerraformRunException(Exception):
 def run_terraform_cmd(t, cmd, variables, **args):
     return_code, stdout, stderr = t.cmd(
         cmd, no_color=python_terraform.IsFlagged, var=variables, **args
-    )  # TODO: unused variables stdout
+    )
     if return_code != 0:
         error = f"ERROR: terraform {cmd} returned an error: {stderr}"
         raise TerraformRunException(error)
@@ -102,15 +103,18 @@ class Deployment:
         address = f"{self.gitlab_backend_url}/{self.description.institution}-{self.description.lab_name}-{tf_mod_name}"
 
         return [
-            f"address={address}",
-            f"lock_address={address}/lock",
-            f"unlock_address={address}/lock",
-            f"username={self.gitlab_backend_username}",
-            f"password={self.gitlab_backend_access_token}",
-            "lock_method=POST",
-            "unlock_method=DELETE",
-            "retry_wait_min=5",
+            f"path=terraform-states/{self.description.institution}-{self.description.lab_name}-{tf_mod_name}"
         ]
+        # return [
+        #     f"address={address}",
+        #     f"lock_address={address}/lock",
+        #     f"unlock_address={address}/lock",
+        #     f"username={self.gitlab_backend_username}",
+        #     f"password={self.gitlab_backend_access_token}",
+        #     "lock_method=POST",
+        #     "unlock_method=DELETE",
+        #     "retry_wait_min=5",
+        # ]
 
     def terraform_apply(self, terraform_dir, variables, resources=None):
         """
@@ -274,18 +278,18 @@ class Deployment:
                 machines[guest_name]["instance_type"] = self.description.instance_type.get_guest_instance_type(
                     self.description.get_guest_attr(guest_name, "memory", 1),
                     self.description.get_guest_attr(guest_name, "vcpu", 1),
+                    self.description.get_guest_attr(guest_name, "gpu", False),
                     monitor,
                     self.description.monitor_type,
                 )
         args = {
             "ansible_playbooks_path": self.description.ansible_playbooks_path,
-            "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 else "",
+            "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.description.platform != "docker" else "",
             "ansible_ssh_common_args": self.description.ansible_ssh_common_args,
             "aws_region": self.description.aws_region,
             "instance_number": self.description.instance_number,
             "institution": self.description.institution,
             "lab_name": self.description.lab_name,
-            "libvirt_proxy": self.description.libvirt_proxy,
             "libvirt_storage_pool": self.description.libvirt_storage_pool,
             "libvirt_uri": self.description.libvirt_uri,
             "machines_json": json.dumps(machines),
@@ -294,6 +298,8 @@ class Deployment:
             "remove_ansible_logs": str(not self.description.keep_ansible_logs),
             "elastic_version": self.description.elastic_stack_version
         }
+        if self.description.proxy is not None and self.description.proxy != "":
+            args["proxy"] = self.description.proxy
         self._create_packer_images(self.cr_packer_path, args)
 
     def get_teacher_access_username(self):
@@ -341,7 +347,7 @@ class Deployment:
         Generates pseudo-random passwords and/or sets public SSH keys for the users.
         Returns a dictionary of created users.
         """
-        playbook = tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'
+        playbook = tectonic_resources.files('tectonic') / 'playbooks' / "trainees.yml"
         
         users = self.get_student_access_users()
         only_instances = True
@@ -612,14 +618,14 @@ class Deployment:
                 elif self.description.platform == "aws":
                     machines[service]["disk"] = self.description.services[service]["disk"]
                     if service in ["caldera", "elastic"]:
-                        machines[service]["instance_type"] = self.description.instance_type.get_guest_instance_type(self.description.services[service]["memory"], self.description.services[service]["vcpu"], False, self.description.monitor_type)
+                        machines[service]["instance_type"] = self.description.instance_type.get_guest_instance_type(self.description.services[service]["memory"], self.description.services[service]["vcpu"], False, False, self.description.monitor_type)
                     elif service == "packetbeat":
                         machines[service]["instance_type"] = "t2.micro"
         args = {
-            "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 else "",
+            "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.description.platform != "docker" else "",
             "ansible_ssh_common_args": self.description.ansible_ssh_common_args,
             "aws_region": self.description.aws_region,
-            "libvirt_proxy": self.description.libvirt_proxy,
+            "proxy": self.description.proxy,
             "libvirt_storage_pool": self.description.libvirt_storage_pool,
             "libvirt_uri": self.description.libvirt_uri,
             "machines_json": json.dumps(machines),
@@ -629,7 +635,8 @@ class Deployment:
             #TODO: pass variables as a json as part of each host
             "elastic_version": self.description.elastic_stack_version, 
             "elastic_latest_version": "yes" if self.description.is_elastic_stack_latest_version else "no",
-            "caldera_version": "master",
+            "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
+            "caldera_version": self.description.caldera_version,
             "packetbeat_vlan_id": self.description.packetbeat_vlan_id,
         }
         self._create_packer_images(tectonic_resources.files('tectonic') / 'services' / 'image_generation' / 'create_image.pkr.hcl', args)
@@ -670,7 +677,7 @@ class Deployment:
             machines = self.description.parse_machines(instances=instances, guests=guests_to_monitor)
             inventory = ansible.build_inventory(machine_list=machines, extra_vars=extra_vars)
             ansible.wait_for_connections(inventory=inventory)
-            ansible.run(inventory=inventory,playbook=tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml', quiet=True)
+            ansible.run(inventory=inventory,playbook=tectonic_resources.files('tectonic') / 'services' / 'elastic' / "endpoint_install.yml",quiet=True)
         else:
             raise DeploymentException("Elastic machine is not running. Unable to install endpoints.")
 

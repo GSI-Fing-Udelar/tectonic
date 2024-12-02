@@ -29,5 +29,7 @@
         path: "/tmp/agent-{{ caldera_agent_type }}"
       register: result
     - name: Install agent
-      ansible.builtin.shell: "cd /tmp ; server='https://{{ caldera_ip }}:443'; curl --noproxy \"*\" -k -s -X POST -H \"file:sandcat.go\" -H \"platform:linux\" $server/file/download > agent-{{ caldera_agent_type }}; chmod +x agent-{{ caldera_agent_type }}; nohup ./agent-{{ caldera_agent_type }} -server $server -group {{ caldera_agent_type }} -paw {{ ansible_facts['fqdn'] }}-{{ caldera_agent_type }} &"
+      block:
+        - name: Install agent 
+          ansible.builtin.shell: "cd /tmp; server='https://{{ caldera_ip }}:443'; curl --noproxy \"*\" -k -s -X POST -H \"file:sandcat.go\" -H \"platform:linux\" $server/file/download > agent-{{ caldera_agent_type }}; chmod +x agent-{{ caldera_agent_type }}; nohup ./agent-{{ caldera_agent_type }} -server $server -group {{ caldera_agent_type }} -paw {{ ansible_facts['fqdn'] }}-{{ caldera_agent_type }} &"
       when: not result.stat.exists

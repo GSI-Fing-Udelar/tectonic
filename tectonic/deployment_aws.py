@@ -22,6 +22,7 @@ import json
 import click
 import ipaddress
 import datetime
+import math
 
 from tectonic.aws import Client
 from tectonic.constants import *
@@ -104,7 +105,9 @@ class AWSDeployment(Deployment):
     def get_cyberrange_data(self):
         """Get information about cyber range"""
         headers = ["Name", "Value"]
-        rows = [["Student Access IP", self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-student_access")]]
+        rows = []
+        if self.description.is_student_access():
+            rows.append(["Student Access IP", self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-student_access")])
         if self.description.teacher_access == "host":
             rows.append(["Teacher Access IP", self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-teacher_access")])
         if len(self.description.get_services_to_deploy()) > 0:
@@ -447,7 +450,7 @@ class AWSDeployment(Deployment):
 
         resources = [
             "module.vpc",
-            "aws_instance.student_access",
+            "aws_instance.student_access[0]",
             "aws_security_group.bastion_host_sg",
             "aws_security_group.teacher_access_sg",
             "aws_key_pair.admin_pubkey",
@@ -502,7 +505,7 @@ class AWSDeployment(Deployment):
         resource_to_recreate = []
         if student_access_name in machines_to_recreate:
             machines_to_recreate.remove(student_access_name)
-            resource_to_recreate.append("aws_instance.student_access")
+            resource_to_recreate.append("aws_instance.student_access[0]")
         if teacher_access_name in machines_to_recreate:
             machines_to_recreate.remove(teacher_access_name)
             resource_to_recreate.append("aws_instance.teacher_access_host[0]")
@@ -572,7 +575,7 @@ class AWSDeployment(Deployment):
         machines = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
         resources_to_recreate = self.get_resources_to_recreate(instances, guests, copies)
         click.echo("Recreating machines...")
-        self.terraform_recreate(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws', resources_to_recreate)
+        self.terraform_recreate(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / "gsi-lab-aws", resources_to_recreate)
 
         click.echo("Waiting for machines to boot up...")
         ansible = Ansible(self)
@@ -608,7 +611,8 @@ class AWSDeployment(Deployment):
 
         """
         entry_points = [ base_name for base_name, guest in self.description.guest_settings.items() if guest.get("entry_point") ]
-        entry_points.append("student_access")
+        if self.description.is_student_access():
+            entry_points.append("student_access")
         self._student_access(instances, entry_points)
 
     def deploy_infraestructure(self, instances):
@@ -637,9 +641,10 @@ class AWSDeployment(Deployment):
                     "monitor_type": self.description.monitor_type,
                     "deploy_policy": self.description.elastic_deploy_default_policy,
                     "policy_name": self.description.packetbeat_policy_name if self.description.monitor_type == "traffic" else self.description.endpoint_policy_name,
-                    "http_proxy" : self.description.libvirt_proxy,
+                    "http_proxy" : self.description.proxy,
                     "description_path": self.description.description_dir,
                     "ip": self.client.get_machine_private_ip(self.description.get_service_name("elastic")),
+                    "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
                 },
                 "caldera":{
                     "ip": self.client.get_machine_private_ip(self.description.get_service_name("caldera")),
@@ -656,7 +661,7 @@ class AWSDeployment(Deployment):
 
         click.echo("Waiting for machines to boot up...")
         ansible.wait_for_connections(instances=instances)
-
+        
         click.echo("Configuring student access...")
         self.student_access(instances)
 
@@ -815,7 +820,7 @@ class AWSDeployment(Deployment):
                         }
                     },
                     "disk": self.description.services["elastic"]["disk"],
-                    "instance_type": self.description.instance_type.get_guest_instance_type(self.description.services["elastic"]["memory"],self.description.services["elastic"]["vcpu"],False,self.description.monitor_type),
+                    "instance_type": self.description.instance_type.get_guest_instance_type(self.description.services["elastic"]["memory"],self.description.services["elastic"]["vcpu"],False,False,self.description.monitor_type),
                 }
             if self.description.monitor_type == "traffic":
                 guest_data[self.description.get_service_name("packetbeat")] = {
@@ -857,7 +862,7 @@ class AWSDeployment(Deployment):
                         }
                     },
                     "disk": self.description.services["caldera"]["disk"],
-                    "instance_type": self.description.instance_type.get_guest_instance_type(self.description.services["caldera"]["memory"],self.description.services["caldera"]["vcpu"],False,self.description.monitor_type),
+                    "instance_type": self.description.instance_type.get_guest_instance_type(self.description.services["caldera"]["memory"],self.description.services["caldera"]["vcpu"],False,False,self.description.monitor_type),
                 }
         return guest_data
         
@@ -880,6 +885,7 @@ class AWSDeployment(Deployment):
                         "elastic_agent_version": self.description.elastic_stack_version,
                         "institution": self.description.institution,
                         "lab_name": self.description.lab_name,
+                        "proxy": self.description.proxy,
                     },
                 )
                 ansible.wait_for_connections(inventory=inventory)

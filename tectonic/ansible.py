@@ -24,6 +24,7 @@ from pathlib import Path
 import ansible_runner
 import importlib.resources as tectonic_resources
 
+
 logger = logging.getLogger(__name__)
 
 class AnsibleException(Exception):
@@ -73,6 +74,17 @@ class Ansible:
         if proxy_command:
             ssh_args += f' -o ProxyCommand="{proxy_command}"'
 
+        networks = {}
+        for machine in description.parse_machines():
+            instance = description.get_instance_number(machine)
+            base_name = description.get_base_name(machine)
+            if instance not in networks:
+                networks[instance] = {}
+            for _, interface in (description.get_guest_data())[machine]["interfaces"].items():
+                if interface["network_name"] not in networks[instance]:
+                    networks[instance][interface["network_name"]] = {}
+                networks[instance][interface["network_name"]][base_name] = interface
+
         for machine in machine_list:
             base_name = description.get_base_name(machine)
             ansible_username = username or description.get_guest_username(base_name)
@@ -87,17 +99,23 @@ class Ansible:
                                 "instances": description.instance_number,
                                 "platform": description.platform,
                                 "institution": description.institution,
-                                "lab_name": description.lab_name
+                                "lab_name": description.lab_name,
+                                "ansible_connection" : "community.docker.docker_api" if description.platform == "docker" else "ssh", #export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES on macos
+                                "docker_host": description.docker_uri,
                             } | extra_vars,
                 }
 
+            instance = description.get_instance_number(machine)
             inventory[base_name]["hosts"][machine] = {
-                "ansible_host": hostname,
+                "ansible_host": hostname if description.platform != "docker" else machine,
                 "ansible_user": ansible_username,
                 "ansible_ssh_common_args": ssh_args,
-                "instance": description.get_instance_number(machine),
+                "machine_name": machine,
+                "instance": instance,
                 "copy": description.get_copy(machine),
-                "parameter": parameters[description.get_instance_number(machine)] if description.get_instance_number(machine) else {}
+                "networks": networks[instance] if instance else networks,
+                "parameter": parameters[description.get_instance_number(machine)] if description.get_instance_number(machine) else {},
+                "random_seed": description.random_seed,
             }
 
             if description.get_guest_attr(
@@ -111,6 +129,29 @@ class Ansible:
                 # Make sure we load environment variables within sudo shell
                 inventory[base_name]["hosts"][machine]["become_flags"] = "-i"
         return inventory
+    
+    def build_inventory_localhost(self, username=None, extra_vars=None):
+        if extra_vars is None:
+            extra_vars = {}
+        return {
+            f"{self.deployment.description.institution}-{self.deployment.description.lab_name}-localhost" : {
+                "hosts": {
+                    "localhost": {
+                        "become_flags": "-i",
+                    }
+                },
+                "vars": {
+                    "ansible_become": True,
+                    "ansible_user": username or self.deployment.description.user_install_packetbeat,
+                    "basename": "localhost",
+                    "instances": self.deployment.description.instance_number,
+                    "platform": self.deployment.description.platform,
+                    "institution": self.deployment.description.institution,
+                    "lab_name": self.deployment.description.lab_name,
+                    "ansible_connection" : "local",
+                } | extra_vars,
+            }
+        }
 
     def run(self,
             instances=None,
@@ -166,14 +207,22 @@ class Ansible:
             )
         self.output = ""
         self.debug_outputs = []
-        extravars = {"ansible_no_target_syslog" : not self.deployment.description.keep_ansible_logs }
+        extravars = { "ansible_no_target_syslog" : not self.deployment.description.keep_ansible_logs }
+        envvars = { 
+            "ANSIBLE_FORKS": self.deployment.description.ansible_forks,
+            "ANSIBLE_HOST_KEY_CHECKING": False,
+            "ANSIBLE_PIPELINING": self.deployment.description.ansible_pipelining,
+            "ANSIBLE_GATHERING": "explicit",
+            "ANSIBLE_TIMEOUT": self.deployment.description.ansible_timeout,
+        }
         r = ansible_runner.interface.run(
             inventory=inventory,
             playbook=playbook,
             quiet=quiet,
             verbosity=verbosity,
             event_handler=self._ansible_callback,
-            extravars=extravars
+            extravars=extravars,
+            envvars=envvars,
         )
         logger.info(self.output)
 

@@ -23,7 +23,6 @@ import pytest
 import responses
 import tectonic.deployment
 import python_terraform
-import ansible_runner
 
 
 def test_run_terraform_cmd(mocker, terraform_dir):

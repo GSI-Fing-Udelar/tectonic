@@ -20,8 +20,6 @@
 
 import pytest
 import io
-import os
-from pathlib import Path
 import responses
 import click
 from click.testing import CliRunner
@@ -38,7 +36,9 @@ from tectonic.cli import tectonic as tectonic_cli
 from tectonic.aws import Client as AWSClient
 from tectonic.deployment import Deployment
 from tectonic.libvirt_client import Client as LibvirtClient
+from tectonic.docker_client import Client as DockerClient
 from tectonic.deployment_libvirt import LibvirtDeployment
+from tectonic.deployment_docker import DockerDeployment
 
 import importlib.resources as tectonic_resources
 
@@ -56,22 +56,29 @@ def test_tectonic_deploy(mocker, monkeypatch,
                            tectonic_config,
                            lab_edition_file,
                            ec2_client,
-                           aws_secrets):
+                           aws_secrets, docker_client):
 
     # Get the platform from the config file
     cfg = ConfigParser()
     cfg.read(tectonic_config)
     platform = cfg["config"]["platform"]
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
     monitor_type = open(lab_edition_file,"r").readlines()[2].split("-")[1].rstrip()  
 
     def patch_aws_client(self, region):
         self.ec2_client = ec2_client
         self.secretsmanager_client = aws_secrets
-
     monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
+
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
+
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value="RUNNING")
-    mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.130")
+    mocker.patch.object(DockerClient,"get_instance_status",return_value="RUNNING")
+    mocker.patch.object(Deployment,"get_ssh_hostname",return_value="10.0.0.130")
     mocker.patch.object(Deployment, "_get_service_password", return_value={"elastic":"password"})
     mocker.patch.object(Deployment,"_get_service_info",return_value=[{"token" : "1234567890abcdef"}])
     responses.add(responses.GET,
@@ -111,7 +118,8 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     quiet=True,
                     verbosity=0,
                     event_handler=mocker.ANY,
-                    extravars=extravars, 
+                    extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
@@ -119,6 +127,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -126,6 +135,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
@@ -133,6 +143,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -140,6 +151,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -147,6 +159,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
@@ -154,6 +167,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
             ])
             assert ("Deploying Cyber Range instances...\n"
@@ -174,6 +188,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
@@ -181,6 +196,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -188,6 +204,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -195,6 +212,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
@@ -202,6 +220,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -209,6 +228,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
@@ -216,6 +236,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
             ])
             assert ("Deploying Cyber Range instances...\n"
@@ -258,6 +279,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
@@ -265,6 +287,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -272,6 +295,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
@@ -279,6 +303,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -286,6 +311,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -293,6 +319,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
@@ -300,6 +327,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
             ])
             assert ("Deploying Cyber Range services...\n"
@@ -320,6 +348,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
@@ -327,6 +356,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -334,6 +364,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -341,6 +372,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
@@ -348,6 +380,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -355,6 +388,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
                 mocker.call(inventory=mocker.ANY,
                     playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
@@ -362,6 +396,7 @@ def test_tectonic_deploy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars
                 ),
             ])
             assert ("Deploying Cyber Range services...\n"
@@ -380,6 +415,155 @@ def test_tectonic_deploy(mocker, monkeypatch,
         assert "│            Kibana URL            │ https://10.0.0.130:5601 │" in result.output
         assert "│ Kibana user (username: password) │    elastic: password    │" in result.output
         assert "└──────────────────────────────────┴─────────────────────────┘" in result.output
+    elif platform == "docker":
+        assert result.exception is None
+        assert result.exit_code == 0
+        assert mock_terraform.call_count == 2
+        mock_terraform.assert_has_calls([
+            mocker.call(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-docker',
+                    variables=mocker.ANY,
+                    resources=None),
+            mocker.call(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-docker',
+                        variables=mocker.ANY,
+                        resources=None),
+        ])
+        if monitor_type == "traffic":
+            assert len(mock_ansible.mock_calls) == 6
+            mock_ansible.assert_has_calls([
+                mocker.call(inventory=mocker.ANY,
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars
+                ),
+                mocker.call(inventory=mocker.ANY,
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars
+                ),
+                mocker.call(inventory=mocker.ANY,
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars
+                ),
+                mocker.call(inventory=mocker.ANY,
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars
+                ),
+                mocker.call(inventory=mocker.ANY,
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars
+                ),
+                mocker.call(inventory=mocker.ANY,
+                    playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars
+                ),
+            ])
+            assert ("Deploying Cyber Range services...\n"
+                "Waiting for services to boot up...\n"
+                "Configuring services...\n"
+                "Deploying Cyber Range instances...\n"
+                "Waiting for machines to boot up...\n"
+                "Configuring student access...\n"
+                "Running after-clone configuration...\n"
+                "Getting Cyber Range information...\n"
+            ) in result.output
+        elif monitor_type == "endpoint":
+            assert len(mock_ansible.mock_calls) == 7
+            mock_ansible.assert_has_calls([
+                mocker.call(inventory=mocker.ANY,
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars
+                ),
+                mocker.call(inventory=mocker.ANY,
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars
+                ),
+                mocker.call(inventory=mocker.ANY,
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars
+                ),
+                mocker.call(inventory=mocker.ANY,
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars
+                ),
+                mocker.call(inventory=mocker.ANY,
+                    playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars
+                ),
+                mocker.call(inventory=mocker.ANY,
+                    playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars
+                ),
+                mocker.call(inventory=mocker.ANY,
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars
+                ),
+            ])
+            assert ("Deploying Cyber Range services...\n"
+                "Waiting for services to boot up...\n"
+                "Configuring services...\n"
+                "Deploying Cyber Range instances...\n"
+                "Waiting for machines to boot up...\n"
+                "Configuring student access...\n"
+                "Running after-clone configuration...\n"
+                "Configuring elastic agents...\n"
+                "Getting Cyber Range information...\n"
+            ) in result.output
+        assert "┌──────────────────────────────────┬────────────────────────┐" in result.output
+        assert "│               Name               │         Value          │" in result.output
+        assert "├──────────────────────────────────┼────────────────────────┤" in result.output
+        assert "│            Kibana URL            │ https://127.0.0.1:5601 │" in result.output
+        assert "│ Kibana user (username: password) │   elastic: password    │" in result.output
+        assert "└──────────────────────────────────┴────────────────────────┘" in result.output
     assert "Student users:" in result.output
     assert "┌───────────┬──────────────┐" in result.output
     assert "│  Username │   Password   │" in result.output
@@ -389,17 +573,17 @@ def test_tectonic_deploy(mocker, monkeypatch,
 
 @responses.activate
 def test_tectonic_destroy(mocker, monkeypatch,
-                            base_tectonic_path, labs_path,
                             tectonic_config,
                             lab_edition_file,
                             ec2_client,
-                            aws_secrets):
+                            aws_secrets, docker_client):
 
     # Get the platform from the config file
     cfg = ConfigParser()
     cfg.read(tectonic_config)
     platform = cfg["config"]["platform"]
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
     monitor_type = open(lab_edition_file,"r").readlines()[2].split("-")[1].rstrip()  
 
     responses.add(responses.GET,
@@ -411,8 +595,14 @@ def test_tectonic_destroy(mocker, monkeypatch,
         self.secretsmanager_client = aws_secrets
     monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
 
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
+
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value="RUNNING")
-    mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.130")
+    mocker.patch.object(DockerClient,"get_instance_status",return_value="RUNNING")
+    mocker.patch.object(Deployment,"get_ssh_hostname",return_value="10.0.0.130")
     mocker.patch.object(Deployment, "_get_service_password", return_value={"elastic":"password"})
     mocker.patch.object(Deployment,"_get_service_info",return_value=[{"token" : "1234567890abcdef"}])
 
@@ -463,21 +653,44 @@ def test_tectonic_destroy(mocker, monkeypatch,
                     verbosity=0,
                     event_handler=mocker.ANY,
                     extravars=extravars,
+                    envvars=envvars,
                 ),
             ])
         assert ("Destroying Cyber Range instances...\n"
             "Destroying Cyber Range services...\n") == result.output
-    print(result.output)
+    elif platform == "docker":
+        mock_terraform.assert_has_calls([
+            mocker.call(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-docker',
+                variables=mocker.ANY,
+                resources=None),
+            mocker.call(tectonic_resources.files('tectonic') / 'services' / 'terraform' / 'services-docker',
+                        variables=mocker.ANY,
+                        resources=None),
+        ])
+        if monitor_type == "traffic":
+            assert len(mock_ansible.mock_calls) == 1
+            mock_ansible.assert_has_calls([
+                mocker.call(inventory=mocker.ANY,
+                    playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
+                    quiet=True,
+                    verbosity=0,
+                    event_handler=mocker.ANY,
+                    extravars=extravars,
+                    envvars=envvars,
+                ),
+            ])
+        assert ("Destroying Cyber Range instances...\n"
+            "Destroying Cyber Range services...\n") == result.output
 
 
 @responses.activate
 def test_tectonic_create_images(mocker,
-                                  monkeypatch,
-                                  base_tectonic_path,
-                                  tectonic_config,
-                                  lab_edition_file,
-                                  ec2_client,
-                                  aws_secrets):
+                                monkeypatch,
+                                tectonic_config,
+                                lab_edition_file,
+                                ec2_client,
+                                aws_secrets,
+                                docker_client):
 
     # Get the platform from the config file
     cfg = ConfigParser()
@@ -493,6 +706,11 @@ def test_tectonic_create_images(mocker,
         self.ec2_client = ec2_client
         self.secretsmanager_client = aws_secrets
     monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
+
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
 
     mock_packer_cmd = mocker.patch.object(packerpy.PackerExecutable, "execute_cmd", return_value=(0, "success", ""))
     mock_packer_build = mocker.patch.object(packerpy.PackerExecutable, "build", return_value=(0, "success", ""))
@@ -525,12 +743,12 @@ def test_tectonic_create_images(mocker,
 
 @responses.activate
 def test_tectonic_list(mocker,
-                         monkeypatch,
-                         base_tectonic_path,
-                         tectonic_config,
-                         lab_edition_file,
-                         ec2_client,
-                         aws_secrets):
+                    monkeypatch,
+                    tectonic_config,
+                    lab_edition_file,
+                    ec2_client,
+                    aws_secrets,
+                    docker_client):
 
     # Get the platform from the config file
     cfg = ConfigParser()
@@ -539,9 +757,12 @@ def test_tectonic_list(mocker,
     monitor_type = open(lab_edition_file,"r").readlines()[2].split("-")[1].rstrip() 
 
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value="RUNNING")
+    mocker.patch.object(DockerClient,"get_instance_status",return_value="RUNNING")
     mocker.patch.object(AWSClient,"get_instance_status",return_value="RUNNING")
     mocker.patch.object(LibvirtDeployment,"_manage_packetbeat",return_value="RUNNING")
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.130")
+    mocker.patch.object(DockerDeployment,"_manage_packetbeat",return_value="RUNNING")
+    mocker.patch.object(DockerDeployment,"get_ssh_hostname",return_value="10.0.0.130")
     mocker.patch.object(Deployment, "_get_service_password", return_value={"elastic":"password"})
     mocker.patch.object(Deployment,"_get_service_info",return_value=[{"agents_status": {"online": 2,"error": 0,"inactive": 0,"offline": 0,"updating": 0,"unenrolled": 0,"degraded": 0,"enrolling": 0,"unenrolling": 0 }}])
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
@@ -549,6 +770,11 @@ def test_tectonic_list(mocker,
         self.ec2_client = ec2_client
         self.secretsmanager_client = aws_secrets
     monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
+
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
 
     responses.add(responses.GET,
         "https://www.elastic.co/guide/en/elasticsearch/reference/current/es-release-notes.html",
@@ -575,7 +801,7 @@ def test_tectonic_list(mocker,
         assert "│ udelar-lab01-student_access │ RUNNING │" in result.output
         assert "│ udelar-lab01-teacher_access │ RUNNING │" in result.output
         assert "└─────────────────────────────┴─────────┘" in result.output
-    elif platform == "libvirt":
+    elif platform == "libvirt" or platform == "docker":
         assert "┌─────────────────────────┬─────────┐" in result.output
         assert "│           Name          │  Status │" in result.output
         assert "├─────────────────────────┼─────────┤" in result.output
@@ -610,11 +836,11 @@ def test_tectonic_list(mocker,
 
 @responses.activate
 def test_tectonic_start(monkeypatch,
-                          tectonic_config,
-                          lab_edition_file,
-                          ec2_client,
-                          aws_secrets,
-                          libvirt_client):
+                        tectonic_config,
+                        lab_edition_file,
+                        ec2_client,
+                        aws_secrets,
+                        docker_client):
 
     # Get the platform from the config file
     cfg = ConfigParser()
@@ -638,6 +864,11 @@ def test_tectonic_start(monkeypatch,
         self.ec2_client = ec2_client
         self.secretsmanager_client = aws_secrets
     monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
+
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
 
 
     instance_name="udelar-lab01-1-attacker"
@@ -662,21 +893,23 @@ def test_tectonic_start(monkeypatch,
             Filters=[{"Name": "tag:Name", "Values": [instance_name]}])["Reservations"][0][
                 "Instances"][0]["InstanceId"]
         ec2_client.stop_instances(InstanceIds=[instance_id])
-    else:
+    elif platform == "libvirt":
         # TODO: Cannot check libvirt domain status with a new instance
         # of libvirt client
         pass
+    elif platform == "docker":
+        docker_client.containers.get("udelar-lab01-1-attacker").start.assert_called_once()
 
     assert result.output == "Booting up instance udelar-lab01-1-attacker...\n"
 
 
 @responses.activate
 def test_tectonic_shutdown(monkeypatch,
-                             tectonic_config,
-                             lab_edition_file,
-                             ec2_client,
-                             aws_secrets,
-                             libvirt_client):
+                        tectonic_config,
+                        lab_edition_file,
+                        ec2_client,
+                        aws_secrets,
+                        docker_client):
 
     # Get the platform from the config file
     cfg = ConfigParser()
@@ -700,6 +933,11 @@ def test_tectonic_shutdown(monkeypatch,
         self.ec2_client = ec2_client
         self.secretsmanager_client = aws_secrets
     monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
+
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
 
 
     instance_name="udelar-lab01-1-attacker"
@@ -718,21 +956,23 @@ def test_tectonic_shutdown(monkeypatch,
         Filters=[{"Name": "tag:Name", "Values": [instance_name]}])["Reservations"][0][
             "Instances"][0]
         assert instance["State"]["Name"] == "stopped"
-    else:
+    elif platform == "libvirt":
         # TODO: Cannot check libvirt domain status with a new instance
         # of libvirt client
         pass
+    elif platform == "docker":
+        docker_client.containers.get("udelar-lab01-1-attacker").stop.assert_called_once()
 
     assert result.output == "Shutting down instance udelar-lab01-1-attacker...\n"
 
 
 @responses.activate
 def test_tectonic_reboot(monkeypatch,
-                           tectonic_config,
-                           lab_edition_file,
-                           ec2_client,
-                           aws_secrets,
-                           libvirt_client):
+                        tectonic_config,
+                        lab_edition_file,
+                        ec2_client,
+                        aws_secrets,
+                        docker_client):
 
     # Get the platform from the config file
     cfg = ConfigParser()
@@ -757,6 +997,11 @@ def test_tectonic_reboot(monkeypatch,
         self.secretsmanager_client = aws_secrets
     monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
 
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
+
     instance_name="udelar-lab01-1-attacker"
     runner = CliRunner()
     result = runner.invoke(cli=tectonic_cli,
@@ -774,10 +1019,12 @@ def test_tectonic_reboot(monkeypatch,
         Filters=[{"Name": "tag:Name", "Values": [instance_name]}])["Reservations"][0][
             "Instances"][0]
         assert instance["State"]["Name"] == "running"
-    else:
+    elif platform == "libvirt":
         # TODO: Cannot check libvirt domain status with a new instance
         # of libvirt client
         pass
+    elif platform == "docker":
+        docker_client.containers.get("udelar-lab01-1-attacker").restart.assert_called_once()
 
     assert result.output == "Rebooting instance udelar-lab01-1-attacker...\n"
 
@@ -785,11 +1032,12 @@ def test_tectonic_reboot(monkeypatch,
 
 @responses.activate
 def test_tectonic_console(mocker,
-                            monkeypatch,
-                            tectonic_config,
-                            lab_edition_file,
-                            ec2_client,
-                            aws_secrets):
+                        monkeypatch,
+                        tectonic_config,
+                        lab_edition_file,
+                        ec2_client,
+                        aws_secrets,
+                        docker_client):
     # Get the platform from the config file
     cfg = ConfigParser()
     cfg.read(tectonic_config)
@@ -804,6 +1052,12 @@ def test_tectonic_console(mocker,
         self.secretsmanager_client = aws_secrets
     monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
+
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
+    mock_run = mocker.patch("subprocess.run")
 
     def fabric_shell_aws(connection, **kwargs):
         """ Mocks fabric.Connection.shell()."""
@@ -823,7 +1077,7 @@ def test_tectonic_console(mocker,
 
     if platform == "aws":
         monkeypatch.setattr(fabric.Connection, "shell", fabric_shell_aws)
-    else:
+    elif platform == "libvirt":
         monkeypatch.setattr(fabric.Connection, "shell", fabric_shell_libvirt)
 
     spy = mocker.spy(fabric.Connection, "shell")
@@ -837,15 +1091,22 @@ def test_tectonic_console(mocker,
 
     assert result.exception is None
     assert result.exit_code == 0
-
-    spy.assert_called_once()
+    if platform == "aws" or platform == "libvirt":
+        spy.assert_called_once()
+    elif platform == "docker":
+        mock_run.assert_called_once()
     assert result.output == "Connecting to machine udelar-lab01-1-attacker...\n"
 
 @responses.activate
 def test_tectonic_run_ansible(mocker,
+                              monkeypatch,
                               test_data_path,
                               tectonic_config,
-                              lab_edition_file):
+                              lab_edition_file,
+                              ec2_client,
+                              aws_secrets,
+                              docker_client):
+                            
     responses.add(responses.GET,
         'https://api.elastic-cloud.com/api/v1/regions/us-east-1/stack/versions?show_deleted=false',
         json={"stacks": [{"version": "8.10.4", "template": {
@@ -859,7 +1120,16 @@ def test_tectonic_run_ansible(mocker,
         body='<html><body></body><a class="xref" href="release-notes-8.12.2.html" title="Elasticsearch version 8.12.2"><em>Elasticsearch version 8.12.2</em></a><a class="xref" href="release-notes-8.12.1.html" title="Elasticsearch version 8.12.1"><em>Elasticsearch version 8.12.1</em></a></html>',
     )
 
+    def patch_aws_client(self, region):
+        self.ec2_client = ec2_client
+        self.secretsmanager_client = aws_secrets
+    monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
+
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
 
     result = ansible_runner.Runner(config=None)
     result.rc = 0
@@ -876,6 +1146,7 @@ def test_tectonic_run_ansible(mocker,
     cfg = ConfigParser()
     cfg.read(tectonic_config)
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
 
     assert result.exception is None
     assert result.exit_code == 0
@@ -885,14 +1156,18 @@ def test_tectonic_run_ansible(mocker,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
                                  extravars=extravars,
+                                 envvars=envvars,
                                 )
 
 
 @responses.activate
 def test_tectonic_student_access(mocker,
+                                 monkeypatch,
                                  tectonic_config,
-                                 base_tectonic_path,
-                                 lab_edition_file):
+                                 lab_edition_file,
+                                 ec2_client,
+                                 aws_secrets,
+                                 docker_client):
     responses.add(responses.GET,
         'https://api.elastic-cloud.com/api/v1/regions/us-east-1/stack/versions?show_deleted=false',
         json={"stacks": [{"version": "8.10.4", "template": {
@@ -906,7 +1181,16 @@ def test_tectonic_student_access(mocker,
         body='<html><body></body><a class="xref" href="release-notes-8.12.2.html" title="Elasticsearch version 8.12.2"><em>Elasticsearch version 8.12.2</em></a><a class="xref" href="release-notes-8.12.1.html" title="Elasticsearch version 8.12.1"><em>Elasticsearch version 8.12.1</em></a></html>',
     )
 
+    def patch_aws_client(self, region):
+        self.ec2_client = ec2_client
+        self.secretsmanager_client = aws_secrets
+    monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
+
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
 
     result = ansible_runner.Runner(config=None)
     result.rc = 0
@@ -923,6 +1207,7 @@ def test_tectonic_student_access(mocker,
     cfg = ConfigParser()
     cfg.read(tectonic_config)
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
 
     assert result.exception is None
     assert result.exit_code == 0
@@ -932,6 +1217,7 @@ def test_tectonic_student_access(mocker,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
                                  extravars=extravars,
+                                 envvars=envvars,
                                 )
     assert (result.output == (
         "Configuring student access...\n\n"
@@ -947,16 +1233,18 @@ def test_tectonic_student_access(mocker,
 @responses.activate
 def test_tectonic_recreate(mocker, monkeypatch,
                            test_data_path,
-                           base_tectonic_path, labs_path,
+                           labs_path,
                            tectonic_config,
                            lab_edition_file,
                            ec2_client,
-                           aws_secrets):
+                           aws_secrets,
+                           docker_client):
 
     # Get the platform from the config file
     cfg = ConfigParser()
     cfg.read(tectonic_config)
     extravars={"ansible_no_target_syslog" : cfg["config"]["keep_ansible_logs"] == "no" }
+    envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
     monitor_type = open(lab_edition_file,"r").readlines()[2].split("-")[1].rstrip() 
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value="RUNNING")
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value="RUNNING")
@@ -971,6 +1259,10 @@ def test_tectonic_recreate(mocker, monkeypatch,
         self.ec2_client = ec2_client
         self.secretsmanager_client = aws_secrets
     monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
     mock_terraform = mocker.patch.object(tectonic.deployment.Deployment, "terraform_recreate")
     result = ansible_runner.Runner(config=None)
@@ -1000,6 +1292,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
+                envvars=envvars,
             ),
             mocker.call(inventory=mocker.ANY,
                 playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -1007,6 +1300,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
+                envvars=envvars,
             ),
             mocker.call(inventory=mocker.ANY,
                 playbook=f"{test_data_path}/labs/test-{monitor_type}/ansible/after_clone.yml",
@@ -1014,6 +1308,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
+                envvars=envvars,
             ),
             mocker.call(inventory=mocker.ANY,
                 playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
@@ -1021,6 +1316,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
+                envvars=envvars,
             ),
             mocker.call(inventory=mocker.ANY,
                 playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
@@ -1028,6 +1324,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                 verbosity=0,
                 event_handler=mocker.ANY,
                 extravars=extravars,
+                envvars=envvars,
             ),
         ])
         assert (result.output == (
@@ -1046,6 +1343,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                         verbosity=0,
                         event_handler=mocker.ANY,
                         extravars=extravars,
+                        envvars=envvars,
                         ),
             mocker.call(inventory=mocker.ANY,
                         playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
@@ -1053,6 +1351,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                         verbosity=0,
                         event_handler=mocker.ANY,
                         extravars=extravars,
+                        envvars=envvars,
                         ),
             mocker.call(inventory=mocker.ANY,
                         playbook=f"{labs_path}/test-{monitor_type}/ansible/after_clone.yml",
@@ -1060,6 +1359,7 @@ def test_tectonic_recreate(mocker, monkeypatch,
                         verbosity=0,
                         event_handler=mocker.ANY,
                         extravars=extravars,
+                        envvars=envvars,
                         ),
         ])
         assert (result.output == (
@@ -1072,10 +1372,11 @@ def test_tectonic_recreate(mocker, monkeypatch,
 
 @responses.activate
 def test_tectonic_info(mocker, monkeypatch,
-                         tectonic_config,
-                         lab_edition_file,
-                         ec2_client,
-                         aws_secrets):
+                        tectonic_config,
+                        lab_edition_file,
+                        ec2_client,
+                        aws_secrets,
+                        docker_client):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value="RUNNING")
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.130")
@@ -1089,6 +1390,10 @@ def test_tectonic_info(mocker, monkeypatch,
         self.ec2_client = ec2_client
         self.secretsmanager_client = aws_secrets
     monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
     cfg = ConfigParser()
     cfg.read(tectonic_config)
     platform = cfg["config"]["platform"]
@@ -1119,6 +1424,13 @@ def test_tectonic_info(mocker, monkeypatch,
         assert "│            Kibana URL            │ https://10.0.0.130:5601 │" in result.output
         assert "│ Kibana user (username: password) │    elastic: password    │" in result.output
         assert "└──────────────────────────────────┴─────────────────────────┘" in result.output
+    elif platform == "docker":
+        assert "┌──────────────────────────────────┬────────────────────────┐" in result.output
+        assert "│               Name               │         Value          │" in result.output
+        assert "├──────────────────────────────────┼────────────────────────┤" in result.output
+        assert "│            Kibana URL            │ https://127.0.0.1:5601 │" in result.output
+        assert "│ Kibana user (username: password) │   elastic: password    │" in result.output
+        assert "└──────────────────────────────────┴────────────────────────┘" in result.output
     assert "Student users:" in result.output
     assert "┌───────────┬──────────────┐" in result.output
     assert "│  Username │   Password   │" in result.output
@@ -1208,12 +1520,8 @@ def test_get_parameters(mocker, monkeypatch,
                          tectonic_config,
                          lab_edition_file,
                          ec2_client,
-                         aws_secrets):
-    mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
-    mocker.patch.object(LibvirtClient,"get_instance_status",return_value="RUNNING")
-    mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.130")
-    mocker.patch.object(Deployment, "_get_service_password", return_value={"elastic":"password"})
-    mocker.patch.object(Deployment,"_get_service_info",return_value=[{"token" : "1234567890abcdef"}])
+                         aws_secrets,
+                         docker_client):
     responses.add(responses.GET,
         "https://www.elastic.co/guide/en/elasticsearch/reference/current/es-release-notes.html",
         body='<html><body></body><a class="xref" href="release-notes-8.12.2.html" title="Elasticsearch version 8.12.2"><em>Elasticsearch version 8.12.2</em></a><a class="xref" href="release-notes-8.12.1.html" title="Elasticsearch version 8.12.1"><em>Elasticsearch version 8.12.1</em></a></html>',
@@ -1222,6 +1530,10 @@ def test_get_parameters(mocker, monkeypatch,
         self.ec2_client = ec2_client
         self.secretsmanager_client = aws_secrets
     monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
     runner = CliRunner()
     result = runner.invoke(cli=tectonic_cli,
                            args=['--debug', '--config', tectonic_config, lab_edition_file,

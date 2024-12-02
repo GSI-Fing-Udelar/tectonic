@@ -1,3 +1,24 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+
 packer {
   required_plugins {
     amazon = {
@@ -16,6 +37,10 @@ packer {
       version = ">= 0.5.0"
       source  = "github.com/thomasklein94/libvirt"
     }
+    docker = {
+      version = ">= 1.0.8"
+      source = "github.com/hashicorp/docker"
+    }
   }
 }
 
@@ -25,7 +50,7 @@ variable "platform" {
   description = "Whether to create images in AWS or use libvirt."
 
   validation {
-    condition = can(regex("^(aws|libvirt)$", var.platform))
+    condition = can(regex("^(aws|libvirt|docker)$", var.platform))
     error_message = "Supported platforms are 'aws', 'libvirt'."
   }
 }
@@ -53,7 +78,9 @@ locals {
   machines = jsondecode(var.machines_json)
   os_data = jsondecode(var.os_data_json)
 
-  build_type = var.platform == "aws" ? "amazon-ebs" : "libvirt"
+  platform_to_buildtype = { "aws": "amazon-ebs", "libvirt": "libvirt", "docker":"docker" }
+
+  build_type = local.platform_to_buildtype[var.platform]
   machine_builds = [ for m, _ in local.machines : "${local.build_type}.${m}" ]
 
 }
@@ -76,7 +103,7 @@ variable "libvirt_storage_pool" {
   default     = "default"
   description = "Libvirt Storage pool to store the configured image."
 }
-variable "libvirt_proxy" {
+variable "proxy" {
   type        = string
   default     = null
   description = "Guest machines proxy configuration URI for libvirt."
@@ -89,7 +116,12 @@ variable "elastic_version" {
 }
 variable "elastic_latest_version" {
   type = string
-  description = "Use Elastic Stack latest version"
+  description = "Use Elastic Stack latest version."
+}
+
+variable "elasticsearch_memory" {
+  type = string
+  description = "Elasticsearch JVM memory to use."
 }
 
 #Caldera variables
@@ -144,6 +176,13 @@ source "libvirt" "machine" {
     bus        = "sata"
   }
   shutdown_mode = "acpi"
+}
+
+source "docker" "machine" {
+  commit = true
+  discard = false
+  privileged = true
+  pull = false
 }
 
 
@@ -208,34 +247,54 @@ build {
     }
   }
 
+  dynamic "source" {
+    for_each = { for machine_name, m in local.machines: machine_name => m if var.platform == "docker" }
+    labels   = [ "docker.machine" ]
+    content {
+      name = source.key
+      image = local.os_data[source.value["base_os"]]["docker_base_image"]
+      exec_user = local.os_data[source.value["base_os"]]["username"]
+      run_command = ["-d", "-i", "-t", "--name", "${source.key}", "--entrypoint=${local.os_data[source.value["base_os"]]["entrypoint"]}", "--", "{{.Image}}"]
+    }
+  }
+
   provisioner "ansible" {
     playbook_file = "${abspath(path.root)}/../../image_generation/libvirt_conf.yml"
-    use_sftp = false
-    use_proxy = false
+
+    use_sftp = var.platform == "docker"
+    use_proxy = var.platform == "docker"
+
     host_alias = source.name
     user = local.os_data[local.machines[source.name]["base_os"]]["username"]
+
     extra_arguments = concat(
-      var.libvirt_proxy != null ? ["--extra-vars", "proxy=${var.libvirt_proxy}"] : [],
-      ["--extra-vars", "ansible_no_target_syslog=${var.remove_ansible_logs}"]
+      var.ansible_scp_extra_args != "" ? ["--scp-extra-args", "${var.ansible_scp_extra_args}"] : [],
+      var.proxy != null ? ["--extra-vars", "proxy=${var.proxy} platform=${var.platform}"] : ["--extra-vars", "platform=${var.platform}"],
+      ["--extra-vars", "ansible_no_target_syslog=${var.remove_ansible_logs}"],
     )
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
-    except = var.platform != "libvirt" ? local.machine_builds : []
+
+    except = var.platform == "aws" ? local.machine_builds : []
   }
 
   provisioner "ansible" {
     playbook_file = fileexists("${local.machines[source.name]["ansible_playbook"]}") ? "${local.machines[source.name]["ansible_playbook"]}" : "/dev/null"
-    use_sftp = false
-    use_proxy = false
+    
+    use_sftp = var.platform == "docker"
+    use_proxy = var.platform == "docker"
+    
     host_alias = source.name
     user = local.os_data[local.machines[source.name]["base_os"]]["username"]
+    
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
     extra_arguments = concat(
       ["--extra-vars", "basename=${source.name} platform=${var.platform} ansible_become=true ansible_become_flags=-i ansible_no_target_syslog=${var.remove_ansible_logs}"],
       var.ansible_scp_extra_args != "" ? ["--scp-extra-args", "${var.ansible_scp_extra_args}"] : [],
-      var.elastic_latest_version == "yes" ? ["--extra-vars", "elastic_latest_version=true"] : ["--extra-vars", "elastic_latest_version=false"],
+      ["--extra-vars", "elastic_latest_version=${var.elastic_latest_version}"],
       ["--extra-vars", "elastic_version=${var.elastic_version}"],
       ["--extra-vars", "caldera_version=${var.caldera_version}"],
-      ["--extra-vars", "packetbeat_vlan_id=${var.packetbeat_vlan_id}"]
+      ["--extra-vars", "packetbeat_vlan_id=${var.packetbeat_vlan_id}"],
+      ["--extra-vars", "elasticsearch_memory=${var.elasticsearch_memory}"],
     )
   }
 
@@ -245,6 +304,13 @@ build {
       "sudo systemctl stop cloud-init",
       "sudo cloud-init clean --logs",
     ]
+    except = var.platform != "docker" ? [] : local.machine_builds 
+  }
+
+  post-processor "docker-tag" {
+    repository =  "${source.name}"
+    tags = ["latest"]
+    except = var.platform != "docker" ? local.machine_builds : []
   }
 }
 

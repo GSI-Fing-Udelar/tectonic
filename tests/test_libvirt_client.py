@@ -18,8 +18,6 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-import time
-
 import libvirt
 import libvirt_qemu
 import pytest
@@ -27,7 +25,7 @@ from libvirt import libvirtError
 
 from tectonic.libvirt_client import LibvirtClientException, Client as LibvirtClient
 
-def test_libvirt_client_constructor(description, test_data_path):
+def test_libvirt_client_constructor(description):
     """Test libvirt client creation and destruction."""
 
     original_uri = description.libvirt_uri

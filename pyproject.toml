@@ -56,7 +56,7 @@ pynacl = "*"
 python-dateutil = "*"
 python-terraform = "*"
 pyyaml = "*"
-requests = "*"
+requests = "2.31.0" #https://github.com/ansible-collections/community.docker/issues/868
 requests-toolbelt = "*"
 s3transfer = "*"
 six = "*"
@@ -71,6 +71,7 @@ prettytable = "*"
 beautifulsoup4 = "*"
 bs4 = "*"
 freezegun = "*"
+docker = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.0.0"

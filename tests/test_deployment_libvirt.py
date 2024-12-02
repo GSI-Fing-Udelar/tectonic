@@ -20,7 +20,6 @@
 
 import pytest
 import json
-import os
 import python_terraform
 import libvirt_qemu
 import tectonic.ssh
@@ -49,19 +48,12 @@ def test_constructor(description):
         gitlab_backend_access_token="testtoken",
     )
 
-def test_generate_backend_config(libvirt_deployment, base_tectonic_path):
+def test_generate_backend_config(libvirt_deployment):
     answer = libvirt_deployment.generate_backend_config(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt')
-    assert len(answer) == 8
-    assert 'address=https://gitlab.com/udelar-lab01-gsi-lab-libvirt' in answer
-    assert 'lock_address=https://gitlab.com/udelar-lab01-gsi-lab-libvirt/lock' in answer
-    assert 'unlock_address=https://gitlab.com/udelar-lab01-gsi-lab-libvirt/lock' in answer
-    assert 'username=testuser' in answer
-    assert 'password=testtoken' in answer
-    assert 'lock_method=POST' in answer
-    assert 'unlock_method=DELETE' in answer
+    assert len(answer) == 1
+    assert "path=terraform-states/udelar-lab01-gsi-lab-libvirt" in answer
 
-
-def test_terraform_apply(mocker, libvirt_deployment, base_tectonic_path):
+def test_terraform_apply(mocker, libvirt_deployment):
     variables = {"var1": "value1", "var2": "value2"}
     resources = {'libvirt_domain.machines["udelar-lab01-1-attacker"]'}
 
@@ -86,7 +78,7 @@ def test_terraform_apply(mocker, libvirt_deployment, base_tectonic_path):
                                        ),
                            ])
 
-def test_get_deploy_cr_vars(libvirt_deployment, terraform_dir, test_data_path):
+def test_get_deploy_cr_vars(libvirt_deployment, test_data_path):
     variables = libvirt_deployment.get_deploy_cr_vars()
     # do not compare authorized_keys as its order is not guaranteed
     variables.pop('authorized_keys', None)
@@ -110,7 +102,7 @@ def test_get_deploy_cr_vars(libvirt_deployment, terraform_dir, test_data_path):
         "services_network_base_ip": 9,
     }
 
-def test_get_deploy_services_vars(libvirt_deployment, terraform_dir, test_data_path):
+def test_get_deploy_services_vars(libvirt_deployment, test_data_path):
     variables = libvirt_deployment.get_deploy_services_vars()
     # do not compare authorized_keys as its order is not guaranteed
     variables.pop('authorized_keys', None)
@@ -127,7 +119,7 @@ def test_get_deploy_services_vars(libvirt_deployment, terraform_dir, test_data_p
     }
 
 
-def test_deploy_cr_all_instances(mocker, libvirt_deployment, base_tectonic_path):
+def test_deploy_cr_all_instances(mocker, libvirt_deployment):
     mock = mocker.patch.object(libvirt_deployment, "terraform_apply")
     libvirt_deployment._deploy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt', libvirt_deployment.get_deploy_cr_vars(), None)
     mock.assert_called_once_with(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt',
@@ -136,7 +128,7 @@ def test_deploy_cr_all_instances(mocker, libvirt_deployment, base_tectonic_path)
     )
 
 
-def test_deploy_cr_instance_two(mocker, libvirt_deployment, base_tectonic_path):
+def test_deploy_cr_instance_two(mocker, libvirt_deployment):
     mock = mocker.patch.object(libvirt_deployment, "terraform_apply")
 
     libvirt_deployment._deploy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt', libvirt_deployment.get_deploy_cr_vars(), [2])
@@ -146,7 +138,7 @@ def test_deploy_cr_instance_two(mocker, libvirt_deployment, base_tectonic_path):
                                  resources=libvirt_deployment.get_cr_resources_to_target_apply([2]),
                                  )
 
-def test_deploy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
+def test_deploy_packetbeat(mocker, libvirt_deployment):
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.129")
     mocker.patch.object(LibvirtDeployment, "_get_service_password", return_value={"elastic":"password"})
     mocker.patch.object(LibvirtDeployment,"_get_service_info",return_value=[{"token" : "1234567890abcdef"}])
@@ -166,12 +158,17 @@ def test_deploy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
                     "become_flags":"-i",
                     "copy":1,
                     "instance":None,
+                    'networks': mocker.ANY,
+                    'machine_name':'udelar-lab01-localhost',
                     "parameter":{},
+                    'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941',
                 }
             },
             "vars": {
                 "ansible_become":True,
+                "ansible_connection": "ssh",
                 "basename":"localhost",
+                "docker_host": "unix:///var/run/docker.sock",
                 "action": "install",
                 "elastic_url": "https://10.0.0.129:8220",
                 "token": "1234567890abcdef",
@@ -180,6 +177,7 @@ def test_deploy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
                 "lab_name": "lab01",
                 "instances": 2,
                 'platform': 'libvirt',
+                'proxy': 'http://proxy.fing.edu.uy:3128',
             },
         }
     }
@@ -191,19 +189,21 @@ def test_deploy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=inventory,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         )
     ])
 
 
-def test_terraform_destroy(mocker, libvirt_deployment, base_tectonic_path):
+def test_terraform_destroy(mocker, libvirt_deployment):
     variables = {"var1": "value1", "var2": "value2"}
     resources = {'libvirt_domain.machines["udelar-lab01-1-attacker"]'}
 
@@ -226,7 +226,7 @@ def test_terraform_destroy(mocker, libvirt_deployment, base_tectonic_path):
 
 
 
-def test_destroy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
+def test_destroy_packetbeat(mocker, libvirt_deployment):
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.129")
     mocker.patch.object(LibvirtDeployment, "_get_service_password", return_value={"elastic":"password"})
     result_ok = ansible_runner.Runner(config=None)
@@ -243,12 +243,17 @@ def test_destroy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
                     "become_flags":"-i",
                     "copy":1,
                     "instance":None,
+                    'networks': mocker.ANY, 
+                    'machine_name':'udelar-lab01-localhost',
                     "parameter":{},
+                    'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941',
                 }
             },
             "vars": {
                 "ansible_become":True,
+                "ansible_connection": "ssh",
                 "basename":"localhost",
+                "docker_host": "unix:///var/run/docker.sock",
                 "action": "delete",
                 "institution": "udelar",
                 "lab_name": "lab01",
@@ -265,11 +270,12 @@ def test_destroy_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
         quiet=True,
         verbosity=0,
         event_handler=mocker.ANY,
-        extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+        extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
     )
 
 
-def test_destroy_cr_all_instances(mocker, libvirt_deployment, base_tectonic_path):
+def test_destroy_cr_all_instances(mocker, libvirt_deployment):
     mock = mocker.patch.object(libvirt_deployment, "terraform_destroy")
 
     libvirt_deployment._destroy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt', libvirt_deployment.get_deploy_cr_vars(), None)
@@ -279,7 +285,7 @@ def test_destroy_cr_all_instances(mocker, libvirt_deployment, base_tectonic_path
                                  )
 
 
-def test_destroy_cr_instance_two(mocker, libvirt_deployment, base_tectonic_path):
+def test_destroy_cr_instance_two(mocker, libvirt_deployment):
     mock = mocker.patch.object(libvirt_deployment, "terraform_destroy")
 
     libvirt_deployment._destroy_cr(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt', libvirt_deployment.get_deploy_cr_vars(), [2])
@@ -288,7 +294,7 @@ def test_destroy_cr_instance_two(mocker, libvirt_deployment, base_tectonic_path)
                                  resources=libvirt_deployment.get_cr_resources_to_target_destroy([2]),
                                  )
 
-def test_terraform_recreate(mocker, libvirt_deployment, base_tectonic_path):
+def test_terraform_recreate(mocker, libvirt_deployment):
     machines = {'libvirt_domain.machines["udelar-lab01-1-attacker"]'}
 
     terraform_dir = tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-libvirt'
@@ -347,7 +353,7 @@ def test_create_cr_images_ok(mocker, libvirt_deployment, test_data_path):
         "instance_number": 2,
         "institution": "udelar",
         "lab_name": "lab01",
-        "libvirt_proxy": "http://proxy.fing.edu.uy:3128",
+        "proxy": "http://proxy.fing.edu.uy:3128",
         "libvirt_storage_pool": "pool-dir",
         "libvirt_uri": f"test:///{test_data_path}/libvirt_config.xml",
         "machines_json": json.dumps(machines),
@@ -397,7 +403,7 @@ def test_create_cr_images_ok(mocker, libvirt_deployment, test_data_path):
         "instance_number": 2,
         "institution": "udelar",
         "lab_name": "lab01",
-        "libvirt_proxy": "http://proxy.fing.edu.uy:3128",
+        "proxy": "http://proxy.fing.edu.uy:3128",
         "libvirt_storage_pool": "pool-dir",
         "libvirt_uri": f"test:///{test_data_path}/libvirt_config.xml",
         "machines_json": json.dumps(machines),
@@ -441,7 +447,7 @@ def test_get_teacher_access_ip(libvirt_deployment):
     libvirt_deployment.description.teacher_access = "host"
 
 
-def test_student_access(mocker, libvirt_deployment, base_tectonic_path):
+def test_student_access(mocker, libvirt_deployment):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
 
     result_ok = ansible_runner.Runner(config=None)
@@ -479,11 +485,12 @@ def test_student_access(mocker, libvirt_deployment, base_tectonic_path):
                                  quiet=True,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
-                                 extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+                                 extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+                                 envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
                                  )
 
 
-def test_student_access_no_passwords(mocker, libvirt_deployment, base_tectonic_path):
+def test_student_access_no_passwords(mocker, libvirt_deployment):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
 
     result_ok = ansible_runner.Runner(config=None)
@@ -517,12 +524,13 @@ def test_student_access_no_passwords(mocker, libvirt_deployment, base_tectonic_p
                                  quiet=True,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
-                                 extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+                                 extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+                                 envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
                                  )
     libvirt_deployment.description.create_student_passwords = True
 
 
-def test_student_access_no_pubkeys(mocker, libvirt_deployment, base_tectonic_path):
+def test_student_access_no_pubkeys(mocker, libvirt_deployment):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
 
     result_ok = ansible_runner.Runner(config=None)
@@ -558,7 +566,8 @@ def test_student_access_no_pubkeys(mocker, libvirt_deployment, base_tectonic_pat
                                  quiet=True,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
-                                 extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+                                 extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+                                 envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
                                  )
 
     libvirt_deployment.description.student_pubkey_dir = pubkey_dir
@@ -586,7 +595,7 @@ def test_get_cyberrange_data_elasticup(mocker, libvirt_deployment):
 └──────────────────────────────────┴─────────────────────────┘"""
     assert expected == table.get_string()
 
-def test_get_cyberrange_data_elasticdown(mocker, capsys, libvirt_deployment):
+def test_get_cyberrange_data_elasticdown(mocker, libvirt_deployment):
     libvirt_deployment.description.deploy_elastic = True
     libvirt_deployment.description.deploy_caldera = False
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value={"udelar-lab01-elastic": {"Status": "NOT RUNNING"}})
@@ -594,7 +603,7 @@ def test_get_cyberrange_data_elasticdown(mocker, capsys, libvirt_deployment):
     expected = """Unable to get Elastic info right now. Please make sure de Elastic machine is running."""
     assert expected == result
 
-def test_get_cyberrange_data_calderaup(mocker, capsys, libvirt_deployment):
+def test_get_cyberrange_data_calderaup(mocker, libvirt_deployment):
     libvirt_deployment.description.deploy_elastic = False
     libvirt_deployment.description.deploy_caldera = True
     mocker.patch.object(LibvirtClient,"get_instance_status",return_value="RUNNING")
@@ -914,7 +923,7 @@ def test_list_instances(mocker, libvirt_deployment):
 └─────────────────────────┴─────────┘"""
     assert result.get_string() == expected
 
-def test_start(mocker, libvirt_deployment, base_tectonic_path):
+def test_start(mocker, libvirt_deployment):
     #No services
     libvirt_deployment.start([1], ["attacker"], None, False)
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-1-attacker")
@@ -958,7 +967,7 @@ def test_start(mocker, libvirt_deployment, base_tectonic_path):
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-caldera")
     assert state == libvirt_deployment.client.STATES_MSG[libvirt.VIR_DOMAIN_RUNNING]
 
-def test_shutdown(mocker, libvirt_deployment, base_tectonic_path):
+def test_shutdown(mocker, libvirt_deployment):
     #No services
     libvirt_deployment.shutdown([1], ["attacker"], None, False)
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-1-attacker")
@@ -1002,7 +1011,7 @@ def test_shutdown(mocker, libvirt_deployment, base_tectonic_path):
     state = libvirt_deployment.client.get_instance_status("udelar-lab01-caldera")
     assert state == libvirt_deployment.client.STATES_MSG[libvirt.VIR_DOMAIN_SHUTOFF]
 
-def test_reboot(mocker, libvirt_deployment, base_tectonic_path):
+def test_reboot(mocker, libvirt_deployment):
     #No services
     libvirt_deployment.description.deploy_elastic = True
     libvirt_deployment.reboot([1], ["attacker"], None, False)
@@ -1052,7 +1061,7 @@ def test_reboot(mocker, libvirt_deployment, base_tectonic_path):
     assert state == libvirt_deployment.client.STATES_MSG[libvirt.VIR_DOMAIN_RUNNING]
 
 
-def test_recreate(mocker, capsys, libvirt_deployment, base_tectonic_path, labs_path):
+def test_recreate(mocker, capsys, libvirt_deployment, labs_path):
     libvirt_deployment.description.monitor_type = "endpoint"
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.129")
@@ -1077,63 +1086,72 @@ def test_recreate(mocker, capsys, libvirt_deployment, base_tectonic_path, labs_p
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=f"{labs_path}/test-endpoint/ansible/after_clone.yml",
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
     ])
 
@@ -1146,7 +1164,7 @@ def test_recreate(mocker, capsys, libvirt_deployment, base_tectonic_path, labs_p
         "Configuring caldera agents...\n"
     ))
 
-def test_manage_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
+def test_manage_packetbeat(mocker, libvirt_deployment):
     result_ok = ansible_runner.Runner(config=None)
     result_ok.rc = 0
     result_ok.status = "successful"
@@ -1160,13 +1178,18 @@ def test_manage_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
                     "ansible_ssh_common_args": libvirt_deployment.description.ansible_ssh_common_args,
                     "instance": None,
                     "copy": 1,
-                    "parameter": {},
+                    'networks': mocker.ANY, 
+                    'machine_name':'udelar-lab01-localhost',
+                    "parameter":{},
+                    'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941',
                     "become_flags": "-i",
                 }
             },
             "vars": {
                 "ansible_become": True,
+                "ansible_connection": "ssh",
                 "basename": "localhost",
+                "docker_host": "unix:///var/run/docker.sock",
                 "instances": 2,
                 "action": "restarted",
                 "institution": libvirt_deployment.description.institution,
@@ -1183,7 +1206,8 @@ def test_manage_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
         quiet=True,
         verbosity=0,
         event_handler=mocker.ANY,
-        extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+        extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
     )
 
     mock_ansible.reset_mock()
@@ -1195,7 +1219,8 @@ def test_manage_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
         quiet=True,
         verbosity=0,
         event_handler=mocker.ANY,
-        extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+        extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
     )
 
     mock_ansible.reset_mock()
@@ -1207,7 +1232,8 @@ def test_manage_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
         quiet=True,
         verbosity=0,
         event_handler=mocker.ANY,
-        extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+        extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
     )
 
     mock_ansible.reset_mock()
@@ -1216,7 +1242,7 @@ def test_manage_packetbeat(mocker, libvirt_deployment, base_tectonic_path):
         libvirt_deployment._manage_packetbeat("status")
     assert "Unable to apply action status for Packetbeat." in str(exception.value)
 
-def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path):
+def test_elastic_install_endpoint(mocker, libvirt_deployment):
     libvirt_deployment.description.monitor_type = "endpoint"
     libvirt_deployment.description.deploy_elastic = True
     mocker.patch.object(LibvirtDeployment,"get_ssh_hostname",return_value="10.0.0.129")
@@ -1233,12 +1259,17 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
                     "become_flags": "-i",
                     "copy": 1,
                     "instance": 1,
-                    "parameter" : {'flags': 'Flag 2'}
+                    'networks': mocker.ANY, 
+                    'machine_name': 'udelar-lab01-1-server',
+                    "parameter" : {'flags': 'Flag 2'},
+                    'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941',
                 }
             },
             "vars": {
                 "ansible_become": True,
+                'ansible_connection': 'ssh',
                 "basename": "server",
+                'docker_host': 'unix:///var/run/docker.sock',
                 "elastic_url": "https://10.0.0.129:8220",
                 "instances": libvirt_deployment.description.instance_number,
                 "token": "1234567890abcdef",
@@ -1258,7 +1289,10 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
                     "ansible_become_method": "runas",
                     "ansible_become_user": "administrator",
                     "ansible_shell_type": "powershell",
-                    "parameter" : {'flags': 'Flag 2'}
+                    'networks': mocker.ANY,
+                    'machine_name': 'udelar-lab01-1-victim-1',
+                    "parameter" : {'flags': 'Flag 2'},
+                    'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941'
 
                 },
                 "udelar-lab01-1-victim-2" : {
@@ -1270,12 +1304,17 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
                     "ansible_become_method": "runas",
                     "ansible_become_user": "administrator",
                     "ansible_shell_type": "powershell",
-                    "parameter" : {'flags': 'Flag 2'}
+                    'networks': mocker.ANY, 
+                    'machine_name': 'udelar-lab01-1-victim-2',
+                    "parameter" : {'flags': 'Flag 2'},
+                    'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941'
                 }
             },
             "vars": {
                 "ansible_become": True,
+                "ansible_connection": "ssh",
                 "basename": "victim",
+                "docker_host": "unix:///var/run/docker.sock",
                 "elastic_url": "https://10.0.0.129:8220",
                 "instances": libvirt_deployment.description.instance_number,
                 "token": "1234567890abcdef",
@@ -1298,7 +1337,8 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(
             inventory=inventory,
@@ -1306,13 +1346,14 @@ def test_elastic_install_endpoint(mocker, libvirt_deployment, base_tectonic_path
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         )
     ],any_order=False)
     libvirt_deployment.description.monitor_type = "traffic"
 
 
-def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, base_tectonic_path, test_data_path):
+def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, test_data_path):
     # Deploy only instances
     libvirt_deployment.description.monitor_type = "traffic"
     libvirt_deployment.description.deploy_caldera = False
@@ -1339,21 +1380,24 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, base_tectoni
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=f"{test_data_path}/labs/test-traffic/ansible/after_clone.yml",
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
     ])
     assert capsys.readouterr().out == "Deploying Cyber Range instances...\nWaiting for machines to boot up...\nConfiguring student access...\nRunning after-clone configuration...\n"
@@ -1393,49 +1437,56 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, base_tectoni
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=f"{test_data_path}/labs/test-traffic/ansible/after_clone.yml",
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
     ])
     assert capsys.readouterr().out == "Deploying Cyber Range services...\nWaiting for services to boot up...\nConfiguring services...\nDeploying Cyber Range instances...\nWaiting for machines to boot up...\nConfiguring student access...\nRunning after-clone configuration...\n"
@@ -1474,49 +1525,56 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, base_tectoni
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=f"{test_data_path}/labs/test-endpoint/ansible/after_clone.yml",
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'endpoint_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
     ])
     assert capsys.readouterr().out == "Deploying Cyber Range services...\nWaiting for services to boot up...\nConfiguring services...\nDeploying Cyber Range instances...\nWaiting for machines to boot up...\nConfiguring student access...\nRunning after-clone configuration...\nConfiguring elastic agents...\n"
@@ -1553,68 +1611,77 @@ def test_deploy_infraestructure(mocker, capsys, libvirt_deployment, base_tectoni
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=f"{test_data_path}/labs/test-endpoint/ansible/after_clone.yml",
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
     ])
     assert capsys.readouterr().out == "Deploying Cyber Range services...\nWaiting for services to boot up...\nConfiguring services...\nDeploying Cyber Range instances...\nWaiting for machines to boot up...\nConfiguring student access...\nRunning after-clone configuration...\nConfiguring caldera agents...\n"
 
-def test_deploy_infraestructure_specific_instance(mocker, capsys, libvirt_deployment, base_tectonic_path, test_data_path):
+def test_deploy_infraestructure_specific_instance(mocker, capsys, libvirt_deployment, test_data_path):
     # Deploy caldera services using endpoint as monitor_type
     libvirt_deployment.description.deploy_elastic = False
     libvirt_deployment.description.deploy_caldera = True
@@ -1647,68 +1714,77 @@ def test_deploy_infraestructure_specific_instance(mocker, capsys, libvirt_deploy
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=f"{test_data_path}/labs/test-endpoint/ansible/after_clone.yml",
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
         mocker.call(inventory=mocker.ANY,
             playbook=str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'agent_install.yml'),
             quiet=True,
             verbosity=0,
             event_handler=mocker.ANY,
-            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+            extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
         ),
     ])
     assert capsys.readouterr().out == "Deploying Cyber Range services...\nWaiting for services to boot up...\nConfiguring services...\nDeploying Cyber Range instances...\nWaiting for machines to boot up...\nConfiguring student access...\nRunning after-clone configuration...\nConfiguring caldera agents...\n"    
     
-def test_destroy_infraestructure(mocker, capsys, libvirt_deployment, base_tectonic_path):
+def test_destroy_infraestructure(mocker, capsys, libvirt_deployment):
     #Destroy only infraestructure
     libvirt_deployment.description.monitor_type = "traffic"
     libvirt_deployment.description.deploy_elastic = False
@@ -1758,7 +1834,8 @@ def test_destroy_infraestructure(mocker, capsys, libvirt_deployment, base_tecton
         quiet=True,
         verbosity=0,
         event_handler=mocker.ANY,
-        extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+        extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
     ),
     assert capsys.readouterr().out == "Destroying Cyber Range instances...\nDestroying Cyber Range services...\n"
 
@@ -1793,7 +1870,7 @@ def test_get_parameters(capsys, libvirt_deployment):
     assert "│    1     │ {'flags': 'Flag 2'} │" in captured.out
     assert "└──────────┴─────────────────────┘" in captured.out  
 
-def test_destroy_infraestructure_specific_instance(mocker, capsys, libvirt_deployment, base_tectonic_path):
+def test_destroy_infraestructure_specific_instance(mocker, capsys, libvirt_deployment):
     libvirt_deployment.description.deploy_elastic = False
     libvirt_deployment.description.deploy_caldera = False
     mock_terraform = mocker.patch.object(libvirt_deployment, "terraform_destroy")
@@ -1844,7 +1921,7 @@ def test_destroy_infraestructure_specific_instance(mocker, capsys, libvirt_deplo
     ],any_order=False)
     assert capsys.readouterr().out == "Destroying Cyber Range instances...\n"
 
-def test_create_services_images_ok(mocker, libvirt_deployment, base_tectonic_path, test_data_path):
+def test_create_services_images_ok(mocker, libvirt_deployment, test_data_path):
     machines = {
         "caldera": {
             "base_os": "rocky8",
@@ -1865,7 +1942,7 @@ def test_create_services_images_ok(mocker, libvirt_deployment, base_tectonic_pat
         "ansible_scp_extra_args": "'-O'" if tectonic.ssh.ssh_version() >= 9 else "",
         "ansible_ssh_common_args": "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no",
         "aws_region": "us-east-1",
-        "libvirt_proxy": "http://proxy.fing.edu.uy:3128",
+        "proxy": "http://proxy.fing.edu.uy:3128",
         "libvirt_storage_pool": "pool-dir",
         "libvirt_uri": f"test:///{test_data_path}/libvirt_config.xml",
         "machines_json": json.dumps(machines),
@@ -1873,8 +1950,9 @@ def test_create_services_images_ok(mocker, libvirt_deployment, base_tectonic_pat
         "platform": "libvirt",
         "remove_ansible_logs": str(not libvirt_deployment.description.keep_ansible_logs),
         "elastic_version": "7.10.2",
+        'elasticsearch_memory': None,
         "elastic_latest_version": "no",
-        "caldera_version": "master",
+        "caldera_version": "latest",
         "packetbeat_vlan_id": "1"
     }
     mock_cmd = mocker.patch.object(packerpy.PackerExecutable, "execute_cmd", return_value=(0, "success", ""))
@@ -2036,14 +2114,14 @@ def test_get_services_resources_to_target_apply(libvirt_deployment):
 def test_get_services_resources_to_target_destroy(libvirt_deployment):
     assert libvirt_deployment.get_services_resources_to_target_destroy([1]) == []
 
-def test_get_service_info(mocker, libvirt_deployment, base_tectonic_path):
+def test_get_service_info(mocker, libvirt_deployment):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
     result = ansible_runner.Runner(config=None)
     result.rc = 0
     result.status = "successful"
     mock_ansible = mocker.patch.object(ansible_runner.interface, "run", return_value=result)
     playbook = str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml')
-    inventory = {'elastic': {'hosts': {'udelar-lab01-elastic': {'ansible_host': None, 'ansible_user': 'rocky', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no', 'instance': None, 'copy': 1, 'parameter': {}, 'become_flags': '-i'}}, 'vars': {'ansible_become': True, 'basename': 'elastic', 'instances': 2, 'platform': 'libvirt', 'institution': 'udelar', 'lab_name': 'lab01', 'action': 'agents_status'}}}
+    inventory = {'elastic': {'hosts': {'udelar-lab01-elastic': {'ansible_host': None, 'ansible_user': 'rocky', 'ansible_ssh_common_args': '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no', 'instance': None, 'copy': 1, 'networks': mocker.ANY, 'machine_name': 'udelar-lab01-elastic', 'parameter': {}, 'random_seed': 'Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941', 'become_flags': '-i'}}, 'vars': {'ansible_become': True, 'ansible_connection': 'ssh', 'basename': 'elastic', 'docker_host': 'unix:///var/run/docker.sock', 'instances': 2, 'platform': 'libvirt', 'institution': 'udelar', 'lab_name': 'lab01', 'action': 'agents_status'}}}
     libvirt_deployment._get_service_info("elastic",playbook,{"action":"agents_status"})
     mock_ansible.assert_called_once_with(
         inventory=inventory,
@@ -2051,5 +2129,6 @@ def test_get_service_info(mocker, libvirt_deployment, base_tectonic_path):
         quiet=True,
         verbosity=0,
         event_handler=mocker.ANY,
-        extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs }
+        extravars={"ansible_no_target_syslog" : not libvirt_deployment.description.keep_ansible_logs },
+            envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
     )

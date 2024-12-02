@@ -40,6 +40,8 @@ locals {
 
   internet_access = length([for g in local.guest_data : g if g.internet_access]) > 0
 
+  student_access = length([for g in local.guest_data : g if g.entry_point]) > 0
+
   dns_data = { for record in flatten(
     [for guest in local.guest_data :
       [for network_interface in guest.interfaces :
