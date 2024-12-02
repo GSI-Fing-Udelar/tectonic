@@ -3,7 +3,7 @@
   "extends": [
     "config:best-practices",
     ":separateMultipleMajorReleases",
-    "schedule:daily"
+    "schedule:weekly"
   ],
   "commitMessageSuffix": " in {{packageFile}}",
   "dependencyDashboardAutoclose": true,
