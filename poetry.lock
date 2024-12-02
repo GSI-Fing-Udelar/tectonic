@@ -829,12 +829,12 @@ files = [
 
 [[package]]
 name = "libvirt-python"
-version = "10.8.0"
+version = "10.10.0"
 description = "The libvirt virtualization API python binding"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "libvirt-python-10.8.0.tar.gz", hash = "sha256:10cddc61c6bc5659c0eaa3e4c71f3d97c95abf327a51c207affb2e5f49f19f60"},
+    {file = "libvirt-python-10.10.0.tar.gz", hash = "sha256:8acf6dcfb33a03ed92f9440cb1a0b8d3fc53fb23bba2e76ceedeb8bfb5327557"},
 ]
 
 [[package]]
