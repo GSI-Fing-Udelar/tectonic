@@ -73,11 +73,10 @@ states are stored.
 
 ### Python environment setup
 
-You can install this module using the following command:
+You can install this module using the following command (preferably inside a [virtual environment](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#create-and-use-virtual-environments)):
 
 ```bash
-python3 -m pip install poetry
-poetry install
+python3 -m pip install tectonic-cyberrange
 ```
 
 
