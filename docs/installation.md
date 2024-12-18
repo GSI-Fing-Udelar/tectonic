@@ -1,120 +1,183 @@
 ## Installation
 
 ### Requirements
-- Linux or Mac OS
-- Python 3.11
-- Ansible 2.15
-- Terraform 1.6
-- Packer 1.9
-- xsltproc command line tool
-- Python modules (see [requirements.txt](./python/requirements.txt))
-- GitLab credentials
-- Optionally AWS and Elastic Cloud credentials
+- SO: Linux or Mac OS
+- Python and pip: version 3.10 or newer.
+- Packages needed to build: build-essentials, pkg-config, libvirt-dev/libvirt-devel. Keep in mind that the name of the packages may vary depending on the Linux distribution.
+- IaC Tools: Terraform and Packer
+- Base platforms: Libvirt or Docker
+- AWS credentials and AWS CLI (for AWS deployment)
+- Other tools: [xsltproc](http://xmlsoft.org/xslt/xsltproc.html) command line tool (for Libvirt deployments)
 
 ### Instructions
-The following installation instructions are based on CentOS/RHEL distributions. Refer to each software's installation manuals for detailed instructions for your particular operating system distribution.
 
-There are two installation methods:
-- [Installation](#installation)
-  - [Requirements](#requirements)
-  - [Instructions](#instructions)
-    - [Manual installation](#manual-installation)
-  - [Versions support](#versions-support)
+The following installation instructions are based on Ubuntu and Rocky distributions. Refer to each software's installation manuals for detailed instructions for your particular operating system distribution.
 
-#### Manual installation
-
-- Install Python 3.11
-  ```
-  sudo dnf install -y python3.11
+#### Ubuntu
+- Install Python 3.10 (or newer) and pip
+  ```bash
+  sudo apt-get install -y python3 python3-pip
   ```
 
-- Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
+- Install packages needed to build Tectonic
+  ```bash
+  sudo apt-get install -y build-essential pkg-config libvirt-dev
   ```
-  sudo yum install -y yum-utils
-  sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
-  sudo yum -y install terraform
-  ```
-
-- Install [Packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli)
-  ```
-  sudo yum install -y yum-utils
-  sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
-  sudo yum -y install packer
-  ```
-  Note: steps 1 and 2 should not be necessary since the Hashicorp repository should already be set up if you installed Terraform following the instructions. 
-
-- Clone or download this GitLab repository
-  ```
-  git clone https://gitlab.fing.edu.uy/gsi/cyberrange/tectonic.git
-  ```
-
-- Install tectonic python package:
-```bash
-cd python
-python3 -m pip install .
-```
-
-or for a development user installation:
-
-```bash
-cd python
-python3 -m pip install pipenv
-pipenv install --dev -e .
-```
-
-- Configure GitLab credentials.
-  - Gitlab credentials are required for terraform state syncronization.
-  - In GitLab go to User Settings -> Access Tokens.
-  - Add New Token. Define name, expiration date and select api scope. See [official documentation](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html) for detailed instructions.
-  - Set `GITLAB_USERNAME` and `GITLAB_ACCESS_TOKEN` environment variables to the value of your GitLab username and the newly created token: 
+- Install IaC tools:
+  - Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
+    ```bash
+    sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
+    wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
+    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+    sudo apt update
+    sudo apt-get install -y terraform
     ```
-    echo "export GITLAB_USERNAME=<gitlab_username>" >> ~/.bashrc
-    echo "export GITLAB_ACCESS_TOKEN=<gitlab_access_token>" >> ~/.bashrc
-    source ~/.bashrc
+
+  - Install [Packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli)
+    ```bash
+    sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
+    wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
+    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+    sudo apt update
+    sudo apt-get install -y packer
     ```
-  - Make sure you have at least the maintenter role in the repository where the terraform states will be stored.
+    Note: steps 1-4 should not be necessary since the Hashicorp repository should already be set up if you installed Terraform following the instructions. 
+
+- Install Tectonic Python package:
+  ```bash
+  python3 -m pip install tectonic-cyberrange
+  ```
 
 - Configure ssh private/public key
   - If you do not have an ssh public/private key pair configured in ~/.ssh/ directory, generate a new pair using the command `ssh-keygen` 
 
-- Configure other services credentials (if required).
-  - AWS credentials:
-    - Create AWS access key, see [official documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html#Using_CreateAccessKey).
-    - Save credentials in environment variables:
-    ```
-    echo "export AWS_ACCESS_KEY_ID=<aws_access_key_id>" >> ~/.bashrc
-    echo "export AWS_SECRET_ACCESS_KEY=<aws_secret_access_key>" >> ~/.bashrc
-    source ~/.bashrc
-    ```
-  - Elastic Cloud credentials:
-    - Create Elastic cloud api key, see [official documentation](https://www.elastic.co/guide/en/cloud/current/ec-api-authentication.html).
-    - Save credentials in environment variables:
-    ```
-    echo "export EC_API_KEY=<ec_api_key>" >> ~/.bashrc
-    source ~/.bashrc
+- Base platforms configurations:
+  - Docker:
+    - Install docker following [instructions](https://docs.docker.com/engine/install/)
+    ```bash
+    sudo apt-get install -y ca-certificates curl
+    sudo install -m 0755 -d /etc/apt/keyrings
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt-get update
+    sudo apt-get install -y docker-ce docker-ce-cli
     ```
 
-- Configure libvirt environment (if required).
-  - Create a volume pool to use in the cyberrange. For example, a dir backed pool named "tectonic":
+  - AWS:
+    - Configure credentials:
+      - Create AWS access key, see [official documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html#Using_CreateAccessKey).
+      - Save credentials in environment variables:
+      ```bash
+      export AWS_ACCESS_KEY_ID=<aws_access_key_id>
+      export AWS_SECRET_ACCESS_KEY=<aws_secret_access_key>
+      ```
+    - Install [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html):
+      ```bash
+      curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+      unzip awscliv2.zip
+      sudo ./aws/install
+      ```
+
+  - Libvirt:
+    - Install libvirt following your distribution specific instructions.
+    ```bash
+    sudo apt-get install -y qemu-kvm libvirt-daemon-system
     ```
+    - Create a volume pool to use in the cyberrange. For example, a dir backed pool named "tectonic":
+      ```bash
+        virsh -c qemu:///system pool-create-as tectonic dir --target=<directory>
+      ```
+      * Set the `libvirt_storage_pool` ini config file parameter to this pool name)
+    - Create a bridge named as the `libvirt_bridge` ini file parameter:
+      ```bash
+      nmcli con add type bridge ifname <libvirt_bridge>
+      nmcli con up bridge-<libvirt_bridge>
+      ```
+      * This bridge should connect to an external network for student entry point access.
+      * It is ok to have a dummy empty bridge for testing.
+    - Install xsltproc
+      ```bash
+      sudo apt-get install xsltproc
+      ```
+
+#### Rocky
+- Install Python 3.10 (or newer) and pip
+  ```bash
+  sudo dnf install -y python3 python3-pip
+  ```
+
+- Install packages needed to build Tectonic
+  ```bash
+  sudo dnf group install -y "Development Tools"
+  sudo dnf install -y pkg-config libvirt-devel python3-devel
+  ```
+- Install IaC tools:
+  - Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
+    ```bash
+    sudo yum install -y yum-utils
+    sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+    sudo dnf install -y terraform
+    ```
+
+  - Install [Packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli)
+    ```bash
+    sudo yum install -y yum-utils
+    sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+    sudo dnf install -y packer
+    ```
+    Note: steps 1-2 should not be necessary since the Hashicorp repository should already be set up if you installed Terraform following the instructions. 
+
+- Install Tectonic Python package:
+  ```bash
+  python3 -m pip install tectonic-cyberrange
+  ```
+
+- Configure ssh private/public key
+  - If you do not have an ssh public/private key pair configured in ~/.ssh/ directory, generate a new pair using the command `ssh-keygen` 
+
+- Base platforms configurations:
+  - Docker:
+    - Install docker following [instructions](https://docs.docker.com/engine/install/)
+    ```bash
+    sudo dnf -y install dnf-plugins-core
+    sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+    sudo dnf install -y docker-ce docker-ce-cli
+    ```
+
+  - AWS:
+    - Configure credentials:
+      - Create AWS access key, see [official documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html#Using_CreateAccessKey).
+      - Save credentials in environment variables:
+      ```bash
+      export AWS_ACCESS_KEY_ID=<aws_access_key_id>
+      export AWS_SECRET_ACCESS_KEY=<aws_secret_access_key>
+      ```
+    - Install [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html):
+      ```bash
+      curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+      unzip awscliv2.zip
+      sudo ./aws/install
+      ```
+
+  - Libvirt:
+    - Install libvirt following your distribution specific instructions.
+    ```bash
+    sudo dnf install -y qemu-kvm libvirt virt-install
+    ```
+    - Create a volume pool to use in the cyberrange. For example, a dir backed pool named "tectonic":
+      ```bash
       virsh -c qemu:///system pool-create-as tectonic dir --target=<directory>
-    ```
-    * Set the `libvirt_storage_pool` ini config file parameter to this pool name)
-  - Create a bridge named as the `libvirt_bridge` ini file parameter:
-    ```
-    nmcli con add type bridge ifname <libvirt_bridge>
-    nmcli con up bridge-<libvirt_bridge>
-    ```
-    * This bridge should connect to an external network for student entry point access.
-    * It is ok to have a dummy empty bridge for testing.
-
-
-### Versions support
-Tectonic was tested on the following versions:
-
-| **SO**            | **Terraform** | **Packer** | **Ansible** | **Python** |
-|:-----------------:|:-------------:|:----------:|:-----------:|:----------:|
-| Kali Linux 2022.2 | 1.5.3         | 1.9.2      | 2.15.2      | 3.11.4     |
-| Rocky Linux 8.8   | 1.6.3         | 1.9.4      | 2.15.5      | 3.9.16     |
-| Fedora 37         | 1.5.4         | 1.9.2      | 2.14.8      | 3.11.5     |
-| Ubuntu 22.04      | 1.6.2         | 1.9.4      | 2.15.5      | 3.10.12    |
+      ```
+      * Set the `libvirt_storage_pool` ini config file parameter to this pool name)
+    - Create a bridge named as the `libvirt_bridge` ini file parameter:
+      ```bash
+      nmcli con add type bridge ifname <libvirt_bridge>
+      nmcli con up bridge-<libvirt_bridge>
+      ```
+      * This bridge should connect to an external network for student entry point access.
+      * It is ok to have a dummy empty bridge for testing.
+    - Install xsltproc
+      ```bash
+      sudo dnf install -y libxslt
+      ```
