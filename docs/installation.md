@@ -181,3 +181,57 @@ The following installation instructions are based on Ubuntu and Rocky distributi
       ```bash
       sudo dnf install -y libxslt
       ```
+
+#### MacOS
+- Install Python 3.10 (or newer) and pip
+  ```bash
+  brew install python3
+  ```
+- Install IaC tools:
+  - Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
+    ```bash
+    brew tap hashicorp/tap
+    brew install hashicorp/tap/terraform
+    brew upgrade hashicorp/tap/terraform
+    ```
+
+  - Install [Packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli)
+    ```bash
+    brew tap hashicorp/tap
+    brew install hashicorp/tap/packer
+    brew upgrade hashicorp/tap/packer
+    ```
+    Note: step 1 should not be necessary since the Hashicorp repository should already be set up if you installed Terraform following the instructions. 
+
+- Install Tectonic Python package:
+  ```bash
+  python3 -m pip install tectonic-cyberrange
+  ```
+
+- Configure ssh private/public key
+  - If you do not have an ssh public/private key pair configured in ~/.ssh/ directory, generate a new pair using the command `ssh-keygen` 
+
+- Base platforms configurations:
+  - Docker:
+    - Install Docker Desktop following [instructions](https://docs.docker.com/desktop/setup/install/mac-install/)
+    - If you get the following error when running Tectonic:
+        ```
+        objc[29118]: +[NSMutableString initialize] may have been in progress in another thread when fork() was called.
+        ```
+        then run:
+        ```bash
+        export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+        ```
+
+  - AWS:
+    - Configure credentials:
+      - Create AWS access key, see [official documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html#Using_CreateAccessKey).
+      - Save credentials in environment variables:
+      ```bash
+      export AWS_ACCESS_KEY_ID=<aws_access_key_id>
+      export AWS_SECRET_ACCESS_KEY=<aws_secret_access_key>
+      ```
+    - Install [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html):
+
+  - Libvirt:
+    We have not installed libvirt on MacOS so we cannot help you on this point.
