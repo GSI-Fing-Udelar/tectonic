@@ -21,6 +21,7 @@
 ---
 - name: "Get Caldera Info"
   hosts: caldera
+  gather_facts: true
   become: true
 
   tasks:
