@@ -72,6 +72,7 @@ beautifulsoup4 = "*"
 bs4 = "*"
 freezegun = "*"
 docker = "*"
+pyopenssl = ">=24.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.0.0"

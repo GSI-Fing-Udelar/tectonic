@@ -11,9 +11,7 @@
 
 ### Instructions
 
-The following installation instructions are based on Ubuntu and Rocky distributions. Refer to each software's installation manuals for detailed instructions for your particular operating system distribution.
-
-#### Ubuntu
+#### Linux Ubuntu
 - Install Python 3.10 (or newer) and pip
   ```bash
   sudo apt-get install -y python3 python3-pip
@@ -21,7 +19,7 @@ The following installation instructions are based on Ubuntu and Rocky distributi
 
 - Install packages needed to build Tectonic
   ```bash
-  sudo apt-get install -y build-essential pkg-config libvirt-dev
+  sudo apt-get install -y build-essential pkg-config libvirt-dev python3-dev
   ```
 - Install IaC tools:
   - Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
@@ -101,8 +99,8 @@ The following installation instructions are based on Ubuntu and Rocky distributi
       sudo apt-get install xsltproc
       ```
 
-#### Rocky
-- Install Python 3.10 (or newer) and pip
+#### Linux Rocky
+- Install Python 3.11 (or newer) and pip
   ```bash
   sudo dnf install -y python3 python3-pip
   ```
@@ -181,3 +179,78 @@ The following installation instructions are based on Ubuntu and Rocky distributi
       ```bash
       sudo dnf install -y libxslt
       ```
+
+#### MacOS
+- Install Python 3.10 (or newer) and pip
+  ```bash
+  brew install python3
+  ```
+- Install IaC tools:
+  - Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
+    ```bash
+    brew tap hashicorp/tap
+    brew install hashicorp/tap/terraform
+    brew upgrade hashicorp/tap/terraform
+    ```
+
+  - Install [Packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli)
+    ```bash
+    brew tap hashicorp/tap
+    brew install hashicorp/tap/packer
+    brew upgrade hashicorp/tap/packer
+    ```
+    Note: step 1 should not be necessary since the Hashicorp repository should already be set up if you installed Terraform following the instructions. 
+
+- Install Tectonic Python package:
+  ```bash
+  python3 -m pip install tectonic-cyberrange
+  ```
+
+- Configure ssh private/public key
+  - If you do not have an ssh public/private key pair configured in ~/.ssh/ directory, generate a new pair using the command `ssh-keygen` 
+
+- Base platforms configurations:
+  - Docker:
+    - Install Docker Desktop following [instructions](https://docs.docker.com/desktop/setup/install/mac-install/)
+    - If you get the following error when running Tectonic:
+        ```
+        objc[29118]: +[NSMutableString initialize] may have been in progress in another thread when fork() was called.
+        ```
+        then run:
+        ```bash
+        export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+        ```
+
+  - AWS:
+    - Configure credentials:
+      - Create AWS access key, see [official documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html#Using_CreateAccessKey).
+      - Save credentials in environment variables:
+      ```bash
+      export AWS_ACCESS_KEY_ID=<aws_access_key_id>
+      export AWS_SECRET_ACCESS_KEY=<aws_secret_access_key>
+      ```
+    - Install [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html):
+
+  - Libvirt:
+    We have not installed libvirt on MacOS so we cannot help you on this point.
+
+#### Windows 10/11
+- On Windows
+  - Install Linux on WSL 2
+    - Install WSL following [instructions](https://learn.microsoft.com/windows/wsl/install)
+    - From Microsoft Store install your preferred Linux distro (for example Ubuntu 22.04)
+
+  - Base platforms configurations:
+    - Docker:
+      - Install Docker Desktop following [instructions](https://docs.docker.com/desktop/setup/install/mac-install/)
+      - Enable Docker on your WSL 2 distro. On Docker Desktop go to Configuration -> Resources -> WSL Integration and select your distro
+
+  - AWS:
+    - Configurations are applied within the Linux installed on WSL
+
+  - Libvirt:
+    Not compatible with Windows
+
+- On Linux WSL 2
+  - Follow the Tectonic installation guides for Linux Ubuntu/RHEL until the step where the ssh key is generated
+  - If you want to use AWS then also apply the configurations detailed in the installation guide
