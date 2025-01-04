@@ -1,0 +1,20 @@
+- requirements: []
+  name: Password Cracking - Get FTP user
+  executors:
+  - cleanup: []
+    timeout: 60
+    platform: linux
+    name: sh
+    payloads: []
+    parsers:
+    - module: plugins.stockpile.app.parsers.basic
+      parserconfigs:
+      - source: victim.ftp.user
+        edge: ''
+        target: ''
+    command: tail -n 1 /opt/ftp_user | awk '{print$5}'
+  description: Get FTP user
+  tactic: credential-access
+  technique_id: T1110
+  technique_name: Brute Force
+  id: 18c9e66a-ac5f-4875-9bed-80def5c08b3e

@@ -1,0 +1,15 @@
+- requirements: []
+  name: Password Cracking - Crack passwords
+  description: Crack passwords using John
+  tactic: credential-access
+  technique_id: T1110
+  technique_name: Brute Force
+  executors:
+  - cleanup: []
+    timeout: 60
+    platform: linux
+    name: sh
+    payloads: []
+    parsers: []
+    command: john --single /opt/tocrack
+  id: 325868c5-8a8e-4c50-bbc6-8978f2f3176e

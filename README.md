@@ -24,7 +24,7 @@ components are organized in five layers, each fulfilling a particular
 function in the platform's operation.
 
 <p align="center">
-    <img src="docs/architecture.png" width="500">
+    <img src="https://raw.githubusercontent.com/GSI-Fing-Udelar/tectonic/refs/heads/main/docs/architecture.png" width="500">
 </p>
 
 The underlying infrastructure constitutes the real-world
@@ -50,43 +50,30 @@ among others.
 ## Installation Instructions
 The following are the requirements to run Tectonic:
 
-- Linux or Mac OS
-- Python 3.11
-- Ansible 2.15
-- Terraform 1.6
-- Packer 1.9
-- Python modules (see [pyproject.toml](pyproject.toml))
-- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) 
-- GitLab credentials (optional for Terraform state storage)
-- Optionally AWS credentials
+- SO: Linux or Mac OS
+- Python and pip: version 3.10 or newer.
+- IaC Tools: Terraform and Packer
+- Base platforms: Libvirt or Docker
+- AWS credentials and AWS CLI (for AWS deployment)
 
-Please see the [detailed instructions](docs/installation.md) for more
+
+Please see the [detailed instructions](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/docs/installation.md) for more
 information.
 
-### Terraform state syncronization
-Terraform states are stored locally by default. It is possible to
-store them in a gitlab repo (see `gitlab_backend_url` option in the
-[ini file configuration](docs/ini_config.md)). It is necessary to have
-Maintainer privileges on this repo and a GitLab access token. There
-are two types of access token: personal or project-based. If the
-latter is used, it must be associated with the project where the
-states are stored.
+### Tectonic python module
 
-### Python environment setup
-
-You can install this module using the following command:
+You can install this module using the following command (preferably inside a [virtual environment](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#create-and-use-virtual-environments)):
 
 ```bash
-python3 -m pip install poetry
-poetry install
+python3 -m pip install tectonic-cyberrange
 ```
 
 
 ## Tectonic Configuration File
-Tectonic behaviour can be configured using an ini file with a
+Tectonic behavior can be configured using an ini file with a
 `config` section. You can find an example configuration file with the
-default values [here](./tectonic.ini). Please see the [ini
-file documentation](docs/ini_config.md) for details on the available
+default values [here](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/tectonic.ini). Please see the [ini
+file documentation](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/docs/ini_config.md) for details on the available
 options.
 
 
@@ -102,28 +89,41 @@ The scenario specification consists of the following resources:
 * A scenario description file in YAML syntax (required).
 * Ansible playbooks for *base image* installation and *after-clone*
   configurations, and optional files in the `ansible` directory.
-* Elastic and kibana policies and resources, in the `elastic`
+* Elastic and Kibana policies and resources, in the `elastic`
   directory, if using elastic for evaluation.
 * SSH public keys for admin access to the machines in the `ssh`
   directory.
 
 The lab edition file 
 
-Please check the [description documentation](docs/description.md) for
-more details. The [examples](examples/) directory contains some
+Please check the [description documentation](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/docs/description.md) for
+more details. The [examples](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/examples/) directory contains some
 example scenarios.
 
 ## Running Tectonic
 
 To deploy a scenario run:
 ```
-tectonic -c <ini_conf_file> <lab_edition_file> deploy
+tectonic -c <ini_conf_file> <lab_edition_file> deploy --images
 ```
 
 To destroy a scenario use the `destroy` command. 
 
 See `tectonic --help` for a full list of options, and `tectonic
 <command> -h` for help on individual commands.
+
+### Terraform state syncronization
+Terraform states are stored locally by default. It is possible to
+store them in a Gitlab repo (see `gitlab_backend_url` option in the
+[ini file configuration](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/docs/ini_config.md)). It is necessary to have
+Maintainer privileges on this repo and a GitLab access token. There
+are two types of access token: personal or project-based. If the
+latter is used, it must be associated with the project where the
+states are stored.
+
+## Disclaimer About Platforms
+
+Tectonic provides support for scenario deployments using Docker as the base platform. However, it is important to note that using Docker as base platform in production environments is not recommended since Tectonic deploys containers in privileged mode. This means that when a user has root access within a container, they can also gain root access to the host system, which can create significant security issues. Therefore, caution is crucial when using Docker as a base platform, especially in scenarios involving attacks. It is advisable to utilize Docker primarily for the generation and testing of new scenarios. For production environments, we recommend to utilize Libvirt or AWS as base platform, both of which are fully supported by Tectonic.
 
 ## Authors
 
@@ -133,13 +133,9 @@ de la República Uruguay](https://udelar.edu.uy/).
 
 Please contact us at <tectonic@fing.edu.uy>.
 
+See more of our project at [Tectonic: An Academic Cyber Range](https://www.fing.edu.uy/inco/proyectos/tectonic).
+
 ## License
 
 Tectonic is licensed under the GNU General Public License v3.0 or
 later. See LICENSE to see the full text.
-
-
-
-
-
-

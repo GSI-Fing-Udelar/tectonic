@@ -22,12 +22,12 @@
 - name: "Install Caldera"
   hosts: caldera
   become: true
-  gather_facts: true
   
   tasks:
     - name: Set hostname
       ansible.builtin.hostname:
         name: caldera
+      when: platform != "docker"
 
     - name: Install node repo
       ansible.builtin.shell: "curl -sL https://rpm.nodesource.com/setup_18.x | bash"
@@ -36,7 +36,7 @@
       ansible.builtin.package:
         name:
           - git
-          - python38
+          - python3.9
           - nodejs
           - haproxy
           - gcc
@@ -46,36 +46,67 @@
         state: present
 
     - name: Update pip
-      ansible.builtin.command: python3.8 -m pip install --upgrade pip
+      ansible.builtin.command: python3.9 -m pip install --upgrade pip
 
     - name: Download Caldera
       ansible.builtin.git:
         repo: https://github.com/mitre/caldera.git
         dest: /opt/caldera/
         version: "{{ caldera_version }}"
+        recursive: true
+
+    - name: Install Caldera OT plugins
+      block:
+        - name: Download Caldera OT plugins
+          ansible.builtin.git:
+            repo: https://github.com/mitre/caldera-ot.git
+            dest: /tmp/caldera_ot/
+            version: main
+            recursive: true
+        - name: Get Caldera OT plugins
+          ansible.builtin.find:
+            paths: /tmp/caldera_ot/
+            recurse: no
+            file_type: directory
+          register: caldera_ot_plugins
+        - name: Install Caldera OT plugins
+          ansible.builtin.command: "mv {{ item['path'] }} /opt/caldera/plugins/"
+          loop: "{{ caldera_ot_plugins['files'] }}"
+          when: item['path'] != "/tmp/caldera_ot/ot-one-pagers"
+        - name: Remove tmp files
+          ansible.builtin.file:
+            path: /tmp/caldera_ot/
+            state: absent
 
     - name: Install Caldera requirements
-      ansible.builtin.command: python3.8 -m pip install -r /opt/caldera/requirements.txt
+      ansible.builtin.command: python3.9 -m pip install -r /opt/caldera/requirements.txt
 
-    - name: Adjust Magma URL
-      ansible.builtin.copy:
-        dest: /opt/caldera/plugins/magma/.env
-        content: |
-          VITE_CALDERA_URL=https://
-
-    - name: Install Magma dependencies
-      community.general.npm:
+    - name: Check ig Magma plugin exists
+      ansible.builtin.stat:
         path: /opt/caldera/plugins/magma
-        executable: /usr/bin/npm
-        state: present
-      ignore_errors: true
-      
-    - name: Build Magma
-      ansible.builtin.command: npm run build
-      args:
-        chdir: /opt/caldera/plugins/magma
+      register: magma
+
+    - name: Configure Magma
+      block:
+        - name: Adjust Magma URL
+          ansible.builtin.copy:
+            dest: /opt/caldera/plugins/magma/.env
+            content: |
+              VITE_CALDERA_URL=https://
+        - name: Install Magma dependencies
+          community.general.npm:
+            path: /opt/caldera/plugins/magma
+            executable: /usr/bin/npm
+            state: present
+          ignore_errors: true
+        - name: Build Magma
+          ansible.builtin.command: npm run build
+          args:
+            chdir: /opt/caldera/plugins/magma
+      when: magma.stat.exists
 
     - name: Change SELinux mode
       ansible.posix.selinux:
         policy: targeted
         state: permissive
+      when: platform != "docker"

@@ -1,0 +1,3 @@
+get shadow.bak /opt/shadow.bak
+cd /etc
+get passwd /opt/passwd

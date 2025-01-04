@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "tectonic-cyberrange"
-version = "0.1.0"
+version = "1.0.1"
 authors = ["GSI-Fing-Udelar"]
-description = "A Python package for the Tectonic project."
+description = "A Python package for the Tectonic Cyber Range project."
 readme = "README.md"
 keywords = ["cyberrange", "tectonic", "ansible", "terraform", "aws", "cloud", "security", "automation"]
 license = "GPL-3.0-or-later"
@@ -15,8 +15,8 @@ packages = [
     { include = "tectonic" }
 ]
 
-homepage = "https://cyberrange.fing.edu.uy/"
-documentation = "https://readthedocs.org"
+homepage = "https://www.fing.edu.uy/inco/proyectos/tectonic"
+documentation = "https://github.com/GSI-Fing-Udelar/tectonic/tree/main/docs"
 repository = "https://github.com/GSI-Fing-Udelar/tectonic.git"
 
 include = [
@@ -28,7 +28,7 @@ include = [
 
 
 [tool.poetry.urls]
-"Homepage" = "https://cyberrange.fing.edu.uy/"
+"Homepage" = "https://www.fing.edu.uy/inco/proyectos/tectonic"
 "Bug Tracker" = "https://github.com/GSI-Fing-Udelar/tectonic/issues"
 
 # Requirements
@@ -42,7 +42,7 @@ certifi = "*"
 cffi = "*"
 charset-normalizer = "*"
 click = "*"
-cryptography= "43.0.3"
+cryptography= "44.0.0"
 decorator = "*"
 deprecated = "*"
 fabric = "*"
@@ -56,7 +56,7 @@ pynacl = "*"
 python-dateutil = "*"
 python-terraform = "*"
 pyyaml = "*"
-requests = "*"
+requests = "2.31.0" #https://github.com/ansible-collections/community.docker/issues/868
 requests-toolbelt = "*"
 s3transfer = "*"
 six = "*"
@@ -71,6 +71,8 @@ prettytable = "*"
 beautifulsoup4 = "*"
 bs4 = "*"
 freezegun = "*"
+docker = "*"
+pyopenssl = ">=24.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.0.0"

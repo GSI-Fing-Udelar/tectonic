@@ -19,23 +19,24 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from pprint import pprint
-
 import copy
 import boto3
 import pytest
+import docker
 
 from tectonic.deployment_aws import AWSDeployment
 from tectonic.deployment_libvirt import LibvirtDeployment
+from tectonic.deployment_docker import DockerDeployment
 from tectonic.ansible import Ansible
 from tectonic.description import Description
 from tectonic.instance_type_aws import InstanceTypeAWS
 from tectonic.libvirt_client import Client as LibvirtClient
 from tectonic.aws import Client as AWSClient
+from tectonic.docker_client import Client as DockerClient
 
 from pathlib import Path
-
 from moto import mock_ec2, mock_secretsmanager
+from unittest.mock import MagicMock
 
 
 test_config = """
@@ -46,11 +47,14 @@ network_cidr_block = 10.0.0.0/16
 internet_network_cidr_block = 10.0.0.0/25
 services_network_cidr_block = 10.0.0.128/25
 ssh_public_key_file = ~/.ssh/id_rsa.pub
-ansible_ssh_common_args = -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
+ansible_ssh_common_args = -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 
 configure_dns = no
 gitlab_backend_url = https://gitlab.fing.edu.uy/api/v4/projects/9886/terraform/state
 debug = yes
 keep_ansible_logs = no
+ansible_forks = 5
+ansible_pipelining = no
+ansible_timeout = 10
 
 
 [libvirt]
@@ -65,7 +69,7 @@ libvirt_student_access = bridge
 libvirt_bridge = lab_ens
 libvirt_external_network = 192.168.44.10/25
 libvirt_bridge_base_ip = 10
-libvirt_proxy=http://proxy.fing.edu.uy:3128
+proxy=http://proxy.fing.edu.uy:3128
 
 [aws]
 aws_region = us-east-1
@@ -77,6 +81,10 @@ elastic_stack_version = latest
 packetbeat_policy_name = Packetbeat
 endpoint_policy_name = Endpoint
 packetbeat_vlan_id = 1
+user_install_packetbeat = gsi
+
+[caldera]
+caldera_version = 5.0.0
 """
 
 @pytest.fixture(scope="session")
@@ -257,12 +265,19 @@ def description(labs_path, terraform_dir, test_data_path):
         libvirt_bridge="lab_ens",
         libvirt_external_network="192.168.44.10/25",
         libvirt_bridge_base_ip=10,
-        libvirt_proxy="http://proxy.fing.edu.uy:3128",
+        proxy="http://proxy.fing.edu.uy:3128",
         instance_type=InstanceTypeAWS("t2.micro"),
         endpoint_policy_name="Endpoint",
+        user_install_packetbeat="gsi",
         internet_network_cidr_block="10.0.0.0/25",
         services_network_cidr_block="10.0.0.128/25",
-        keep_ansible_logs=False
+        keep_ansible_logs=False,
+        docker_uri='unix:///var/run/docker.sock',
+        caldera_version='latest',
+        docker_dns="8.8.8.8",
+        ansible_forks="5",
+        ansible_pipelining=False,
+        ansible_timeout="10"
     )
     yield desc
 
@@ -309,7 +324,7 @@ def ansible_aws(aws_deployment):
     b = Ansible(aws_deployment)
     yield b
 
-@pytest.fixture(scope="session", params=["aws","libvirt"])
+@pytest.fixture(scope="session", params=["aws","libvirt", "docker"])
 def tectonic_config(request, tmp_path_factory, test_data_path):
     config_file = tmp_path_factory.mktemp('data') / f"{request.param}-config.ini"
     config_ini = test_config.replace(
@@ -349,3 +364,162 @@ def libvirt_client(description):
 def aws_client(description, ec2_client, aws_secrets):
     client = AWSClient(description=description, connection=ec2_client, secrets_manager=aws_secrets)
     yield client
+
+@pytest.fixture()
+def docker_client():
+    mock_client = MagicMock(docker.DockerClient)
+    mock_container_1 = MagicMock()
+    mock_container_1.name = "udelar-lab01-1-attacker"
+    mock_container_1.status = "running"
+    mock_container_1.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+                "udelar-lab01-lan": {"IPAddress": "10.0.1.4"},
+            }
+        }
+    }
+    mock_container_2 = MagicMock()
+    mock_container_2.name = "udelar-lab01-1-victim-1"
+    mock_container_2.status = "stopped"
+    mock_container_2.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+                "udelar-lab01-lan": {"IPAddress": "10.0.1.5"},
+                "udelar-lab01-services": {"IPAddress": "10.0.0.130"},
+            }
+        }
+    }
+    mock_container_3 = MagicMock()
+    mock_container_3.name = "udelar-lab01-1-victim-2"
+    mock_container_3.status = "stopped"
+    mock_container_3.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+                "udelar-lab01-lan": {"IPAddress": "10.0.1.6"},
+                "udelar-lab01-services": {"IPAddress": "10.0.0.131"},
+            }
+        }
+    }
+    mock_container_4 = MagicMock()
+    mock_container_4.name = "udelar-lab01-elastic"
+    mock_container_4.status = "running"
+    mock_container_4.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+                "udelar-lab01-internet": {"IPAddress": "10.0.0.129"},
+                "udelar-lab01-services": {"IPAddress": "10.0.0.2"},
+            }
+        }
+    }
+    mock_container_5 = MagicMock()
+    mock_container_5.name = "udelar-lab01-test"
+    mock_container_5.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+            }
+        }
+    }
+    mock_container_6 = MagicMock()
+    mock_container_6.name = "udelar-lab01-2-attacker"
+    mock_container_6.status = "running"
+    mock_container_6.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+                "udelar-lab01-lan": {"IPAddress": "10.0.2.4"},
+            }
+        }
+    }
+    mock_container_7 = MagicMock()
+    mock_container_7.name = "udelar-lab01-1-victim-1"
+    mock_container_7.status = "stopped"
+    mock_container_7.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+                "udelar-lab01-lan": {"IPAddress": "10.0.2.5"},
+                "udelar-lab01-services": {"IPAddress": "10.0.0.133"},
+            }
+        }
+    }
+    mock_container_8 = MagicMock()
+    mock_container_8.name = "udelar-lab01-1-victim-2"
+    mock_container_8.status = "stopped"
+    mock_container_8.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+                "udelar-lab01-lan": {"IPAddress": "10.0.2.6"},
+                "udelar-lab01-services": {"IPAddress": "10.0.0.134"},
+            }
+        }
+    }
+    mock_container_9 = MagicMock()
+    mock_container_9.name = "udelar-lab01-caldera"
+    mock_container_9.status = "running"
+    mock_container_9.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+                "udelar-lab01-internet": {"IPAddress": "10.0.0.130"},
+                "udelar-lab01-services": {"IPAddress": "10.0.0.3"},
+            }
+        }
+    }
+    mock_container_10 = MagicMock()
+    mock_container_10.name = "udelar-lab01-1-server"
+    mock_container_10.status = "stopped"
+    mock_container_10.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+                "udelar-lab01-lan": {"IPAddress": "10.0.1.6"},
+            }
+        }
+    }
+    mock_container_11 = MagicMock()
+    mock_container_11.name = "udelar-lab01-2-server"
+    mock_container_11.status = "stopped"
+    mock_container_11.attrs = {
+        "NetworkSettings": {
+            "Networks": {
+                "udelar-lab01-lan": {"IPAddress": "10.0.2.6"},
+            }
+        }
+    }
+    mock_client.containers.get.side_effect = lambda name: {
+        "udelar-lab01-1-attacker": mock_container_1,
+        "udelar-lab01-1-victim-1": mock_container_2,
+        "udelar-lab01-1-victim-2": mock_container_3,
+        "udelar-lab01-elastic": mock_container_4,
+        "udelar-lab01-test": mock_container_5,
+        "udelar-lab01-2-attacker": mock_container_6,
+        "udelar-lab01-2-victim-1": mock_container_7,
+        "udelar-lab01-2-victim-2": mock_container_8,
+        "udelar-lab01-caldera": mock_container_9,
+        "udelar-lab01-1-server": mock_container_10,
+        "udelar-lab01-2-server": mock_container_11,
+    }.get(name, None)
+
+    mock_client.images.get.side_effect = lambda image_id: {
+        "udelar-lab01-attacker": MagicMock(id="udelar-lab01-attacker", tags=["udelar-lab01-attacker"]),
+        "udelar-lab01-victim": MagicMock(id="udelar-lab01-victim", tags=["udelar-lab01-victim"]),
+        "udelar-lab01-server": MagicMock(id="udelar-lab01-server", tags=["udelar-lab01-server"]),
+        "udelar-lab01-elastic": MagicMock(id="udelar-lab01-elastic", tags=["udelar-lab01-elastic"]),
+    }.get(image_id, None)
+
+    yield mock_client
+
+@pytest.fixture()
+def docker_deployment(monkeypatch, description, docker_client):
+    # Fix description platform:
+    description_docker = copy.copy(description)
+    description_docker.platform = "docker"
+    
+    def patch_docker_client(self, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
+
+    d = DockerDeployment(
+        description=description_docker,
+        gitlab_backend_url="https://gitlab.com",
+        gitlab_backend_username="testuser",
+        gitlab_backend_access_token="testtoken",
+    )
+    yield d

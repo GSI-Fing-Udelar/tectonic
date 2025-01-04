@@ -1,0 +1,108 @@
+<!-- Compile with:
+    pandoc -V colorlinks=true -o cheatsheet.<ext> cheatsheet.md
+-->
+<h1 id="tectonic-an-academic-cyber-range">Tectonic: An Academic Cyber
+Range</h1>
+<h2 id="cheatsheet">Cheatsheet</h2>
+<p>Tectonic is a cyber range designed to provide realistic cybersecurity
+scenarios for education and training through the deployment of networks,
+systems and applications that can be used to train users on
+cybersecurity topics. Key functionalities include customizable network
+configurations, real-time monitoring and automated attack
+simulations.</p>
+<h3 id="scenario-management">Scenario Management</h3>
+<p>Scenarios are defined using a scenario description yml file (usually
+<code>description.yml</code> inside the scenario directory) plus a lab
+edition file (usually <code>&lt;lab_name&gt;.yml</code>.</p>
+<ul>
+<li><p>Create base images:</p>
+<pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; create-images</code></pre></li>
+<li><p>Deploy scenario:</p>
+<pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; deploy</code></pre></li>
+<li><p>Destroy scenario [and base images]:</p>
+<pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; destroy [--images]</code></pre></li>
+<li><p>Show cyber range information (access IP addresses,
+credentials):</p>
+<pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; info</code></pre></li>
+</ul>
+<h3 id="operations-on-machines">Operations on machines</h3>
+<p>Operations done on machines in the scenario, after it is
+deployed.</p>
+<ul>
+<li><p>Get a console on a <em>single</em> machine:</p>
+<pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; console &lt;machine_spec&gt;</code></pre></li>
+<li><p>Reboot, shutdown or start machines in the scenario:</p>
+<pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; [reboot|shutdown|start] &lt;machine_spec&gt;</code></pre></li>
+<li><p>Recreate machines (go back to the initial state):</p>
+<pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; recreate &lt;machine_spec&gt;</code></pre></li>
+<li><p>Run an arbitrary ansible playbook:</p>
+<pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; run-ansible -p &lt;playbook&gt; &lt;machine_spec&gt;</code></pre></li>
+</ul>
+<h4 id="machine-names">Machine names</h4>
+<p>Machines in the cyber range are identified as follows:</p>
+<pre><code>&lt;institution&gt;-&lt;lab_name&gt;-&lt;instance&gt;-&lt;guest&gt;[-&lt;copy&gt;]</code></pre>
+<p>The copy value is optional and only appears in the name if there is
+more than one copy for the same guest.</p>
+<p>For example, copy 2 of the <code>server</code> guest of instance 3 of
+the lab <code>test_lab</code> and institution <code>test_inst</code>
+is:</p>
+<pre><code>test_inst-test_lab-3-server-2</code></pre>
+<p>As another example, the attacker guest, which consists of a single
+copy, of instance 2 of the lab test_lab and institution test_inst
+is:</p>
+<pre><code>test_inst-test_lab-2-attacker</code></pre>
+<h4 id="machine-specification">Machine specification</h4>
+<p>Most commands accept machine specification options, which can be a
+combination of: instance number (<code>-i</code>), guest (base) name
+(<code>-g</code>), and copy number (<code>-c</code>).</p>
+<p>For example, to reboot all copies of the machine <code>victim</code>
+of instances 3 and 4, one can run:</p>
+<pre><code>  tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; reboot -g victim -i 3,4</code></pre>
+<p>this will reboot machines <code>test_inst-test_lab-3-victim</code>
+and <code>test_inst-test_lab-4-victim</code>.</p>
+<p>Instance and copy numbers can be specified either as a list:
+<code>1,2,3</code>, as a range: <code>5-10</code>, or as a combination:
+<code>2,4-6,8</code>.</p>
+<h3 id="connectivity-to-the-scenario">Connectivity to the scenario</h3>
+<ul>
+<li><p>Teacher access:<br />
+Use <code>tectonic console</code>, or connect through
+<code>ssh</code>:</p>
+<pre><code>ssh -J ubuntu@&lt;teacher_access_ip&gt; &lt;machine_ip&gt;</code></pre>
+<p><code>teacher_access_ip</code> is shown after scenario deployment and
+in the output of <code>tectonic info</code>.</p></li>
+<li><p>Student access:</p>
+<pre><code>ssh -J traineeXX@&lt;student_access_ip&gt; &lt;entry_point_ip&gt;</code></pre>
+<p><code>student_access_ip</code> is shown after scenario deployment and
+in the output of the <code>tectonic info</code> command.</p>
+<p>By default student usernames are of the form <code>traineeXX</code>,
+where <code>XX</code> is the instance number. Credentials can be either
+SSH public keys, generated passwords or both.</p>
+<p>Only machines declared as entry points are accessible to the
+students.</p></li>
+<li><p>Copy files to/from machines:<br />
+Use the <code>-J</code> option to <code>scp</code> in the same way as
+above.</p>
+<pre><code>scp -J traineeXX@&lt;student_access_ip&gt; &lt;source&gt; &lt;dest&gt;</code></pre></li>
+</ul>
+<h4 id="port-forwarding">Port forwarding</h4>
+<p>It is possible to forward ports to access services withing the
+scenario. To do that, use the <code>-L</code> option to
+<code>ssh</code>:</p>
+<pre><code>ssh -L localhost:&lt;local-port&gt;:&lt;remote-ip&gt;:&lt;remote-port&gt; &lt;ssh-connection-options&gt;</code></pre>
+<p>where <code>&lt;ssh-connection-options&gt;</code> connects to the
+scenario either as student or teacher, as above.</p>
+<p>For example, to forward local port 80443 to port 443 on machine
+10.0.1.5, use:</p>
+<pre><code>ssh -L localhost:80443:10.0.1.5:443 &lt;ssh-connection-options&gt;</code></pre>
+<p>You can then connect to localhost:80443 to access port 443 on machine
+10.0.1.5.</p>
+<h2 id="file-edition">File edition</h2>
+<p>For editing files within a scenario, you can use a console based text
+editor or run locally a text editor that supports remote connections,
+such as <a href="https://code.visualstudio.com/">VSCode</a>. Using the
+above ssh connection commands, VSCode can edit remote files, open a
+console and configure port forwardings. See <a
+href="https://code.visualstudio.com/docs/remote/ssh"
+class="uri">https://code.visualstudio.com/docs/remote/ssh</a> for more
+details.</p>

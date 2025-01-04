@@ -3,6 +3,7 @@ lambda_function.zip
 
 # Local .terraform directories
 **/.terraform/*
+**/terraform-states/*
 
 # .tfstate files
 *.tfstate

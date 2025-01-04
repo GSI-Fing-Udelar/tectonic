@@ -70,12 +70,19 @@ class Description(object):
         libvirt_bridge,
         libvirt_external_network,
         libvirt_bridge_base_ip,
-        libvirt_proxy,
+        proxy,
         instance_type,
         endpoint_policy_name,
+        user_install_packetbeat,
         internet_network_cidr_block,
         services_network_cidr_block,
-        keep_ansible_logs
+        keep_ansible_logs,
+        docker_uri,
+        caldera_version,
+        docker_dns,
+        ansible_forks,
+        ansible_pipelining,
+        ansible_timeout
     ):
         """Create a Description object.
 
@@ -101,12 +108,19 @@ class Description(object):
             libvirt_bridge: Name of the bridge for libvirt.
             libvirt_external_network: External network for libvirt.
             libvirt_bridge_base_ip: Base IP for the libvirt bridge.
-            libvirt_proxy: Proxy for libvirt.
+            proxy: Proxy for libvirt.
             instance_type: An InstanceType object to compute the correct size of machine.
             endpoint_policy_name: Name of the Agent policy.
+            user_install_packetbeat: User used to install Packetbeat.
             internet_network_cidr_block: CIDR of internet network.
             services_network_cidr_block: CIDR of services network.
             keep_ansible_logs: Keep Ansible logs on managed hosts.
+            docker_uri: URI for docker.
+            caldera_version: Caldera version.
+            docker_dns: DNS to use for internet networks on Docker.
+            ansible_forks: Number of parallel connections for Ansible.
+            ansible_pipelining: Enable pipelining for Ansible.
+            ansible_timeout: Timeout for Ansible connections.
 
         Returns:
              A Description object.
@@ -136,16 +150,18 @@ class Description(object):
         self.libvirt_bridge = libvirt_bridge
         self.libvirt_external_network = libvirt_external_network
         self.libvirt_bridge_base_ip = libvirt_bridge_base_ip
-        self.libvirt_proxy = libvirt_proxy
+        self.proxy = proxy
         self.instance_type = instance_type
         self.endpoint_policy_name = endpoint_policy_name
+        self.user_install_packetbeat = user_install_packetbeat
         self.internet_network = internet_network_cidr_block
         self.services_network = services_network_cidr_block
         self.keep_ansible_logs = keep_ansible_logs
+        self.docker_uri = docker_uri
+        self.caldera_version = caldera_version
+        self.docker_dns = docker_dns
         self.services = {}
-
         self._load_lab_edition(path)
-
         self.description_dir = Path(self.description_file).parent.resolve().as_posix()
         self.ansible_playbooks_path = (
             Path(self.description_dir).joinpath("ansible").resolve().as_posix()
@@ -157,6 +173,9 @@ class Description(object):
         self.authorized_keys = self.read_pubkeys(
             self.teacher_pubkey_dir, ssh_public_key_file
         )
+        self.ansible_forks = ansible_forks
+        self.ansible_pipelining = ansible_pipelining
+        self.ansible_timeout = ansible_timeout
 
     def read_pubkeys(self, ssh_dir, default_pubkey=None):
         """
@@ -248,7 +267,7 @@ class Description(object):
         self.base_institution = re.sub("[^a-zA-Z0-9]+", "", description["institution"])
         self.base_lab_name = re.sub("[^a-zA-Z0-9]+", "", description["lab_name"])
         self.default_os = description.get("default_os", self.default_os)
-        self.guest_settings = description.get("guest_settings", self.guest_settings)
+        self.guest_settings = {key.lower(): value for key, value in description.get("guest_settings", self.guest_settings).items()}
         self.topology = description.get("topology", self.topology)
 
         self._load_elastic_settings(description)
@@ -306,16 +325,16 @@ class Description(object):
                 raise DescriptionException(f"{self.base_lab} not found in {self.lab_repo_uri}.")
         self._load_description(self.description_file)
 
-        self.institution = re.sub(
+        self.institution = str.lower(re.sub(
             "[^a-zA-Z0-9]+",
             "",
             lab_edition_info.get("institution", self.base_institution),
-        )
-        self.lab_name = re.sub(
+        ))
+        self.lab_name = str.lower(re.sub(
             "[^a-zA-Z0-9]+",
             "",
             lab_edition_info.get("lab_edition_name", self.base_lab_name),
-        )
+        ))
 
         self.teacher_pubkey_dir = lab_edition_info.get("teacher_pubkey_dir")
         if self.teacher_pubkey_dir and not Path(self.teacher_pubkey_dir).is_absolute():
@@ -557,7 +576,9 @@ class Description(object):
             instances = []
         infrastructure_guests_names = []
         if self.platform == "aws":
-            infrastructure_guests_names = ["student_access"]
+            infrastructure_guests_names = []
+            if self.is_student_access():
+                infrastructure_guests_names.append("student_access")
             if self.teacher_access == "host":
                 infrastructure_guests_names.append("teacher_access")
         for service in self.get_services_to_deploy():
@@ -722,6 +743,18 @@ class Description(object):
             if guest and guest.get("internet_access"):
                 return True
         return False
+    
+    def is_student_access(self):
+        """
+        Return if student access is required
+
+        Returns:
+            bool: True if student access is required for any guest; False otherwhise.
+        """
+        for guest in self.guest_settings.values():
+            if guest and guest.get("entry_point"):
+                return True
+        return False
 
     def get_subnetwork_name(self, instance_num, network_name):
         """Returns the name of the instance subnetwork."""
@@ -798,6 +831,7 @@ class Description(object):
 
                     memory = self.get_guest_attr(base_name, "memory", 1024)
                     vcpus = self.get_guest_attr(base_name, "vcpu", 1)
+                    gpu = self.get_guest_attr(base_name, "gpu", False)
                     monitor = self.get_guest_attr(base_name, "monitor", False)
                     is_in_services_network = self.is_in_services_network(base_name)
                     is_entry_point = self.get_guest_attr(base_name, "entry_point", False)
@@ -817,6 +851,7 @@ class Description(object):
                         "disk": self.get_guest_attr(base_name, "disk", 10),
                         "instance_type": self.instance_type.get_guest_instance_type(memory,
                                                                                     vcpus,
+                                                                                    gpu,
                                                                                     monitor,
                                                                                     self.monitor_type
                                                                                     ),
@@ -854,7 +889,7 @@ class Description(object):
                     return base + 1
                 else:
                     return base
-        elif self.platform == "aws":
+        elif self.platform == "aws" or self.platform == "docker":
             return 0
 
 
@@ -867,6 +902,15 @@ class Description(object):
         """
         self.elastic_stack_version = version
         self.is_elastic_stack_latest_version = True
+
+    def set_caldera_version(self, version):
+        """
+        Set Caldera version
+
+        Parameters:
+            version (str): Caldera version
+        """
+        self.caldera_version = version
 
     def _get_guest_advanced_options_file(self, base_name):
         """

@@ -29,11 +29,37 @@
     ansible.builtin.meta: end_play
     when: credentials.stat.exists
 
+- name: Configure dns
+  block:
+    - name: Create script
+      ansible.builtin.copy:
+        dest: /tmp/dns.sh
+        content: |
+          #!/bin/bash
+          echo "nameserver {{ elastic.dns }}" > /etc/resolv.conf
+        mode: '0777'
+    - name: Execute script
+      ansible.builtin.command: bash /tmp/dns.sh
+    - name: Remove script
+      ansible.builtin.file:
+        path: /tmp/dns.sh
+        state: absent
+  when: elastic.dns is defined and elastic.dns != ""
+
 - name: Add hostname
   lineinfile:
     dest: /etc/hosts
     insertafter: EOF
     line: "{{elastic.ip}} {{ ansible_facts['fqdn'] }}"
+  when: platform != "docker"
+
+- name: Set elasticsearch memory limit
+  ansible.builtin.copy:
+    dest: /etc/elasticsearch/jvm.options.d/memory.options
+    content: |
+      -Xms{{ elastic.elasticsearch_memory }}g
+      -Xmx{{ elastic.elasticsearch_memory }}g
+  when: platform == "docker"
 
 - name: Create Elasticsearch data directory
   ansible.builtin.file:
@@ -43,6 +69,17 @@
     mode: '0755'
     owner: elasticsearch
     group: elasticsearch
+
+- name: Set Gateway IP
+  block:
+    - name: Set gateway_ip for Docker
+      ansible.builtin.set_fact:
+        gateway_ip: "{{ (elastic.ip | split('.'))[0] }}.{{ (elastic.ip | split('.'))[1] }}.{{ (elastic.ip | split('.'))[2] }}.1"
+      when: platform == "docker"
+    - name: Set gateway_ip for Libvirt
+      ansible.builtin.set_fact:
+        gateway_ip: "{{ (elastic.ip | split('.'))[0] }}.{{ (elastic.ip | split('.'))[1] }}.{{ (elastic.ip | split('.'))[2] }}.129"
+      when: platform == "libvirt"
 
 - name: Configure firewalld
   block:
@@ -61,21 +98,21 @@
         service: ssh
         permanent: true
         state: disabled
-      when: platform == "libvirt"
+      when: platform == "libvirt" or platform == "docker"
     - name: Configure firewalld - Allow ssh from server
       ansible.posix.firewalld:
         zone: public
         permanent: true
         state: enabled
-        rich_rule: "rule family=ipv4 source address={{ (elastic.ip | split('.'))[0] }}.{{ (elastic.ip | split('.'))[1] }}.{{ (elastic.ip | split('.'))[2] }}.129/32 port port=22 protocol=tcp accept"
-      when: platform == "libvirt"
+        rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port=22 protocol=tcp accept"
+      when: platform == "libvirt" or platform == "docker"
     - name: Configure firewalld - Allow access to kibana from server
       ansible.posix.firewalld:
         zone: public
         permanent: true
         state: enabled
-        rich_rule: "rule family=ipv4 source address={{ (elastic.ip | split('.'))[0] }}.{{ (elastic.ip | split('.'))[1] }}.{{ (elastic.ip | split('.'))[2] }}.129/32 port port=5601 protocol=tcp accept"
-      when: platform == "libvirt"
+        rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port=5601 protocol=tcp accept"
+      when: platform == "libvirt" or platform == "docker"
     - name: Configure firewalld - Allow access to Kibana
       ansible.posix.firewalld:
         zone: public
@@ -280,7 +317,7 @@
     ansible.builtin.shell: cat /opt/agent/agent.key
     register: elastic_agent_key
   - name: Fleet - Configure elasticsearch output
-    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/outputs"
       method: "POST"
@@ -295,7 +332,7 @@
     ansible.builtin.set_fact:
       elasticsearch_output_result: "{{ result }}"
   - name: Fleet - Configure server host
-    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/fleet_server_hosts"
       method: "POST"
@@ -311,7 +348,7 @@
     ansible.builtin.set_fact:
       fleet_info : "{{ result }}"
   - name: Fleet - Generate service token
-    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/service_tokens?remote=false"
       headers:
@@ -327,7 +364,7 @@
     ansible.builtin.set_fact:
       elastic_result_service_token: "{{ result }}"
   - name: Fleet - Configure policy
-    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies"
       headers:
@@ -343,7 +380,7 @@
     ansible.builtin.set_fact:
       elastic_result_policy: "{{ result }}"
   - name: Fleet - Configure integration
-    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
       headers:
@@ -356,7 +393,7 @@
       status_code: 200
       body_format: "json"
   - name: Fleet - Configure Logstash output
-    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/outputs"
       headers:
@@ -369,7 +406,7 @@
       status_code: 200
       body_format: "json"
   - name: Fleet - Adjust policy output
-    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies/{{ elastic_result_policy['json']['item']['id'] }}"
       headers:
@@ -395,7 +432,7 @@
 - name: Deploy Packetbeat default policy
   block:
   - name: Packetbeat - Configure policy
-    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies"
       headers:
@@ -411,7 +448,7 @@
     ansible.builtin.set_fact:
       elastic_result_policy: "{{ result  }}"
   - name: Packetbeat - Configure integration
-    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
       headers:
@@ -428,7 +465,7 @@
 - name: Deploy Endpoint default policy
   block:
   - name: Endpoint - Configure policy
-    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies?sys_monitoring=true"
       headers:
@@ -444,7 +481,7 @@
     ansible.builtin.set_fact:
       elastic_result_policy: "{{ result  }}"
   - name: Endpoint - Configure integration Elastic Defend
-    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
       headers:
@@ -457,7 +494,7 @@
       status_code: 200
       body_format: "json"
   - name: Endpoint - Configure integration Auditd Manager
-    ansible.builtin.include_tasks: ../../python/ansible/make_request.yml
+    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
       headers:

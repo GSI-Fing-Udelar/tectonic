@@ -18,10 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-import logging
-
 import re
-import os
 from pathlib import Path
 
 import libvirt_qemu
@@ -54,7 +51,6 @@ def test_ansible_callback_appends_output_test(ansible_libvirt):
 def test_build_empty_inventory(ansible_libvirt):
     inventory = ansible_libvirt.build_inventory(machine_list=None)
     assert inventory == {}
-
 
 def test_build_inventory_libvirt(mocker, ansible_libvirt):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
@@ -92,7 +88,7 @@ def test_build_inventory_libvirt(mocker, ansible_libvirt):
     assert inventory["victim"]["hosts"]["udelar-lab01-2-victim"]["ansible_become_user"] == "administrator"
 
 
-def test_build_inventory_aws(ansible_aws, ec2_client, aws_secrets):
+def test_build_inventory_aws(ansible_aws):
     assert isinstance(ansible_aws.deployment.client, AWSClient) is True
 
     # Test host teacher_access
@@ -112,7 +108,6 @@ def test_build_inventory_aws(ansible_aws, ec2_client, aws_secrets):
             '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="aws ec2-instance-connect open-tunnel --instance-id %h"'
             )
     ansible_aws.deployment.description.teacher_access = "host"
-
 
 def test_run_libvirt(mocker, capsys, ansible_libvirt, test_data_path):
     result = ansible_runner.Runner(config=None)
@@ -138,7 +133,8 @@ def test_run_libvirt(mocker, capsys, ansible_libvirt, test_data_path):
                                  quiet=False,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
-                                 extravars={"ansible_no_target_syslog" : not ansible_libvirt.deployment.description.keep_ansible_logs }
+                                 extravars={"ansible_no_target_syslog" : not ansible_libvirt.deployment.description.keep_ansible_logs },
+                                 envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
                                 )
 
     # Test non-existent default playbook path
@@ -173,7 +169,8 @@ def test_run_custom_playbook(mocker, ansible_libvirt):
                                  quiet=False,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
-                                 extravars={"ansible_no_target_syslog" : not ansible_libvirt.deployment.description.keep_ansible_logs }
+                                 extravars={"ansible_no_target_syslog" : not ansible_libvirt.deployment.description.keep_ansible_logs },
+                                 envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
                                 )
 
 
@@ -193,7 +190,7 @@ def test_run_error(mocker, ansible_libvirt):
     with pytest.raises(tectonic.ansible.AnsibleException) as exception:
         ansible_libvirt.run(quiet=True)
 
-def test_wait_for_connections(mocker, ansible_libvirt, base_tectonic_path):
+def test_wait_for_connections(mocker, ansible_libvirt):
     mocker.patch.object(libvirt_qemu, "qemuAgentCommand", return_value='{"return": {"ping": "pong"}}')
 
     result = ansible_runner.Runner(config=None)
@@ -210,5 +207,6 @@ def test_wait_for_connections(mocker, ansible_libvirt, base_tectonic_path):
                                  quiet=True,
                                  verbosity=0,
                                  event_handler=mocker.ANY,
-                                 extravars={"ansible_no_target_syslog" : not ansible_libvirt.deployment.description.keep_ansible_logs }
+                                 extravars={"ansible_no_target_syslog" : not ansible_libvirt.deployment.description.keep_ansible_logs },
+                                 envvars={"ANSIBLE_FORKS": "5", "ANSIBLE_HOST_KEY_CHECKING": False, "ANSIBLE_PIPELINING": False, "ANSIBLE_GATHERING": "explicit", "ANSIBLE_TIMEOUT": "10"}
                                 )

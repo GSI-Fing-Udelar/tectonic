@@ -1,0 +1,20 @@
+- requirements: []
+  name: Password Cracking - Get SSH user
+  description: Get SSH user
+  tactic: credential-access
+  technique_id: T1110
+  technique_name: Brute Force
+  executors:
+  - cleanup: []
+    timeout: 60
+    platform: linux
+    name: sh
+    payloads: []
+    parsers:
+    - module: plugins.stockpile.app.parsers.basic
+      parserconfigs:
+      - source: victim.ssh.user
+        edge: ''
+        target: ''
+    command: john --show /opt/tocrack | head -n 2 | tail -n 1 | awk -F ':' '{print$1}'
+  id: 06990a05-3d1d-413f-bb6f-ca6f45a73404
