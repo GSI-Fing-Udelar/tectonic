@@ -170,17 +170,17 @@ uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "boto3"
-version = "1.36.6"
+version = "1.36.11"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "boto3-1.36.6-py3-none-any.whl", hash = "sha256:6d473f0f340d02b4e9ad5b8e68786a09728101a8b950231b89ebdaf72b6dca21"},
-    {file = "boto3-1.36.6.tar.gz", hash = "sha256:b36feae061dc0793cf311468956a0a9e99215ce38bc99a1a4e55a5b105f16297"},
+    {file = "boto3-1.36.11-py3-none-any.whl", hash = "sha256:641dd772eac111d9443258f0f5491c57c2af47bddae94a8d32de19edb5bf7b1c"},
+    {file = "boto3-1.36.11.tar.gz", hash = "sha256:b40fbf2c0f22e55b67df95475a68bb72be5169097180a875726b6b884339ac8b"},
 ]
 
 [package.dependencies]
-botocore = ">=1.36.6,<1.37.0"
+botocore = ">=1.36.11,<1.37.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.11.0,<0.12.0"
 
@@ -189,13 +189,13 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.36.6"
+version = "1.36.11"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "botocore-1.36.6-py3-none-any.whl", hash = "sha256:f77bbbb03fb420e260174650fb5c0cc142ec20a96967734eed2b0ef24334ef34"},
-    {file = "botocore-1.36.6.tar.gz", hash = "sha256:4864c53d638da191a34daf3ede3ff1371a3719d952cc0c6bd24ce2836a38dd77"},
+    {file = "botocore-1.36.11-py3-none-any.whl", hash = "sha256:82c5660027f696608d0e55feb08c146c11c7ebeba7615961c7765dcf6009a00d"},
+    {file = "botocore-1.36.11.tar.gz", hash = "sha256:c919be883f95b9e0c3021429a365d40cd7944b8345a07af30dc8d891ceefe07a"},
 ]
 
 [package.dependencies]
@@ -204,7 +204,7 @@ python-dateutil = ">=2.1,<3.0.0"
 urllib3 = {version = ">=1.25.4,<2.2.0 || >2.2.0,<3", markers = "python_version >= \"3.10\""}
 
 [package.extras]
-crt = ["awscrt (==0.23.4)"]
+crt = ["awscrt (==0.23.8)"]
 
 [[package]]
 name = "bs4"
@@ -585,13 +585,13 @@ files = [
 
 [[package]]
 name = "deprecated"
-version = "1.2.17"
+version = "1.2.18"
 description = "Python @deprecated decorator to deprecate old python classes, functions or methods."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
 files = [
-    {file = "Deprecated-1.2.17-py2.py3-none-any.whl", hash = "sha256:69cdc0a751671183f569495e2efb14baee4344b0236342eec29f1fde25d61818"},
-    {file = "deprecated-1.2.17.tar.gz", hash = "sha256:0114a10f0bbb750b90b2c2296c90cf7e9eaeb0abb5cf06c80de2c60138de0a82"},
+    {file = "Deprecated-1.2.18-py2.py3-none-any.whl", hash = "sha256:bd5011788200372a32418f888e326a09ff80d0214bd961147cfed01b5c018eec"},
+    {file = "deprecated-1.2.18.tar.gz", hash = "sha256:422b6f6d859da6f2ef57857761bfb392480502a64c3028ca9bbe86085d72115d"},
 ]
 
 [package.dependencies]
@@ -1108,13 +1108,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "prettytable"
-version = "3.13.0"
+version = "3.14.0"
 description = "A simple Python library for easily displaying tabular data in a visually appealing ASCII table format"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "prettytable-3.13.0-py3-none-any.whl", hash = "sha256:d4f5817a248b77ddaa25b27007566c0a6a064308d991516b61b436ffdbb4f8e9"},
-    {file = "prettytable-3.13.0.tar.gz", hash = "sha256:30e1a097a7acb075b5c488ffe01195349b37009c2d43ca7fa8b5f6a61daace5b"},
+    {file = "prettytable-3.14.0-py3-none-any.whl", hash = "sha256:61d5c68f04a94acc73c7aac64f0f380f5bed4d2959d59edc6e4cbb7a0e7b55c4"},
+    {file = "prettytable-3.14.0.tar.gz", hash = "sha256:b804b8d51db23959b96b329094debdbbdf10c8c3aa75958c5988cfd7f78501dd"},
 ]
 
 [package.dependencies]
@@ -1147,13 +1147,13 @@ files = [
 
 [[package]]
 name = "pylint"
-version = "3.3.3"
+version = "3.3.4"
 description = "python code static checker"
 optional = false
 python-versions = ">=3.9.0"
 files = [
-    {file = "pylint-3.3.3-py3-none-any.whl", hash = "sha256:26e271a2bc8bce0fc23833805a9076dd9b4d5194e2a02164942cb3cdc37b4183"},
-    {file = "pylint-3.3.3.tar.gz", hash = "sha256:07c607523b17e6d16e2ae0d7ef59602e332caa762af64203c24b41c27139f36a"},
+    {file = "pylint-3.3.4-py3-none-any.whl", hash = "sha256:289e6a1eb27b453b08436478391a48cd53bb0efb824873f949e709350f3de018"},
+    {file = "pylint-3.3.4.tar.gz", hash = "sha256:74ae7a38b177e69a9b525d0794bd8183820bfa7eb68cc1bee6e8ed22a42be4ce"},
 ]
 
 [package.dependencies]
@@ -1164,7 +1164,7 @@ dill = [
     {version = ">=0.3.7", markers = "python_version >= \"3.12\""},
     {version = ">=0.3.6", markers = "python_version >= \"3.11\" and python_version < \"3.12\""},
 ]
-isort = ">=4.2.5,<5.13.0 || >5.13.0,<6"
+isort = ">=4.2.5,<5.13.0 || >5.13.0,<7"
 mccabe = ">=0.6,<0.8"
 platformdirs = ">=2.2.0"
 tomli = {version = ">=1.1.0", markers = "python_version < \"3.11\""}
