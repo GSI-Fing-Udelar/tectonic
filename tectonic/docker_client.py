@@ -140,6 +140,21 @@ class Client:
             #         print(msg.decode()[8:])
         except Exception as exception:
             raise DockerClientException(f"{exception}")  
+        
+    def is_image_in_use(self, image_name):
+        """
+        Returns true if the image is in use for some container.
+
+        Parameters:
+            image_name(str): the image name to check
+        """
+        try:
+            for container in self.connection.containers.list():
+                if f"{image_name}:latest" in container.image.tags:
+                    return True
+            return False
+        except Exception as exception:
+            raise DockerClientException(f"{exception}")
     
 
     

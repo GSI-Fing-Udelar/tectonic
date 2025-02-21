@@ -607,3 +607,20 @@ class DockerDeployment(Deployment):
                 return None
         except Exception as e:
             raise DeploymentDockerException(f"Unable to apply action {action} for Packetbeat. Error {e}")
+        
+    
+    def can_create_services_images(self, services):
+        """
+        Return true if all services images that are needed in the scenario are not in use.
+        
+        Parameters:
+            services (dict(bool)): services images to create.
+        """
+        try:
+            for service in services:
+                if services[service]:
+                    if self.client.is_image_in_use(service):
+                        raise DeploymentDockerException(f"Image {service} is in use.")
+            return True
+        except Exception as exception:
+            raise DeploymentDockerException(f"{exception}")
