@@ -828,14 +828,3 @@ class Deployment:
             return ansible.debug_outputs
         except Exception as e:
             raise TerraformRunException(f"{e}")
-        
-    def can_create_services_images(self, services):
-        """
-        Return true if all services images that are needed in the scenario are not in use.
-        If the service base image is in use (for other scenario) it can not be created.
-        
-        Parameters:
-            services (dict(bool)): services images to create.
-        """
-        raise NotImplementedError
-

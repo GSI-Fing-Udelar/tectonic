@@ -155,6 +155,23 @@ class Client:
             return False
         except Exception as exception:
             raise DockerClientException(f"{exception}")
+        
     
+    def get_image(self, image_name):
+        """
+        Get the image given its name.
+
+        Parameters:
+            image_name (str): name of the image (<institution>-<lab_name>-<image_name>).
+
+        Returns:
+            str: the identifier of the image if it was found or None otherwise.
+        """
+        try:
+            return self.connection.images.get(image_name)
+        except docker.errors.ImageNotFound as exception:
+            return None
+        except Exception as exception:
+            raise DockerClientException(f"{exception}")
 
     

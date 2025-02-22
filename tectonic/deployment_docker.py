@@ -94,7 +94,11 @@ class DockerDeployment(Deployment):
         guests = guests or self.description.guest_settings.keys()
         for guest_name in guests:
             try: 
-                self.client.delete_image(self.description.get_image_name(guest_name))
+                image_name = self.description.get_image_name(guest_name)
+                if self.client.get_image(image_name): 
+                    if self.client.is_image_in_use(image_name):
+                        raise DeploymentDockerException(f"Unable to delete image {image_name} because it is being used.")
+                    self.client.delete_image(self.description.get_image_name(guest_name))
             except Exception as exception:
                 raise DeploymentDockerException(f"{exception}")
             
@@ -105,14 +109,19 @@ class DockerDeployment(Deployment):
         for service in services:
             if services[service]:
                 try: 
-                    self.client.delete_image(service)
+                    if self.client.get_image(service):
+                        if self.client.is_image_in_use(service):
+                            raise DeploymentDockerException(f"Unable to delete image {service} because it is being used.")
+                        self.client.delete_image(service)
                 except Exception as exception:
                     raise DeploymentDockerException(f"{exception}")
             
     def create_cr_images(self, guests=None):
+        self.delete_cr_images(guests)
         super().create_cr_images(guests)
 
     def create_services_images(self, services):
+        self.delete_services_images(services)
         super().create_services_images(services) 
 
     def deploy_infraestructure(self, instances):
@@ -606,21 +615,4 @@ class DockerDeployment(Deployment):
             else:
                 return None
         except Exception as e:
-            raise DeploymentDockerException(f"Unable to apply action {action} for Packetbeat. Error {e}")
-        
-    
-    def can_create_services_images(self, services):
-        """
-        Return true if all services images that are needed in the scenario are not in use.
-        
-        Parameters:
-            services (dict(bool)): services images to create.
-        """
-        try:
-            for service in services:
-                if services[service]:
-                    if self.client.is_image_in_use(service):
-                        raise DeploymentDockerException(f"Image {service} is in use.")
-            return True
-        except Exception as exception:
-            raise DeploymentDockerException(f"{exception}")
+            raise DeploymentDockerException(f"Unable to apply action {action} for Packetbeat. Error {e}")       

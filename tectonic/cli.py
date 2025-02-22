@@ -584,19 +584,19 @@ def tectonic(
 )
 @click.option(
     "--packetbeat_image/--no-packetbeat_image",
-    default=True,
+    default=False,
     show_default=True,
     help="Whether to create the base image for packetbeat.",
 )
 @click.option(
     "--elastic_image/--no-elastic_image",
-    default=True,
+    default=False,
     show_default=True,
     help="Whether to create the base image for ELK.",
 )
 @click.option(
     "--caldera_image/--no-caldera_image",
-    default=True,
+    default=False,
     show_default=True,
     help="Whether to create the base image for Caldera.",
 )
@@ -726,9 +726,8 @@ def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
             "elastic": elastic,
             "caldera": caldera
         }
-        if ctx.obj["deployment"].can_create_services_images(services):
-            click.echo("Creating services images ...")
-            ctx.obj["deployment"].create_services_images(services)
+        click.echo("Creating services images ...")
+        ctx.obj["deployment"].create_services_images(services)
 
     if machines:
         click.echo("Creating base images...")
