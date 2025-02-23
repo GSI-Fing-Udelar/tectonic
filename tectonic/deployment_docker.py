@@ -95,7 +95,7 @@ class DockerDeployment(Deployment):
         for guest_name in guests:
             try: 
                 image_name = self.description.get_image_name(guest_name)
-                if self.client.get_image(image_name): 
+                if self.client.get_image(image_name) is not None: 
                     if self.client.is_image_in_use(image_name):
                         raise DeploymentDockerException(f"Unable to delete image {image_name} because it is being used.")
                     self.client.delete_image(self.description.get_image_name(guest_name))
@@ -109,7 +109,7 @@ class DockerDeployment(Deployment):
         for service in services:
             if services[service]:
                 try: 
-                    if self.client.get_image(service):
+                    if self.client.get_image(service) is not None:
                         if self.client.is_image_in_use(service):
                             raise DeploymentDockerException(f"Unable to delete image {service} because it is being used.")
                         self.client.delete_image(service)

@@ -450,18 +450,6 @@ class Deployment:
         """
         raise NotImplementedError
 
-    def can_delete_image(self, image_name):
-        """
-        Return true if the image is not being used by any machine.
-
-        Parameters:
-            image_name (str): name of the image.
-
-        Returns:
-            bool: true if the image is not being used by any machine, false otherwise.
-        """
-        raise NotImplementedError
-
     def get_cr_resources_to_target_apply(self, instances):
         """
         Returns the name of the resources to target apply based on the instance numbers.
