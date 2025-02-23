@@ -106,15 +106,15 @@ class DockerDeployment(Deployment):
         """
         Delete services base image.
         """
-        for service in services:
-            if services[service]:
-                try: 
+        try: 
+            for service in services:
+                if services[service]:
                     if self.client.get_image(service) is not None:
                         if self.client.is_image_in_use(service):
                             raise DeploymentDockerException(f"Unable to delete image {service} because it is being used.")
                         self.client.delete_image(service)
-                except Exception as exception:
-                    raise DeploymentDockerException(f"{exception}")
+        except Exception as exception:
+            raise DeploymentDockerException(f"{exception}")
             
     def create_cr_images(self, guests=None):
         self.delete_cr_images(guests)
