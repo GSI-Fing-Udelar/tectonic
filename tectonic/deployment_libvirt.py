@@ -91,23 +91,14 @@ class LibvirtDeployment(Deployment):
 
         interactive_shell(hostname, username)
 
-    def can_delete_image(self, image_name):
-        # TODO
-        return True
-
     def delete_cr_images(self, guests=None):
         guests = guests or self.description.guest_settings.keys()
         for guest_name in guests:
             image_name = self.description.get_image_name(guest_name)
-            if not self.can_delete_image(image_name):
-                raise DeploymentLibvirtException(
-                    f"Unable to delete image {image_name} because it is being used."
-                )
+            if self.client.is_image_in_use(image_name):
+                raise DeploymentLibvirtException(f"Unable to delete image {image_name} because it is being used.")
         for guest_name in guests:
-            self.client.delete_image(
-                self.description.libvirt_storage_pool,
-                self.description.get_image_name(guest_name),
-            )
+            self.client.delete_image(self.description.libvirt_storage_pool, self.description.get_image_name(guest_name))
 
     def create_cr_images(self, guests=None):
         # Libvirt packer plugin fails if images exist.
@@ -486,15 +477,9 @@ class LibvirtDeployment(Deployment):
         """
         for service in services:
             if services[service]:
-                # Libvirt packer plugin fails if images exist.
-                if not self.can_delete_image(service):
-                    raise DeploymentLibvirtException(
-                        f"Unable to delete image {service} because it is being used."
-                    )
-                self.client.delete_image(
-                    self.description.libvirt_storage_pool,
-                    service,
-                )
+                if self.client.is_image_in_use(service):
+                    raise DeploymentLibvirtException(f"Unable to delete image {service} because it is being used.")
+                self.client.delete_image(self.description.libvirt_storage_pool, service)
     
     def get_deploy_services_vars(self):
         """Build the terraform variable dictionary for deployment of the CyberRange services."""

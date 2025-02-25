@@ -91,7 +91,7 @@ class AWSDeployment(Deployment):
         guests = guests or self.description.guest_settings.keys()
         for guest_name in guests:
             image_name = self.description.get_image_name(guest_name)
-            if not self.can_delete_image(image_name):
+            if self.client.is_image_in_use(image_name):
                 raise DeploymentAWSException(
                     f"Unable to delete image {image_name} because it is being used."
                 )
@@ -513,25 +513,6 @@ class AWSDeployment(Deployment):
             resource_to_recreate.append('aws_instance.machines["' f"{machine}" '"]')
         return resource_to_recreate
 
-    def can_delete_image(self, image_name):
-        """
-        Return true if the image is not being used by any machine.
-
-        Parameters:
-          image_name (str): name of the image
-
-        Returns:
-          bool: true if the image is not being used by any machine or false otherwise
-        """
-        image = self.client.get_image(image_name)
-        if image:
-            image_id = image[0]
-            instances_images_ids = self.client.get_machines_imageid()
-            for instance_image_id in instances_images_ids:
-                if image_id == instance_image_id:
-                    return False
-        return True
-
     def list_instances(self, instances, guests, copies):
         machines_to_list = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
         headers = ["Name", "Status"]
@@ -703,8 +684,7 @@ class AWSDeployment(Deployment):
         """
         for service in services:
             if services[service]:
-                # Libvirt packer plugin fails if images exist.
-                if not self.can_delete_image(service):
+                if self.client.is_image_in_use(service):
                     raise DeploymentAWSException(
                         f"Unable to delete image {service} because it is being used."
                     )

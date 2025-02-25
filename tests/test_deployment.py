@@ -68,8 +68,6 @@ def test_abstract_methods(description):
     with pytest.raises(NotImplementedError):
         d.reboot_instance("instance name")
     with pytest.raises(NotImplementedError):
-        d.can_delete_image("instance name")
-    with pytest.raises(NotImplementedError):
         d.get_cr_resources_to_target_apply(None)
     with pytest.raises(NotImplementedError):
         d.get_cr_resources_to_target_destroy(None)

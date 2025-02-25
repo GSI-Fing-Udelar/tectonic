@@ -682,13 +682,13 @@ def destroy(ctx, images, instances, packetbeat_image, elastic_image, caldera_ima
 @click.pass_context
 @click.option(
     "--packetbeat/--no-packetbeat",
-    default=False,
+    default=True,
     show_default=True,
     help="Whether to create the base image for packetbeat.",
 )
 @click.option(
     "--elastic/--no-elastic",
-    default=False,
+    default=True,
     show_default=True,
     help="Whether to create the base image for Elastic on-prem.",
 )
@@ -700,7 +700,7 @@ def destroy(ctx, images, instances, packetbeat_image, elastic_image, caldera_ima
 )
 @click.option(
     "--caldera/--no-caldera",
-    default=False,
+    default=True,
     show_default=True,
     help="Whether to create the base image for Caldera on-prem.",
 )
@@ -721,12 +721,12 @@ def create_images(ctx, packetbeat, elastic, caldera, machines, guests):
 
 def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
     if (packetbeat and ctx.obj["description"].platform == "aws") or elastic or caldera:
-        click.echo("Creating services images ...")
         services = {
             "packetbeat": packetbeat and ctx.obj["description"].platform == "aws",
             "elastic": elastic,
             "caldera": caldera
         }
+        click.echo("Creating services images ...")
         ctx.obj["deployment"].create_services_images(services)
 
     if machines:

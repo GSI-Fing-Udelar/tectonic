@@ -289,3 +289,21 @@ class Client:
             return images_id
         except Exception as e:
             raise AWSClientException(f"{e}") from e
+        
+    def is_image_in_use(self, image_name):
+        """
+        Returns true if the image is in use for some vm.
+
+        Parameters:
+            image_name(str): the image name to check
+        """
+        try:
+            image = self.get_image(image_name)
+            if image:
+                image_id = image[0]
+                instances_images_ids = self.get_machines_imageid()
+                if image_id in instances_images_ids:
+                    return True
+            return False
+        except Exception as exception:
+            raise AWSClientException(f"{exception}")

@@ -755,10 +755,6 @@ def test_reboot_instance(libvirt_deployment):
     assert "Domain notfound not found." in str(exception.value)
 
 
-def test_can_delete_image(libvirt_deployment):
-    can_delete = libvirt_deployment.can_delete_image("udelar-lab01-1-attacker")
-    assert can_delete
-
 def test_delete_cr_images(mocker, libvirt_deployment):
     mock = mocker.patch.object(libvirt_deployment.client, "delete_image")
     libvirt_deployment.delete_cr_images()
@@ -767,12 +763,6 @@ def test_delete_cr_images(mocker, libvirt_deployment):
                            mocker.call("pool-dir", "udelar-lab01-victim"),
                            mocker.call("pool-dir", "udelar-lab01-server"),
                            ])
-
-    mocker.patch.object(libvirt_deployment, "can_delete_image", return_value=False)
-    mock.reset_mock()
-    with pytest.raises(DeploymentLibvirtException):
-        libvirt_deployment.delete_cr_images()
-    mock.assert_not_called()
 
 
 def test_get_cr_resources_to_target_apply(libvirt_deployment):
@@ -1922,6 +1912,7 @@ def test_destroy_infraestructure_specific_instance(mocker, capsys, libvirt_deplo
     assert capsys.readouterr().out == "Destroying Cyber Range instances...\n"
 
 def test_create_services_images_ok(mocker, libvirt_deployment, test_data_path):
+    mocker.patch.object(libvirt_deployment.description, "get_services_to_deploy", return_value=["elastic","caldera"])
     machines = {
         "caldera": {
             "base_os": "rocky8",
@@ -1955,9 +1946,12 @@ def test_create_services_images_ok(mocker, libvirt_deployment, test_data_path):
         "caldera_version": "latest",
         "packetbeat_vlan_id": "1"
     }
+    mock = mocker.patch.object(libvirt_deployment.client, "delete_image")
     mock_cmd = mocker.patch.object(packerpy.PackerExecutable, "execute_cmd", return_value=(0, "success", ""))
     mock_build = mocker.patch.object(packerpy.PackerExecutable, "build", return_value=(0, "success", ""))
     libvirt_deployment.create_services_images({"caldera":True,"elastic":True, "packetbeat":False})
+    assert mock.call_count == 2
+    mock.assert_has_calls([mocker.call("pool-dir", "caldera"),mocker.call("pool-dir", "elastic")])
     packer_script = tectonic_resources.files('tectonic') / 'services' / 'image_generation' / 'create_image.pkr.hcl'
     mock_cmd.assert_called_once_with("init", str(packer_script))
     mock_build.assert_called_once_with(str(packer_script), var=variables)
