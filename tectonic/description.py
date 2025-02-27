@@ -247,6 +247,8 @@ class Description(object):
         """
         self._required(lab_edition_info, "base_lab")
         self._required(lab_edition_info, "instance_number")
+        if lab_edition_info.get("instance_number") > 6:
+            raise DescriptionException(f"Maximum number of instances (6) exceeded.")
         if lab_edition_info.get("create_student_passwords"):
             self._required(lab_edition_info, "random_seed")
         self._validate_value("elastic_settings.enable", lab_edition_info.get("elastic_settings",{}).get("enable",False), [True, False])
