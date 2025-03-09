@@ -35,6 +35,8 @@ class InstanceManagerAWS(InstanceManager):
     Description: manages scenario instances for AWS.
     """
 
+    EIC_ENDPOINT_SSH_PROXY = "aws ec2-instance-connect open-tunnel --instance-id %h"
+    
     def __init__(self, config, description, client):
         super().__init__(config, description, client)
 
@@ -329,13 +331,43 @@ class InstanceManagerAWS(InstanceManager):
         if machine_name == self.description.get_teacher_access_name():
             interactive_shell(self.get_teacher_access_ip(), self.get_teacher_access_username())
         else:
+            hostname = self.get_ssh_hostname(machine_name)
             username = username or self.description.get_guest_username(self.description.get_base_name(machine_name))
             if self.description.teacher_access == "host":
-                hostname = self.client.get_machine_private_ip(machine_name)
                 gateway = (self.get_teacher_access_ip(), self.get_teacher_access_username())
             else:
-                hostname = self.client.get_instance_property(machine_name, "InstanceId")
                 gateway = self.EIC_ENDPOINT_SSH_PROXY
             if not hostname:
                 raise InstanceManagerAWSException(f"Instance {machine_name} not found.")
             interactive_shell(hostname, username, gateway)
+
+    def get_ssh_proxy_command(self):
+        """
+        Returns the appropriate SSH proxy configuration to access guest machines.
+
+        Return:
+            str: ssh proxy command to use.
+        """
+        if self.description.teacher_access == "endpoint":
+            proxy_command = self.EIC_ENDPOINT_SSH_PROXY
+        else:
+            access_ip = self.get_teacher_access_ip()
+            username = self.get_teacher_access_username()
+            connection_string = f"{username}@{access_ip}"
+            proxy_command = f"ssh {self.description.ansible_ssh_common_args} -W %h:%p {connection_string}"
+        return proxy_command
+    
+    def get_ssh_hostname(self, machine):
+        """
+        Returns the hostname to use for ssh connection to the machine.
+
+        Parameters:
+            machine (str): machine name.
+
+        Return:
+            str: ssh hostname to use.
+        """
+        if self.description.teacher_access == "endpoint":
+            return self.client.get_instance_property(machine, "InstanceId")
+        else:
+            return self.client.get_machine_private_ip(machine)

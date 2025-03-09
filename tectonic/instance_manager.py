@@ -143,3 +143,24 @@ class InstanceManager(ABC):
             username (str): username to use.
         """
         pass
+
+    def get_ssh_proxy_command(self):
+        """
+        Returns the appropriate SSH proxy configuration to access guest machines.
+
+        Return:
+            str: ssh proxy command to use.
+        """
+        return None
+    
+    def get_ssh_hostname(self, machine):
+        """
+        Returns the hostname to use for ssh connection to the machine.
+
+        Parameters:
+            machine (str): machine name.
+
+        Return:
+            str: ssh hostname to use.
+        """
+        return self.client.get_machine_private_ip(machine)
