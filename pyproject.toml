@@ -80,7 +80,7 @@ pytest-cov = "6.0.0"
 pytest-mock = "3.14.0"
 pytest-env = "1.1.5"
 fabric = { version = "3.2.2", extras = ["pytest"] }
-pylint = "3.3.4"
+pylint = "3.3.5"
 black = "24.10.0"
 moto = { version = "4.2.14", extras = ["ec2"] }
 responses = "0.25.6"
