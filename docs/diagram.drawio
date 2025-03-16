@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="FS4UJR_hGJNIduJ-AJcb" name="Page-1">
-        <mxGraphModel dx="3758" dy="2200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="2271" dy="1853" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -216,7 +216,7 @@
                     <mxGeometry y="60" width="160" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="43" value="Guest" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
-                    <mxGeometry x="1850" y="170" width="160" height="86" as="geometry"/>
+                    <mxGeometry x="1850" y="160" width="160" height="86" as="geometry"/>
                 </mxCell>
                 <mxCell id="44" value="+ field: type" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="43" vertex="1">
                     <mxGeometry y="26" width="160" height="26" as="geometry"/>
@@ -228,7 +228,7 @@
                     <mxGeometry y="60" width="160" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="48" value="Netowrk" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
-                    <mxGeometry x="1670" y="170" width="160" height="86" as="geometry"/>
+                    <mxGeometry x="1670" y="160" width="160" height="86" as="geometry"/>
                 </mxCell>
                 <mxCell id="49" value="+ field: type" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="48" vertex="1">
                     <mxGeometry y="26" width="160" height="26" as="geometry"/>
@@ -719,22 +719,22 @@
                 <mxCell id="266" value="+ console()&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="185" vertex="1">
                     <mxGeometry y="216" width="210" height="26" as="geometry"/>
                 </mxCell>
-                <mxCell id="357" value="&lt;div&gt;+ get_ssh_proxy_command()&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="185">
+                <mxCell id="357" value="&lt;div&gt;+ get_ssh_proxy_command()&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="185" vertex="1">
                     <mxGeometry y="242" width="210" height="26" as="geometry"/>
                 </mxCell>
-                <mxCell id="359" value="&lt;div&gt;+ get_ssh_hostname()&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="185">
+                <mxCell id="359" value="&lt;div&gt;+ get_ssh_hostname()&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="185" vertex="1">
                     <mxGeometry y="268" width="210" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="350" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;endArrow=none;endFill=0;" parent="1" source="190" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="720" y="860" as="targetPoint"/>
+                        <mxPoint x="720" y="830" as="targetPoint"/>
                         <Array as="points">
-                            <mxPoint x="470" y="860"/>
+                            <mxPoint x="470" y="830"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="190" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;InstanceManagerAWS&lt;/span&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="350" y="896" width="240" height="372" as="geometry"/>
+                    <mxGeometry x="350" y="850" width="240" height="424" as="geometry"/>
                 </mxCell>
                 <mxCell id="192" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="190" vertex="1">
                     <mxGeometry y="26" width="240" height="8" as="geometry"/>
@@ -772,11 +772,17 @@
                 <mxCell id="273" value="+ console()&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="190" vertex="1">
                     <mxGeometry y="294" width="240" height="26" as="geometry"/>
                 </mxCell>
-                <mxCell id="358" value="&lt;div&gt;+ get_ssh_proxy_command()&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="190">
+                <mxCell id="358" value="&lt;div&gt;+ get_ssh_proxy_command()&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="190" vertex="1">
                     <mxGeometry y="320" width="240" height="26" as="geometry"/>
                 </mxCell>
-                <mxCell id="360" value="&lt;div&gt;+ get_ssh_hostname()&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="190">
+                <mxCell id="360" value="&lt;div&gt;+ get_ssh_hostname()&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="190" vertex="1">
                     <mxGeometry y="346" width="240" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="361" value="&lt;div&gt;- get_teacher_access_username()&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="190">
+                    <mxGeometry y="372" width="240" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="362" value="&lt;div&gt;- get_teacher_access_ip()&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="190">
+                    <mxGeometry y="398" width="240" height="26" as="geometry"/>
                 </mxCell>
                 <mxCell id="348" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=0;rounded=0;" parent="1" source="195" edge="1">
                     <mxGeometry relative="1" as="geometry">
@@ -788,7 +794,7 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="195" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;InstanceManagerLibvirt&lt;/span&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="610" y="896" width="210" height="242" as="geometry"/>
+                    <mxGeometry x="610" y="850" width="210" height="242" as="geometry"/>
                 </mxCell>
                 <mxCell id="197" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="195" vertex="1">
                     <mxGeometry y="26" width="210" height="8" as="geometry"/>
@@ -819,14 +825,14 @@
                 </mxCell>
                 <mxCell id="349" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=none;endFill=0;rounded=0;" parent="1" source="200" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="720" y="860" as="targetPoint"/>
+                        <mxPoint x="720" y="830" as="targetPoint"/>
                         <Array as="points">
-                            <mxPoint x="945" y="860"/>
+                            <mxPoint x="945" y="830"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="200" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;InstanceManagerDocker&lt;/span&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="840" y="896" width="210" height="216" as="geometry"/>
+                    <mxGeometry x="840" y="850" width="210" height="216" as="geometry"/>
                 </mxCell>
                 <mxCell id="202" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="200" vertex="1">
                     <mxGeometry y="26" width="210" height="8" as="geometry"/>

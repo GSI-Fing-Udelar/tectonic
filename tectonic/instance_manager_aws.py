@@ -329,12 +329,12 @@ class InstanceManagerAWS(InstanceManager):
             username (str): username to use. Default: None
         """
         if machine_name == self.description.get_teacher_access_name():
-            interactive_shell(self.get_teacher_access_ip(), self.get_teacher_access_username())
+            interactive_shell(self._get_teacher_access_ip(), self._get_teacher_access_username())
         else:
             hostname = self.get_ssh_hostname(machine_name)
             username = username or self.description.get_guest_username(self.description.get_base_name(machine_name))
             if self.description.teacher_access == "host":
-                gateway = (self.get_teacher_access_ip(), self.get_teacher_access_username())
+                gateway = (self._get_teacher_access_ip(), self._get_teacher_access_username())
             else:
                 gateway = self.EIC_ENDPOINT_SSH_PROXY
             if not hostname:
@@ -351,8 +351,8 @@ class InstanceManagerAWS(InstanceManager):
         if self.description.teacher_access == "endpoint":
             proxy_command = self.EIC_ENDPOINT_SSH_PROXY
         else:
-            access_ip = self.get_teacher_access_ip()
-            username = self.get_teacher_access_username()
+            access_ip = self._get_teacher_access_ip()
+            username = self._get_teacher_access_username()
             connection_string = f"{username}@{access_ip}"
             proxy_command = f"ssh {self.description.ansible_ssh_common_args} -W %h:%p {connection_string}"
         return proxy_command
@@ -371,3 +371,23 @@ class InstanceManagerAWS(InstanceManager):
             return self.client.get_instance_property(machine, "InstanceId")
         else:
             return self.client.get_machine_private_ip(machine)
+        
+    def _get_teacher_access_username(self):
+        """
+        Returns username for connection to teacher access host.
+
+        Return:
+            str: username to use.
+        """
+        return OS_DATA[self.description.default_os]["username"]
+    
+    def _get_teacher_access_ip(self):
+        """
+        Returns the public IP assigned to the teacher access host.
+
+        Return:
+            str: public IP for teacher access.
+        """
+        if self.description.teacher_access == "host":
+            return self.client.get_machine_public_ip(self.description.get_teacher_access_name())
+        return None

@@ -31,7 +31,7 @@ class Terraform:
     Description: manages interaction with Terraform to deploy/destroy scenarios.
     """
 
-    BACKEND_TYPE = "file" # Possible values: file (for local files as backend), gitlab (use gitlab as backend. You must change backend.tf of each terraform module).
+    BACKEND_TYPE = "FILE" # Possible values: FILE (for local files as backend), GITLAB (use gitlab as backend. You must change backend.tf of each terraform module).
 
     def __init__(self, institution, lab_name, backend_info):
         self.institution = institution
@@ -65,11 +65,11 @@ class Terraform:
             terraform_dir (str): path to the terraform module.
         """
         terraform_module_name = os.path.basename(os.path.normpath(terraform_dir))
-        if self.BACKEND_TYPE == "file":
+        if self.BACKEND_TYPE == "FILE":
             return [
                 f"path=terraform-states/{self.institution}-{self.lab_name}-{terraform_module_name}"
             ]
-        elif self.BACKEND_TYPE == "gitlab":
+        elif self.BACKEND_TYPE == "GITLAB":
             address = f"{self.backend_info.get("gitlab_url")}/{self.institution}-{self.lab_name}-{terraform_module_name}"
             return [
                 f"address={address}",
