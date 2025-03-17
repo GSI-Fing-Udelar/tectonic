@@ -83,7 +83,7 @@ fabric = { version = "3.2.2", extras = ["pytest"] }
 pylint = "3.3.5"
 black = "24.10.0"
 moto = { version = "4.2.14", extras = ["ec2"] }
-responses = "0.25.6"
+responses = "0.25.7"
 freezegun = "1.5.1"
 
 [tool.semantic_release]
