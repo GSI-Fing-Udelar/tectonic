@@ -104,7 +104,9 @@ example scenarios.
 
 To deploy a scenario run:
 ```
-tectonic -c <ini_conf_file> <lab_edition_file> deploy --images
+tectonic -c <ini_conf_file> <lab_edition_file> create-images
+
+tectonic -c <ini_conf_file> <lab_edition_file> deploy
 ```
 
 To destroy a scenario use the `destroy` command. 

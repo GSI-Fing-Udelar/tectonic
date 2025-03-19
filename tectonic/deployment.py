@@ -450,18 +450,6 @@ class Deployment:
         """
         raise NotImplementedError
 
-    def can_delete_image(self, image_name):
-        """
-        Return true if the image is not being used by any machine.
-
-        Parameters:
-            image_name (str): name of the image.
-
-        Returns:
-            bool: true if the image is not being used by any machine, false otherwise.
-        """
-        raise NotImplementedError
-
     def get_cr_resources_to_target_apply(self, instances):
         """
         Returns the name of the resources to target apply based on the instance numbers.
@@ -606,40 +594,41 @@ class Deployment:
         """
         machines = {}
         for service in services:
-            if services[service]:
+            if services[service] and service in self.description.get_services_to_deploy():
                 machines[service] = {
                     "base_os": self.description.get_service_base_os(service),
                     "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / service / 'base_config.yml'),
                 }
                 if self.description.platform == "libvirt":
-                        machines[service]["vcpu"] = self.description.services[service]["vcpu"]
-                        machines[service]["memory"] = self.description.services[service]["memory"]
-                        machines[service]["disk"] = self.description.services[service]["disk"]
+                    machines[service]["vcpu"] = self.description.services[service]["vcpu"]
+                    machines[service]["memory"] = self.description.services[service]["memory"]
+                    machines[service]["disk"] = self.description.services[service]["disk"]
                 elif self.description.platform == "aws":
                     machines[service]["disk"] = self.description.services[service]["disk"]
                     if service in ["caldera", "elastic"]:
                         machines[service]["instance_type"] = self.description.instance_type.get_guest_instance_type(self.description.services[service]["memory"], self.description.services[service]["vcpu"], False, False, self.description.monitor_type)
                     elif service == "packetbeat":
                         machines[service]["instance_type"] = "t2.micro"
-        args = {
-            "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.description.platform != "docker" else "",
-            "ansible_ssh_common_args": self.description.ansible_ssh_common_args,
-            "aws_region": self.description.aws_region,
-            "proxy": self.description.proxy,
-            "libvirt_storage_pool": self.description.libvirt_storage_pool,
-            "libvirt_uri": self.description.libvirt_uri,
-            "machines_json": json.dumps(machines),
-            "os_data_json": json.dumps(OS_DATA),
-            "platform": self.description.platform,
-            "remove_ansible_logs": str(not self.description.keep_ansible_logs),
-            #TODO: pass variables as a json as part of each host
-            "elastic_version": self.description.elastic_stack_version, 
-            "elastic_latest_version": "yes" if self.description.is_elastic_stack_latest_version else "no",
-            "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
-            "caldera_version": self.description.caldera_version,
-            "packetbeat_vlan_id": self.description.packetbeat_vlan_id,
-        }
-        self._create_packer_images(tectonic_resources.files('tectonic') / 'services' / 'image_generation' / 'create_image.pkr.hcl', args)
+        if machines != {}:
+            args = {
+                "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.description.platform != "docker" else "",
+                "ansible_ssh_common_args": self.description.ansible_ssh_common_args,
+                "aws_region": self.description.aws_region,
+                "proxy": self.description.proxy,
+                "libvirt_storage_pool": self.description.libvirt_storage_pool,
+                "libvirt_uri": self.description.libvirt_uri,
+                "machines_json": json.dumps(machines),
+                "os_data_json": json.dumps(OS_DATA),
+                "platform": self.description.platform,
+                "remove_ansible_logs": str(not self.description.keep_ansible_logs),
+                #TODO: pass variables as a json as part of each host
+                "elastic_version": self.description.elastic_stack_version, 
+                "elastic_latest_version": "yes" if self.description.is_elastic_stack_latest_version else "no",
+                "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
+                "caldera_version": self.description.caldera_version,
+                "packetbeat_vlan_id": self.description.packetbeat_vlan_id,
+            }
+            self._create_packer_images(tectonic_resources.files('tectonic') / 'services' / 'image_generation' / 'create_image.pkr.hcl', args)
 
     def delete_services_images(self, services):
         """Delete services images."""

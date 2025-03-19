@@ -22,6 +22,7 @@ import libvirt
 import libvirt_qemu
 import time
 from ipaddress import ip_network, ip_address
+import xml.etree.ElementTree as ET
 
 class LibvirtClientException(Exception):
     pass
@@ -189,4 +190,36 @@ class Client:
         if state == libvirt.VIR_DOMAIN_RUNNING:
             dom.reboot()
         elif state == libvirt.VIR_DOMAIN_SHUTOFF:
-            dom.create()       
+            dom.create()
+
+    def is_image_in_use(self, image_name):
+        """
+        Returns true if the image is in use for some vm.
+
+        Parameters:
+            image_name(str): the image name to check
+        """
+        try:
+            domains = self.conn.listAllDomains()
+            for domain in domains:
+                xml_desc = domain.XMLDesc()
+                root = ET.fromstring(xml_desc)
+                for backingStore in root.findall(".//devices/disk/backingStore"): #Check backing stores
+                    source = backingStore.find("source")
+                    if source is not None:
+                        image_path = source.get("file")
+                        if image_path is not None:
+                            image_used = image_path.split("/")[-1]
+                            if image_used == image_name:
+                                return True
+                for disk in root.findall(".//devices/disk"): #Check disks
+                    source = disk.find("source")
+                    if source is not None:
+                        image_path = source.get("file")
+                        if image_path is not None:
+                            image_used = image_path.split("/")[-1]
+                            if image_used == image_name:
+                                return True
+                return False
+        except Exception as exception:
+            raise LibvirtClientException(f"{exception}")    

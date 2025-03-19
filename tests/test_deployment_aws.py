@@ -172,10 +172,6 @@ def test_create_cr_images_error(mocker, aws_deployment):
     with pytest.raises(TerraformRunException):
         aws_deployment.create_cr_images()
 
-    mocker.patch.object(aws_deployment, "can_delete_image", return_value=False)
-    with pytest.raises(DeploymentAWSException):
-        aws_deployment.create_cr_images()
-
 
 def test_generate_backend_config(aws_deployment):
     answer = aws_deployment.generate_backend_config(tectonic_resources.files('tectonic') / 'terraform' / 'modules' / 'gsi-lab-aws')
@@ -218,12 +214,6 @@ def test_delete_cr_images(mocker, aws_deployment):
             mocker.call("udelar-lab01-server"),
         ]
     )
-
-    mocker.patch.object(aws_deployment, "can_delete_image", return_value=False)
-    mock.reset_mock()
-    with pytest.raises(DeploymentAWSException):
-        aws_deployment.delete_cr_images()
-    mock.assert_not_called()
 
 def test_get_instance_status(
     aws_deployment, ec2_client, aws_instance_name, unexpected_instance_name
@@ -598,12 +588,6 @@ def test_get_resources_to_recreate(aws_deployment):
     compare.append("aws_instance.teacher_access_host[0]")
     assert set(resources) == set(compare)
 
-@pytest.mark.skip(
-    reason="https://stackoverflow.com/questions/53716949/how-to-create-ami-with-specific-image-id-using-moto"
-)
-def test_can_delete_image(aws_deployment):
-    assert not aws_deployment.can_delete_image("udelar-lab01-attacker")
-    assert aws_deployment.can_delete_image("notfound")
 
 def test_list_instances(mocker, aws_deployment):
     mocker.patch.object(AWSClient, "get_instance_status", return_value="RUNNING")
@@ -684,7 +668,7 @@ def test_reboot(mocker, monkeypatch, aws_deployment, ec2_client, aws_secrets):
     instance = ec2_client.describe_instances(Filters=[{"Name": "tag:Name", "Values": ["udelar-lab01-caldera"]}])["Reservations"][0]["Instances"][0]
     assert instance["State"]["Name"] == "running"
 
-def test_create_services_images_ok(mocker, aws_deployment, base_tectonic_path, test_data_path):
+def test_create_services_images_ok(mocker, aws_deployment, test_data_path):
     aws_deployment.description.monitor_type = "traffic"
     machines = {
         "caldera": {
@@ -692,18 +676,6 @@ def test_create_services_images_ok(mocker, aws_deployment, base_tectonic_path, t
             "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'base_config.yml'),
             "disk": 20,
             "instance_type": "t2.medium"
-        },
-        "elastic": {
-            "base_os": "rocky8",
-            "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'base_config.yml'),
-            "disk": 110,
-            "instance_type": "t2.2xlarge"
-        },
-        "packetbeat": {
-            "base_os": "ubuntu22",
-            "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / 'packetbeat' / 'base_config.yml'),
-            "disk": 10,
-            "instance_type": "t2.micro",
         }
     }
     variables = {
@@ -732,7 +704,7 @@ def test_create_services_images_ok(mocker, aws_deployment, base_tectonic_path, t
     mock_delete_sg = mocker.patch.object(
         aws_deployment.client, "delete_security_groups"
     )
-    aws_deployment.create_services_images({"caldera":True,"elastic":True,"packetbeat":True})
+    aws_deployment.create_services_images({"caldera":True,"elastic":False,"packetbeat":False})
     mock_cmd.assert_called_once_with("init", str(tectonic_resources.files('tectonic') / 'services' / 'image_generation' / 'create_image.pkr.hcl'))
     mock_build.assert_called_once_with(str(tectonic_resources.files('tectonic') / 'services' / 'image_generation' / 'create_image.pkr.hcl'),
                                        var=variables),
@@ -1019,12 +991,6 @@ def test_delete_services_images(mocker, aws_deployment):
             mocker.call("caldera"),
         ]
     )
-
-    mocker.patch.object(aws_deployment, "can_delete_image", return_value=False)
-    mock.reset_mock()
-    with pytest.raises(DeploymentAWSException):
-        aws_deployment.delete_services_images({"elastic":True,"packetbeat":True,"caldera":True})
-    mock.assert_not_called()
 
 def test_student_access(mocker, aws_deployment):
     result_ok = ansible_runner.Runner(config=None)

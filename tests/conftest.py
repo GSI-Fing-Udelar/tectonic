@@ -501,6 +501,8 @@ def docker_client():
         "udelar-lab01-victim": MagicMock(id="udelar-lab01-victim", tags=["udelar-lab01-victim"]),
         "udelar-lab01-server": MagicMock(id="udelar-lab01-server", tags=["udelar-lab01-server"]),
         "udelar-lab01-elastic": MagicMock(id="udelar-lab01-elastic", tags=["udelar-lab01-elastic"]),
+        "elastic": MagicMock(id="elastic", tags=["elastic"]),
+        "caldera": MagicMock(id="caldera", tags=["caldera"]),
     }.get(image_id, None)
 
     yield mock_client

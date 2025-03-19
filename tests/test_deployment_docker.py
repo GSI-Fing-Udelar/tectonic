@@ -1799,6 +1799,8 @@ def test_get_service_info(mocker, docker_deployment):
 
 def test_delete_services_images(mocker, docker_deployment, docker_client):
     docker_deployment.delete_services_images({"elastic":True,"caldera":True})
+    #mocker.patch.object(docker_client, "get_image", return_value="id")
+    #mocker.patch.object(docker_client, "is_image_in_use", return_value=False)
     assert docker_client.images.remove.call_count == 2
     docker_client.images.remove.assert_has_calls([mocker.call("elastic"),
                            mocker.call("caldera"),
