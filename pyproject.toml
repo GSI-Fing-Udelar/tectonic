@@ -42,7 +42,7 @@ certifi = "*"
 cffi = "*"
 charset-normalizer = "*"
 click = "*"
-cryptography= "44.0.1"
+cryptography= "44.0.2"
 decorator = "*"
 deprecated = "*"
 fabric = "*"
@@ -75,15 +75,15 @@ docker = "*"
 pyopenssl = ">=24.3"
 
 [tool.poetry.dev-dependencies]
-pytest = "8.3.4"
+pytest = "8.3.5"
 pytest-cov = "6.0.0"
 pytest-mock = "3.14.0"
 pytest-env = "1.1.5"
 fabric = { version = "3.2.2", extras = ["pytest"] }
-pylint = "3.3.4"
+pylint = "3.3.5"
 black = "24.10.0"
 moto = { version = "4.2.14", extras = ["ec2"] }
-responses = "0.25.6"
+responses = "0.25.7"
 freezegun = "1.5.1"
 
 [tool.semantic_release]
