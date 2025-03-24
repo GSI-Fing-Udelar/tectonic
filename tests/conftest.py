@@ -24,15 +24,15 @@ import boto3
 import pytest
 import docker
 
-from tectonic.deployment_aws import AWSDeployment
-from tectonic.deployment_libvirt import LibvirtDeployment
-from tectonic.deployment_docker import DockerDeployment
+# from tectonic.deployment_aws import AWSDeployment
+# from tectonic.deployment_libvirt import LibvirtDeployment
+# from tectonic.deployment_docker import DockerDeployment
 from tectonic.ansible import Ansible
 from tectonic.description import Description
 from tectonic.instance_type_aws import InstanceTypeAWS
-from tectonic.libvirt_client import Client as LibvirtClient
-from tectonic.aws import Client as AWSClient
-from tectonic.docker_client import Client as DockerClient
+# from tectonic.libvirt_client import Client as LibvirtClient
+# from tectonic.aws import Client as AWSClient
+# from tectonic.docker_client import Client as DockerClient
 
 from pathlib import Path
 from moto import mock_ec2, mock_secretsmanager
