@@ -70,3 +70,14 @@ class TectonicConfigAWS(object):
             raise ConfigException(f"Invalid ansible_forks {value}. Must be a number between 1 and 4094.")
         self._packetbeat_vlan_id = value
 
+    def __eq__(self, other): 
+        if not isinstance(other, TectonicConfigAWS):
+            # don't attempt to compare against unrelated types
+            return NotImplemented
+
+        return (self._region == other._region and 
+                self._default_instance_type == other._default_instance_type and 
+                self._teacher_access == other._teacher_access and 
+                self._packetbeat_vlan_id == other._packetbeat_vlan_id
+                )
+

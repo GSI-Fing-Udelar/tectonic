@@ -22,12 +22,17 @@ import os
 from pathlib import Path
 from urllib.parse import urlparse
 import ipaddress
+from configparser import ConfigParser
+
 
 class ConfigException(Exception):
     pass
 
 from tectonic.config_aws import TectonicConfigAWS
 from tectonic.config_libvirt import TectonicConfigLibvirt
+from tectonic.config_docker import TectonicConfigDocker
+from tectonic.config_elastic import TectonicConfigElastic
+from tectonic.config_caldera import TectonicConfigCaldera
 
 
 class TectonicConfig(object):
@@ -57,6 +62,10 @@ class TectonicConfig(object):
 
         self._aws = TectonicConfigAWS()
         self._libvirt = TectonicConfigLibvirt()
+        self._docker = TectonicConfigDocker()
+        self._elastic = TectonicConfigElastic()
+        self._caldera = TectonicConfigCaldera()
+
 
     #----------- Getters ----------
     @property
@@ -124,6 +133,19 @@ class TectonicConfig(object):
     def libvirt(self):
         return self._libvirt
 
+    @property
+    def docker(self):
+        return self._docker
+
+    @property
+    def elastic(self):
+        return self._elastic
+
+    @property
+    def caldera(self):
+        return self._caldera
+
+
     #----------- Setters ----------
     @platform.setter
     def platform(self, value):
@@ -133,7 +155,7 @@ class TectonicConfig(object):
 
     @lab_repo_uri.setter
     def lab_repo_uri(self, value):
-        self._lab_repo_uri = value
+        self._lab_repo_uri = value      
 
     @network_cidr_block.setter
     def network_cidr_block(self, value):
@@ -214,3 +236,25 @@ class TectonicConfig(object):
             raise ConfigException(f"Invalid ansible_timeout {value}. Must be a number greater than 0.")
         self._ansible_timeout = value        
         
+
+
+    def load(filename):
+        f = open(filename, "r")
+        parser = ConfigParser()
+        parser.read_file(f)
+        config = TectonicConfig(parser['config']['lab_repo_uri'])
+
+        for key, value in parser['config'].items():
+            setattr(config, key, value)
+        for key, value in parser['aws'].items():
+            setattr(config.aws, key, value)
+        for key, value in parser['libvirt'].items():
+            setattr(config.libvirt, key, value)
+        for key, value in parser['docker'].items():
+            setattr(config.docker, key, value)
+        for key, value in parser['elastic'].items():
+            setattr(config.elastic, key, value)
+        for key, value in parser['caldera'].items():
+            setattr(config.caldera, key, value)
+
+        return config

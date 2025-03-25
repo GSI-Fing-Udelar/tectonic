@@ -19,6 +19,8 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import pytest
+from configparser import ConfigParser
+
 from tectonic.config import *
 
 lab_repo_uri = "./examples"
@@ -162,3 +164,24 @@ def test_tectonic_valid_libvirt_config(option):
     for key, value in option.items():
         assert getattr(config.libvirt, key) == value
 
+
+def test_load_config(test_data_path):
+    filename = f"{test_data_path}/config/tectonic1.ini"
+    config = TectonicConfig.load(filename)
+
+    parser = ConfigParser()
+    parser.read(filename)
+
+    for key, value in parser['config'].items():
+        assert str(getattr(config, key)) == value
+    for key, value in parser['aws'].items():
+        assert str(getattr(config.aws, key)) == value
+    for key, value in parser['libvirt'].items():
+        assert str(getattr(config.libvirt, key)) == value
+    for key, value in parser['docker'].items():
+        assert str(getattr(config.docker, key)) == value
+    for key, value in parser['elastic'].items():
+        assert str(getattr(config.elastic, key)) == value
+    for key, value in parser['caldera'].items():
+        assert str(getattr(config.caldera, key)) == value
+    
