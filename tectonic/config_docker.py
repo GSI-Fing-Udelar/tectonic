@@ -18,14 +18,14 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-from tectonic.config import ConfigException
+import tectonic.validate as validate
 
 class TectonicConfigDocker(object):
     """Class to store Tectonic docker configuration."""
 
     def __init__(self):
-        self._uri = "unix:///var/run/docker.sock"
-        self._dns = "8.8.8.8"
+        self.uri = "unix:///var/run/docker.sock"
+        self.dns = "8.8.8.8"
 
 
     #----------- Getters ----------
@@ -45,6 +45,7 @@ class TectonicConfigDocker(object):
 
     @dns.setter
     def dns(self, value):
+        validate.ip_address_or_hostname("dns", value)
         self._dns = value
 
     def __eq__(self, other): 

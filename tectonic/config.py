@@ -20,20 +20,15 @@
 
 import os
 from pathlib import Path
-from urllib.parse import urlparse
-import ipaddress
 from configparser import ConfigParser
+import tectonic.validate as validate
 
-
-class ConfigException(Exception):
-    pass
-
+from tectonic.config_ansible import TectonicConfigAnsible
 from tectonic.config_aws import TectonicConfigAWS
 from tectonic.config_libvirt import TectonicConfigLibvirt
 from tectonic.config_docker import TectonicConfigDocker
 from tectonic.config_elastic import TectonicConfigElastic
 from tectonic.config_caldera import TectonicConfigCaldera
-
 
 class TectonicConfig(object):
     """Class to store Tectonic configuration."""
@@ -41,25 +36,22 @@ class TectonicConfig(object):
     supported_platforms = ["aws", "libvirt", "docker"]
 
     def __init__(self, lab_repo_uri):
-        if lab_repo_uri is None:
-            raise ConfigException("lab_repo_uri is required.")
+        self._tectonic_dir = os.path.realpath(
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), "../")
+        )
 
         # Set default config values
-        self._platform = self.supported_platforms[0]
-        self._lab_repo_uri = lab_repo_uri
-        self._network_cidr_block = "10.0.0.0/16"
-        self._internet_network_cidr_block = "192.168.4.0/24"
-        self._services_network_cidr_block = "192.168.5.0/24"
-        self._ssh_public_key_file = "~/.ssh/id_rsa.pub"
-        self._ansible_ssh_common_args = "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600"
-        self._configure_dns = True
-        self._debug = False
-        self._proxy = None
-        self._keep_ansible_logs = False
-        self._ansible_forks = 10
-        self._ansible_pipelining = False
-        self._ansible_timeout = 10
+        self.lab_repo_uri = lab_repo_uri
+        self.platform = self.supported_platforms[0]
+        self.network_cidr_block = "10.0.0.0/16"
+        self.internet_network_cidr_block = "192.168.4.0/24"
+        self.services_network_cidr_block = "192.168.5.0/24"
+        self.ssh_public_key_file = "~/.ssh/id_rsa.pub"
+        self.configure_dns = True
+        self.debug = False
+        self.proxy = None
 
+        self._ansible = TectonicConfigAnsible()
         self._aws = TectonicConfigAWS()
         self._libvirt = TectonicConfigLibvirt()
         self._docker = TectonicConfigDocker()
@@ -71,6 +63,10 @@ class TectonicConfig(object):
     @property
     def platform(self):
         return self._platform
+
+    @property
+    def tectonic_dir(self):
+        return self._tectonic_dir
 
     @property
     def lab_repo_uri(self):
@@ -93,10 +89,6 @@ class TectonicConfig(object):
         return self._ssh_public_key_file
 
     @property
-    def ansible_ssh_common_args(self):
-        return self._ansible_ssh_common_args
-
-    @property
     def configure_dns(self):
         return self._configure_dns
 
@@ -105,25 +97,13 @@ class TectonicConfig(object):
         return self._debug
 
     @property
-    def keep_ansible_logs(self):
-        return self._keep_ansible_logs
-
-    @property
     def proxy(self):
         return self._proxy
 
-    @property
-    def ansible_forks(self):
-        return self._ansible_forks
 
     @property
-    def ansible_pipelining(self):
-        return self._ansible_pipelining
-
-    @property
-    def ansible_timeout(self):
-        return self._ansible_timeout
-
+    def ansible(self):
+        return self._ansible
 
     @property
     def aws(self):
@@ -149,96 +129,54 @@ class TectonicConfig(object):
     #----------- Setters ----------
     @platform.setter
     def platform(self, value):
-        if value.lower() not in self.supported_platforms:
-            raise ConfigException(f"Invalid platform {value}. Must be one of {self.supported_platforms}.")
+        validate.supported_value("platform", value, self.supported_platforms)
         self._platform = value
 
     @lab_repo_uri.setter
     def lab_repo_uri(self, value):
-        self._lab_repo_uri = value      
+        # This must be a local path to a directory for now. In the
+        # future, it might be a uri to a scenario repository.
+        self._lab_repo_uri = validate.path_to_dir("lab_repo_uri", value, base_dir=self.tectonic_dir)
 
     @network_cidr_block.setter
     def network_cidr_block(self, value):
-        try:
-            ipaddress.ip_network(value)
-        except ValueError:
-            raise ConfigException(f"Invalid network_cidr_block {value}.")
+        validate.ip_network("network_cidr_block", value)
         self._network_cidr_block = value
 
     @internet_network_cidr_block.setter
     def internet_network_cidr_block(self, value):
-        try:
-            ipaddress.ip_network(value)
-        except ValueError:
-            raise ConfigException(f"Invalid internet_network_cidr_block {value}.")
+        validate.ip_network("internet_network_cidr_block", value)
         self._internet_network_cidr_block = value
+
     @services_network_cidr_block.setter
     def services_network_cidr_block(self, value):
-        try:
-            ipaddress.ip_network(value)
-        except ValueError:
-            raise ConfigException(f"Invalid services_network_cidr_block {value}.")
+        validate.ip_network("services_network_cidr_block", value)
         self._services_network_cidr_block = value
 
     @ssh_public_key_file.setter
     def ssh_public_key_file(self, value):
-        p = Path(value).expanduser()
-        if not p.is_file():
-            raise ConfigException(f"Invalid ssh_public_key_file {value}. Must be a path to a file.")
-        self._ssh_public_key_file = value
-
-    @ansible_ssh_common_args.setter
-    def ansible_ssh_common_args(self, value):
-        self._ansible_ssh_common_args = value
+        self._ssh_public_key_file = validate.path_to_file(
+            "ssh_public_key_file", value, base_dir=self.tectonic_dir
+        )
 
     @configure_dns.setter
     def configure_dns(self, value):
-        self._configure_dns = value
+        self._configure_dns = validate.boolean("configure_dns", value)
 
     @debug.setter
     def debug(self, value):
-        self._debug = value
-
-    @keep_ansible_logs.setter
-    def keep_ansible_logs(self, value):
-        self._keep_ansible_logs = value
+        self._debug = validate.boolean("debug", value)
 
     @proxy.setter
     def proxy(self, value):
         if value is not None:
-            try:
-                result = urlparse(value)
-                if not all([result.scheme, result.netloc]):
-                    raise AttributeError
-            except AttributeError:
-                raise ConfigException(f"Invalid proxy {value}. Must be a valid url.")
+            validate.url("proxy", value)
         self._proxy = value
 
-    @ansible_forks.setter
-    def ansible_forks(self, value):
-        try:
-            if int(value) <= 0: 
-                raise ValueError()
-        except ValueError:
-            raise ConfigException(f"Invalid ansible_forks {value}. Must be a number greater than 0.")
-        self._ansible_forks = value
+    @classmethod
+    def load(cls, filename):
+        """Creates a TectonicConfig object from an ini configuration in filename."""
 
-    @ansible_pipelining.setter
-    def ansible_pipelining(self, value):
-        self._ansible_pipelining = value
-
-    @ansible_timeout.setter
-    def ansible_timeout(self, value):
-        try:
-            if int(value) <= 0: 
-                raise ValueError()
-        except ValueError:
-            raise ConfigException(f"Invalid ansible_timeout {value}. Must be a number greater than 0.")
-        self._ansible_timeout = value        
-        
-
-
-    def load(filename):
         f = open(filename, "r")
         parser = ConfigParser()
         parser.read_file(f)
@@ -246,6 +184,8 @@ class TectonicConfig(object):
 
         for key, value in parser['config'].items():
             setattr(config, key, value)
+        for key, value in parser['ansible'].items():
+            setattr(config.ansible, key, value)
         for key, value in parser['aws'].items():
             setattr(config.aws, key, value)
         for key, value in parser['libvirt'].items():

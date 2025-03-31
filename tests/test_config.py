@@ -19,9 +19,10 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import pytest
+from pathlib import Path
 from configparser import ConfigParser
 
-from tectonic.config import *
+from tectonic.config import TectonicConfig
 
 lab_repo_uri = "./examples"
 
@@ -37,14 +38,9 @@ valid_options = [
         "internet_network_cidr_block": "10.0.0.0/25",
         "services_network_cidr_block": "10.0.0.128/25",
         "ssh_public_key_file": "~/.ssh/id_rsa.pub",
-        "ansible_ssh_common_args": "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600",
         "configure_dns": False,
         "debug": True,
         "proxy": "http://proxy.example.com:3128",
-        "keep_ansible_logs": False,
-        "ansible_forks": 5,
-        "ansible_pipelining": False,
-        "ansible_timeout": "10",
     },
 ]
 
@@ -67,18 +63,6 @@ invalid_options = [
     { 
         "proxy": "invalid",
     },
-    { 
-        "ansible_forks": "invalid",
-    },
-    { 
-        "ansible_forks": -10,
-    },
-    { 
-        "ansible_timeout": "invalid",
-    },
-    { 
-        "ansible_timeout": -10,
-    },
 ]
 
 
@@ -86,7 +70,7 @@ valid_aws_options = [
     {
     },
     { 
-        "region": "nowhere",
+        "region": "eu-nowhere-1",
         "default_instance_type": "t2.huuuuge",
         "teacher_access": "endpoint",
         "packetbeat_vlan_id": "2",
@@ -109,12 +93,12 @@ valid_libvirt_options = [
 
 def test_tectonic_valid_lab_repo_uri():
     config = TectonicConfig(lab_repo_uri)
-    assert config.lab_repo_uri == lab_repo_uri
-    config.lab_repo_uri = './example2'
-    assert config.lab_repo_uri == './example2'
+    assert config.lab_repo_uri == str(Path(config.tectonic_dir).joinpath(lab_repo_uri))
+    config.lab_repo_uri = './tectonic'
+    assert config.lab_repo_uri == str(Path(config.tectonic_dir).joinpath('./tectonic'))
 
 def test_tectonic_invalid_lab_repo_uri():
-    with pytest.raises(ConfigException) as exception:
+    with pytest.raises(ValueError) as exception:
         config = TectonicConfig(None)
 
 
@@ -128,10 +112,13 @@ def test_tectonic_valid_config(option):
 
     config_attrs = [a for a in dir(config) if not a.startswith('_') and not callable(getattr(config, a))]
 
-    assert config.lab_repo_uri == lab_repo_uri
+    assert config.lab_repo_uri == default_config.lab_repo_uri
     for key in config_attrs:
         if key in option.keys():
-            assert getattr(config, key) == option[key]
+            if key == "ssh_public_key_file":
+                assert getattr(config, key) == str(Path(option[key]).expanduser())
+            else:
+                assert getattr(config, key) == option[key]
         else:
             assert getattr(config, key) == getattr(default_config, key)
 
@@ -139,11 +126,9 @@ def test_tectonic_valid_config(option):
 @pytest.mark.parametrize("option", invalid_options)
 def test_tectonic_invalid_config(option):
     config = TectonicConfig(lab_repo_uri)
-    with pytest.raises(ConfigException) as exception:
+    with pytest.raises(ValueError) as exception:
         for key, value in option.items():
             setattr(config, key, value)
-
-
 
 @pytest.mark.parametrize("option", valid_aws_options)
 def test_tectonic_valid_aws_config(option):
@@ -173,7 +158,12 @@ def test_load_config(test_data_path):
     parser.read(filename)
 
     for key, value in parser['config'].items():
-        assert str(getattr(config, key)) == value
+        if key == "lab_repo_uri":
+            assert str(getattr(config, key)) == str(Path(config.tectonic_dir).joinpath(value))
+        elif key in ["configure_dns", "debug"]:
+            assert getattr(config, key) == (True if value == "yes" else False)
+        else:
+            assert str(getattr(config, key)) == value
     for key, value in parser['aws'].items():
         assert str(getattr(config.aws, key)) == value
     for key, value in parser['libvirt'].items():

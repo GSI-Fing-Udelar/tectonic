@@ -18,18 +18,20 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-from tectonic.config import ConfigException
+import tectonic.validate as validate
 
 class TectonicConfigLibvirt(object):
     """Class to store Tectonic libvirt configuration."""
 
+    supported_student_access = ["bridge", "port_forwarding"]
+
     def __init__(self):
-        self._uri = "qemu:///system"
-        self._storage_pool = "default"
-        self._student_access = "port_forwarding"
-        self._bridge = "tectonic"
-        self._external_network = "192.168.0.0/25"
-        self._bridge_base_ip = 10
+        self.uri = "qemu:///system"
+        self.storage_pool = "default"
+        self.student_access = self.supported_student_access[0]
+        self.bridge = "tectonic"
+        self.external_network = "192.168.0.0/25"
+        self.bridge_base_ip = 10
 
 
     #----------- Getters ----------
@@ -70,6 +72,7 @@ class TectonicConfigLibvirt(object):
 
     @student_access.setter
     def student_access(self, value):
+        validate.supported_value("student_access", value, self.supported_student_access)
         self._student_access = value
 
     @bridge.setter
@@ -78,10 +81,12 @@ class TectonicConfigLibvirt(object):
 
     @external_network.setter
     def external_network(self, value):
+        validate.ip_network("external_network", value)
         self._external_network = value
 
     @bridge_base_ip.setter
     def bridge_base_ip(self, value):
+        validate.number("bridge_base_ip", value, min_value=5, max_value=254)
         self._bridge_base_ip = value
 
 

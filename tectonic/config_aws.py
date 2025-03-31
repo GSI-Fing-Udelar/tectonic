@@ -18,16 +18,16 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-from tectonic.config import ConfigException
+import tectonic.validate as validate
 
 class TectonicConfigAWS(object):
     """Class to store Tectonic AWS configuration."""
 
     def __init__(self):
-        self._region = "us-east-1"
-        self._default_instance_type = "t2.micro"
-        self._teacher_access = "host"
-        self._packetbeat_vlan_id = 1
+        self.region = "us-east-1"
+        self.default_instance_type = "t2.micro"
+        self.teacher_access = "host"
+        self.packetbeat_vlan_id = 1
 
     #----------- Getters ----------
     @property
@@ -49,25 +49,22 @@ class TectonicConfigAWS(object):
     #----------- Setters ----------
     @region.setter
     def region(self, value):
+        validate.regex("region", value, r"^[a-z]{2}-[a-z]+-[0-9]+$")
         self._region = value
 
     @default_instance_type.setter
     def default_instance_type(self, value):
+        validate.regex("instance_type", value, r"^[a-z0-9-]+.[a-z0-9-]+$")
         self._default_instance_type = value
 
     @teacher_access.setter
     def teacher_access(self, value):
-        if value.lower() not in ["host", "endpoint"]: 
-            raise ConfigException(f"Invalid teacher_access {value}. Must be 'host' or 'endpoint'.")
+        validate.supported_value("teacher_access", value, ["host", "endpoint"])
         self._teacher_access = value
 
     @packetbeat_vlan_id.setter
     def packetbeat_vlan_id(self, value):
-        try:
-            if int(value) <= 0 or int(value) > 4094: 
-                raise ValueError()
-        except ValueError:
-            raise ConfigException(f"Invalid ansible_forks {value}. Must be a number between 1 and 4094.")
+        validate.number("packetbeat_vlan_id", value, min_value=1, max_value=4094)
         self._packetbeat_vlan_id = value
 
     def __eq__(self, other): 

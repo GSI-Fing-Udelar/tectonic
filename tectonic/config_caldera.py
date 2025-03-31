@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-from tectonic.config import ConfigException
+import tectonic.validate as validate
 
 class TectonicConfigCaldera(object):
     """Class to store Tectonic caldera configuration."""
@@ -36,7 +36,7 @@ class TectonicConfigCaldera(object):
     #----------- Setters ----------
     @version.setter
     def version(self, value):
-        # TODO - validate
+        validate.version_number("caldera version", value)
         self._version = value
 
     def __eq__(self, other): 

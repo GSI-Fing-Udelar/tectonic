@@ -18,16 +18,16 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-from tectonic.config import ConfigException
+import tectonic.validate as validate
 
 class TectonicConfigElastic(object):
     """Class to store Tectonic elastic configuration."""
 
     def __init__(self):
-        self._elastic_stack_version = "8.14.3"
-        self._packetbeat_policy_name = "Packetbeat"
-        self._endpoint_policy_name = "Endpoint"
-        self._user_install_packetbeat = "tectonic"
+        self.elastic_stack_version = "8.14.3"
+        self.packetbeat_policy_name = "Packetbeat"
+        self.endpoint_policy_name = "Endpoint"
+        self.user_install_packetbeat = "tectonic"
 
 
     #----------- Getters ----------
@@ -51,7 +51,7 @@ class TectonicConfigElastic(object):
     #----------- Setters ----------
     @elastic_stack_version.setter
     def elastic_stack_version(self, value):
-        # TODO - validate
+        validate.version_number("elastic_stack_version", value)
         self._elastic_stack_version = value
 
     @packetbeat_policy_name.setter

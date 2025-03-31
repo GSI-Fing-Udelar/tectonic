@@ -31,13 +31,187 @@ import json
 
 from tectonic.constants import OS_DATA
 from tectonic.instance_type import InstanceType
-from tectonic.utils import read_files_in_directory
+import tectonic.utils
+import tectonic.validate as validate
 
 class DescriptionException(Exception):
     pass
 
+class MachineDescription:
+    def __init__(self):
+        self._memory = 1024
+        self._vcpu = 1
+        self._disk = 10
 
-class Description(object):
+    #----------- Getters ----------
+    @property
+    def memory(self):
+        return self._memory
+
+    @property
+    def vcpu(self):
+        return self._vcpu
+
+    @property
+    def disk(self):
+        return self._disk
+
+    #----------- Setters ----------
+    @memory.setter
+    def memory(self, value):
+        validate.number("memory", value, min_value=500)
+        self._memory = value
+
+    @vcpu.setter
+    def vcpu(self, value):
+        validate.number("vcpu", value, min_value=1)
+        self._vcpu = value
+
+    @disk.setter
+    def disk(self, value):
+        validate.number("disk", value, min_value=5)
+        self._disk = value
+    
+class ServiceDescription(MachineDescription):
+    def __init__(self):
+        super().__init__()
+        self._enable = False
+
+    @property
+    def enable(self):
+        return self._enable
+
+    @enable.setter
+    def enable(self, value):
+        validate.boolean("enable", value)
+        self._enable = value
+
+class ElasticDescription(ServiceDescription):
+    supported_monitor_types = ["traffic", "endpoint"]
+
+    def __init__(self):
+        super().__init__()
+        self._monitor_type = supported_monitor_types[0]
+        self._deploy_default_policy = True
+
+    @property
+    def monitor_type(self):
+        return self._monitor_type
+
+    @property
+    def deploy_default_policy(self):
+        return self._deploy_default_policy
+
+    @monitor_type.setter
+    def monitor_type(self, value):
+        validate.supported_value("monitor_type", value, 
+                                 self.supported_monitor_types, 
+                                 case_sensitive=False)
+        self._monitor_type = value
+
+    @deploy_default_policy.setter
+    def deploy_default_policy(self, value):
+        validate.boolean("deploy_default_policy", value)
+        self._deploy_default_policy = value
+
+class LabEditionDescription:
+    def __init__(self):
+        self.base_lab = base_lab
+        self.institution = None
+        self.lab_edition_name = self.base_lab
+        self.instance_number = 0
+        self.teacher_pubkey_dir = None
+        self.student_prefix = "trainee"
+        self.student_pubkey_dir = None
+        self.create_students_passwords = False
+        self.random_seed = None
+        self.elastic = ElasticDescription()
+        self.caldera = ServiceDescription()
+        
+    #----------- Getters ----------
+    @property
+    def base_lab(self):
+        return self._base_lab
+
+    @property
+    def institution(self):
+        return self._institution
+
+    @property
+    def lab_edition_name(self):
+        return self._lab_edition_name
+
+    @property
+    def instance_number(self):
+        return self._instance_number
+
+    @property
+    def teacher_pubkey_dir(self):
+        return self._teacher_pubkey_dir
+
+    @property
+    def student_prefix(self):
+        return self._student_prefix
+
+    @property
+    def student_pubkey_dir(self):
+        return self._student_pubkey_dir
+
+    @property
+    def create_students_passwords(self):
+        return self._create_students_passwords
+
+    @property
+    def random_seed(self):
+        return self._random_seed
+
+    @property
+    def elastic(self):
+        return self._elastic
+
+    @property
+    def caldera(self):
+        return self._caldera
+
+    #----------- Setters ----------
+    @base_lab.setter
+    def base_lab(self, value):
+        self._base_lab = value
+
+    @institution.setter
+    def institution(self, value):
+        self._institution = value
+
+    @lab_edition_name.setter
+    def lab_edition_name(self, value):
+        self._lab_edition_name = value
+
+    @instance_number.setter
+    def instance_number(self, value):
+        self._instance_number = value
+
+    @teacher_pubkey_dir.setter
+    def teacher_pubkey_dir(self, value):
+        self._teacher_pubkey_dir = value
+
+    @student_prefix.setter
+    def student_prefix(self, value):
+        self._student_prefix = value
+
+    @student_pubkey_dir.setter
+    def student_pubkey_dir(self, value):
+        self._student_pubkey_dir = value
+
+    @create_students_passwords.setter
+    def create_students_passwords(self, value):
+        self._create_students_passwords = value
+
+    @random_seed.setter
+    def random_seed(self, value):
+        self._random_seed = value
+
+
+class Description:
     """Class to represent a lab description."""
 
     institution = ""
@@ -51,115 +225,59 @@ class Description(object):
 
     def __init__(
         self,
+        config,
         path,
-        platform,
-        lab_repo_uri,
-        teacher_access,
-        configure_dns,
-        ssh_public_key_file,
-        ansible_ssh_common_args,
-        aws_region,
-        aws_default_instance_type,
-        network_cidr_block,
-        packetbeat_policy_name,
-        packetbeat_vlan_id,
-        elastic_stack_version,
-        libvirt_uri,
-        libvirt_storage_pool,
-        libvirt_student_access,
-        libvirt_bridge,
-        libvirt_external_network,
-        libvirt_bridge_base_ip,
-        proxy,
-        instance_type,
-        endpoint_policy_name,
-        user_install_packetbeat,
-        internet_network_cidr_block,
-        services_network_cidr_block,
-        keep_ansible_logs,
-        docker_uri,
-        caldera_version,
-        docker_dns,
-        ansible_forks,
-        ansible_pipelining,
-        ansible_timeout
     ):
         """Create a Description object.
 
-        Description object is created from a lab description file. The lab description file is a YAML file with the following structure.
+        The description object is created from a lab edition file that
+        references a scenario description in the configured
+        lab_repo_uri.
 
         Parameters:
-            path: Path to the lab edition file.
-            platform: Platform to deploy the lab. Valid values are "aws" and "libvirt".
-            lab_repo_uri: URI of the lab repository.
-            teacher_access: Type of access to the teacher machine. Valid values are "host" and "instance".
-            configure_dns: Whether to configure DNS or not.
-            ssh_public_key_file: Path to the SSH public key file.
-            ansible_ssh_common_args: Ansible SSH common arguments.
-            aws_region: AWS region to deploy the lab.
-            aws_default_instance_type: Default instance type for AWS.
-            network_cidr_block: CIDR block for the lab network.
-            packetbeat_policy_name: Name of the Packetbeat policy.
-            packetbeat_vlan_id: VLAN ID for Packetbeat.
-            elastic_stack_version: Elastic Stack version.
-            libvirt_uri: URI for libvirt.
-            libvirt_storage_pool: Storage pool for libvirt.
-            libvirt_student_access: Type of access to the student machines. Valid values are "bridge" and "nat".
-            libvirt_bridge: Name of the bridge for libvirt.
-            libvirt_external_network: External network for libvirt.
-            libvirt_bridge_base_ip: Base IP for the libvirt bridge.
-            proxy: Proxy for libvirt.
-            instance_type: An InstanceType object to compute the correct size of machine.
-            endpoint_policy_name: Name of the Agent policy.
-            user_install_packetbeat: User used to install Packetbeat.
-            internet_network_cidr_block: CIDR of internet network.
-            services_network_cidr_block: CIDR of services network.
-            keep_ansible_logs: Keep Ansible logs on managed hosts.
-            docker_uri: URI for docker.
-            caldera_version: Caldera version.
-            docker_dns: DNS to use for internet networks on Docker.
-            ansible_forks: Number of parallel connections for Ansible.
-            ansible_pipelining: Enable pipelining for Ansible.
-            ansible_timeout: Timeout for Ansible connections.
-
+            config: A TectonicConfig object.
+            path: Path to a lab edition file.
+        
         Returns:
              A Description object.
+
         """
+        self.config = config
+
+        # Load base lab name from lab edition file
         self.lab_edition_file = Path(path).resolve().as_posix()
-        base_dir = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../.."))
+        try:
+            stream = open(self.lab_edition_file, "r")
+            lab_edition_data = yaml.safe_load(stream)
+        except Exception as e:
+            raise DescriptionException("Error loading lab edition file.") from e
+        self._validate_lab_edition(lab_edition_data)
+        self.base_lab = lab_edition_data["base_lab"]
+        self.scenario_path = self._get_scenario_path()
+        self.description_file = Path(self.scenario_path).joinpath("description.yml")
+        if not Path(self.description_file).is_file():
+            raise DescriptionException(f"Description file not found inside {self.base_lab} lab.")
+        self.parameters_files = tectonic.utils.read_files_in_directory(
+            Path(self.scenario_path).joinpath("ansible", "parameters")
+        )
+
+        # Read scenario description
+        stream = open(self.description_file, "r")
+        description_data = yaml.safe_load(stream)
+        self._validate_description(description_data)
+
+        self.base_institution = re.sub("[^a-zA-Z0-9]+", "", description["institution"])
+        self.base_lab_name = re.sub("[^a-zA-Z0-9]+", "", description["lab_name"])
+        self.default_os = description.get("default_os", self.default_os)
+        self.guest_settings = {key.lower(): value for key, value in description.get("guest_settings", self.guest_settings).items()}
+        self.topology = description.get("topology", self.topology)
+
+        self._load_elastic_settings(description)
+        self._load_caldera_settings(description)
+
         
-        self.lab_repo_uri = lab_repo_uri
-        if self.lab_repo_uri and not Path(self.lab_repo_uri).is_absolute():
-            self.lab_repo_uri = Path(base_dir).joinpath(
-                self.lab_repo_uri
-            )
-        self.platform = platform
-        self.teacher_access = teacher_access
-        self.configure_dns = configure_dns
-        self.ansible_ssh_common_args = ansible_ssh_common_args
-        self.aws_region = aws_region
-        self.aws_default_instance_type = aws_default_instance_type
-        self.network_cidr_block = network_cidr_block
-        self.packetbeat_policy_name = packetbeat_policy_name
-        self.packetbeat_vlan_id = packetbeat_vlan_id
-        self.elastic_stack_version = elastic_stack_version
-        self.is_elastic_stack_latest_version = False
-        self.libvirt_uri = libvirt_uri
-        self.libvirt_storage_pool = libvirt_storage_pool
-        self.libvirt_student_access = libvirt_student_access
-        self.libvirt_bridge = libvirt_bridge
-        self.libvirt_external_network = libvirt_external_network
-        self.libvirt_bridge_base_ip = libvirt_bridge_base_ip
-        self.proxy = proxy
-        self.instance_type = instance_type
-        self.endpoint_policy_name = endpoint_policy_name
-        self.user_install_packetbeat = user_install_packetbeat
-        self.internet_network = internet_network_cidr_block
-        self.services_network = services_network_cidr_block
-        self.keep_ansible_logs = keep_ansible_logs
-        self.docker_uri = docker_uri
-        self.caldera_version = caldera_version
-        self.docker_dns = docker_dns
+
+
         self.services = {}
         self._load_lab_edition(path)
         self.description_dir = Path(self.description_file).parent.resolve().as_posix()
@@ -167,17 +285,39 @@ class Description(object):
             Path(self.description_dir).joinpath("ansible").resolve().as_posix()
         )
 
-        self.advanced_options_path = Path(self.description_dir).joinpath("advanced").joinpath(platform).resolve().as_posix()
+        self.advanced_options_path = Path(self.description_dir).joinpath("advanced", platform).resolve().as_posix()
 
-        self.ssh_public_key_file = ssh_public_key_file
         self.authorized_keys = self.read_pubkeys(
-            self.teacher_pubkey_dir, ssh_public_key_file
+            self.teacher_pubkey_dir, self.config.ssh_public_key_file
         )
-        self.ansible_forks = ansible_forks
-        self.ansible_pipelining = ansible_pipelining
-        self.ansible_timeout = ansible_timeout
+
+    def _get_scenario_path(self):
+        """Constructs a path to search for the scenario specification.
+        
+        If lab_repo_uri is a path to a directory, this will return the
+        <base_lab> subdirectory if it exists. If not, and a
+        <base_lab>.cft scenario package file exists, it is extracted
+        to a temporary directory, which is returned.
+        """
+        # Open the lab directory if it exists, otherwise use a CTF package file
+        if Path(self.config.lab_repo_uri).joinpath(self.base_lab).is_dir():
+            return Path(self.lab_repo_uri).joinpath(self.base_lab)
+        else:
+            lab_pkg_file = Path(self.lab_repo_uri).joinpath(f"{self.base_lab}.ctf")
+            if Path(lab_pkg_file).is_file():
+                pkg = ZipFile(lab_pkg_file)
+                # Extract the package to temporary directory
+                self.extract_tmpdir = tempfile.TemporaryDirectory(
+                    prefix="tectonic", suffix=self.base_lab
+                )
+                pkg.extractall(path=self.extract_tmpdir.name)
+                return Path(self.extract_tmpdir.name)
+            else:
+                raise DescriptionException(f"{self.base_lab} not found in {self.lab_repo_uri}.")
+        
 
     def read_pubkeys(self, ssh_dir, default_pubkey=None):
+
         """
         Reads all public keys in the ssh directory of the description folder.
 
@@ -238,19 +378,19 @@ class Description(object):
         self._validate_value("elastic_settings.monitor_type", description.get("elastic_settings",{}).get("monitor_type","traffic"), ["traffic", "endpoint"])
         self._validate_value("caldera_settings.enable", description.get("caldera_settings",{}).get("enable",False), [True, False])
 
-    def _validate_lab_edition(self, lab_edition_info):
+    def _validate_lab_edition(self, lab_edition_data):
         """
         Apply validations to lab edition specification.
 
         Parameters:
-            lab_edition_info (obj): lab edition specification.
+            lab_edition_data (obj): lab edition specification.
         """
-        self._required(lab_edition_info, "base_lab")
-        self._required(lab_edition_info, "instance_number")
-        if lab_edition_info.get("create_student_passwords"):
-            self._required(lab_edition_info, "random_seed")
-        self._validate_value("elastic_settings.enable", lab_edition_info.get("elastic_settings",{}).get("enable",False), [True, False])
-        self._validate_value("caldera_settings.enable", lab_edition_info.get("caldera_settings",{}).get("enable",False), [True, False])
+        self._required(lab_edition_data, "base_lab")
+        self._required(lab_edition_data, "instance_number")
+        if lab_edition_data.get("create_student_passwords"):
+            self._required(lab_edition_data, "random_seed")
+        self._validate_value("elastic_settings.enable", lab_edition_data.get("elastic_settings",{}).get("enable",False), [True, False])
+        self._validate_value("caldera_settings.enable", lab_edition_data.get("caldera_settings",{}).get("enable",False), [True, False])
 
 
     def _load_description(self, description_file):
@@ -281,14 +421,14 @@ class Description(object):
             path (str): path to lab edition specification file.
         """
         stream = open(path, "r")
-        lab_edition_info = yaml.safe_load(stream)
-        self._validate_lab_edition(lab_edition_info)
+        lab_edition_data = yaml.safe_load(stream)
+        self._validate_lab_edition(lab_edition_data)
 
-        self.instance_number = lab_edition_info["instance_number"]
-        self.base_lab = lab_edition_info["base_lab"]
+        self.instance_number = lab_edition_data["instance_number"]
+        self.base_lab = lab_edition_data["base_lab"]
 
-        self.student_prefix = lab_edition_info.get("student_prefix", "trainee")
-        self.student_pubkey_dir = lab_edition_info.get("student_pubkey_dir")
+        self.student_prefix = lab_edition_data.get("student_prefix", "trainee")
+        self.student_pubkey_dir = lab_edition_data.get("student_pubkey_dir")
         if self.student_pubkey_dir and not Path(self.student_pubkey_dir).is_absolute():
             self.student_pubkey_dir = (
                 Path(self.lab_edition_file)
@@ -297,10 +437,10 @@ class Description(object):
                 .as_posix()
             )
 
-        self.create_student_passwords = lab_edition_info.get(
+        self.create_student_passwords = lab_edition_data.get(
             "create_student_passwords", False
         )
-        self.random_seed = lab_edition_info.get("random_seed")
+        self.random_seed = lab_edition_data.get("random_seed")
 
         # Open the lab directory if it exists, otherwise use a CTF package file
         if Path(self.lab_repo_uri).joinpath(self.base_lab).is_dir():
@@ -328,26 +468,26 @@ class Description(object):
         self.institution = str.lower(re.sub(
             "[^a-zA-Z0-9]+",
             "",
-            lab_edition_info.get("institution", self.base_institution),
+            lab_edition_data.get("institution", self.base_institution),
         ))
         self.lab_name = str.lower(re.sub(
             "[^a-zA-Z0-9]+",
             "",
-            lab_edition_info.get("lab_edition_name", self.base_lab_name),
+            lab_edition_data.get("lab_edition_name", self.base_lab_name),
         ))
 
-        self.teacher_pubkey_dir = lab_edition_info.get("teacher_pubkey_dir")
+        self.teacher_pubkey_dir = lab_edition_data.get("teacher_pubkey_dir")
         if self.teacher_pubkey_dir and not Path(self.teacher_pubkey_dir).is_absolute():
             self.teacher_pubkey_dir = Path(self.lab_edition_file).parent.joinpath(
                 self.teacher_pubkey_dir
             )
 
-        self.deploy_elastic = self.deploy_elastic and lab_edition_info.get("elastic_settings",{}).get("enable", True)
+        self.deploy_elastic = self.deploy_elastic and lab_edition_data.get("elastic_settings",{}).get("enable", True)
         if self.deploy_elastic:
             self.services["elastic"] = {
-                "vcpu": lab_edition_info.get("elastic_settings",{}).get("vcpu", 4),
-                "memory": lab_edition_info.get("elastic_settings",{}).get("memory", 8192),
-                "disk": lab_edition_info.get("elastic_settings",{}).get("disk", 50)
+                "vcpu": lab_edition_data.get("elastic_settings",{}).get("vcpu", 4),
+                "memory": lab_edition_data.get("elastic_settings",{}).get("memory", 8192),
+                "disk": lab_edition_data.get("elastic_settings",{}).get("disk", 50)
             }
             if self.platform == "aws":
                 self.services["packetbeat"] = {
@@ -355,12 +495,12 @@ class Description(object):
                     "memory": 512,
                     "disk": 10,
                 }
-        self.deploy_caldera = self.deploy_caldera and lab_edition_info.get("caldera_settings",{}).get("enable", True)
+        self.deploy_caldera = self.deploy_caldera and lab_edition_data.get("caldera_settings",{}).get("enable", True)
         if self.deploy_caldera:
             self.services["caldera"] = {
-                "vcpu": lab_edition_info.get("caldera_settings",{}).get("vcpu", 2),
-                "memory": lab_edition_info.get("caldera_settings",{}).get("memory", 2048),
-                "disk": lab_edition_info.get("caldera_settings",{}).get("disk", 20)
+                "vcpu": lab_edition_data.get("caldera_settings",{}).get("vcpu", 2),
+                "memory": lab_edition_data.get("caldera_settings",{}).get("memory", 2048),
+                "disk": lab_edition_data.get("caldera_settings",{}).get("disk", 20)
             }
 
         self._expand_topology()
@@ -948,3 +1088,13 @@ class Description(object):
         elif service_name == "packetbeat":
             return "ubuntu22"
         
+    def __del__(self):
+        try:
+            self.extract_tmpdir.cleanup()
+        except:
+            pass
+
+
+
+
+
