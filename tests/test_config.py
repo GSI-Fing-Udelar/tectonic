@@ -23,6 +23,7 @@ from pathlib import Path
 from configparser import ConfigParser
 
 from tectonic.config import TectonicConfig
+from tectonic.utils import absolute_path
 
 lab_repo_uri = "./examples"
 
@@ -110,7 +111,8 @@ def test_tectonic_valid_config(option):
     for key, value in option.items():
         setattr(config, key, value)
 
-    config_attrs = [a for a in dir(config) if not a.startswith('_') and not callable(getattr(config, a))]
+    config_attrs = [a for a in dir(config) if isinstance(getattr(config.__class__, a, None), property) and 
+                    (getattr(config.__class__, a).fset is not None)]
 
     assert config.lab_repo_uri == default_config.lab_repo_uri
     for key in config_attrs:
@@ -151,27 +153,43 @@ def test_tectonic_valid_libvirt_config(option):
 
 
 def test_load_config(test_data_path):
-    filename = f"{test_data_path}/config/tectonic1.ini"
+    filename = Path(test_data_path).joinpath("config", "tectonic1.ini")
     config = TectonicConfig.load(filename)
 
     parser = ConfigParser()
     parser.read(filename)
 
-    for key, value in parser['config'].items():
-        if key == "lab_repo_uri":
-            assert str(getattr(config, key)) == str(Path(config.tectonic_dir).joinpath(value))
-        elif key in ["configure_dns", "debug"]:
-            assert getattr(config, key) == (True if value == "yes" else False)
-        else:
-            assert str(getattr(config, key)) == value
-    for key, value in parser['aws'].items():
-        assert str(getattr(config.aws, key)) == value
-    for key, value in parser['libvirt'].items():
-        assert str(getattr(config.libvirt, key)) == value
-    for key, value in parser['docker'].items():
-        assert str(getattr(config.docker, key)) == value
-    for key, value in parser['elastic'].items():
-        assert str(getattr(config.elastic, key)) == value
-    for key, value in parser['caldera'].items():
-        assert str(getattr(config.caldera, key)) == value
+    default_config = TectonicConfig(parser['config']['lab_repo_uri'])
     
+    def assert_attr_eq(config_obj, config_parser, key):
+        if isinstance(getattr(config_obj, key), bool):
+            assert getattr(config_obj, key) == config_parser.getboolean(key)
+        else:
+            assert str(getattr(config_obj, key)) == config_parser[key]
+    for config_obj, config_parser in [(config, parser['config']),
+                                      (config.ansible, parser['ansible']),
+                                      (config.aws, parser['aws']),
+                                      (config.libvirt, parser['libvirt']),
+                                      (config.docker, parser['docker']),
+                                      (config.elastic, parser['elastic']),
+                                      (config.caldera, parser['caldera'])
+                                      ]:
+        # For each TectonicConfig attribute, test that the value is
+        # equal to the ini if it exists, or the default value.
+        for key in [a for a in dir(config_obj) if isinstance(getattr(config_obj.__class__, a, None), property) and 
+                    (getattr(config_obj.__class__, a).fset is not None)]:
+            if key in config_parser:
+                # Paths are made absolute, so check that they are changed accordingly.
+                if key in ["lab_repo_uri", "ssh_public_key_file"]:
+                    assert str(getattr(config_obj, key)) == absolute_path(config_parser[key], base_dir=config.tectonic_dir)
+                else:
+                    assert_attr_eq(config_obj, config_parser, key)
+            else:
+                assert getattr(config_obj, key) == getattr(default_config, key)
+
+    
+def test_tectonic_unrecognized_option(test_data_path):
+    config = TectonicConfig(lab_repo_uri)
+    filename = Path(test_data_path).joinpath("config", "tectonic2.ini")
+    with pytest.raises(ValueError) as exception:
+        config = TectonicConfig.load(filename)

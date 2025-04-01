@@ -22,6 +22,7 @@ import os
 from pathlib import Path
 from configparser import ConfigParser
 import tectonic.validate as validate
+from tectonic.utils import absolute_path
 
 from tectonic.config_ansible import TectonicConfigAnsible
 from tectonic.config_aws import TectonicConfigAWS
@@ -136,7 +137,9 @@ class TectonicConfig(object):
     def lab_repo_uri(self, value):
         # This must be a local path to a directory for now. In the
         # future, it might be a uri to a scenario repository.
-        self._lab_repo_uri = validate.path_to_dir("lab_repo_uri", value, base_dir=self.tectonic_dir)
+        value = absolute_path(value, base_dir=self.tectonic_dir)
+        validate.path_to_dir("lab_repo_uri", value)
+        self._lab_repo_uri = value
 
     @network_cidr_block.setter
     def network_cidr_block(self, value):
@@ -155,23 +158,39 @@ class TectonicConfig(object):
 
     @ssh_public_key_file.setter
     def ssh_public_key_file(self, value):
-        self._ssh_public_key_file = validate.path_to_file(
-            "ssh_public_key_file", value, base_dir=self.tectonic_dir
-        )
+        value = absolute_path(value, base_dir=self.tectonic_dir)
+        validate.path_to_file("ssh_public_key_file", value)
+        self._ssh_public_key_file = value
 
     @configure_dns.setter
     def configure_dns(self, value):
-        self._configure_dns = validate.boolean("configure_dns", value)
+        validate.boolean("configure_dns", value)
+        self._configure_dns = value
 
     @debug.setter
     def debug(self, value):
-        self._debug = validate.boolean("debug", value)
+        validate.boolean("debug", value)
+        self._debug = value
 
     @proxy.setter
     def proxy(self, value):
         if value is not None:
             validate.url("proxy", value)
         self._proxy = value
+
+    @classmethod
+    def _assign_attribute(cls, config_obj, config_parser, key):
+        """Assign the value of name key in the parser object to the corresponding config attribute."""
+        # Fail if the option is not a valid TectonicConfig attribute
+        config_attrs = [a for a in dir(config_obj) if isinstance(getattr(config_obj.__class__, a, None), property) and 
+                        (getattr(config_obj.__class__, a).fset is not None)]
+        if key not in config_attrs:
+            raise ValueError(f"Unrecognized configuration option {key}.")
+
+        if isinstance(getattr(config_obj, key), bool):
+            setattr(config_obj, key, config_parser.getboolean(key))
+        else:
+            setattr(config_obj, key, config_parser.get(key))
 
     @classmethod
     def load(cls, filename):
@@ -182,19 +201,19 @@ class TectonicConfig(object):
         parser.read_file(f)
         config = TectonicConfig(parser['config']['lab_repo_uri'])
 
-        for key, value in parser['config'].items():
-            setattr(config, key, value)
-        for key, value in parser['ansible'].items():
-            setattr(config.ansible, key, value)
-        for key, value in parser['aws'].items():
-            setattr(config.aws, key, value)
-        for key, value in parser['libvirt'].items():
-            setattr(config.libvirt, key, value)
-        for key, value in parser['docker'].items():
-            setattr(config.docker, key, value)
-        for key, value in parser['elastic'].items():
-            setattr(config.elastic, key, value)
-        for key, value in parser['caldera'].items():
-            setattr(config.caldera, key, value)
+        for key in parser['config'].keys():
+            TectonicConfig._assign_attribute(config, parser['config'], key)
+        for key in parser['ansible'].keys():
+            TectonicConfig._assign_attribute(config.ansible, parser['ansible'], key)
+        for key in parser['aws'].keys():
+            TectonicConfig._assign_attribute(config.aws, parser['aws'], key)
+        for key in parser['libvirt'].keys():
+            TectonicConfig._assign_attribute(config.libvirt, parser['libvirt'], key)
+        for key in parser['docker'].keys():
+            TectonicConfig._assign_attribute(config.docker, parser['docker'], key)
+        for key in parser['elastic'].keys():
+            TectonicConfig._assign_attribute(config.elastic, parser['elastic'], key)
+        for key in parser['caldera'].keys():
+            TectonicConfig._assign_attribute(config.caldera, parser['caldera'], key)
 
         return config

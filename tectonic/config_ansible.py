@@ -60,7 +60,8 @@ class TectonicConfigAnsible(object):
 
     @keep_logs.setter
     def keep_logs(self, value):
-        self._keep_logs = validate.boolean("keep_logs", value)
+        validate.boolean("keep_logs", value)
+        self._keep_logs = value
 
     @forks.setter
     def forks(self, value):
@@ -69,22 +70,10 @@ class TectonicConfigAnsible(object):
 
     @pipelining.setter
     def pipelining(self, value):
-        self._pipelining = validate.boolean("pipelining", value)
+        validate.boolean("pipelining", value)
+        self._pipelining = value
 
     @timeout.setter
     def timeout(self, value):
         validate.number("timeout", value, min_value=1)
         self._timeout = value
-
-
-    def __eq__(self, other):
-        if not isinstance(other, TectonicConfigAnsible):
-            # don't attempt to compare against unrelated types
-            return NotImplemented
-
-        return (self._ssh_common_args == other._ssh_common_args and
-                self._keep_logs == other._keep_logs and
-                self._forks == other._forks and
-                self._pipelining == other._pipelining and
-                self._timeout == other._timeout
-                )

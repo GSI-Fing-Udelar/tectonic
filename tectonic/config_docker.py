@@ -47,12 +47,3 @@ class TectonicConfigDocker(object):
     def dns(self, value):
         validate.ip_address_or_hostname("dns", value)
         self._dns = value
-
-    def __eq__(self, other): 
-        if not isinstance(other, TectonicConfigDocker):
-            # don't attempt to compare against unrelated types
-            return NotImplemented
-
-        return (self._uri == other._uri and 
-                self._dns == other._dns
-                )

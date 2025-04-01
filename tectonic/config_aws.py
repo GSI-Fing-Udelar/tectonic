@@ -66,15 +66,3 @@ class TectonicConfigAWS(object):
     def packetbeat_vlan_id(self, value):
         validate.number("packetbeat_vlan_id", value, min_value=1, max_value=4094)
         self._packetbeat_vlan_id = value
-
-    def __eq__(self, other): 
-        if not isinstance(other, TectonicConfigAWS):
-            # don't attempt to compare against unrelated types
-            return NotImplemented
-
-        return (self._region == other._region and 
-                self._default_instance_type == other._default_instance_type and 
-                self._teacher_access == other._teacher_access and 
-                self._packetbeat_vlan_id == other._packetbeat_vlan_id
-                )
-

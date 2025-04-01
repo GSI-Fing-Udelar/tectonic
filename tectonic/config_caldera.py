@@ -39,9 +39,3 @@ class TectonicConfigCaldera(object):
         validate.version_number("caldera version", value)
         self._version = value
 
-    def __eq__(self, other): 
-        if not isinstance(other, TectonicConfigCaldera):
-            # don't attempt to compare against unrelated types
-            return NotImplemented
-
-        return self._version == other._version

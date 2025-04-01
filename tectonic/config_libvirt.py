@@ -88,16 +88,3 @@ class TectonicConfigLibvirt(object):
     def bridge_base_ip(self, value):
         validate.number("bridge_base_ip", value, min_value=5, max_value=254)
         self._bridge_base_ip = value
-
-
-    def __eq__(self, other): 
-        if not isinstance(other, TectonicConfigLibvirt):
-            # don't attempt to compare against unrelated types
-            return NotImplemented
-
-        return (self._uri == other._uri and 
-                self._storage_pool == other._storage_pool and 
-                self._bridge == other._bridge and 
-                self._external_network == other._external_network and
-                self._bridge_base_ip == other._bridge_base_ip
-                )

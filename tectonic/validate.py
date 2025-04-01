@@ -33,24 +33,20 @@ def supported_value(name, value, supported_values, case_sensitive=True):
         (not case_sensitive and value.lower() not in [x.lower() for x in supported_values])
         ):
         raise ValueError(f"Invalid {name} {value}. Must be one of {supported_values}.")
-    return value
 
-def regex(name, value, regex):
+def regex(name, value, pattern, case_sensitive=True):
     """Validates that the value named name matches the given regex"""
-    if not re.match(regex, value):
-        raise ValueError(f"Invalid {name} {value}. Must match the regular expression {regex}.")
-    return value
+    if case_sensitive:
+        flag = 0
+    else:
+        flag = re.IGNORECASE
+    if not re.match(pattern, value, flag):
+        raise ValueError(f"Invalid {name} {value}. Must match the regular expression {pattern}.")
 
 def boolean(name, value):
     """Validates that the value named name is boolean."""
-    if isinstance(value, str):
-        if re.match(r"^(1|yes|true|on)$", value, re.IGNORECASE):
-            value = True
-        elif re.match(r"^(0|no|false|off)$", value, re.IGNORECASE):
-            value = False
     if not isinstance(value, bool):
         raise ValueError(f"Invalid {name} {value}. Must be a boolean value.")
-    return value
 
 def number(name, value, min_value=None, max_value=None):
     try:
@@ -70,38 +66,31 @@ def number(name, value, min_value=None, max_value=None):
             error_msg += f" less than {max_value}"
         error_msg += "."
         raise ValueError(error_msg)
-    return value
 
 def version_number(name, value, allow_latest=True):
     rx = r"(\d+.)*\d+"
-    if allow_latest:
-        rx = r"^(latest|" + rx + r")$"
-    else:
-        rx = r"^" + rx + r"$"
-    if not re.match(rx, value):
+    try:
+        if allow_latest:
+            rx = r"^(latest|" + rx + r")$"
+        else:
+            rx = r"^" + rx + r"$"
+        if not re.match(rx, value):
+            raise ValueError()
+    except:
         msg = f"Invalid {name} {value}. Must be a valid version number"
         if allow_latest:
             msg += " or 'latest'"
         msg += "."
         raise ValueError(msg)
 
-def path_to_file(name, value, base_dir="/", expand_user=True):
+def path_to_file(name, value):
     """Validates that the value named name is a valid path to a file.
-
-    Concat to base_dir if value is a relative path. Expands ~/ to
-    the current user homedir if expand_user is True.
     """
     try:
-        if not type(value) is str:
-            raise ValueError()
-        p = Path(value).expanduser()
-        if not p.is_absolute():
-            p = Path(base_dir).joinpath(p)
-        if not p.is_file():
+        if not Path(value).is_file():
             raise ValueError()
     except:
         raise ValueError(f"Invalid {name} {value}. Must be a path to a file.")
-    return str(p)
 
 def path_to_dir(name, value, base_dir="/", expand_user=True):
     """Validates that the value named name is a valid path to a file.
@@ -110,42 +99,42 @@ def path_to_dir(name, value, base_dir="/", expand_user=True):
     the current user homedir if expand_user is True.
     """
     try:
-        if not type(value) is str:
-            raise ValueError()
-        p = Path(value).expanduser()
-        if not p.is_absolute():
-            p = Path(base_dir).joinpath(p)
-        if not p.is_dir():
+        if not Path(value).is_dir():
             raise ValueError()
     except:
         raise ValueError(f"Invalid {name} {value}. Must be a path to a directory.")
-    return str(p)
     
 def url(name, value):
     """Validates that the value named name is a valid url with at least scheme and host."""
     try:
         result = urlparse(value)
         if not all([result.scheme, result.netloc]):
-            raise AttributeError
-    except AttributeError:
+            raise ValueError
+    except:
         raise ValueError(f"Invalid {name} {value}. Must be a valid url.")
-    return value
 
 def ip_address(name, value):
     """Validates that the value named name is a valid IP network"""
     try:
+        if not isinstance(value, str):
+            raise ValueError
         ipaddress.ip_address(value)
     except ValueError:
         raise ValueError(f"Invalid {name} {value}. Must be a valid IP address.")
-    return value
+
 
 def ip_network(name, value):
     """Validates that the value named name is a valid IP network"""
     try:
-        ipaddress.ip_network(value)
-    except ValueError:
+        if not isinstance(value, str):
+            raise ValueError
+        network = ipaddress.ip_network(value)
+        if ((network.version == 4 and network.prefixlen == 32) or
+            (network.version == 6 and network.prefixlen == 128)):
+            raise ValueError
+    except:
         raise ValueError(f"Invalid {name} {value}. Must be a valid IP network.")
-    return value
+    
 
 def hostname(name, value):
     """Validates that the value named name is a hostname."""
@@ -165,7 +154,7 @@ def hostname(name, value):
             raise ValueError()
     except:
         raise ValueError(f"Invalid {name} {value}. Must be a valid hostname.")
-    return value
+    
 
 def ip_address_or_hostname(name, value):
     """Validates that the value named name is a hostname or IP address."""
@@ -176,4 +165,4 @@ def ip_address_or_hostname(name, value):
             hostname(name, value)
         except:
             raise ValueError(f"Invalid {name} {value}. Must be a valid hostname or IP address.")
-    return value
+    

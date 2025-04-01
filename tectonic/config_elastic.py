@@ -66,13 +66,3 @@ class TectonicConfigElastic(object):
     def user_install_packetbeat(self, value):
         self._user_install_packetbeat = value
 
-    def __eq__(self, other): 
-        if not isinstance(other, TectonicConfigElastic):
-            # don't attempt to compare against unrelated types
-            return NotImplemented
-
-        return (self._elastic_stack_version == other._elastic_stack_version and 
-                self._packetbeat_policy_name == other._packetbeat_policy_name and 
-                self._endpoint_policy_name == other._endpoint_policy_name and 
-                self._user_install_packetbeat == other._user_install_packetbeat
-                )

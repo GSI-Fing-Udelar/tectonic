@@ -37,7 +37,7 @@ main `config` section and special sections for different platforms
   images will be created. Default: `default`.
 * `student_access`: Currently this value must be `bridge`. NICs will be added to the entry points in a bridged network. Default: `bridge`.
 * `bridge`: Name of the libvirt server bridge to use for
-  student access. Required if `libvirt_student_access` is `bridge`.
+  student access. Required if `libvirt_student_access` is `bridge`. Default: `tectonic`.
 * `external_network`: CIDR block of the external bridged
   network, if appropriate. Static IP addresses are assigned
   sequentially to lab entry points. Default: `192.168.0.0/25`.

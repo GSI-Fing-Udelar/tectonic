@@ -21,6 +21,8 @@
 from prettytable import PrettyTable, TableStyle
 from os import listdir
 from os.path import isfile, join, isdir
+from pathlib import Path
+
 
 def create_table(headers, rows):
     table = PrettyTable()
@@ -43,3 +45,35 @@ def read_files_in_directory(directory_path):
         return [join(directory_path, f) for f in listdir(directory_path) if isfile(join(directory_path, f))]
     else:
         return []
+
+
+def absolute_path(path, base_dir="/", expand_user=True):
+    """Return an absolute path if the given path is relative.
+    
+    Expand starting tilde to the user homedir if expand_user is True.
+    Returns path unchanged if there is an error.
+    """
+    try:
+        p = Path(path)
+        if expand_user:
+            p = p.expanduser()
+        if not p.is_absolute():
+            p = Path(base_dir).joinpath(p)
+    except:
+        return path
+    return str(p)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
