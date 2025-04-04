@@ -19,7 +19,7 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 from prettytable import PrettyTable, TableStyle
-from os import listdir
+import os
 from os.path import isfile, join, isdir
 from pathlib import Path
 
@@ -42,17 +42,19 @@ def read_files_in_directory(directory_path):
         list: full path to files in directory
     """
     if isdir(directory_path):
-        return [join(directory_path, f) for f in listdir(directory_path) if isfile(join(directory_path, f))]
+        return [join(directory_path, f) for f in os.listdir(directory_path) if isfile(join(directory_path, f))]
     else:
         return []
 
 
-def absolute_path(path, base_dir="/", expand_user=True):
+def absolute_path(path, base_dir=None, expand_user=True):
     """Return an absolute path if the given path is relative.
     
     Expand starting tilde to the user homedir if expand_user is True.
     Returns path unchanged if there is an error.
     """
+    if base_dir is None:
+        base_dir = os.getcwd()
     try:
         p = Path(path)
         if expand_user:
