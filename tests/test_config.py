@@ -72,7 +72,6 @@ valid_aws_options = [
     },
     { 
         "region": "eu-nowhere-1",
-        "default_instance_type": "t2.huuuuge",
         "teacher_access": "endpoint",
         "packetbeat_vlan_id": "2",
     },

@@ -25,7 +25,6 @@ class TectonicConfigAWS(object):
 
     def __init__(self):
         self.region = "us-east-1"
-        self.default_instance_type = "t2.micro"
         self.teacher_access = "host"
         self.packetbeat_vlan_id = 1
 
@@ -33,10 +32,6 @@ class TectonicConfigAWS(object):
     @property
     def region(self):
         return self._region
-
-    @property
-    def default_instance_type(self):
-        return self._default_instance_type
 
     @property
     def teacher_access(self):
@@ -51,11 +46,6 @@ class TectonicConfigAWS(object):
     def region(self, value):
         validate.regex("region", value, r"^[a-z]{2}-[a-z]+-[0-9]+$")
         self._region = value
-
-    @default_instance_type.setter
-    def default_instance_type(self, value):
-        validate.regex("instance_type", value, r"^[a-z0-9-]+.[a-z0-9-]+$")
-        self._default_instance_type = value
 
     @teacher_access.setter
     def teacher_access(self, value):

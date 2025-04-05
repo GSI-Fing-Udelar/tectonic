@@ -34,6 +34,9 @@ The scenario description is a YAML file with three main sections:
   + `memory`: Amount of RAM of the machine, in MB. Default: `1024`.
   + `vcpu`: Number of virtual CPUs of the machine. Default: `1`.
   + `disk`: Amount of disk of the machine, in GB. Default: `10`.
+  + `gpu`: Whether the machine has a CPU. Only supported in AWS for
+    now (this is costly, a `g4dn.xlarge` instance is used). Default:
+    `no`.
   + `base_os`: The operating system of the guest. Must be one of
     `ubuntu22`, `rocky8`, `kali` or `windows_srv_2022`. Default is
     taken from the global `default_os` description attribute mentioned

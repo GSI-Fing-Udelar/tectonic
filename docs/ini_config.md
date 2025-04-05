@@ -46,10 +46,6 @@ main `config` section and special sections for different platforms
 ### [aws] section:
 * `region`: The region to deploy instances in AWS. Default:
   `us-east-1`.
-* `default_instance_type`: Default instance type to use for
-  machines. Can be overwritten in the per guest configuration in the
-  lab description file (attribute `instance_type`, see
-  [ref](description)). Default: `t2.micro`.
 * `teacher_access`: Type of teacher access to configure. Can be either
   `host` (an instance that acts as a bastion host), or `endpoint` (an
   EIC endpoint that connects to all instances in the lab). Default:
