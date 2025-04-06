@@ -44,19 +44,20 @@ class ClientDocker(Client):
         "dead": "DEAD",
     }
 
-    def __init__(self, description, docker_uri):
+    def __init__(self, config, description):
         """
         Init method.
 
         Parameters:
-            docker_uri (str): Docker URI for connection.
+            config (Config): Tectonic config object.
+            description (Description): Tectonic description object.
         """
-        super().__init__(description)
+        super().__init__(config, description)
         try:
-            self.connection = docker.DockerClient(base_url=docker_uri)
+            self.connection = docker.DockerClient(base_url=config.docker.uri)
         except:
             self.connection = None
-            raise ClientDockerException(f"Cannot connect to docker server at {docker_uri}")
+            raise ClientDockerException(f"Cannot connect to docker server at {config.docker.uri}")
         
     def connect(self, machine_name, username):
         try:
@@ -88,11 +89,9 @@ class ClientDocker(Client):
         
     def get_machine_private_ip(self, machine_name):
         try:
-            lab_network = ip_network(self.description.network_cidr_block)
-            services_network = ip_network(self.description.services_network)
-            services_list = []
-            for service in self.description.get_services_to_deploy():
-                services_list.append(self.description.get_service_name(service))
+            lab_network = ip_network(self.config.network_cidr_block)
+            services_network = ip_network(self.config.services_network_cidr_block)
+            services_list = [s.full_name for s in self.description.services]
 
             container = self.connection.containers.get(machine_name)
             for network in container.attrs["NetworkSettings"]["Networks"]:

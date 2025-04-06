@@ -28,14 +28,16 @@ class Client(ABC):
     You must implement this class if you add a new platform.
     """
 
-    def __init__(self, description):
+    def __init__(self, config, description):
         """
         Init method.
 
         Parameters:
+            config (Config): Tectonic config object.
             description (Description): Tectonic description object.
         """
-        self.description = description 
+        self.config = config
+        self.description = description
 
     def __del__(self):
         try:

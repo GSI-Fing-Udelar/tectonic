@@ -64,7 +64,7 @@ class InstanceManagerAWS(InstanceManager):
         Returns:
           list(str): resources name of the aws_instances for the instances.
         """
-        machines = self.description.parse_machines(instances, guests, copies, False, self.description.services)
+        machines = self.description.parse_machines(instances, guests, copies, False, [s.name for s in self.description.services])
         resources = []
         for machine in machines:
             resources.append('aws_instance.machines["' f"{machine}" '"]')
@@ -276,7 +276,7 @@ class InstanceManagerAWS(InstanceManager):
         Returns:
           list(str): resources name to recreate.
         """
-        machines_to_recreate = self.description.parse_machines(instances, guests, copies, False, self.description.services)
+        machines_to_recreate = self.description.parse_machines(instances, guests, copies, False, [s.name for s in self.description.services])
         student_access_name = f"{self.description.institution}-{self.description.lab_name}-student_access"
         teacher_access_name = f"{self.description.institution}-{self.description.lab_name}-teacher_access"
         resource_to_recreate = []

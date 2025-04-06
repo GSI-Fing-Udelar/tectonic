@@ -50,16 +50,17 @@ class ClientAWS(Client):
         "terminated": "NOT FOUND",
     }
 
-    def __init__(self, description, aws_region):
+    def __init__(self, config, description):
         """
         Init method.
 
         Parameters:
-            aws_region (str): AWS region for connection.
+            config (Config): Tectonic config object.
+            description (Description): Tectonic description object.
         """
-        super().__init__(description) #Ver si realmente es necesario tener el description.
+        super().__init__(config, description)
         try:
-            self.connection = boto3.client("ec2", aws_region)
+            self.connection = boto3.client("ec2", config.aws.region)
         except Exception as exception:
             raise ClientAWSException(f"{exception}")
 

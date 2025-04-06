@@ -81,15 +81,15 @@ class Core:
         self.services_terraform_module = tectonic_resources.files('tectonic') / 'services' / 'terraform' / f"services-{self.config.platform}"
 
         if self.TECHNOLOGY == "aws": #TODO: fix initialization
-            self.client = ClientAWS(self.description, self.config.aws.region)
+            self.client = ClientAWS(self.config, self.description, self.config.aws.region)
             self.instance_manager = InstanceManagerAWS(self.config, self.description, self.client)
             self.service_manager = ServiceManagerAWS(self.config, self.description, self.client)
         elif self.TECHNOLOGY == "libvirt":
-            self.client = ClientLibvirt(self.description, self.config.libvirt.uri)
+            self.client = ClientLibvirt(self.config, self.description, self.config.libvirt.uri)
             self.instance_manager = InstanceManagerLibvirt(self.config, self.description, self.client)
             self.service_manager = ServiceManagerLibvirt(self.config, self.description, self.client)
         elif self.TECHNOLOGY == "docker":
-            self.client = ClientDocker(self.description, self.config.docker.uri)
+            self.client = ClientDocker(self.config, self.description, self.config.docker.uri)
             self.instance_manager = InstanceManagerDocker(self.config, self.description, self.client)
             self.service_manager = ServiceManagerDocker(self.config, self.description, self.client)
         else:

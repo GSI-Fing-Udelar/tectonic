@@ -511,9 +511,14 @@ class GuestDescription(BaseGuestDescription):
 
 
 class ServiceDescription(MachineDescription):
-    def __init__(self, name, default_os):
+    def __init__(self, description, name, default_os):
         super().__init__(name, default_os)
+        self._full_name = f"{description.institution}-{description.lab_name}-{name}"
         self.enable = False
+
+    @property
+    def full_name(self):
+        return self._full_name
 
     @property
     def enable(self):
@@ -533,8 +538,8 @@ class ServiceDescription(MachineDescription):
 class ElasticDescription(ServiceDescription):
     supported_monitor_types = ["traffic", "endpoint"]
 
-    def __init__(self):
-        super().__init__("elastic", "rocky8")
+    def __init__(self, description):
+        super().__init__(description, "elastic", "rocky8")
         self.memory = 8192
         self.vcpu = 4
         self.disk = 50
@@ -571,8 +576,8 @@ class ElasticDescription(ServiceDescription):
 
 
 class CalderaDescription(ServiceDescription):
-    def __init__(self):
-        super().__init__("caldera", "rocky8")
+    def __init__(self, description):
+        super().__init__(description, "caldera", "rocky8")
         self.memory = 2048
         self.vcpu = 2
         self.disk = 20
@@ -582,8 +587,8 @@ class CalderaDescription(ServiceDescription):
         self.load_service(data)
 
 class PacketbeatDescription(ServiceDescription):
-    def __init__(self):
-        super().__init__("packetbeat", "ubuntu22")
+    def __init__(self, description):
+        super().__init__(description, "packetbeat", "ubuntu22")
         self.memory = 512
         self.vcpu = 1
         self.disk = 10
@@ -664,9 +669,9 @@ class Description:
                     raise DescriptionException(f"Undefined member {member} in network {name}.")
             network.members = members
             self._topology[network.name] = network
-        self._elastic = ElasticDescription()
+        self._elastic = ElasticDescription(self)
         self._elastic.load_elastic(description_data.get("elastic", {}))
-        self._caldera = CalderaDescription()
+        self._caldera = CalderaDescription(self)
         self._caldera.load_caldera(description_data.get("caldera", {}))
 
         # Load lab edition data
@@ -686,7 +691,7 @@ class Description:
         enable_elastic = self._elastic.enable and lab_edition_data.get("elastic", {}).get("enable", True)
         self._elastic.load_elastic(lab_edition_data.get("elastic", {}))
         self._elastic.enable = enable_elastic
-        self._packetbeat = PacketbeatDescription()
+        self._packetbeat = PacketbeatDescription(self)
         if enable_elastic and config.platform == "aws":
             self._packetbeat.enable = True
 
@@ -725,7 +730,7 @@ class Description:
             if self.config.aws.teacher_access == "host":
                 infrastructure_guests_names.append("teacher_access")
         for service in self.services:
-            infrastructure_guests_names.append(service)
+            infrastructure_guests_names.append(service.name)
 
         guests_aux = list(self.base_guests.keys())
         if not only_instances:
@@ -752,7 +757,7 @@ class Description:
                     result.append(f"{self.institution}-{self.lab_name}-teacher_access")
 
             for service in self.services:
-                result.append(f"{self.institution}-{self.lab_name}-{service}")
+                result.append(service.full_name)
 
         # Filter the result
         if instances:
@@ -928,7 +933,7 @@ class Description:
 
     @property
     def services(self):
-        return [service.name for service in [self._elastic, self._packetbeat, self._caldera] if service.enable]
+        return [service for service in [self._elastic, self._packetbeat, self._caldera] if service.enable]
 
     #----------- Setters ----------
     @base_lab.setter
