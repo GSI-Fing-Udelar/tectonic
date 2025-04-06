@@ -23,7 +23,8 @@ import tectonic.validate as validate
 class TectonicConfigLibvirt(object):
     """Class to store Tectonic libvirt configuration."""
 
-    supported_student_access = ["bridge", "port_forwarding"]
+    # supported_student_access = ["bridge", "port_forwarding"]
+    supported_student_access = ["bridge"]
 
     def __init__(self):
         self.uri = "qemu:///system"

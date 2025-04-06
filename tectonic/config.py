@@ -51,6 +51,10 @@ class TectonicConfig(object):
         self.configure_dns = True
         self.debug = False
         self.proxy = None
+        self.gitlab_backend_url = None
+        self.gitlab_backend_username = None
+        self.gitlab_backend_access_token = None
+        self.packer_executable_path = "packer"
 
         self._ansible = TectonicConfigAnsible()
         self._aws = TectonicConfigAWS()
@@ -100,6 +104,22 @@ class TectonicConfig(object):
     @property
     def proxy(self):
         return self._proxy
+
+    @property
+    def gitlab_backend_url(self):
+        return self._gitlab_backend_url
+
+    @property
+    def gitlab_backend_username(self):
+        return self._gitlab_backend_username
+
+    @property
+    def gitlab_backend_access_token(self):
+        return self._gitlab_backend_access_token
+
+    @property
+    def packer_executable_path(self):
+        return self._packer_executable_path
 
 
     @property
@@ -174,9 +194,32 @@ class TectonicConfig(object):
 
     @proxy.setter
     def proxy(self, value):
-        if value is not None:
+        if value:
             validate.url("proxy", value)
+        else:
+            value = None
         self._proxy = value
+
+
+    @gitlab_backend_url.setter
+    def gitlab_backend_url(self, value):
+        if value is not None:
+            validate.url("gitlab_backend_url", value)
+        self._gitlab_backend_url = value
+
+    @gitlab_backend_username.setter
+    def gitlab_backend_username(self, value):
+        self._gitlab_backend_username = value
+
+    @gitlab_backend_access_token.setter
+    def gitlab_backend_access_token(self, value):
+        self._gitlab_backend_access_token = value
+
+    @packer_executable_path.setter
+    def packer_executable_path(self, value):
+        # validate.path_to_file("packer_executable_path", value)
+        self._packer_executable_path = value
+
 
     @classmethod
     def _assign_attribute(cls, config_obj, config_parser, key):

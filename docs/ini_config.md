@@ -50,6 +50,8 @@ main `config` section and special sections for different platforms
   `host` (an instance that acts as a bastion host), or `endpoint` (an
   EIC endpoint that connects to all instances in the lab). Default:
   `host`.
+* `access_host_instance_type`: The instance type to use for the
+  `teacher_access` and `student_access` machines. Default: `t2.micro`.
 * `packetbeat_vlan_id`: VLAN id used for traffic mirroring. Default:
   `1`.
 

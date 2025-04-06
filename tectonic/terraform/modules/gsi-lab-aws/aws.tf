@@ -73,7 +73,7 @@ resource "aws_instance" "teacher_access_host" {
   count = var.teacher_access == "host" ? 1 : 0
 
   ami           = data.aws_ami.student_access_host.id
-  instance_type = var.aws_default_instance_type
+  instance_type = var.access_host_instance_type
 
   key_name = aws_key_pair.admin_pubkey.key_name
 
@@ -394,7 +394,7 @@ resource "aws_instance" "student_access" {
   count = local.student_access ? 1 : 0
   ami = data.aws_ami.student_access_host.id
 
-  instance_type = var.aws_default_instance_type
+  instance_type = var.access_host_instance_type
 
   key_name = aws_key_pair.admin_pubkey.key_name
 

@@ -66,10 +66,10 @@ class InstanceManagerDocker(InstanceManager):
         """
         resources = []
         for instance in filter(lambda i: i <= self.description.instance_number, instances or range(1, self.description.instance_number+1)):
-            for network in self.description.topology:
+            for network in self.description.topology.keys():
                 resources.append(
                     'docker_network.subnets["'
-                    f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network['name']}"
+                    f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network}"
                     '"]'
                 )
         return resources
@@ -86,7 +86,7 @@ class InstanceManagerDocker(InstanceManager):
         """
         resources = self._get_machine_resources_name(instances)
         resources = resources + self._get_subnet_resources_name(instances)
-        if self.description.configure_dns:
+        if self.config.configure_dns:
             resources = resources + self._get_dns_resources_name(instances)
         return resources
 
@@ -127,14 +127,14 @@ class InstanceManagerDocker(InstanceManager):
             "institution": self.description.institution,
             "lab_name": self.description.lab_name,
             "instance_number": self.description.instance_number,
-            "ssh_public_key_file": self.description.ssh_public_key_file,
+            "ssh_public_key_file": self.config.ssh_public_key_file,
             "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps(self.description.subnets),
-            "guest_data_json": json.dumps(self.description.get_guest_data()),
+            "subnets_json": json.dumps(self.description.scenario_networks),
+            "guest_data_json": json.dumps(self.description.scenario_guests),
             "default_os": self.description.default_os,
             "os_data_json": json.dumps(OS_DATA),
-            "configure_dns": self.description.configure_dns,
-            "docker_uri": self.description.docker_uri,
+            "configure_dns": self.config.configure_dns,
+            "docker_uri": self.config.docker.uri,
             }
 
     def console(self, machine_name, username):

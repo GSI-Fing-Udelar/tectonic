@@ -27,6 +27,7 @@ import docker
 # from tectonic.deployment_aws import AWSDeployment
 # from tectonic.deployment_libvirt import LibvirtDeployment
 # from tectonic.deployment_docker import DockerDeployment
+from tectonic.config import TectonicConfig
 from tectonic.ansible import Ansible
 from tectonic.description import Description
 from tectonic.instance_type_aws import InstanceTypeAWS
@@ -47,44 +48,43 @@ network_cidr_block = 10.0.0.0/16
 internet_network_cidr_block = 10.0.0.0/25
 services_network_cidr_block = 10.0.0.128/25
 ssh_public_key_file = ~/.ssh/id_rsa.pub
-ansible_ssh_common_args = -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 
 configure_dns = no
-gitlab_backend_url = https://gitlab.fing.edu.uy/api/v4/projects/9886/terraform/state
 debug = yes
-keep_ansible_logs = no
-ansible_forks = 5
-ansible_pipelining = no
-ansible_timeout = 10
 
+[ansible]
+ssh_common_args = -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 
+keep_logs = no
+forks = 5
+pipelining = no
+timeout = 10
 
 [libvirt]
-# libvirt_uri="qemu+ssh://gsi@localhost:22222/system?no_verify=1
-# libvirt_uri=qemu+ssh://gsi@gsi03/system?known_hosts=/home/jdcampo/.ssh/known_hosts
-#libvirt_uri = qemu+ssh://gsi@tortuga:4446/system?known_hosts=/home/jdcampo/gsi/lasi/repos/tectonic/python/known_hosts
-libvirt_uri = test:///TEST_DATA_PATH/libvirt_config.xml
-libvirt_storage_pool = pool-dir
-
- # TODO: allow `port_forwarding'
-libvirt_student_access = bridge
-libvirt_bridge = lab_ens
-libvirt_external_network = 192.168.44.10/25
-libvirt_bridge_base_ip = 10
-proxy=http://proxy.fing.edu.uy:3128
+# uri="qemu+ssh://gsi@localhost:22222/system?no_verify=1
+# uri=qemu+ssh://gsi@gsi03/system?known_hosts=/home/jdcampo/.ssh/known_hosts
+#uri = qemu+ssh://gsi@tortuga:4446/system?known_hosts=/home/jdcampo/gsi/lasi/repos/tectonic/python/known_hosts
+uri = test:///TEST_DATA_PATH/libvirt_config.xml
+storage_pool = pool-dir
+student_access = bridge
+bridge = lab_ens
+external_network = 192.168.44.0/25
+bridge_base_ip = 10
 
 [aws]
-aws_region = us-east-1
-aws_default_instance_type = t2.micro
+region = us-east-1
 teacher_access = host
 
+[docker]
+uri = unix:///var/run/docker.sock
+dns = 8.8.8.8
+
 [elastic]
-elastic_stack_version = latest
+elastic_stack_version = 8.14.3
 packetbeat_policy_name = Packetbeat
 endpoint_policy_name = Endpoint
-packetbeat_vlan_id = 1
 user_install_packetbeat = gsi
 
 [caldera]
-caldera_version = 5.0.0
+version = 5.0.0
 """
 
 @pytest.fixture(scope="session")
@@ -238,49 +238,29 @@ def base_tectonic_path():
 def test_data_path(base_tests_path):
     return Path(base_tests_path).joinpath("test_data/").absolute().as_posix()
 
+@pytest.fixture(scope="session", params=["aws","libvirt", "docker"])
+def tectonic_config(request, tmp_path_factory, test_data_path):
+    config_file = tmp_path_factory.mktemp('data') / f"{request.param}-config.ini"
+    config_ini = test_config.replace(
+        "TEST_DATA_PATH",
+        test_data_path
+    ).replace(
+        "PLATFORM",
+        request.param
+    )
+    config_file.write_text(config_ini)
+    return config_file.resolve().as_posix()
+
 
 @pytest.fixture(scope="session")
 def labs_path(test_data_path):
-    return Path(test_data_path).joinpath("labs/").absolute().as_posix()
+    return (Path(test_data_path) / "labs").absolute().as_posix()
 
 @pytest.fixture(scope="session")
-def description(labs_path, terraform_dir, test_data_path):
-    desc = Description(
-        path=Path(labs_path).joinpath("test.yml"),
-        platform="aws",
-        lab_repo_uri=labs_path,
-        teacher_access="host",
-        configure_dns=False,
-        ssh_public_key_file=f"{terraform_dir}/id_rsa.pub",
-        ansible_ssh_common_args="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no",
-        aws_region="us-east-1",
-        aws_default_instance_type="t2.micro",
-        network_cidr_block="10.0.0.0/16",
-        packetbeat_policy_name="Packetbeat",
-        packetbeat_vlan_id="1",
-        elastic_stack_version="7.10.2",
-        libvirt_uri=f"test:///{test_data_path}/libvirt_config.xml",
-        libvirt_storage_pool="pool-dir",
-        libvirt_student_access="bridge",
-        libvirt_bridge="lab_ens",
-        libvirt_external_network="192.168.44.10/25",
-        libvirt_bridge_base_ip=10,
-        proxy="http://proxy.fing.edu.uy:3128",
-        instance_type=InstanceTypeAWS("t2.micro"),
-        endpoint_policy_name="Endpoint",
-        user_install_packetbeat="gsi",
-        internet_network_cidr_block="10.0.0.0/25",
-        services_network_cidr_block="10.0.0.128/25",
-        keep_ansible_logs=False,
-        docker_uri='unix:///var/run/docker.sock',
-        caldera_version='latest',
-        docker_dns="8.8.8.8",
-        ansible_forks="5",
-        ansible_pipelining=False,
-        ansible_timeout="10"
-    )
+def description(tectonic_config, labs_path):
+    config = TectonicConfig.load(tectonic_config)
+    desc = Description(config, Path(labs_path) / "test.yml")
     yield desc
-
 
 @pytest.fixture()
 def aws_deployment(monkeypatch, description, aws_secrets, ec2_client):
@@ -323,19 +303,6 @@ def ansible_libvirt(libvirt_deployment):
 def ansible_aws(aws_deployment):
     b = Ansible(aws_deployment)
     yield b
-
-@pytest.fixture(scope="session", params=["aws","libvirt", "docker"])
-def tectonic_config(request, tmp_path_factory, test_data_path):
-    config_file = tmp_path_factory.mktemp('data') / f"{request.param}-config.ini"
-    config_ini = test_config.replace(
-        "TEST_DATA_PATH",
-        test_data_path
-    ).replace(
-        "PLATFORM",
-        request.param
-    )
-    config_file.write_text(config_ini)
-    return config_file.resolve().as_posix()
 
 
 @pytest.fixture(scope="session",params=["traffic", "endpoint"])

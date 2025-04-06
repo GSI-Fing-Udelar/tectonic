@@ -26,6 +26,7 @@ from passlib.hash import sha512_crypt
 import string
 import os
 
+from tectonic.config import TectonicConfig
 from tectonic.description import Description
 from tectonic.ansible import Ansible
 from tectonic.packer import Packer
@@ -62,35 +63,33 @@ class Core:
     ANSIBLE_SERVICE_PLAYBOOK = tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'
     ANSIBLE_TRAINEES_PLAYBOOK = tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'
 
-    def __init__(self): #TODO: que recibe?
+    def __init__(self, config_path, lab_edition_path):
         """
-        Initialize the core object.            
+        Initialize the core object.
         """
-
-        #TODO: create objects. Leer archivos?
-        self.config = Config()
-        self.description = Description()
+        self.config = TectonicConfig.load(config_path)
+        self.description = Description(self.config, lab_edition_path)
         self.packer = Packer()
-        self.ansible = Ansible()
+        self.ansible = Ansible(None)
         terraform_backend_info = {
             "gitlab_url": self.config.gitlab_backend_url,
             "gitlab_username": self.config.gitlab_backend_username,
             "gitlab_access_token": self.config.gitlab_backend_access_token
         }
         self.terraform = Terraform(self.description.institution, self.description.lab_name, terraform_backend_info)
-        self.instances_terraform_module = tectonic_resources.files('tectonic') / 'terraform' / 'modules' / f"gsi-lab-{self.description.platform}"
-        self.services_terraform_module = tectonic_resources.files('tectonic') / 'services' / 'terraform' / f"services-{self.description.platform}"
+        self.instances_terraform_module = tectonic_resources.files('tectonic') / 'terraform' / 'modules' / f"gsi-lab-{self.config.platform}"
+        self.services_terraform_module = tectonic_resources.files('tectonic') / 'services' / 'terraform' / f"services-{self.config.platform}"
 
         if self.TECHNOLOGY == "aws": #TODO: fix initialization
-            self.client = ClientAWS(self.description, self.description.aws_region)
+            self.client = ClientAWS(self.description, self.config.aws.region)
             self.instance_manager = InstanceManagerAWS(self.config, self.description, self.client)
             self.service_manager = ServiceManagerAWS(self.config, self.description, self.client)
         elif self.TECHNOLOGY == "libvirt":
-            self.client = ClientLibvirt(self.description, self.description.libvirt_uri)
+            self.client = ClientLibvirt(self.description, self.config.libvirt.uri)
             self.instance_manager = InstanceManagerLibvirt(self.config, self.description, self.client)
             self.service_manager = ServiceManagerLibvirt(self.config, self.description, self.client)
         elif self.TECHNOLOGY == "docker":
-            self.client = ClientDocker(self.description, self.description.docker_uri)
+            self.client = ClientDocker(self.description, self.config.docker.uri)
             self.instance_manager = InstanceManagerDocker(self.config, self.description, self.client)
             self.service_manager = ServiceManagerDocker(self.config, self.description, self.client)
         else:

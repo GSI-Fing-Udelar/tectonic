@@ -25,7 +25,7 @@ from tectonic.config import TectonicConfig
 
 
 def test_description():
-    config = TectonicConfig("./examples")
+    config = TectonicConfig.load("./tectonic.ini")
     description = Description(config, config.tectonic_dir+"/examples/password_cracking.yml")
 
 
@@ -153,149 +153,162 @@ def test_description():
 #     assert description.get_services_to_deploy() == ["caldera"]
 #     description.deploy_elastic = True
 
-# def test_parse_machines(description):
-#     description.deploy_elastic=False
-#     description.deploy_caldera=False
-#     machine_list = description.parse_machines()
-#     assert machine_list == [
-#         'udelar-lab01-1-attacker',
-#         'udelar-lab01-1-victim-1',
-#         'udelar-lab01-1-victim-2',
-#         'udelar-lab01-1-server',
-#         'udelar-lab01-2-attacker',
-#         'udelar-lab01-2-victim-1',
-#         'udelar-lab01-2-victim-2',
-#         'udelar-lab01-2-server',
-#     ]
-#     description.deploy_elastic=True
-#     description.deploy_caldera=True
-#     description.monitor_type="endpoint"
-#     machine_list = description.parse_machines(only_instances=False)
-#     assert machine_list == [
-#         'udelar-lab01-1-attacker',
-#         'udelar-lab01-1-victim-1',
-#         'udelar-lab01-1-victim-2',
-#         'udelar-lab01-1-server',
-#         'udelar-lab01-2-attacker',
-#         'udelar-lab01-2-victim-1',
-#         'udelar-lab01-2-victim-2',
-#         'udelar-lab01-2-server',
-#         'udelar-lab01-student_access',
-#         'udelar-lab01-teacher_access',
-#         'udelar-lab01-elastic',
-#         'udelar-lab01-caldera',
-#     ]
-#     description.teacher_access="endpoint"
-#     description.deploy_elastic=False
-#     description.deploy_caldera=False
-#     machine_list = description.parse_machines(only_instances=False)
-#     assert machine_list == [
-#         'udelar-lab01-1-attacker',
-#         'udelar-lab01-1-victim-1',
-#         'udelar-lab01-1-victim-2',
-#         'udelar-lab01-1-server',
-#         'udelar-lab01-2-attacker',
-#         'udelar-lab01-2-victim-1',
-#         'udelar-lab01-2-victim-2',
-#         'udelar-lab01-2-server',
-#         'udelar-lab01-student_access',
-#     ]
-#     description.teacher_access="host"
-#     description.deploy_elastic=True
-#     description.deploy_caldera=True
-#     description.platform="libvirt"
-#     description.monitor_type="traffic"
-#     machine_list = description.parse_machines(only_instances=False)
-#     assert machine_list == [
-#         'udelar-lab01-1-attacker',
-#         'udelar-lab01-1-victim-1',
-#         'udelar-lab01-1-victim-2',
-#         'udelar-lab01-1-server',
-#         'udelar-lab01-2-attacker',
-#         'udelar-lab01-2-victim-1',
-#         'udelar-lab01-2-victim-2',
-#         'udelar-lab01-2-server',
-#         'udelar-lab01-elastic',
-#         'udelar-lab01-caldera',
-#     ]
-#     description.platform="aws"
-#     description.teacher_access="host"
-#     description.deploy_elastic=True
-#     description.deploy_caldera=True
-#     description.monitor_type="traffic"
-#     machine_list = description.parse_machines(only_instances=False)
-#     assert machine_list == [
-#         'udelar-lab01-1-attacker',
-#         'udelar-lab01-1-victim-1',
-#         'udelar-lab01-1-victim-2',
-#         'udelar-lab01-1-server',
-#         'udelar-lab01-2-attacker',
-#         'udelar-lab01-2-victim-1',
-#         'udelar-lab01-2-victim-2',
-#         'udelar-lab01-2-server',
-#         'udelar-lab01-student_access',
-#         'udelar-lab01-teacher_access',
-#         'udelar-lab01-elastic',
-#         'udelar-lab01-packetbeat',
-#         'udelar-lab01-caldera',
-#     ]
+def test_parse_machines(description):
+    description.deploy_elastic=False
+    description.deploy_caldera=False
+    machine_list = description.parse_machines()
+    expected_machines = [
+        'udelar-lab01-1-attacker',
+        'udelar-lab01-1-victim-1',
+        'udelar-lab01-1-victim-2',
+        'udelar-lab01-1-server',
+        'udelar-lab01-2-attacker',
+        'udelar-lab01-2-victim-1',
+        'udelar-lab01-2-victim-2',
+        'udelar-lab01-2-server',
+    ]
+    assert set(machine_list) == set(expected_machines)
 
-#     machine_list = description.parse_machines(instances=[1], guests=None)
-#     assert machine_list == [
-#         'udelar-lab01-1-attacker',
-#         'udelar-lab01-1-victim-1',
-#         'udelar-lab01-1-victim-2',
-#         'udelar-lab01-1-server',
-#     ]
-#     machine_list = description.parse_machines(guests=["victim", "server"])
-#     assert machine_list == [
-#         'udelar-lab01-1-victim-1', 
-#         'udelar-lab01-1-victim-2', 
-#         'udelar-lab01-1-server',
-#         'udelar-lab01-2-victim-1', 
-#         'udelar-lab01-2-victim-2', 
-#         'udelar-lab01-2-server',
-#     ]
-#     machine_list = description.parse_machines(copies=[1])
-#     assert machine_list == [
-#         'udelar-lab01-1-attacker',
-#         'udelar-lab01-1-victim-1',
-#         'udelar-lab01-1-server',
-#         'udelar-lab01-2-attacker',
-#         'udelar-lab01-2-victim-1',
-#         'udelar-lab01-2-server',
-#     ]
-#     machine_list = description.parse_machines(copies=[2])
-#     assert machine_list == [
-#         'udelar-lab01-1-victim-2',
-#         'udelar-lab01-2-victim-2',
-#     ]
-#     machine_list = description.parse_machines(guests=("attacker",), copies=[1])
-#     assert machine_list == [
-#         'udelar-lab01-1-attacker',
-#         'udelar-lab01-2-attacker',
-#     ]
-#     machine_list = description.parse_machines(guests=("attacker", "victim"), copies=[1])
-#     assert machine_list == [
-#         'udelar-lab01-1-attacker',
-#         'udelar-lab01-1-victim-1',
-#         'udelar-lab01-2-attacker',
-#         'udelar-lab01-2-victim-1',
-#     ]
-#     machine_list = description.parse_machines(guests=("attacker", "victim"), copies=[2])
-#     assert machine_list == [
-#         'udelar-lab01-1-victim-2',
-#         'udelar-lab01-2-victim-2',
-#     ]
+    description.elastic.enable = True
+    description.elastic.monitor_type = "endpoint"
+    description.caldera.enable = True
+    machine_list = description.parse_machines(only_instances=False)
+    expected_machines = [
+        'udelar-lab01-1-attacker',
+        'udelar-lab01-1-victim-1',
+        'udelar-lab01-1-victim-2',
+        'udelar-lab01-1-server',
+        'udelar-lab01-2-attacker',
+        'udelar-lab01-2-victim-1',
+        'udelar-lab01-2-victim-2',
+        'udelar-lab01-2-server',
+        'udelar-lab01-elastic',
+        'udelar-lab01-caldera',
+    ]
+    if description.config.platform == "aws":
+        expected_machines += ['udelar-lab01-student_access',
+                              'udelar-lab01-teacher_access']
+    assert set(machine_list) == set(expected_machines)
+    
+    description.config.aws.teacher_access = "endpoint"
+    description.elastic.enable = False
+    description.caldera.enable = False
+    machine_list = description.parse_machines(only_instances=False)
+    expected_machines = [
+        'udelar-lab01-1-attacker',
+        'udelar-lab01-1-victim-1',
+        'udelar-lab01-1-victim-2',
+        'udelar-lab01-1-server',
+        'udelar-lab01-2-attacker',
+        'udelar-lab01-2-victim-1',
+        'udelar-lab01-2-victim-2',
+        'udelar-lab01-2-server',
+    ]
+    if description.config.platform == "aws":
+        expected_machines += ['udelar-lab01-student_access']
+    assert set(machine_list) == set(expected_machines)
 
-#     with pytest.raises(DescriptionException):
-#         description.parse_machines(instances=[2,3,1])
-#     with pytest.raises(DescriptionException):
-#         description.parse_machines(guests=("attacker", "invalid"))
-#     with pytest.raises(DescriptionException):
-#         description.parse_machines(copies=[2,1,3])
-#     with pytest.raises(DescriptionException):
-#         description.parse_machines(guests=("attacker",), copies=[1,2])
+    description.config.aws.teacher_access = "host"
+    description.elastic.enable = True
+    description.caldera.enable = True
+    description.elastic.monitor_type = "traffic"
+    machine_list = description.parse_machines(only_instances=False)
+    expected_machines = [
+        'udelar-lab01-1-attacker',
+        'udelar-lab01-1-victim-1',
+        'udelar-lab01-1-victim-2',
+        'udelar-lab01-1-server',
+        'udelar-lab01-2-attacker',
+        'udelar-lab01-2-victim-1',
+        'udelar-lab01-2-victim-2',
+        'udelar-lab01-2-server',
+        'udelar-lab01-elastic',
+        'udelar-lab01-caldera',
+    ]
+    if description.config.platform == "aws":
+        expected_machines += ['udelar-lab01-student_access',
+                              'udelar-lab01-teacher_access']
+    assert set(machine_list) == set(expected_machines)
+
+    description.config.aws.teacher_access = "host"
+    description.elastic.enable = True
+    description.elastic.monitor_type = "traffic"
+    description.caldera.enable = True
+    machine_list = description.parse_machines(only_instances=False)
+    expected_machines == [
+        'udelar-lab01-1-attacker',
+        'udelar-lab01-1-victim-1',
+        'udelar-lab01-1-victim-2',
+        'udelar-lab01-1-server',
+        'udelar-lab01-2-attacker',
+        'udelar-lab01-2-victim-1',
+        'udelar-lab01-2-victim-2',
+        'udelar-lab01-2-server',
+        'udelar-lab01-elastic',
+        'udelar-lab01-packetbeat',
+        'udelar-lab01-caldera',
+    ]
+    if description.config.platform == "aws":
+        expected_machines += [ 'udelar-lab01-student_access',
+                               'udelar-lab01-teacher_access']
+    assert set(machine_list) == set(expected_machines)
+
+    machine_list = description.parse_machines(instances=[1], guests=None)
+    assert machine_list == [
+        'udelar-lab01-1-attacker',
+        'udelar-lab01-1-victim-1',
+        'udelar-lab01-1-victim-2',
+        'udelar-lab01-1-server',
+    ]
+    machine_list = description.parse_machines(guests=["victim", "server"])
+    assert machine_list == [
+        'udelar-lab01-1-victim-1', 
+        'udelar-lab01-1-victim-2', 
+        'udelar-lab01-1-server',
+        'udelar-lab01-2-victim-1', 
+        'udelar-lab01-2-victim-2', 
+        'udelar-lab01-2-server',
+    ]
+    machine_list = description.parse_machines(copies=[1])
+    assert machine_list == [
+        'udelar-lab01-1-attacker',
+        'udelar-lab01-1-victim-1',
+        'udelar-lab01-1-server',
+        'udelar-lab01-2-attacker',
+        'udelar-lab01-2-victim-1',
+        'udelar-lab01-2-server',
+    ]
+    machine_list = description.parse_machines(copies=[2])
+    assert machine_list == [
+        'udelar-lab01-1-victim-2',
+        'udelar-lab01-2-victim-2',
+    ]
+    machine_list = description.parse_machines(guests=["attacker",], copies=[1])
+    assert machine_list == [
+        'udelar-lab01-1-attacker',
+        'udelar-lab01-2-attacker',
+    ]
+    machine_list = description.parse_machines(guests=["attacker", "victim"], copies=[1])
+    assert machine_list == [
+        'udelar-lab01-1-attacker',
+        'udelar-lab01-1-victim-1',
+        'udelar-lab01-2-attacker',
+        'udelar-lab01-2-victim-1',
+    ]
+    machine_list = description.parse_machines(guests=["attacker", "victim"], copies=[2])
+    assert machine_list == [
+        'udelar-lab01-1-victim-2',
+        'udelar-lab01-2-victim-2',
+    ]
+
+    with pytest.raises(DescriptionException):
+        description.parse_machines(instances=[2,3,1])
+    with pytest.raises(DescriptionException):
+        description.parse_machines(guests=["attacker", "invalid"])
+    with pytest.raises(DescriptionException):
+        description.parse_machines(copies=[2,1,3])
+    with pytest.raises(DescriptionException):
+        description.parse_machines(guests=["attacker",], copies=[1,2])
 
 # def test_get_machines_to_monitor(description):
 #     machines_to_monitor = description.get_machines_to_monitor()

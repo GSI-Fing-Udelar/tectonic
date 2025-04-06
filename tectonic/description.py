@@ -16,7 +16,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+# along with Tectonic. If not, see <http://www.gnu.org/licenses/>.
 
 import ipaddress
 import math
@@ -161,6 +161,10 @@ class MachineDescription:
         return self._os
 
     @property
+    def admin_username(self):
+        return OS_DATA[self.os]["username"]
+
+    @property
     def memory(self):
         return self._memory
 
@@ -300,12 +304,58 @@ class NetworkInterface():
         self.name = f"{guest.name}-{interface_num+1}"
         self.index = interface_num + self._get_interface_index_to_sum(description, guest)
         self.guest_name = guest.name
-        self.network_base_name = network.base_name
-        self.network_name = network.name
+        self.network = network
         self.private_ip = self._get_guest_ip_address(guest, network)
         self.mask = ipaddress.ip_network(network.ip_network).prefixlen
 
-# TODO : Getters and setters
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def index(self):
+        return self._index
+
+    @property
+    def guest_name(self):
+        return self._guest_name
+
+    @property
+    def network(self):
+        return self._network
+
+    @property
+    def private_ip(self):
+        return self._private_ip
+
+    @property
+    def mask(self):
+        return self._mask
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+
+    @index.setter
+    def index(self, value):
+        self._index = value
+
+    @index.setter
+    def guest_name(self, value):
+        self._guest_name = value
+
+    @network.setter
+    def network(self, value):
+        self._network = value
+
+    @network.setter
+    def private_ip(self, value):
+        self._private_ip = value
+
+    @mask.setter
+    def mask(self, value):
+        self._mask = value
+
         
     def _get_interface_index_to_sum(self, description, guest):
         """Returns number to be added to interface index.
@@ -351,7 +401,7 @@ class GuestDescription(BaseGuestDescription):
         self.blue_team_agent = base_guest.blue_team_agent
 
         copy_suffix = ("-" + str(copy)) if self.copies > 1 else ""
-        self.name = description.institution + "-" + description.lab_name + "-" + \
+        self._name = description.institution + "-" + description.lab_name + "-" + \
             str(instance_num) + "-" + base_guest.name + copy_suffix
         self.instance = instance_num
         self.copy = copy
@@ -371,80 +421,92 @@ class GuestDescription(BaseGuestDescription):
         self.advanced_options_file = None
 
 
-        @property
-        def base_name(self):
-            return self._base_name
+    @property
+    def name(self):
+        return self._name
 
-        @property
-        def instance(self):
-            return self._instance
+    @property
+    def base_name(self):
+        return self._base_name
 
-        @property
-        def copy(self):
-            return self._copy
+    @property
+    def instance(self):
+        return self._instance
 
-        @property
-        def hostname(self):
-            return self._hostname
+    @property
+    def copy(self):
+        return self._copy
 
-        @property
-        def is_in_services_network(self):
-            return self._is_in_services_network
+    @property
+    def hostname(self):
+        return self._hostname
 
-        @property
-        def interfaces(self):
-            return self._interfaces
+    @property
+    def is_in_services_network(self):
+        return self._is_in_services_network
 
-        @property
-        def entry_point_index(self):
-            return self._entry_point_index
+    @property
+    def interfaces(self):
+        return self._interfaces
 
-        @property
-        def services_network_index(self):
-            return self._services_network_index
+    @property
+    def entry_point_index(self):
+        return self._entry_point_index
 
-        @property
-        def advanced_options_file(self):
-            return self._advanced_options_file
+    @property
+    def services_network_index(self):
+        return self._services_network_index
 
-        @base_name.setter
-        def base_name(self, value):
-            value = re.sub("[^a-zA-Z0-9]+", "", value).lower()
-            if value == "":
-                raise DescriptionException(f"Invalid guest name {value}. Must have at least one alphanumeric symbol.")
-            self._base_name = value
+    @property
+    def advanced_options_file(self):
+        return self._advanced_options_file
 
-        @instance.setter
-        def instance(self, value):
-            validate.number("instance", value, min_value=1)
-            self._instance = value
+    @property
+    def networks(self):
+        return [i.network.base_name for _, i in self.interfaces.items]
 
-        @copy.setter
-        def copy(self, value):
-            validate.number("copy", value, min_value=0)
-            self._copy = value
+    @base_name.setter
+    def base_name(self, value):
+        value = re.sub("[^a-zA-Z0-9]+", "", value).lower()
+        if value == "":
+            raise DescriptionException(f"Invalid guest name {value}. Must have at least one alphanumeric symbol.")
+        self._base_name = value
 
-        @hostname.setter
-        def hostname(self, value):
-            validate.hostname("hostname", value)
-            self._hostname = value
+    @name.setter
+    def name(self, value):
+        self._name = value
 
-        @is_in_services_network.setter
-        def is_in_services_network(self, value):
-            validate.boolean("is_in_services_network", value)
-            self._is_in_services_network = value
+    @instance.setter
+    def instance(self, value):
+        validate.number("instance", value, min_value=1)
+        self._instance = value
 
-        @entry_point_index.setter
-        def entry_point_index(self, value):
-            self._entry_point_index = value
+    @copy.setter
+    def copy(self, value):
+        validate.number("copy", value, min_value=0)
+        self._copy = value
 
-        @services_network_index.setter
-        def services_network_index(self, value):
-            self._services_network_index = value
+    @hostname.setter
+    def hostname(self, value):
+        validate.hostname("hostname", value)
+        self._hostname = value
 
-        @advanced_options_file.setter
-        def advanced_options_file(self, value):
-            self._advanced_options_file = value
+    @is_in_services_network.setter
+    def is_in_services_network(self, value):
+        validate.boolean("is_in_services_network", value)
+        self._is_in_services_network = value
+
+    @entry_point_index.setter
+    def entry_point_index(self, value):
+        self._entry_point_index = value
+
+    @services_network_index.setter
+    def services_network_index(self, value):
+        self._services_network_index = value
+
+    @advanced_options_file.setter
+    def advanced_options_file(self, value):
+        self._advanced_options_file = value
 
 
 
@@ -490,8 +552,8 @@ class ElasticDescription(ServiceDescription):
 
     @monitor_type.setter
     def monitor_type(self, value):
-        validate.supported_value("monitor_type", value, 
-                                 self.supported_monitor_types, 
+        validate.supported_value("monitor_type", value,
+                                 self.supported_monitor_types,
                                  case_sensitive=False)
         self._monitor_type = value
 
@@ -563,7 +625,7 @@ class Description:
         self._required(lab_edition_data, "base_lab")
         if not lab_edition_data.get("base_lab"):
             raise DescriptionException("Missing required option: base_lab.")
-        self._scenario_dir = self._get_scenario_path(config, lab_edition_data["base_lab"])
+        self._scenario_dir = self._get_scenario_path(lab_edition_data["base_lab"])
         try:
             description_path = Path(self._scenario_dir).joinpath("description.yml")
             stream = open(description_path, "r")
@@ -624,8 +686,8 @@ class Description:
         enable_elastic = self._elastic.enable and lab_edition_data.get("elastic", {}).get("enable", True)
         self._elastic.load_elastic(lab_edition_data.get("elastic", {}))
         self._elastic.enable = enable_elastic
+        self._packetbeat = PacketbeatDescription()
         if enable_elastic and config.platform == "aws":
-            self._packetbeat = PacketbeatDescription()
             self._packetbeat.enable = True
 
         # Caldera is enabled if it is enabled in the description and
@@ -639,7 +701,108 @@ class Description:
         self._parameters_files = tectonic.utils.read_files_in_directory(
             Path(self._scenario_dir).joinpath("ansible","parameters")
         )
-       
+
+
+    def parse_machines(self, instances=[], guests=[], copies=[], only_instances=True, exclude=[]):
+        """
+        Return machines names based on instance number, guest name and number of copy.
+
+        Parameters:
+            instances (list(int)): numbers of instances.
+            guests (tuple(str)): guest name of machines.
+            copies (list(int)): number of copy of the machines.
+            only_instances (bool): Whether to return only scenario machines or include aux machines.
+            exclude (list(str)): base name of machines to exclude.
+
+        Returns:
+            list(str): full name of machines.
+        """
+        # Validate filters    
+        infrastructure_guests_names = []
+        if self.config.platform == "aws":
+            if self.student_access_required:
+                infrastructure_guests_names.append("student_access")
+            if self.config.aws.teacher_access == "host":
+                infrastructure_guests_names.append("teacher_access")
+        for service in self.services:
+            infrastructure_guests_names.append(service)
+
+        guests_aux = list(self.base_guests.keys())
+        if not only_instances:
+            guests_aux = guests_aux + infrastructure_guests_names
+        if max(instances, default=0) > self.instance_number:
+            raise DescriptionException("Invalid instance numbers specified.")
+        if guests is not None and not set(guests).issubset(set(guests_aux)):
+            raise DescriptionException("Invalid guests names specified.")
+        max_guest_copy = max([guest.copies for _, guest in self._base_guests.items() 
+                              if not guests or guest.name in guests], 
+                             default=1)
+        if max(copies, default=0) > max_guest_copy:
+            raise DescriptionException("Invalid copies specified.")
+
+        # Compute all machine names
+        result = []
+        for guest_name in self.scenario_guests:
+            result.append(guest_name)
+
+        if not only_instances:
+            if self.config.platform == "aws":
+                result.append(f"{self.institution}-{self.lab_name}-student_access")
+                if self.config.aws.teacher_access == "host":
+                    result.append(f"{self.institution}-{self.lab_name}-teacher_access")
+
+            for service in self.services:
+                result.append(f"{self.institution}-{self.lab_name}-{service}")
+
+        # Filter the result
+        if instances:
+            instance_re = f"^{self.institution}-{self.lab_name}-({'|'.join(str(instance) for instance in instances)})-"
+            result = list(
+                filter(
+                    lambda machine: re.search(instance_re, machine) is not None, result
+                )
+            )
+
+        if guests:
+            guest_re = (
+                rf"^{self.institution}-{self.lab_name}(-\d+)?-({'|'.join(guests)})(-|$)"
+            )
+            result = list(
+                filter(lambda machine: re.search(guest_re, machine) is not None, result)
+            )
+
+        if copies:
+            one_copy_re = rf"^{self.institution}-{self.lab_name}-\d+-[^-]+$"
+            many_copies_re = rf"^{self.institution}-{self.lab_name}-\d+-[^-]+-({'|'.join(str(copy) for copy in copies)})$"
+            result = list(
+                filter(
+                    lambda machine: re.search(
+                        many_copies_re
+                        if (self.scenario_guests[machine].copies > 1)
+                        or (1 not in copies)
+                        else one_copy_re,
+                        machine,
+                    )
+                    is not None,
+                    result,
+                )
+            )
+
+        for machine in exclude:
+            guest_re = (
+                rf"^{self.institution}-{self.lab_name}(-\d+)?-{machine}(-|$)"
+            )
+            result = list(
+                filter(lambda machine: re.search(guest_re, machine) is None, result)
+            )
+
+        if len(result) == 0:
+            raise DescriptionException(
+                "No machines with the specified characteristics were found."
+            )
+        else:
+            return result
+
 
     #----------- Getters ----------
     @property
@@ -679,6 +842,33 @@ class Description:
         return self._teacher_pubkey_dir
 
     @property
+    def authorized_keys(self):
+        """Returns the configured ssh pubkeys for teacher access.
+
+        Concatenates the contents of all the pubkeys in
+        teacher_pubkey_dir plus config option ssh_public_key_file.
+        """
+        keys = ""
+        if self.teacher_pubkey_dir and Path(self.teacher_pubkey_dir).is_dir():
+            for child in Path(self.teacher_pubkey_dir).iterdir():
+                if child.is_file():
+                    key = child.read_text()
+                    if key[-1] != "\n":
+                        key += "\n"
+                    keys += key
+
+        if self.config.ssh_public_key_file is not None:
+            p = Path(self.config.ssh_public_key_file).expanduser()
+            if p.is_file():
+                key = p.read_text()
+                if key[-1] != "\n":
+                    key += "\n"
+                keys += key
+
+        return keys
+
+
+    @property
     def student_prefix(self):
         return self._student_prefix
 
@@ -707,6 +897,15 @@ class Description:
         return self._topology
 
     @property
+    def student_access_required(self):
+        any(guest.entry_point for _, guest in self._base_guests.items())
+
+    @property
+    def internet_access_required(self):
+        any(guest.internet_access for _, guest in self._base_guests.items())
+
+
+    @property
     def parameters_files(self):
         return self._parameters_files
 
@@ -729,7 +928,7 @@ class Description:
 
     @property
     def services(self):
-        return [service for service in [self._elastic, self._packetbeat, self._caldera] if service.enable]
+        return [service.name for service in [self._elastic, self._packetbeat, self._caldera] if service.enable]
 
     #----------- Setters ----------
     @base_lab.setter
@@ -803,7 +1002,7 @@ class Description:
             raise DescriptionException(f"Missing required option: {field} not defined.")
 
 
-    def _get_scenario_path(self, config, base_lab):
+    def _get_scenario_path(self, base_lab):
         """Constructs a path to search for the scenario specification.
         
         If lab_repo_uri is a path to a directory, this will return the
@@ -812,10 +1011,10 @@ class Description:
         to a temporary directory, which is returned.
         """
         # Open the lab directory if it exists, otherwise use a CTF package file
-        if Path(config.lab_repo_uri).joinpath(base_lab).is_dir():
-            return Path(config.lab_repo_uri).joinpath(base_lab)
+        if Path(self.config.lab_repo_uri).joinpath(base_lab).is_dir():
+            return Path(self.config.lab_repo_uri).joinpath(base_lab)
         else:
-            lab_pkg_file = Path(config.lab_repo_uri).joinpath(f"{base_lab}.ctf")
+            lab_pkg_file = Path(self.config.lab_repo_uri).joinpath(f"{base_lab}.ctf")
             if Path(lab_pkg_file).is_file():
                 pkg = ZipFile(lab_pkg_file)
                 # Extract the package to temporary directory

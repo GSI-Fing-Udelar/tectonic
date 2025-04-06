@@ -73,6 +73,7 @@ valid_aws_options = [
     { 
         "region": "eu-nowhere-1",
         "teacher_access": "endpoint",
+        "access_host_instance_type": "t2.small",
         "packetbeat_vlan_id": "2",
     },
 ]
@@ -158,21 +159,23 @@ def test_load_config(test_data_path):
     parser = ConfigParser()
     parser.read(filename)
 
-    default_config = TectonicConfig(parser['config']['lab_repo_uri'])
-    
     def assert_attr_eq(config_obj, config_parser, key):
         if isinstance(getattr(config_obj, key), bool):
             assert getattr(config_obj, key) == config_parser.getboolean(key)
         else:
             assert str(getattr(config_obj, key)) == config_parser[key]
-    for config_obj, config_parser in [(config, parser['config']),
-                                      (config.ansible, parser['ansible']),
-                                      (config.aws, parser['aws']),
-                                      (config.libvirt, parser['libvirt']),
-                                      (config.docker, parser['docker']),
-                                      (config.elastic, parser['elastic']),
-                                      (config.caldera, parser['caldera'])
-                                      ]:
+
+    default_tectonic_config = TectonicConfig(parser['config']['lab_repo_uri'])
+
+    for section in ["config", "ansible", "aws", "libvirt", "docker", "elastic", "caldera"]:
+        if section == "config":
+            config_obj = config
+            default_config = default_tectonic_config
+        else:
+            config_obj = getattr(config, section)
+            default_config = getattr(default_tectonic_config, section)
+        config_parser = parser[section]
+
         # For each TectonicConfig attribute, test that the value is
         # equal to the ini if it exists, or the default value.
         for key in [a for a in dir(config_obj) if isinstance(getattr(config_obj.__class__, a, None), property) and 

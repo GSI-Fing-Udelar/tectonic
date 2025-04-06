@@ -26,6 +26,7 @@ class TectonicConfigAWS(object):
     def __init__(self):
         self.region = "us-east-1"
         self.teacher_access = "host"
+        self.access_host_instance_type = "t2.micro"
         self.packetbeat_vlan_id = 1
 
     #----------- Getters ----------
@@ -36,6 +37,10 @@ class TectonicConfigAWS(object):
     @property
     def teacher_access(self):
         return self._teacher_access
+
+    @property
+    def access_host_instance_type(self):
+        return self._access_host_instance_type
 
     @property
     def packetbeat_vlan_id(self):
@@ -51,6 +56,12 @@ class TectonicConfigAWS(object):
     def teacher_access(self, value):
         validate.supported_value("teacher_access", value, ["host", "endpoint"])
         self._teacher_access = value
+
+    @access_host_instance_type.setter
+    def access_host_instance_type(self, value):
+        validate.regex("access_host_instance_type", value, r"[a-zA-Z0-9-]+.[a-zA-Z0-9-]+")
+        self._access_host_instance_type = value
+
 
     @packetbeat_vlan_id.setter
     def packetbeat_vlan_id(self, value):
