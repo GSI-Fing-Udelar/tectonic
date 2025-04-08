@@ -39,14 +39,16 @@ class DescriptionException(Exception):
 
 class NetworkDescription():
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, description, base_name):
+        self._institution = description.institution
+        self._lab_name = description.lab_name
+        self.base_name = base_name
         self.index = 0
         self.members = []
 
     @property
-    def name(self):
-        return self._name
+    def base_name(self):
+        return self._base_name
 
     @property
     def index(self):
@@ -56,12 +58,12 @@ class NetworkDescription():
     def members(self):
         return self._members
 
-    @name.setter
-    def name(self, value):
+    @base_name.setter
+    def base_name(self, value):
         value = re.sub("[^a-zA-Z0-9]+", "", value).lower()
         if value == "":
             raise DescriptionException(f"Invalid network name {value}. Must have at least one alphanumeric symbol.")
-        self._name = value
+        self._base_name = value
 
     @index.setter
     def index(self, value):
@@ -80,20 +82,17 @@ class NetworkDescription():
 class ScenarioNetwork(NetworkDescription):
 
     def __init__(self, description, base_network, instance_num, ip_network):
-        super().__init__(base_network.name)
+        super().__init__(description, base_network.base_name)
         self.index = base_network.index
         self.members = base_network.members
-
-        self.base_name = base_network.name
-        self.name = description.institution + "-" + \
-            description.lab_name + "-" + str(instance_num) + "-" + base_network.name
         self.instance = instance_num
         self.ip_network = ip_network
         self.mode = "none"
 
     @property
     def name(self):
-        return self._name
+        return self._institution + "-" + \
+            self._lab_name + "-" + str(self.instance) + "-" + self.base_name
 
     @property
     def base_name(self):
@@ -144,17 +143,31 @@ class ScenarioNetwork(NetworkDescription):
 
 
 class MachineDescription:
-    def __init__(self, name, default_os):
-        self.name = name
-        self.os = default_os
+    def __init__(self, description, base_name, os=None):
+        self._description = description
+        self.base_name = base_name
+        self.os = os or description.default_os
         self.memory = 1024
         self.vcpu = 1
         self.disk = 10
+        self.gpu = False
 
     #----------- Getters ----------
     @property
-    def name(self):
-        return self._name
+    def institution(self):
+        return self._description.institution
+
+    @property
+    def lab_name(self):
+        return self._description.lab_name
+
+    @property
+    def base_name(self):
+        return self._base_name
+
+    @property
+    def image_name(self):
+        return f"{self._description.institution}-{self._description.lab_name}-{self.base_name}"
 
     @property
     def os(self):
@@ -173,13 +186,38 @@ class MachineDescription:
         return self._vcpu
 
     @property
+    def gpu(self):
+        return self._gpu
+
+    @property
     def disk(self):
         return self._disk
 
+    @property
+    def instance_type(self):
+        self._description.instance_type.get_guest_instance_type(self.memory,
+                                                                self.vcpu,
+                                                                self.gpu,
+                                                                self.monitor,
+                                                                self.description.elastic.monitor_type)
+
     #----------- Setters ----------
-    @name.setter
-    def name(self, value):
-        self._name = value
+    @institution.setter
+    def institution(self, value):
+        self._institution = value
+
+    @lab_name.setter
+    def lab_name(self, value):
+        self._lab_name = value
+
+    @base_name.setter
+    def base_name(self, value):
+        value = re.sub("[^a-zA-Z0-9]+", "", value).lower()
+        if value == "":
+            raise DescriptionException(
+                f"Invalid machine name {value}. Must have at least one alphanumeric symbol."
+            )
+        self._base_name = value
 
     @os.setter
     def os(self, value):
@@ -196,6 +234,11 @@ class MachineDescription:
         validate.number("vcpu", value, min_value=1)
         self._vcpu = value
 
+    @gpu.setter
+    def gpu(self, value):
+        validate.boolean("gpu", value)
+        self._gpu = value
+
     @disk.setter
     def disk(self, value):
         validate.number("disk", value, min_value=5)
@@ -209,19 +252,14 @@ class MachineDescription:
 
 
 class BaseGuestDescription(MachineDescription):
-    def __init__(self, name, default_os):
-        super().__init__(name, default_os)
+    def __init__(self, description, base_name):
+        super().__init__(description, base_name)
         self.entry_point = False
         self.internet_access = False
         self.copies = 1
         self.monitor = False
         self.red_team_agent = False
         self.blue_team_agent = False
-
-    # Redefine the name property, for stronger validation
-    @property
-    def name(self):
-        return self._name
 
     @property
     def entry_point(self):
@@ -246,15 +284,6 @@ class BaseGuestDescription(MachineDescription):
     @property
     def blue_team_agent(self):
         return self._blue_team_agent
-
-    @name.setter
-    def name(self, value):
-        value = re.sub("[^a-zA-Z0-9]+", "", value).lower()
-        if value == "":
-            raise DescriptionException(
-                f"Invalid machine name {value}. Must have at least one alphanumeric symbol."
-            )
-        self._name = value
 
     @entry_point.setter
     def entry_point(self, value):
@@ -290,7 +319,7 @@ class BaseGuestDescription(MachineDescription):
         """Loads the information from the yaml structure in data."""
         self.load_machine(data)
 
-        self.name = data.get("name", self.name)
+        self.base_name = data.get("name", self.base_name)
         self.entry_point = data.get("entry_point", self.entry_point)
         self.os = data.get("os", self.os)
         self.internet_access = data.get("internet_access", self.internet_access)
@@ -386,13 +415,14 @@ class NetworkInterface():
 class GuestDescription(BaseGuestDescription):
     def __init__(self, description, base_guest, instance_num, copy,
                  is_in_services_network=False):
+        super().__init__(description, base_guest.base_name)
         # Copy base_guest data
-        self.base_name = base_guest.name
+        self.base_name = base_guest.base_name
         self.os = base_guest.os
         self.memory = base_guest.memory
         self.vcpu = base_guest.vcpu
         self.disk = base_guest.disk
-        self.gpu = base_guest.disk
+        self.gpu = base_guest.gpu
         self.entry_point = base_guest.entry_point
         self.internet_access = base_guest.internet_access
         self.copies = base_guest.copies
@@ -400,18 +430,14 @@ class GuestDescription(BaseGuestDescription):
         self.red_team_agent = base_guest.red_team_agent
         self.blue_team_agent = base_guest.blue_team_agent
 
-        copy_suffix = ("-" + str(copy)) if self.copies > 1 else ""
-        self._name = description.institution + "-" + description.lab_name + "-" + \
-            str(instance_num) + "-" + base_guest.name + copy_suffix
         self.instance = instance_num
         self.copy = copy
-        self.hostname = base_guest.name + "-" + str(instance_num) + copy_suffix
         self.is_in_services_network = is_in_services_network
 
         self._interfaces = {}
         interface_num = 1
         for network in [n for _ , n in description.scenario_networks.items()
-                        if base_guest.name in n.members]:
+                        if base_guest.base_name in n.members]:
             interface = NetworkInterface(description, self, network, interface_num)
             self._interfaces[interface.name] = interface
             interface_num += 1
@@ -423,7 +449,9 @@ class GuestDescription(BaseGuestDescription):
 
     @property
     def name(self):
-        return self._name
+        copy_suffix = ("-" + str(self.copy)) if self.copies > 1 else ""
+        return self.institution + "-" + self.lab_name + "-" + \
+            str(self.instance) + "-" + self.base_name + copy_suffix
 
     @property
     def base_name(self):
@@ -439,8 +467,9 @@ class GuestDescription(BaseGuestDescription):
 
     @property
     def hostname(self):
-        return self._hostname
-
+        copy_suffix = ("-" + str(self.copy)) if self.copies > 1 else ""
+        return self.base_name + "-" + str(self.instance) + copy_suffix
+        
     @property
     def is_in_services_network(self):
         return self._is_in_services_network
@@ -472,10 +501,6 @@ class GuestDescription(BaseGuestDescription):
             raise DescriptionException(f"Invalid guest name {value}. Must have at least one alphanumeric symbol.")
         self._base_name = value
 
-    @name.setter
-    def name(self, value):
-        self._name = value
-
     @instance.setter
     def instance(self, value):
         validate.number("instance", value, min_value=1)
@@ -485,11 +510,6 @@ class GuestDescription(BaseGuestDescription):
     def copy(self, value):
         validate.number("copy", value, min_value=0)
         self._copy = value
-
-    @hostname.setter
-    def hostname(self, value):
-        validate.hostname("hostname", value)
-        self._hostname = value
 
     @is_in_services_network.setter
     def is_in_services_network(self, value):
@@ -511,18 +531,26 @@ class GuestDescription(BaseGuestDescription):
 
 
 class ServiceDescription(MachineDescription):
-    def __init__(self, description, name, default_os):
-        super().__init__(name, default_os)
-        self._full_name = f"{description.institution}-{description.lab_name}-{name}"
+    def __init__(self, description, base_name, os):
+        super().__init__(description, base_name, os)
+        self.base_name = base_name
         self.enable = False
 
     @property
-    def full_name(self):
-        return self._full_name
+    def base_name(self):
+        return self._base_name
+
+    @property
+    def name(self):
+        return f"{self.institution}-{self.lab_name}-{self.base_name}"
 
     @property
     def enable(self):
         return self._enable
+
+    @base_name.setter
+    def base_name(self, value):
+        self._base_name = value
 
     @enable.setter
     def enable(self, value):
@@ -600,7 +628,7 @@ class PacketbeatDescription(ServiceDescription):
 
 class Description:
 
-    def __init__(self, config, lab_edition_path):
+    def __init__(self, config, instance_type, lab_edition_path):
         """Create a Description object.
 
         The description object is created from a lab edition file that
@@ -616,7 +644,8 @@ class Description:
         """
 
         self._config = config
-        
+        self._instance_type = instance_type
+
         # Read lab edition file
         try:
             self._lab_edition_path = tectonic.utils.absolute_path(lab_edition_path)
@@ -643,40 +672,41 @@ class Description:
         self.institution = description_data["institution"]
         self._required(description_data, "lab_name")
         self.base_lab = description_data["lab_name"]
+        # Load institution and lab name as it is needed
+        self.institution = lab_edition_data.get("institution", self.institution)
+        self.lab_name = lab_edition_data.get("lab_edition_name", self.base_lab)
         self.default_os = description_data.get("default_os", "ubuntu22")
 
         self._required(description_data, "guest_settings")
         self._base_guests = {}
         for name, guest_data in description_data["guest_settings"].items():
-            guest = BaseGuestDescription(name, self.default_os)
+            guest = BaseGuestDescription(self, name)
             guest.load_base_guest(guest_data)
-            self._base_guests[guest.name] = guest
+            self._base_guests[guest.base_name] = guest
 
         self._required(description_data, "topology")
         self._topology = {}
         network_index = 0
         for network_data in description_data["topology"]:
-            name = network_data["name"]
+            base_name = network_data["name"]
             # Repeat members for each copy
             members = [member for member in network_data["members"]
                        for copy in range(self._base_guests[member].copies)
                        ]
-            network = NetworkDescription(name)
+            network = NetworkDescription(self, base_name)
             network.index = network_index
             network_index += 1
             for member in members:
                 if not member in self._base_guests:
-                    raise DescriptionException(f"Undefined member {member} in network {name}.")
+                    raise DescriptionException(f"Undefined member {member} in network {base_name}.")
             network.members = members
-            self._topology[network.name] = network
+            self._topology[network.base_name] = network
         self._elastic = ElasticDescription(self)
         self._elastic.load_elastic(description_data.get("elastic", {}))
         self._caldera = CalderaDescription(self)
         self._caldera.load_caldera(description_data.get("caldera", {}))
 
         # Load lab edition data
-        self.institution = lab_edition_data.get("institution", self.institution)
-        self.lab_name = lab_edition_data.get("lab_edition_name", self.base_lab)
         self._required(lab_edition_data, "instance_number")
         self.instance_number = lab_edition_data["instance_number"]
         self.teacher_pubkey_dir = lab_edition_data.get("teacher_pubkey_dir")
@@ -722,7 +752,7 @@ class Description:
         Returns:
             list(str): full name of machines.
         """
-        # Validate filters    
+        # Validate filters
         infrastructure_guests_names = []
         if self.config.platform == "aws":
             if self.student_access_required:
@@ -730,7 +760,7 @@ class Description:
             if self.config.aws.teacher_access == "host":
                 infrastructure_guests_names.append("teacher_access")
         for service in self.services:
-            infrastructure_guests_names.append(service.name)
+            infrastructure_guests_names.append(service.base_name)
 
         guests_aux = list(self.base_guests.keys())
         if not only_instances:
@@ -739,80 +769,73 @@ class Description:
             raise DescriptionException("Invalid instance numbers specified.")
         if guests is not None and not set(guests).issubset(set(guests_aux)):
             raise DescriptionException("Invalid guests names specified.")
-        max_guest_copy = max([guest.copies for _, guest in self._base_guests.items() 
-                              if not guests or guest.name in guests], 
+        max_guest_copy = max((guest.copies for _, guest in self._base_guests.items()
+                              if not guests or guest.base_name in guests),
                              default=1)
         if max(copies, default=0) > max_guest_copy:
             raise DescriptionException("Invalid copies specified.")
 
-        # Compute all machine names
         result = []
-        for guest_name in self.scenario_guests:
-            result.append(guest_name)
+        for _, guest in self.scenario_guests.items():
+            if instances and guest.instance not in instances:
+                continue
+            if guests and guest.base_name not in guests:
+                continue
+            if copies and guest.copy not in copies:
+                continue
+            if exclude and guest.base_name in exclude:
+                continue
+            result.append(guest.name)
 
         if not only_instances:
             if self.config.platform == "aws":
-                result.append(f"{self.institution}-{self.lab_name}-student_access")
-                if self.config.aws.teacher_access == "host":
+                if ((not guests or "student_access" in guests) and
+                    (not exclude or "student_access" not in exclude)):
+                    result.append(f"{self.institution}-{self.lab_name}-student_access")
+                if ((self.config.aws.teacher_access == "host") and
+                    (not guests or "teacher_access" in guests) and
+                    (not exclude or "teacher_access" not in exclude)):
                     result.append(f"{self.institution}-{self.lab_name}-teacher_access")
 
             for service in self.services:
-                result.append(service.full_name)
-
-        # Filter the result
-        if instances:
-            instance_re = f"^{self.institution}-{self.lab_name}-({'|'.join(str(instance) for instance in instances)})-"
-            result = list(
-                filter(
-                    lambda machine: re.search(instance_re, machine) is not None, result
-                )
-            )
-
-        if guests:
-            guest_re = (
-                rf"^{self.institution}-{self.lab_name}(-\d+)?-({'|'.join(guests)})(-|$)"
-            )
-            result = list(
-                filter(lambda machine: re.search(guest_re, machine) is not None, result)
-            )
-
-        if copies:
-            one_copy_re = rf"^{self.institution}-{self.lab_name}-\d+-[^-]+$"
-            many_copies_re = rf"^{self.institution}-{self.lab_name}-\d+-[^-]+-({'|'.join(str(copy) for copy in copies)})$"
-            result = list(
-                filter(
-                    lambda machine: re.search(
-                        many_copies_re
-                        if (self.scenario_guests[machine].copies > 1)
-                        or (1 not in copies)
-                        else one_copy_re,
-                        machine,
-                    )
-                    is not None,
-                    result,
-                )
-            )
-
-        for machine in exclude:
-            guest_re = (
-                rf"^{self.institution}-{self.lab_name}(-\d+)?-{machine}(-|$)"
-            )
-            result = list(
-                filter(lambda machine: re.search(guest_re, machine) is None, result)
-            )
+                if ((not guests or service.base_name in guests) and
+                    (not exclude or service.base_name not in exclude)):
+                    result.append(service.name)
 
         if len(result) == 0:
             raise DescriptionException(
                 "No machines with the specified characteristics were found."
             )
-        else:
-            return result
+
+        return result
+
+    def get_parameters(self, instances):
+        if not instances:
+            instances = list(range(1,self.instance_number+1))
+        random.seed(self.random_seed)
+        choices = {}
+        for file in self.parameters_files:
+            with open(file, "r") as f:
+                choices[Path(file).stem] = random.choices(f.readlines(),k=self.instance_number)
+        parameters = {}
+        for instance in instances:
+            parameter = {}
+            for choice in choices:
+                parameter[choice] = json.loads(choices[choice][instance-1])
+            parameters[instance] = parameter
+        return parameters
+
+
 
 
     #----------- Getters ----------
     @property
     def config(self):
         return self._config
+
+    @property
+    def instance_type(self):
+        return self._instance_type
 
     @property
     def lab_edition_path(self):
@@ -825,6 +848,10 @@ class Description:
     @property
     def scenario_dir(self):
         return self._scenario_dir
+
+    @property
+    def ansible_dir(self):
+        return Path(self._scenario_dir) / 'ansible'
 
     @property
     def base_lab(self):
@@ -854,13 +881,7 @@ class Description:
         teacher_pubkey_dir plus config option ssh_public_key_file.
         """
         keys = ""
-        if self.teacher_pubkey_dir and Path(self.teacher_pubkey_dir).is_dir():
-            for child in Path(self.teacher_pubkey_dir).iterdir():
-                if child.is_file():
-                    key = child.read_text()
-                    if key[-1] != "\n":
-                        key += "\n"
-                    keys += key
+        keys += tectonic.utils.read_all_files_in_dir(self.teacher_pubkey_dir)
 
         if self.config.ssh_public_key_file is not None:
             p = Path(self.config.ssh_public_key_file).expanduser()
@@ -934,6 +955,7 @@ class Description:
     @property
     def services(self):
         return [service for service in [self._elastic, self._packetbeat, self._caldera] if service.enable]
+
 
     #----------- Setters ----------
     @base_lab.setter
@@ -1052,7 +1074,7 @@ class Description:
             instance_subnets = list(ip_network.subnets(new_subnet_bits))
             for _, network in self.topology.items():
                 scenario_network = ScenarioNetwork(self, network, instance_num, str(instance_subnets[network.index]))
-                networks[network.name] = scenario_network
+                networks[scenario_network.name] = scenario_network
         return networks
 
 

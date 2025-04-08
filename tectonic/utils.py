@@ -68,6 +68,16 @@ def absolute_path(path, base_dir=None, expand_user=True):
 
 
 
+def read_all_files_in_dir(directory):
+    contents = ""
+    if directory and Path(directory).is_dir():
+        for child in Path(directory).iterdir():
+            if child.is_file():
+                content = child.read_text()
+                if content[-1] != "\n":
+                    content += "\n"
+                contents += content
+    return contents
 
 
 

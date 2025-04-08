@@ -26,7 +26,10 @@ from passlib.hash import sha512_crypt
 import string
 import os
 
+import tectonic.utils
 from tectonic.config import TectonicConfig
+from tectonic.instance_type import InstanceType
+from tectonic.instance_type_aws import InstanceTypeAWS
 from tectonic.description import Description
 from tectonic.ansible import Ansible
 from tectonic.packer import Packer
@@ -68,8 +71,11 @@ class Core:
         Initialize the core object.
         """
         self.config = TectonicConfig.load(config_path)
-        self.description = Description(self.config, lab_edition_path)
-        self.packer = Packer()
+        if self.config.platform == "aws":
+            instance_type = InstanceTypeAWS()
+        else:
+            instance_type = InstanceType()
+        self.description = Description(self.config, instance_type, lab_edition_path)
         self.ansible = Ansible(None)
         terraform_backend_info = {
             "gitlab_url": self.config.gitlab_backend_url,
@@ -81,19 +87,20 @@ class Core:
         self.services_terraform_module = tectonic_resources.files('tectonic') / 'services' / 'terraform' / f"services-{self.config.platform}"
 
         if self.TECHNOLOGY == "aws": #TODO: fix initialization
-            self.client = ClientAWS(self.config, self.description, self.config.aws.region)
+            self.client = ClientAWS(self.config, self.description)
             self.instance_manager = InstanceManagerAWS(self.config, self.description, self.client)
             self.service_manager = ServiceManagerAWS(self.config, self.description, self.client)
         elif self.TECHNOLOGY == "libvirt":
-            self.client = ClientLibvirt(self.config, self.description, self.config.libvirt.uri)
+            self.client = ClientLibvirt(self.config, self.description)
             self.instance_manager = InstanceManagerLibvirt(self.config, self.description, self.client)
             self.service_manager = ServiceManagerLibvirt(self.config, self.description, self.client)
         elif self.TECHNOLOGY == "docker":
-            self.client = ClientDocker(self.config, self.description, self.config.docker.uri)
+            self.client = ClientDocker(self.config, self.description)
             self.instance_manager = InstanceManagerDocker(self.config, self.description, self.client)
             self.service_manager = ServiceManagerDocker(self.config, self.description, self.client)
         else:
             raise CoreException("Unknown technology.")
+        self.packer = Packer(self.config, self.description, self.client)
         
     def __del__(self):
         del self.service_manager
@@ -102,111 +109,75 @@ class Core:
         del self.description
         del self.config
 
-    def create_images(self, guests, services):
+    def create_images(self, create_guests, create_services):
         """
         Create base images.
 
         Parameters:
-            guests (list(str)): names of the guests for which to create images. 
-            services (list(str)): names of the services for which to create images.
+            create_guests (bool): whether to create images for guests
+            create_services (bool): whether to create images for services
         """
         # Create instances images
-        if guests is not None:
-            machines = {}
-            for guest_name in guests:
-                monitor = True if self.description.deploy_elastic and self.description.get_guest_attr(guest_name, "monitor", False) and self.description.monitor_type == "endpoint" else False
-                machines[guest_name] = {
-                    "base_os": self.description.get_guest_attr(guest_name, "base_os", self.description.default_os),
-                    "endpoint_monitoring" : monitor,
-                }
-                if self.description.platform == "libvirt":
-                    machines[guest_name]["vcpu"] = self.description.get_guest_attr(guest_name, "vcpu", 1)
-                    machines[guest_name]["memory"] = self.description.get_guest_attr(guest_name, "memory", 1024)
-                    machines[guest_name]["disk"] = self.description.get_guest_attr(guest_name, "disk", 10)
-                elif self.description.platform == "aws":
-                    machines[guest_name]["disk"] = self.description.get_guest_attr(guest_name, "disk", 8)
-                    machines[guest_name]["instance_type"] = self.description.instance_type.get_guest_instance_type(
-                        self.description.get_guest_attr(guest_name, "memory", 1),
-                        self.description.get_guest_attr(guest_name, "vcpu", 1),
-                        self.description.get_guest_attr(guest_name, "gpu", False),
-                        monitor,
-                        self.description.monitor_type,
-                    )
+        if create_guests:
             args = {
-                "ansible_playbooks_path": self.description.ansible_playbooks_path,
-                "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.description.platform != "docker" else "",
-                "ansible_ssh_common_args": self.description.ansible_ssh_common_args,
-                "aws_region": self.description.aws_region,
+                "ansible_playbooks_path": self.description.ansible_dir,
+                "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
+                "ansible_ssh_common_args": self.config.ansible.ssh_common_args,
+                "aws_region": self.config.aws.region,
                 "instance_number": self.description.instance_number,
                 "institution": self.description.institution,
                 "lab_name": self.description.lab_name,
-                "libvirt_storage_pool": self.description.libvirt_storage_pool,
-                "libvirt_uri": self.description.libvirt_uri,
-                "machines_json": json.dumps(machines),
+                "libvirt_storage_pool": self.config.libvirt.storage_pool,
+                "libvirt_uri": self.config.libvirt.uri,
+                "machines_json": json.dumps(self.description.base_guests),
                 "os_data_json": json.dumps(OS_DATA),
-                "platform": self.description.platform,
-                "remove_ansible_logs": str(not self.description.keep_ansible_logs),
-                "elastic_version": self.description.elastic_stack_version
+                "platform": self.config.platform,
+                "remove_ansible_logs": str(not self.config.ansible.keep_logs),
+                "elastic_version": self.config.elastic.elastic_stack_version
             }
-            if self.description.proxy is not None and self.description.proxy != "":
-                args["proxy"] = self.description.proxy
-            self._destroy_image(guests)
+            if self.config.proxy:
+                args["proxy"] = self.config.proxy
+            self._destroy_image(self.description.base_guests)
             self.instance_manager.create_image(self.packer, self.INSTANCES_PACKER_MODULE, args)
 
         # Create services images
-        if services is not None:
-            machines = {}
-            for service in services:
-                machines[service] = {
-                    "base_os": self.description.get_service_base_os(service),
-                    "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / service / 'base_config.yml'),
-                }
-                if self.description.platform == "libvirt":
-                    machines[service]["vcpu"] = self.description.services[service]["vcpu"]
-                    machines[service]["memory"] = self.description.services[service]["memory"]
-                    machines[service]["disk"] = self.description.services[service]["disk"]
-                elif self.description.platform == "aws":
-                    machines[service]["disk"] = self.description.services[service]["disk"]
-                    if service in ["caldera", "elastic"]:
-                        machines[service]["instance_type"] = self.description.instance_type.get_guest_instance_type(self.description.services[service]["memory"], self.description.services[service]["vcpu"], False, False, self.description.monitor_type)
-                    elif service == "packetbeat":
-                        machines[service]["instance_type"] = "t2.micro"
+        if create_services:
             args = {
                 "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.description.platform != "docker" else "",
-                "ansible_ssh_common_args": self.description.ansible_ssh_common_args,
-                "aws_region": self.description.aws_region,
-                "proxy": self.description.proxy,
-                "libvirt_storage_pool": self.description.libvirt_storage_pool,
-                "libvirt_uri": self.description.libvirt_uri,
-                "machines_json": json.dumps(machines),
+                "ansible_ssh_common_args": self.config.ansible.ssh_common_args,
+                "aws_region": self.config.aws.region,
+                "libvirt_storage_pool": self.config.libvirt.storage_pool,
+                "libvirt_uri": self.config.libvirt.uri,
+                "machines_json": json.dumps(self.description.services),
                 "os_data_json": json.dumps(OS_DATA),
-                "platform": self.description.platform,
-                "remove_ansible_logs": str(not self.description.keep_ansible_logs),
+                "platform": self.config.platform,
+                "remove_ansible_logs": str(not self.config.ansible.keep_logs),
                 #TODO: pass variables as a json as part of each host
-                "elastic_version": self.description.elastic_stack_version, 
-                "elastic_latest_version": "yes" if self.description.is_elastic_stack_latest_version else "no",
-                "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
-                "caldera_version": self.description.caldera_version,
-                "packetbeat_vlan_id": self.description.packetbeat_vlan_id,
+                "elastic_version": self.config.elastic.elastic_stack_version, 
+                "elastic_latest_version": str(self.config.elastic.elastic_stack_version == "latest"), # TODO: Check this
+                "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
+                "caldera_version": self.config.caldera.version,
+                "packetbeat_vlan_id": self.config.aws.packetbeat_vlan_id,
             }
+            if self.config.proxy:
+                args["proxy"] = self.config.proxy
             # TODO: lo de arriba de generar el args lo pasaría al description? así no hay que poner if con la tecnología acá.
-            self._destroy_image(services)
+            self._destroy_image(self.description.services)
             self.packer.create_image(self.SERVICES_PACKER_MODULE, args)
 
 
-    def _destroy_image(self, names):
+    def _destroy_image(self, guests):
         """
         Destroy base images.
 
         Parameters:
             names (list(str)): names of the machines for which to destroy images. 
         """
-        for guest_name in names:
-            image_name = self.description.get_image_name(guest_name)
-            if self.client.is_image_in_use(image_name):
-                raise CoreException(f"Unable to delete image {image_name} because it is being used.")
-        for guest_name in names:
-            self.client.delete_image(self.description.get_image_name(guest_name))
+        for guest in guests:
+            if self.client.is_image_in_use(guest.image_name):
+                raise CoreException(f"Unable to delete image {guest.image_name} because it is being used.")
+        for guest in guests:
+            self.client.delete_image(guest.image_name)
 
     
     def deploy(self, instances, create_instances_images, create_services_images):
@@ -218,11 +189,7 @@ class Core:
             create_instances_images: whether to create instances images.
             create_services_images: whether to create services images.
         """
-        # Create images
-        if create_instances_images:
-            self.create_images(self.description.guest_settings.keys(), None)
-        if create_services_images:
-            self.create_images(None, self.description.get_services_to_deploy())
+        self.create_images(create_instances_images, create_services_images)
 
         # Deploy instances
         instances_resources_to_create = None
@@ -238,23 +205,21 @@ class Core:
         self.terraform.apply(self.services_terraform_module, self.service_manager.get_terraform_variables(), services_resources_to_create)
         
         # Wait for services to bootup
-        services_to_deploy = []
-        for service in self.description.get_services_to_deploy():
-            services_to_deploy.append(self.description.get_service_name(service))
+        services_to_deploy = [service.name for service in self.description.services]
         extra_vars = {
             "elastic" : {
-                "monitor_type": self.description.monitor_type,
-                "deploy_policy": self.description.elastic_deploy_default_policy,
-                "policy_name": self.description.packetbeat_policy_name if self.description.monitor_type == "traffic" else self.description.endpoint_policy_name,
-                "http_proxy" : self.description.proxy,
-                "description_path": self.description.description_dir,
-                "ip": str(ipaddress.IPv4Network(self.description.services_network)[2]),
-                "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
-                "dns": self.description.docker_dns,
+                "monitor_type": self.description.elastic.monitor_type,
+                "deploy_policy": self.description.elastic.deploy_default_policy,
+                "policy_name": self.config.elastic.packetbeat_policy_name if self.description.elastic.monitor_type == "traffic" else self.config.elastic.endpoint_policy_name,
+                "http_proxy" : self.config.proxy,
+                "description_path": self.description.scenario_dir,
+                "ip": str(ipaddress.IPv4Network(self.config.services_network_cidr_block)[2]),
+                "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
+                "dns": self.config.docker.dns,
             },
             "caldera":{
-                "ip": str(ipaddress.IPv4Network(self.description.services_network)[4]),
-                "description_path": self.description.description_dir,
+                "ip": str(ipaddress.IPv4Network(self.config.services_network_cidr_block)[4]),
+                "description_path": self.description.scenario_dir,
             },
         }
         #TODO: mejorar la creación de este inventario para servicios pensando en que se agreguen otros servicios.
@@ -274,14 +239,14 @@ class Core:
         self.instance_manager.configure_students_access(instances)  
 
         # Configure Elastic monitoring
-        if self.description.deploy_elastic:
-            if self.description.monitor_type == "traffic":
+        if self.description.elastic.enable:
+            if self.description.elastic.monitor_type == "traffic":
                 self.service_manager.deploy_packetbeat(self.ansible)
-            elif self.description.monitor_type == "endpoint":
+            elif self.description.elastic.monitor_type == "endpoint":
                 self.service_manager.install_elastic_agent(self.ansible, instances)
 
         # Configure Caldera agents
-        if self.description.deploy_caldera:
+        if self.description.caldera.enable:
             self.service_manager.install_caldera_agent(self.ansible, instances)
 
     def destroy(self, instances, destroy_instances_images, destroy_services_images):
@@ -307,14 +272,14 @@ class Core:
 
         if instances is None:
             # Destroy Packetbeat
-            if self.description.deploy_elastic and self.description.monitor_type == "traffic":
+            if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
                 self.instance_manager.destroy_packetbeat(self.ansible)
                 
             # Destroy images
             if destroy_instances_images:
-                self._destroy_image(self.description.guest_settings.keys())
+                self._destroy_image(self.description.base_guests)
             if destroy_services_images:
-                self._destroy_image(self.description.get_services_to_deploy())
+                self._destroy_image(self.description.services)
     
     def recreate(self, instances, guests, copies):
         """
@@ -330,7 +295,7 @@ class Core:
         self.terraform.apply(self.instances_terraform_module, self.instance_manager.get_terraform_variables(), resources_to_recreate)
 
         # Wait for instances to bootup
-        self.ansible.wait_for_connections(instances, guests, copies, False, self.description.get_services_to_deploy())
+        self.ansible.wait_for_connections(instances, guests, copies, False, self.description.services)
         
         # Run instances post clone configuration
         self.ansible.run(instances, guests, copies, quiet=True, only_instances=False)
@@ -339,11 +304,11 @@ class Core:
         self.instance_manager.configure_students_access(instances)
 
         # Configure Elastic monitoring
-        if self.description.deploy_elastic and self.description.monitor_type == "endpoint":
+        if self.description.elastic.enable and self.description.elastic.monitor_type == "endpoint":
             self.service_manager.install_elastic_agent(self.ansible, instances)
 
         # Configure Caldera agents
-        if self.description.deploy_caldera:
+        if self.description.caldera.enable:
             self.service_manager.install_caldera_agent(self.ansible, instances)
 
     def start(self, instances, guests, copies, start_services):
@@ -357,16 +322,16 @@ class Core:
             start_services (bool): whether the services should be started.
         """
         #Start instances
-        machines_to_start = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
+        machines_to_start = self.description.parse_machines(instances, guests, copies, False,
+                                                            [service.base_name for service in self.description.services])
         for machine in machines_to_start:
             self.client.start_machine(machine)
 
         #Start services
         if start_services:
-            services_to_start = self.description.get_services_to_deploy() # TODO: implement this for each technology?
-            for service in services_to_start:
-                self.client.start_machine(service)
-            if self.description.deploy_elastic and self.description.monitor_type == "traffic":
+            for service in self.description.services:
+                self.client.start_machine(service.name)
+            if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
                 self.service_manager.manage_packetbeat(self.ansible, "started") # TODO: ver que pasa en AWS con start, stop, restart del servicio de packetbeat 
                                                                                 # ya que la máquina donde se instala también sufre esta acción. En libvirt y docker esto no pasa. 
 
@@ -381,17 +346,17 @@ class Core:
             stop_services (bool): whether the services should be stopped.
         """
         #Stop instances
-        machines_to_stop = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
+        machines_to_stop = self.description.parse_machines(instances, guests, copies, False,
+                                                           [service.base_name for service in self.description.services])
         for machine in machines_to_stop:
             self.client.stop_machine(machine)
 
         #Stop services
         if stop_services:
-            services_to_stop = self.description.get_services_to_deploy() # TODO: implement this for each technology.
-            for service in services_to_stop:
-                self.client.stop_machine(service)
-            if self.description.deploy_elastic and self.description.monitor_type == "traffic":
-                self.service_manager.manage_packetbeat(self.ansible, "stopped") 
+            for service in self.description.services:
+                self.client.stop_machine(service.name)
+            if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
+                self.service_manager.manage_packetbeat(self.ansible, "stopped")
 
     def restart(self, instances, guests, copies, restart_services):
         """
@@ -404,16 +369,16 @@ class Core:
             restart_services (bool): whether the services should be restarted.
         """
         #Stop instances
-        machines_to_restart = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
+        machines_to_restart = self.description.parse_machines(instances, guests, copies, False,
+                                                              [service.base_name for service in self.description.services])
         for machine in machines_to_restart:
             self.client.restart_machine(machine)
 
         #Stop services
         if restart_services:
-            services_to_restart = self.description.get_services_to_deploy() # TODO: implement this for each technology.
-            for service in services_to_restart:
-                self.client.restart_machine(service)
-            if self.description.deploy_elastic and self.description.monitor_type == "traffic":
+            for service in self.description.services:
+                self.client.restart_machine(service.name)
+            if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
                 self.service_manager.manage_packetbeat(self.ansible, "restarted")
 
         raise NotImplementedError
@@ -426,20 +391,20 @@ class Core:
             dict: scenario information.
         """
         instances_info = {}
-        if self.description.is_student_access():
+        if self.description.student_access_required:
             student_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-student_access")
             if student_access_ip is not None:
                 instances_info["Student Access IP"] = student_access_ip
-        if self.description.teacher_access == "host":
+        if self.config.aws.teacher_access == "host":
             teacher_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-teacher_access")
             if teacher_access_ip is not None:
                 instances_info["Teacher Access IP"] = teacher_access_ip
 
         service_info = {}
-        for service in self.description.get_services_to_deploy():
+        for service in self.description.services:
             credentials = self.service_manager.get_service_credentials(service, self.ansible)
-            ip = self.client.get_machine_private_ip(service) # En docker tiene que ser 127.0.0.1 ver como arreglar.
-            service_info[service] = {
+            ip = self.client.get_machine_private_ip(service.name) # En docker tiene que ser 127.0.0.1 ver como arreglar.
+            service_info[service.name] = {
                 "ip": ip,
                 "credentials": credentials,
             }
@@ -463,14 +428,15 @@ class Core:
             dict: status of instances.
         """
         instances_status = {}
-        machines_to_list = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
+        machines_to_list = self.description.parse_machines(instances, guests, copies, False, 
+                                                           [service.base_name for service in self.description.services])
         for machine in machines_to_list:
             instances_status[machine] = self.client.get_machine_status(machine)
 
         services_status = {}
-        for service in self.description.get_services_to_deploy():
-            services_status[service] = self.client.get_machine_status(service)
-        if self.description.monitor_type == "traffic":
+        for service in self.description.services:
+            services_status[service.name] = self.client.get_machine_status(service.name)
+        if self.description.elastic.monitor_type == "traffic":
             packetbeat_status = self.service_manager.manage_packetbeat(self.ansible,"status")
             if packetbeat_status is not None:
                 services_status[f"{self.description.institution}-{self.description.lab_name}-packetbeat"] = packetbeat_status
@@ -520,7 +486,7 @@ class Core:
         if len(machine_to_connect) != 1:
             raise CoreException("You must specify only one machine to connect.")
         machine_name = machine_to_connect[0]
-        username = username or self.description.get_guest_username(self.description.get_base_name(machine_name))
+        username = username or self.description.scenario_guests[machine_name].admin_username
         self.instance_manager.connect(machine_name, username)
 
     def configure_students_access(self, instances):
@@ -530,8 +496,8 @@ class Core:
         Credentials can be public SSH keys and/or autogenerated passwords.
         """
         only_instances = True
-        entry_points = [ base_name for base_name, guest in self.description.guest_settings.items() if guest and guest.get("entry_point") ]
-        if self.description.is_student_access(): # TODO: haría un description por platform
+        entry_points = [guest for _, guest in self.description.scenario_guests.items() if guest.entry_point]
+        if self.config.platform == "aws" and entry_points:
             entry_points.append("student_access")
             only_instances = False
         users = self._generate_students_credentials()
@@ -541,7 +507,8 @@ class Core:
             copies=None,
             playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
             only_instances=only_instances,
-            extra_vars={"users": users, "prefix": self.description.student_prefix, "ssh_password_login": self.description.create_student_passwords},
+            extra_vars={"users": users, "prefix": self.description.student_prefix,
+                        "ssh_password_login": self.description.create_students_passwords},
             quiet=True,
         )
 
@@ -554,17 +521,17 @@ class Core:
         """
         credentials = {}
         random.seed(self.description.random_seed)
-        for i in self.description.get_instance_range():
+        for i in range(1, self.description.instance_number+1):
             username = f"{self.description.student_prefix}{i:02d}"
             credentials[username] = {}
-            if self.description.create_student_passwords:
+            if self.description.create_students_passwords:
                 characters = string.ascii_letters + string.digits
                 password = "".join(random.choice(characters) for _ in range(12))
                 salt = "".join(random.choice(characters) for _ in range(16))
                 credentials[username]["password"] = password
                 credentials[username]["password_hash"] = sha512_crypt.using(salt=salt).hash(password)
             if self.description.student_pubkey_dir:
-                credentials[username]["authorized_keys"] = self.description.read_pubkeys(os.path.join(self.description.student_pubkey_dir, username))
+                credentials[username]["authorized_keys"] = tectonic.utils.read_all_files_in_dir(self.description.student_pubkey_dir)
         return credentials
 
     def get_students_password(self):
@@ -575,7 +542,7 @@ class Core:
             dic: the password for each user.
         """
         passwords = {}
-        if self.description.create_student_passwords:
+        if self.description.create_students_passwords:
             users = self._generate_students_credentials()
             for username, user in users.items():
                 passwords[username] = user['password']

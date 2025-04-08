@@ -91,7 +91,7 @@ class ClientDocker(Client):
         try:
             lab_network = ip_network(self.config.network_cidr_block)
             services_network = ip_network(self.config.services_network_cidr_block)
-            services_list = [s.full_name for s in self.description.services]
+            services_list = [s.name for s in self.description.services]
 
             container = self.connection.containers.get(machine_name)
             for network in container.attrs["NetworkSettings"]["Networks"]:

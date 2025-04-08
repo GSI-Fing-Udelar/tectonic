@@ -193,25 +193,12 @@ class InstanceManagerAWS(InstanceManager):
           list(str): resources name of the aws_network_interface for the instances.
         """
         resources = []
-        for instance in filter(
-            lambda i: i <= self.description.instance_number,
-            instances or range(1, self.description.instance_number + 1),
-        ):
-            for _, guest in self.description.base_guests.items():
-                for _, interface in guest.interfaces.items():
-                    if guest.copies == 1:
-                        resources.append(
-                            'aws_network_interface.interfaces["'
-                            f"{self.description.institution}-{self.description.lab_name}-{instance}-{guest.name}-{interface.index}"
-                            '"]'
-                        )
-                    else:
-                        for copy in range(1, guest.copies + 1):
-                            resources.append(
-                                'aws_network_interface.interfaces["'
-                                f"{self.description.institution}-{self.description.lab_name}-{instance}-{guest.name}-{copy}-{interface.index}"
-                                '"]'
-                            )
+        for guest in self.description.scenario_guests:
+            if instances and guest.instance not in instances:
+                continue
+            for _, interface in guest.interfaces.items():
+                resources.append(f"aws_network_interface.interfaces[\"{interface.name}\"]")
+
         return resources
     
     def get_resources_to_target_apply(self, instances):

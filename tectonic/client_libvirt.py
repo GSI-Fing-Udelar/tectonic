@@ -108,7 +108,7 @@ class ClientLibvirt(Client):
             self._wait_for_agent(domain)
             lab_network = ip_network(self.config.network_cidr_block)
             services_network = ip_network(self.config.services_network_cidr_block)
-            services_list = [s.full_name for s in self.description.services]
+            services_list = [s.name for s in self.description.services]
             interfaces = domain.interfaceAddresses(
                 libvirt.VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT, 0
             )

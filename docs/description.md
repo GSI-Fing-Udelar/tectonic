@@ -202,7 +202,7 @@ The lab edition is a YAML file with the following options:
   + `student_pubkey_dir`: A directory containing a subdirectory for
     each student, with SSH public keys. Optional, defaults to not
     setting any public key in the users authorized_keys file.
-  + `create_student_passwords`: Whether to create a pseudo-random
+  + `create_students_passwords`: Whether to create a pseudo-random
     password for the students. These passwords are printed on
     deployment and student-access execution. Optional, defaults to
     `false`.

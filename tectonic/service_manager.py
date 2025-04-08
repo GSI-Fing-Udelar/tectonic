@@ -52,20 +52,20 @@ class ServiceManager(ABC):
         self.description = description
         self.client = client
 
-    def get_service_credentials(self, service_base_name, ansible):
+    def get_service_credentials(self, service, ansible):
         """
         Get service credentials. Use Ansible to connect to machine and get the credentials.
 
         Parameters:
-            service_base_name (str): service name (example: caldera).
+            service (ServiceDescription): A service description object.
             ansible (Ansible): Tectonic Ansible object.
         """
         ansible.run(
             instances=None,
-            guests=[service_base_name],
+            guests=[service.base_name],
             playbook = tectonic_resources.files('tectonic') / 'playbooks' / 'services_get_password.yml',
             only_instances=False,
-            username=OS_DATA[self.description.get_service_base_os(service_base_name)]["username"],
+            username=OS_DATA[service.os]["username"],
             quiet=True
         )
         credentials = ansible.debug_outputs[0]["password.stdout"].split("\n")
@@ -80,7 +80,7 @@ class ServiceManager(ABC):
         Get service info. Use Ansible to execute action against service and get specific info.
 
         Parameters:
-            service_base_name (str): service name (example: caldera).
+            service (ServiceDescription): A service description object.
             ansible (Ansible): Tectonic Ansible object.
             playbook (Path): Ansible playbook to apply.
             ansible_vars (dict): Ansible variables to use.
@@ -90,10 +90,10 @@ class ServiceManager(ABC):
         """
         ansible.run(
             instances=None,
-            guests=[service_base_name],
+            guests=[service.base_name],
             playbook=playbook,
             only_instances=False,
-            username=OS_DATA[self.description.get_service_base_os(service_base_name)]["username"],
+            username=OS_DATA[service.os]["username"],
             quiet=True,
             extra_vars=ansible_vars,
         )
@@ -107,10 +107,12 @@ class ServiceManager(ABC):
             ansible (Ansible): Tectonic Ansible object.
             instances (list(int)): instances number. Default: None.
         """
-        elastic_name = self.description.get_service_name("elastic")
+        elastic_name = self.description.elastic.name
         if self.client.get_machine_status(elastic_name) == "RUNNING":
             elastic_ip = self.client.get_machine_private_ip(elastic_name)
-            result = self._get_service_info("elastic", ansible, self.ELASTIC_INFO_PLAYBOOK, {"action":"get_token_by_policy_name","policy_name":self.description.endpoint_policy_name})
+            result = self._get_service_info("elastic", ansible, self.ELASTIC_INFO_PLAYBOOK, {
+                "action": "get_token_by_policy_name", "policy_name": self.config.elastic.endpoint_policy_name
+            })
             endpoint_token = result[0]["token"]
             extra_vars = {
                 "institution": self.description.institution,
@@ -118,7 +120,9 @@ class ServiceManager(ABC):
                 "token": endpoint_token,
                 "elastic_url": f"https://{elastic_ip}:8220",
             }
-            guests_to_monitor = self.description.get_machines_to_monitor()
+            guests_to_monitor = [guest_name for guest_name, guest
+                                 in self.description.base_guests.items()
+                                 if guest.monitor]
             machines = self.description.parse_machines(instances, guests_to_monitor)
             inventory = ansible.build_inventory(machines, extra_vars)
             ansible.run(inventory, self.ELASTIC_AGENT_INSTALL_PLAYBOOK, True)
@@ -131,7 +135,7 @@ class ServiceManager(ABC):
             ansible (Ansible): Tectonic Ansible object.
             instances (list(int)): instances number. Default: None
         """
-        caldera_name = self.description.get_service_name("caldera")
+        caldera_name = self.description.caldera.name
         if self.client.get_machine_status(caldera_name) == "RUNNING":
             extra_vars = {
                 "institution": self.description.institution,
@@ -139,14 +143,18 @@ class ServiceManager(ABC):
                 "caldera_ip": self.client.get_machine_private_ip(caldera_name),
                 "caldera_agent_type": "red",
             }
-            red_team_machines = self.description.get_red_team_machines()
+            red_team_machines = [guest_name for guest_name, guest
+                                 in self.description._base_guests.items()
+                                 if guest.red_team_agent]
             if len(red_team_machines) > 0:
                 machines_red = self.description.parse_machines(instances, red_team_machines)
                 inventory_red = ansible.build_inventory(machines_red, extra_vars)
                 ansible.run(inventory_red, self.CALDERA_AGENT_INSTALL_PLAYBOOK, True)
 
             extra_vars["caldera_agent_type"] = "blue"
-            blue_team_machines = self.description.get_blue_team_machines()
+            blue_team_machines = [guest_name for guest_name, guest
+                                 in self.description._base_guests.items()
+                                 if guest.blue_team_agent]
             if len(blue_team_machines) > 0:
                 machines_blue = self.description.parse_machines(instances, blue_team_machines)
                 inventory_blue = ansible.build_inventory(machines_blue, extra_vars)
@@ -217,7 +225,7 @@ class ServiceManager(ABC):
             variables: variables for Ansible playbook.
         """ 
         return ansible.build_inventory_localhost(
-            username=self.description.user_install_packetbeat,
+            username=self.config.elastic.user_install_packetbeat,
             extra_vars=variables
         )
     
@@ -252,19 +260,19 @@ class ServiceManager(ABC):
         Parameters:
             ansible (Ansible): Tectonic ansible object.
         """
-        elastic_name = self.description.get_service_name("elastic")
+        elastic_name = self.description.elastic.name
         if self.get_instance_status(elastic_name) == "RUNNING":
-            result = self._get_service_info("elastic", ansible, self.ELASTIC_INFO_PLAYBOOK, {"action":"get_token_by_policy_name","policy_name":self.description.packetbeat_policy_name})
+            result = self._get_service_info("elastic", ansible, self.ELASTIC_INFO_PLAYBOOK, {"action":"get_token_by_policy_name","policy_name":self.config.elastic.packetbeat_policy_name})
             agent_token = result[0]["token"]
-            elastic_ip = self.client.get_machine_private_ip(self.description.get_service_name("elastic"))
+            elastic_ip = self.client.get_machine_private_ip(self.description.elastic.name)
             variables = {
                 "action": "install",
                 "elastic_url": f"https://{elastic_ip}:8220",
                 "token": agent_token,
-                "elastic_agent_version": self.description.elastic_stack_version,
+                "elastic_agent_version": self.config.elastic.elastic_stack_version,
                 "institution": self.description.institution,
                 "lab_name": self.description.lab_name,
-                "proxy": self.description.proxy,
+                "proxy": self.config.proxy,
             }
             inventory = self._build_packetbeat_inventory(ansible, variables)
             ansible.wait_for_connections(inventory=inventory)

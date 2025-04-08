@@ -30,14 +30,18 @@ class Packer:
     Description: manages interaction with Packer to build images.
     """
 
-    def __init__(self, packer_executable_path="packer"):
+    def __init__(self, config, description, client):
         """
         Initialize the packer object.
 
         Parameters:
-            packer_executable_path (str): Path to the packer executable on the S.O. Default: packer
+            config (Config): Tectonic config object.
+            description (Description): Tectonic description object.
+            client (Client): Tectonic client object
         """
-        self.packer_executable_path = packer_executable_path
+        self.config = config
+        self.description = description
+        self.client = client
 
     def create_image(self, packer_module, variables):
         """
@@ -47,7 +51,7 @@ class Packer:
             packer_module (str): path to the Packer module.
             variables (dict): variables of the Packer module.
         """
-        p = packerpy.PackerExecutable(executable_path=self.packer_executable_path)
+        p = packerpy.PackerExecutable(executable_path=self.config.packer_executable_path)
         return_code, stdout, _ = p.execute_cmd("init", str(packer_module))
         if return_code != 0:
             raise PackerException(f"Packer init returned an error:\n{stdout.decode()}")
@@ -55,18 +59,16 @@ class Packer:
         if return_code != 0:
             raise PackerException(f"Packer build returned an error:\n{stdout.decode()}")
 
-    def destroy_image(self, client, description, names):
+    def destroy_image(self, names):
         """
         Destroy base images.
 
         Parameters:
-            client (Client): Tectonic client object.
-            description (Description): Tectonic description object.
             name (list(str)): names of the machines for which to destroy images.
         """
         for guest_name in names:
-            image_name = description.get_image_name(guest_name)
-            if client.is_image_in_use(image_name):
+            image_name = self.description.get_image_name(guest_name)
+            if self.client.is_image_in_use(image_name):
                 raise PackerException(f"Unable to delete image {image_name} because it is being used.")
         for guest_name in names:
-            client.delete_image(self.description.get_image_name(guest_name))
+            self.client.delete_image(self.description.get_image_name(guest_name))

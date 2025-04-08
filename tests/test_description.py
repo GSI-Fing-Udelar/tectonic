@@ -22,11 +22,17 @@ import pytest
 
 from tectonic.description import DescriptionException, Description
 from tectonic.config import TectonicConfig
+from tectonic.instance_type import InstanceType
+from tectonic.instance_type_aws import InstanceTypeAWS
 
 
 def test_description():
     config = TectonicConfig.load("./tectonic.ini")
-    description = Description(config, config.tectonic_dir+"/examples/password_cracking.yml")
+    if config.platform == "aws":
+        instance_type = InstanceTypeAWS()
+    else:
+        instance_type = InstanceType()
+    description = Description(config, instance_type, config.tectonic_dir+"/examples/password_cracking.yml")
 
 
 

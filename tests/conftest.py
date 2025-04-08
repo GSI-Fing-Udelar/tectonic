@@ -30,6 +30,7 @@ import docker
 from tectonic.config import TectonicConfig
 from tectonic.ansible import Ansible
 from tectonic.description import Description
+from tectonic.instance_type import InstanceType
 from tectonic.instance_type_aws import InstanceTypeAWS
 # from tectonic.libvirt_client import Client as LibvirtClient
 # from tectonic.aws import Client as AWSClient
@@ -259,7 +260,11 @@ def labs_path(test_data_path):
 @pytest.fixture(scope="session")
 def description(tectonic_config, labs_path):
     config = TectonicConfig.load(tectonic_config)
-    desc = Description(config, Path(labs_path) / "test.yml")
+    if config.platform == "aws":
+        instance_type = InstanceTypeAWS()
+    else:
+        instance_type = InstanceType()
+    desc = Description(config, instance_type, Path(labs_path) / "test.yml")
     yield desc
 
 @pytest.fixture()
