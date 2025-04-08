@@ -245,8 +245,8 @@ class ServiceManager(ABC):
             "institution": self.description.institution,
             "lab_name": self.description.lab_name,
         }
-        inventory = self._build_packetbeat_inventory(variables)
-        ansible.run(inventory, self.PACKETBEAT_PLAYBOOK, True)
+        inventory = self._build_packetbeat_inventory(ansible, variables)
+        ansible.run(inventory=inventory, playbook=self.PACKETBEAT_PLAYBOOK, quiet=True)
         if action == "status":
             packetbeat_status = ansible.debug_outputs[0]["agent_status"]
             return packetbeat_status.upper()

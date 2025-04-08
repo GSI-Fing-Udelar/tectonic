@@ -33,25 +33,15 @@ from collections import OrderedDict
 
 import click
 
-from tectonic.deployment_aws import AWSDeployment
-from tectonic.deployment_libvirt import LibvirtDeployment
-from tectonic.deployment_docker import DockerDeployment
-from tectonic.description import Description
-from tectonic.ansible import Ansible
-from tectonic.instance_type import InstanceType
-from tectonic.instance_type_aws import InstanceTypeAWS
-from tectonic.utils import create_table
-
-
+from tectonic.config import TectonicConfig
+from tectonic.core import Core
 
 def log(msg):
     click.echo(msg)
 
-
 def debug(msg):
     if DEBUG:
         click.echo(msg)
-
 
 # The instances can be specified as a list, a range, or a combination of both:
 #    --instances=1,3,8
@@ -90,23 +80,6 @@ class NumberRangeParamType(click.ParamType):
 
 class TectonicException(Exception):
     pass
-
-
-def load_config(ctx, param, config_file):
-    if config_file is None:
-        return {}
-    cfg = ConfigParser()
-    cfg.read(config_file)
-    options = {}
-
-    # flatten the config file
-    for section in ["config", "aws", "libvirt", "docker", "elastic", "caldera"]:
-        try:
-            options = options | dict(cfg[section])
-        except KeyError:
-            pass
-
-    ctx.default_map = options
 
 
 NUMBER_RANGE = NumberRangeParamType()
@@ -216,44 +189,19 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.option(
-    "-c",
     "--config",
+    "-c",
     type=click.Path(exists=True, dir_okay=False),
-    # TODO: Try to find the file in the correct locations.
-    callback=load_config,
-    is_eager=True,
-    expose_value=False,
-    help="Read option defaults from specified INI file.",
-    show_default=True,
+    help="Read tectonic configuration from specified INI file.",
+    required=True,
 )
 @click.option(
     "--debug/--no-debug", default=False, help="Show debug messages during execution."
 )
 @click.option(
-    "--platform",
-    type=click.Choice(["aws", "libvirt", "docker"], case_sensitive=False),
-    default="aws",
-    help="Deploy the cyber range to this platform.",
-)
-@click.option(
     "--lab_repo_uri",
     "-u",
-    required=True,
     help="URI to a lab repository. Labs to deploy will be searched in this repo.",
-)
-@click.option(
-    "--aws_region",
-    "-r",
-    default="us-east-1",
-    show_default=True,
-    help="AWS region to use for deployment.",
-)
-@click.option(
-    "--aws_default_instance_type",
-    "-t",
-    default="t2.micro",
-    show_default=True,
-    help="Default EC2 instance type. Can be overwritten in CR guest configuration.",
 )
 @click.option(
     "--ssh_public_key_file",
@@ -264,66 +212,27 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     help="SSH pubkey to be used to connect to machines for configuration.",
 )
 @click.option(
-    "--ansible_ssh_common_args",
-    "-s",
-    default="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 ",
-    help="SSH extra connection options for connection to the CR machines.",
-)
-@click.option(
-    "--packetbeat_vlan_id",
-    "-v",
-    default="1",
-    help="VLAN ID used in traffic mirrorring.",
-)
-@click.option(
-    "--packetbeat_policy_name",
-    "-n",
-    default="Packetbeat",
-    help="Packetbeat policy name.",
-)
-@click.option(
-    "--network_cidr_block",
-    "-b",
-    default="10.0.0.0/16",
-    help="CIDR block for the whole lab network.",
-)
-@click.option(
     "--configure_dns",
     default=True,
     show_default=True,
     help="Configure internal DNS for instances.",
 )
 @click.option(
-    "--teacher_access",
-    type=click.Choice(["host", "endpoint"], case_sensitive=False),
-    default="host",
-    help="Type of teacher access to configure.",
-)
-@click.option(
-    "--elastic_stack_version",
-    default="8.14.3",
-    help="Elastc version",
-)
-@click.option(
     "--gitlab_backend_url",
-    required=False,
     help="Gitlab terraform state url",
 )
 @click.option(
     "--gitlab_backend_username",
     envvar="GITLAB_USERNAME",
-    required=False,
     help="Gitlab Username",
 )
 @click.option(
     "--gitlab_backend_access_token",
     envvar="GITLAB_ACCESS_TOKEN",
-    required=False,
     help="Gitlab Access Token",
 )
 @click.option(
     "--packer_executable_path",
-    required=False,
     help="Packer executable path",
     default="packer",
 )
@@ -334,57 +243,8 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     help="URI to connect to server, if using libvirt",
 )
 @click.option(
-    "--libvirt_storage_pool",
-    default="default",
-    help="Name of the libvirt storage pool where images will be created.",
-)
-@click.option(
-    "--libvirt_student_access",
-    type=click.Choice(["port_forwarding", "bridge"], case_sensitive=False),
-    default="port_forwarding",
-    help="How student access should be configured: port forwarding in the libvirt server (port_forwarding) or adding "
-         "NICs to the entry points in a bridged network (bridge).",
-)
-@click.option(
-    "--libvirt_bridge",
-    help="Name of the libvirt server bridge to use for student access.",
-)
-@click.option(
-    "--libvirt_external_network",
-    default="192.168.0.0/25",
-    help="CIDR block of the external bridged network, if appropriate. Static IP addresses are assigned sequentially "
-         "to lab entry points.",
-)
-@click.option(
-    "--libvirt_bridge_base_ip",
-    default=10,
-    help="Starting IP from which to sequentially assign the entry points IPs. With default values, the first entry "
-         "point would get 192.168.44.11, and so on.",
-)
-@click.option(
     "--proxy",
-    required=False,
     help="Guest machines proxy configuration URI for libvirt.",
-)
-@click.option(
-    "--endpoint_policy_name",
-    default="Endpoint",
-    help="Agent policy name.",
-)
-@click.option(
-    "--user_install_packetbeat",
-    default="tectonic",
-    help="User used to install Packetbeat",
-)
-@click.option(
-    "--internet_network_cidr_block",
-    default="192.168.4.0/24",
-    help="CIDR internet network",
-)
-@click.option(
-    "--services_network_cidr_block",
-    default="192.168.5.0/24",
-    help="CIDR services network",
 )
 @click.option(
     "--keep_ansible_logs/--no-keep_ansible_logs",
@@ -396,11 +256,6 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     default="unix:///var/run/docker.sock",
     show_default=True,
     help="URI to connect to server, if using docker",
-)
-@click.option(
-    "--caldera_version",
-    default="latest",
-    help="Caldera version.",
 )
 @click.option(
     "--docker_dns",
@@ -428,127 +283,76 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 @click.argument("lab_edition_file", type=click.Path(exists=True, dir_okay=False))
 @click.pass_context
 def tectonic(
-    ctx,
-    platform,
-    lab_repo_uri,
-    aws_region,
-    aws_default_instance_type,
-    ssh_public_key_file,
-    ansible_ssh_common_args,
-    debug,
-    packetbeat_vlan_id,
-    packetbeat_policy_name,
-    network_cidr_block,
-    configure_dns,
-    teacher_access,
-    elastic_stack_version,
-    gitlab_backend_url,
-    gitlab_backend_username,
-    gitlab_backend_access_token,
-    packer_executable_path,
-    libvirt_uri,
-    libvirt_storage_pool,
-    libvirt_student_access,
-    libvirt_bridge,
-    libvirt_external_network,
-    libvirt_bridge_base_ip,
-    proxy,
-    lab_edition_file,
-    endpoint_policy_name,
-    user_install_packetbeat,
-    internet_network_cidr_block,
-    services_network_cidr_block,
-    keep_ansible_logs,
-    docker_uri,
-    caldera_version,
-    docker_dns,
-    ansible_forks,
-    ansible_pipelining,
-    ansible_timeout
-):
+        ctx,
+        config,
+        debug,
+        lab_repo_uri,
+        ssh_public_key_file,
+        configure_dns,
+        gitlab_backend_url,
+        gitlab_backend_username,
+        gitlab_backend_access_token,
+        packer_executable_path,
+        libvirt_uri,
+        proxy,
+        keep_ansible_logs,
+        docker_uri,
+        docker_dns,
+        ansible_forks,
+        ansible_pipelining,
+        ansible_timeout,
+        lab_edition_file):
     """Deploy or manage a cyber range according to LAB_EDITION_FILE."""
-    logfile = PurePosixPath(lab_edition_file).parent.joinpath("tectonic.log")
+    logfile = Path(lab_edition_file).parent / "tectonic.log"
     loglevel = logging.DEBUG if debug else logging.INFO
     logging.basicConfig(filename=logfile, encoding="utf-8", level=loglevel)
 
     ctx.ensure_object(dict)
 
-    instance_type = None
-    if platform == "aws":
-        instance_type = InstanceTypeAWS(aws_default_instance_type)
-    else:
-        instance_type = InstanceType()
 
-    ctx.obj["description"] = Description(
-        lab_edition_file,
-        platform,
-        lab_repo_uri,
-        teacher_access,
-        configure_dns,
-        ssh_public_key_file,
-        ansible_ssh_common_args,
-        aws_region,
-        aws_default_instance_type,
-        network_cidr_block,
-        packetbeat_policy_name,
-        packetbeat_vlan_id,
-        elastic_stack_version,
-        libvirt_uri,
-        libvirt_storage_pool,
-        libvirt_student_access,
-        libvirt_bridge,
-        libvirt_external_network,
-        libvirt_bridge_base_ip,
-        proxy,
-        instance_type,
-        endpoint_policy_name,
-        user_install_packetbeat,
-        internet_network_cidr_block,
-        services_network_cidr_block,
-        keep_ansible_logs,
-        docker_uri,
-        caldera_version,
-        docker_dns,
-        ansible_forks,
-        ansible_pipelining,
-        ansible_timeout
-    )
+    config = TectonicConfig.load(config)
+    if debug:
+        config.debug = debug
+    if lab_repo_uri:
+        config.lab_repo_uri = lab_repo_uri
+    if ssh_public_key_file:
+        config.ssh_public_key_file = ssh_public_key_file
+    if configure_dns:
+        config.configure_dns = configure_dns
+    if gitlab_backend_url:
+        config.gitlab_backend_url = gitlab_backend_url
+    if gitlab_backend_username:
+        config.gitlab_backend_username = gitlab_backend_username
+    if gitlab_backend_access_token:
+        config.gitlab_backend_access_token = gitlab_backend_access_token
+    if packer_executable_path:
+        config.packer_executable_path = packer_executable_path
+    if packer_executable_path:
+        config.packer_executable_path = packer_executable_path
+    if libvirt_uri:
+        config.libvirt.uri = libvirt_uri
+    if proxy:
+        config.proxy = proxy
+    if keep_ansible_logs:
+        config.ansible.keep_logs = keep_ansible_logs
+    if docker_uri:
+        config.docker.uri = docker_uri
+    if docker_dns:
+        config.docker.dns = docker_dns
+    if ansible_forks:
+        config.ansible.forks = ansible_forks
+    if ansible_pipelining:
+        config.ansible.pipelining = ansible_pipelining
+    if ansible_timeout:
+        config.ansible.timeout = ansible_timeout
 
-    if platform == "aws":
-        ctx.obj["deployment"] = AWSDeployment(
-            ctx.obj["description"],
-            gitlab_backend_url=gitlab_backend_url,
-            gitlab_backend_username=gitlab_backend_username,
-            gitlab_backend_access_token=gitlab_backend_access_token,
-            packer_executable_path=packer_executable_path,
-        )
-    elif platform == "libvirt":
-        ctx.obj["deployment"] = LibvirtDeployment(
-            ctx.obj["description"],
-            gitlab_backend_url=gitlab_backend_url,
-            gitlab_backend_username=gitlab_backend_username,
-            gitlab_backend_access_token=gitlab_backend_access_token,
-            packer_executable_path=packer_executable_path,
-        )
-    elif platform == "docker":
-        ctx.obj["deployment"] = DockerDeployment(
-            ctx.obj["description"],
-            gitlab_backend_url=gitlab_backend_url,
-            gitlab_backend_username=gitlab_backend_username,
-            gitlab_backend_access_token=gitlab_backend_access_token,
-            packer_executable_path=packer_executable_path,
-        )
-    else:
-        raise Exception(f"Unsupported platform {platform}.")
-
-    ctx.obj["ansible"] = Ansible(ctx.obj["deployment"])
-
-    if elastic_stack_version == "latest":
-        ctx.obj["description"].set_elastic_stack_version(ctx.obj["deployment"].get_elastic_latest_version())
-
-    if caldera_version == "latest":
-        ctx.obj["description"].set_caldera_version("master")
-
+    ctx.obj["config"] = config
+    ctx.obj["core"] = Core(config, lab_edition_file)
+    # TODO: Do this somewhere else
+    # if elastic_stack_version == "latest":
+    #     ctx.obj["description"].set_elastic_stack_version(ctx.obj["deployment"].get_elastic_latest_version())
+    # if caldera_version == "latest":
+    #     ctx.obj["description"].set_caldera_version("master")
 
 @tectonic.command()
 @click.pass_context
@@ -725,10 +529,7 @@ def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
 def list_instances(ctx, instances, guests, copies):
     """Print information and state of the cyber range resources."""
     click.echo("Getting Cyber Range status...")
-    result = ctx.obj["deployment"].list_instances(instances, guests, copies)
-    click.echo(result)
-    click.echo("Getting Services status...")
-    result = ctx.obj["deployment"].get_services_status()
+    result = ctx.obj["core"].list(instances, guests, copies)
     click.echo(result)
 
 @tectonic.command()
@@ -939,9 +740,9 @@ def info(ctx):
 
 def _info(ctx):
     click.echo("Getting Cyber Range information...")
-    result = ctx.obj["deployment"].get_cyberrange_data()
+    result = ctx.obj["core"].info()
     click.echo(result)
-    _print_student_passwords(ctx)
+    # _print_student_passwords(ctx)
     
 def _print_student_passwords(ctx):
     """Print the generated student passwords, if create_student_passwords is True.

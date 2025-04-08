@@ -59,24 +59,22 @@ class Core:
 
     Description: orchestrate Tectonic main functionalities using InstanceManagement and ServiceManagement.
     """
-    TECHNOLOGY = "docker" # TODO: obtener esto
-
     INSTANCES_PACKER_MODULE = tectonic_resources.files('tectonic') / 'image_generation' / 'create_image.pkr.hcl'
     SERVICES_PACKER_MODULE = tectonic_resources.files('tectonic') / 'services' / 'image_generation' / 'create_image.pkr.hcl'
     ANSIBLE_SERVICE_PLAYBOOK = tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'
     ANSIBLE_TRAINEES_PLAYBOOK = tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'
 
-    def __init__(self, config_path, lab_edition_path):
+    def __init__(self, config, lab_edition_path):
         """
         Initialize the core object.
         """
-        self.config = TectonicConfig.load(config_path)
+        self.config = config
         if self.config.platform == "aws":
             instance_type = InstanceTypeAWS()
         else:
             instance_type = InstanceType()
         self.description = Description(self.config, instance_type, lab_edition_path)
-        self.ansible = Ansible(self.config, self.description)
+
         terraform_backend_info = {
             "gitlab_url": self.config.gitlab_backend_url,
             "gitlab_username": self.config.gitlab_backend_username,
@@ -86,20 +84,21 @@ class Core:
         self.instances_terraform_module = tectonic_resources.files('tectonic') / 'terraform' / 'modules' / f"gsi-lab-{self.config.platform}"
         self.services_terraform_module = tectonic_resources.files('tectonic') / 'services' / 'terraform' / f"services-{self.config.platform}"
 
-        if self.TECHNOLOGY == "aws": #TODO: fix initialization
+        if self.config.platform == "aws": #TODO: fix initialization
             self.client = ClientAWS(self.config, self.description)
             self.instance_manager = InstanceManagerAWS(self.config, self.description, self.client)
             self.service_manager = ServiceManagerAWS(self.config, self.description, self.client)
-        elif self.TECHNOLOGY == "libvirt":
+        elif self.config.platform == "libvirt":
             self.client = ClientLibvirt(self.config, self.description)
             self.instance_manager = InstanceManagerLibvirt(self.config, self.description, self.client)
             self.service_manager = ServiceManagerLibvirt(self.config, self.description, self.client)
-        elif self.TECHNOLOGY == "docker":
+        elif self.config.platform == "docker":
             self.client = ClientDocker(self.config, self.description)
             self.instance_manager = InstanceManagerDocker(self.config, self.description, self.client)
             self.service_manager = ServiceManagerDocker(self.config, self.description, self.client)
         else:
-            raise CoreException("Unknown technology.")
+            raise CoreException("Unknown platform.")
+        self.ansible = Ansible(self.config, self.description, self.instance_manager)
         self.packer = Packer(self.config, self.description, self.client)
         
     def __del__(self):
@@ -395,7 +394,7 @@ class Core:
             student_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-student_access")
             if student_access_ip is not None:
                 instances_info["Student Access IP"] = student_access_ip
-        if self.config.aws.teacher_access == "host":
+        if self.config.platform == "aws" and self.config.aws.teacher_access == "host":
             teacher_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-teacher_access")
             if teacher_access_ip is not None:
                 instances_info["Teacher Access IP"] = teacher_access_ip
@@ -428,7 +427,7 @@ class Core:
             dict: status of instances.
         """
         instances_status = {}
-        machines_to_list = self.description.parse_machines(instances, guests, copies, False, 
+        machines_to_list = self.description.parse_machines(instances, guests, copies, False,
                                                            [service.base_name for service in self.description.services])
         for machine in machines_to_list:
             instances_status[machine] = self.client.get_machine_status(machine)
@@ -436,7 +435,7 @@ class Core:
         services_status = {}
         for service in self.description.services:
             services_status[service.name] = self.client.get_machine_status(service.name)
-        if self.description.elastic.monitor_type == "traffic":
+        if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
             packetbeat_status = self.service_manager.manage_packetbeat(self.ansible,"status")
             if packetbeat_status is not None:
                 services_status[f"{self.description.institution}-{self.description.lab_name}-packetbeat"] = packetbeat_status

@@ -25,4 +25,5 @@ from tectonic.config import TectonicConfig
 from tectonic.core import *
 
 def test_core():
-    core = Core("./tectonic.ini", "./examples/password_cracking.yml")
+    config = TectonicConfig.load("./tectonic.ini")
+    core = Core(config, "./examples/password_cracking.yml")

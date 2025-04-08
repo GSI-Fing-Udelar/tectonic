@@ -765,14 +765,14 @@ class Description:
         guests_aux = list(self.base_guests.keys())
         if not only_instances:
             guests_aux = guests_aux + infrastructure_guests_names
-        if max(instances, default=0) > self.instance_number:
+        if max(instances or [], default=0) > self.instance_number:
             raise DescriptionException("Invalid instance numbers specified.")
         if guests is not None and not set(guests).issubset(set(guests_aux)):
             raise DescriptionException("Invalid guests names specified.")
         max_guest_copy = max((guest.copies for _, guest in self._base_guests.items()
-                              if not guests or guest.base_name in guests),
+                              if not guests or guest.base_name in guests) or [],
                              default=1)
-        if max(copies, default=0) > max_guest_copy:
+        if max(copies or [], default=0) > max_guest_copy:
             raise DescriptionException("Invalid copies specified.")
 
         result = []
@@ -924,7 +924,8 @@ class Description:
 
     @property
     def student_access_required(self):
-        any(guest.entry_point for _, guest in self._base_guests.items())
+        return (self.config.platform == "aws" and
+                any(guest.entry_point for _, guest in self._base_guests.items()))
 
     @property
     def internet_access_required(self):

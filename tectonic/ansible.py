@@ -35,9 +35,10 @@ class AnsibleException(Exception):
 class Ansible:
     """ Class for managing Ansible connections. """
 
-    def __init__(self, config, description):
+    def __init__(self, config, description, instance_manager):
         self.config = config
         self.description = description
+        self.instance_manager = instance_manager
 
         self.output = ""
         self.debug_outputs = []
@@ -46,16 +47,16 @@ class Ansible:
     def _ansible_callback(self, event_data):
         if event_data['stdout']:
             self.output += f"\n{event_data['stdout']}"
-            event_data = event_data.get("event_data",None)
+            event_data = event_data.get("event_data")
             if event_data:
-                resolved_action = event_data.get("resolved_action",None)
-                if resolved_action == "ansible.builtin.debug" and event_data.get("res",None):
+                resolved_action = event_data.get("resolved_action")
+                if resolved_action == "ansible.builtin.debug" and event_data.get("res"):
                     debug_output = event_data["res"]
-                    if debug_output.get("_ansible_verbose_always",None):
+                    if debug_output.get("_ansible_verbose_always"):
                         del debug_output["_ansible_verbose_always"]
-                    if debug_output.get("_ansible_no_log",None):
+                    if debug_output.get("_ansible_no_log"):
                         del debug_output["_ansible_no_log"]
-                    if debug_output.get("changed",None):
+                    if debug_output.get("changed"):
                         del debug_output["changed"]
                     self.debug_outputs.append(debug_output)
         return True
@@ -71,7 +72,7 @@ class Ansible:
 
         ssh_args = self.config.ansible.ssh_common_args
 
-        proxy_command = deployment.get_ssh_proxy_command()
+        proxy_command = self.instance_manager.get_ssh_proxy_command()
         if proxy_command:
             ssh_args += f' -o ProxyCommand="{proxy_command}"'
 
@@ -87,7 +88,7 @@ class Ansible:
         for machine_name in machine_list:
             machine = self.description.scenario_guests[machine_name]
             ansible_username = username or machine.admin_username
-            hostname = deployment.get_ssh_hostname(machine)
+            hostname = self.instance_manager.get_ssh_hostname(machine)
 
             if not inventory.get(machine.base_name):
                 inventory[machine.base_name] = {
@@ -164,7 +165,7 @@ class Ansible:
         """ Run Ansible playbook.
 
         Args:
-            instances (list): List of instances to run the playbook on.
+            instances (list(int)): List of instances to run the playbook on.
             guests (list): List of guests to run the playbook on.
             copies (list(int)): List of copies to run the playbook on.
             only_instances (bool): If True, only run the playbook on instances.
