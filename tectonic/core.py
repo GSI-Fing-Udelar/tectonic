@@ -76,7 +76,7 @@ class Core:
         else:
             instance_type = InstanceType()
         self.description = Description(self.config, instance_type, lab_edition_path)
-        self.ansible = Ansible(None)
+        self.ansible = Ansible(self.config, self.description)
         terraform_backend_info = {
             "gitlab_url": self.config.gitlab_backend_url,
             "gitlab_username": self.config.gitlab_backend_username,

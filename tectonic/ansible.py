@@ -35,10 +35,13 @@ class AnsibleException(Exception):
 class Ansible:
     """ Class for managing Ansible connections. """
 
-    def __init__(self, deployment):
+    def __init__(self, config, description):
+        self.config = config
+        self.description = description
+
         self.output = ""
         self.debug_outputs = []
-        self.deployment = deployment
+
 
     def _ansible_callback(self, event_data):
         if event_data['stdout']:
@@ -64,77 +67,69 @@ class Ansible:
             machine_list = []
         inventory = {}
 
-        deployment = self.deployment
-        description = deployment.description
-        parameters = deployment.description.get_parameters()
+        parameters = self.description.get_parameters()
 
-        ssh_args = description.ansible_ssh_common_args
+        ssh_args = self.config.ansible.ssh_common_args
 
         proxy_command = deployment.get_ssh_proxy_command()
         if proxy_command:
             ssh_args += f' -o ProxyCommand="{proxy_command}"'
 
         networks = {}
-        for machine in description.parse_machines():
-            instance = description.get_instance_number(machine)
-            base_name = description.get_base_name(machine)
-            if instance not in networks:
-                networks[instance] = {}
-            for _, interface in (description.get_guest_data())[machine]["interfaces"].items():
-                if interface["network_name"] not in networks[instance]:
-                    networks[instance][interface["network_name"]] = {}
-                networks[instance][interface["network_name"]][base_name] = interface
+        for guest in self.description.scenario_guests:
+            if guest.instance not in networks:
+                networks[guest.instance] = {}
+            for _, interface in guest.interfaces.items():
+                if interface.network.name not in networks[guest.instance]:
+                    networks[guest.instance][interface.network.name] = {}
+                networks[guest.instance][interface.network.base_name][guest.base_name] = interface
 
-        for machine in machine_list:
-            base_name = description.get_base_name(machine)
-            ansible_username = username or description.get_guest_username(base_name)
+        for machine_name in machine_list:
+            machine = self.description.scenario_guests[machine_name]
+            ansible_username = username or machine.admin_username
             hostname = deployment.get_ssh_hostname(machine)
 
-            if not inventory.get(base_name):
-                inventory[base_name] = {
+            if not inventory.get(machine.base_name):
+                inventory[machine.base_name] = {
                     "hosts": {},
                     "vars": {
                                 "ansible_become": True,
-                                "basename": base_name,
-                                "instances": description.instance_number,
-                                "platform": description.platform,
-                                "institution": description.institution,
-                                "lab_name": description.lab_name,
-                                "ansible_connection" : "community.docker.docker_api" if description.platform == "docker" else "ssh", #export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES on macos
-                                "docker_host": description.docker_uri,
+                                "basename": machine.base_name,
+                                "instances": self.description.instance_number,
+                                "platform": self.config.platform,
+                                "institution": self.description.institution,
+                                "lab_name": self.description.lab_name,
+                                "ansible_connection" : "community.docker.docker_api" if self.description.platform == "docker" else "ssh", #export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES on macos
+                                "docker_host": self.config.docker.uri,
                             } | extra_vars,
                 }
 
-            instance = description.get_instance_number(machine)
-            inventory[base_name]["hosts"][machine] = {
-                "ansible_host": hostname if description.platform != "docker" else machine,
+            inventory[machine.base_name]["hosts"][machine.name] = {
+                "ansible_host": hostname if self.description.platform != "docker" else machine,
                 "ansible_user": ansible_username,
                 "ansible_ssh_common_args": ssh_args,
-                "machine_name": machine,
-                "instance": instance,
-                "copy": description.get_copy(machine),
-                "networks": networks[instance] if instance else networks,
-                "parameter": parameters[description.get_instance_number(machine)] if description.get_instance_number(machine) else {},
-                "random_seed": description.random_seed,
+                "machine_name": machine.name,
+                "instance": machine.instance,
+                "copy": machine.copy,
+                "networks": networks[machine.instance],
+                "parameter": parameters[machine.instance] if machine.instance else {},
+                "random_seed": self.description.random_seed,
             }
 
-            if description.get_guest_attr(
-                    base_name, "base_os", description.default_os
-            ) == "windows_srv_2022":
-                inventory[base_name]["hosts"][machine]["ansible_shell_type"] = "powershell"
-                inventory[base_name]["hosts"][machine]["ansible_become_method"] = "runas"
-                inventory[base_name]["hosts"][machine]["ansible_become_user"] = \
-                    description.get_guest_username(base_name)
+            if machine.os == "windows_srv_2022":
+                inventory[machine.base_name]["hosts"][machine.name]["ansible_shell_type"] = "powershell"
+                inventory[machine.base_name]["hosts"][machine.name]["ansible_become_method"] = "runas"
+                inventory[machine.base_name]["hosts"][machine.name]["ansible_become_user"] = machine.admin_username
             else:
                 # Make sure we load environment variables within sudo shell
-                inventory[base_name]["hosts"][machine]["become_flags"] = "-i"
+                inventory[machine.base_name]["hosts"][machine.name]["become_flags"] = "-i"
         return inventory
     
     def build_inventory_localhost(self, username=None, extra_vars=None):
         if extra_vars is None:
             extra_vars = {}
         return {
-            f"{self.deployment.description.institution}-{self.deployment.description.lab_name}-localhost" : {
+            f"{self.description.institution}-{self.description.lab_name}-localhost" : {
                 "hosts": {
                     "localhost": {
                         "become_flags": "-i",
@@ -142,12 +137,12 @@ class Ansible:
                 },
                 "vars": {
                     "ansible_become": True,
-                    "ansible_user": username or self.deployment.description.user_install_packetbeat,
+                    "ansible_user": username or self.config.elastic.user_install_packetbeat,
                     "basename": "localhost",
-                    "instances": self.deployment.description.instance_number,
-                    "platform": self.deployment.description.platform,
-                    "institution": self.deployment.description.institution,
-                    "lab_name": self.deployment.description.lab_name,
+                    "instances": self.description.instance_number,
+                    "platform": self.config.platform,
+                    "institution": self.description.institution,
+                    "lab_name": self.description.lab_name,
                     "ansible_connection" : "local",
                 } | extra_vars,
             }
@@ -184,8 +179,7 @@ class Ansible:
         Raises:
             AnsibleException: If the playbook fails and quiet is False.
         """
-        default_playbook = (Path(self.deployment.description.ansible_playbooks_path).
-                            joinpath("after_clone.yml"))
+        default_playbook = Path(self.description.scenario_dir) / "ansible" / "after_clone.yml"
 
         if not playbook:
             if default_playbook.is_file():
@@ -197,7 +191,7 @@ class Ansible:
         else:
             playbook = Path(playbook).resolve().as_posix()
         if not inventory:
-            machine_list = self.deployment.description.parse_machines(
+            machine_list = self.description.parse_machines(
                 instances, guests, copies, only_instances, exclude
             )
             inventory = self.build_inventory(
@@ -207,13 +201,13 @@ class Ansible:
             )
         self.output = ""
         self.debug_outputs = []
-        extravars = { "ansible_no_target_syslog" : not self.deployment.description.keep_ansible_logs }
+        extravars = { "ansible_no_target_syslog" : not self.config.ansible.keep_logs }
         envvars = { 
-            "ANSIBLE_FORKS": self.deployment.description.ansible_forks,
+            "ANSIBLE_FORKS": self.config.ansible.forks,
             "ANSIBLE_HOST_KEY_CHECKING": False,
-            "ANSIBLE_PIPELINING": self.deployment.description.ansible_pipelining,
+            "ANSIBLE_PIPELINING": self.config.ansible.pipelining,
             "ANSIBLE_GATHERING": "explicit",
-            "ANSIBLE_TIMEOUT": self.deployment.description.ansible_timeout,
+            "ANSIBLE_TIMEOUT": self.config.ansible.timeout,
         }
         r = ansible_runner.interface.run(
             inventory=inventory,
