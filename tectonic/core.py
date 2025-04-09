@@ -30,7 +30,7 @@ import tectonic.utils
 from tectonic.config import TectonicConfig
 from tectonic.instance_type import InstanceType
 from tectonic.instance_type_aws import InstanceTypeAWS
-from tectonic.description import Description
+from tectonic.description import Description, BaseGuestDescription
 from tectonic.ansible import Ansible
 from tectonic.packer import Packer
 from tectonic.terraform import Terraform
@@ -112,7 +112,9 @@ class Core:
             guests (list(str): list of base guests to create images for
         """
         # Create instances images
-        machines = [guest for _, guest in self.description.base_guests.items() if not guests or guest.base_name in guests]
+        machines = {guest_name: guest.packer_dict() 
+                    for guest_name, guest in self.description.base_guests.items() 
+                    if not guests or guest.base_name in guests}
         args = {
             "ansible_playbooks_path": self.description.ansible_dir,
             "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
@@ -124,7 +126,7 @@ class Core:
             "libvirt_storage_pool": self.config.libvirt.storage_pool,
             "libvirt_uri": self.config.libvirt.uri,
 
-            "machines_json": json.dumps(machines),
+            "machines_json": json.dumps(machines, default=lambda o: o.to_json()),
 
             "os_data_json": json.dumps(OS_DATA),
             "platform": self.config.platform,
@@ -133,7 +135,7 @@ class Core:
         }
         if self.config.proxy:
             args["proxy"] = self.config.proxy
-        self._destroy_images(machines)
+        self._destroy_images(guests)
         self.instance_manager.create_image(self.packer, self.INSTANCES_PACKER_MODULE, args)
 
     def create_services_images(self, services=None):
@@ -167,7 +169,7 @@ class Core:
         if self.config.proxy:
             args["proxy"] = self.config.proxy
         # TODO: lo de arriba de generar el args lo pasaría al description? así no hay que poner if con la tecnología acá.
-        self._destroy_images(machines)
+        self._destroy_images(services)
         self.packer.create_image(self.SERVICES_PACKER_MODULE, args)
 
 
@@ -176,13 +178,15 @@ class Core:
         Destroy base images.
 
         Parameters:
-            names (list(BaseGuestDescription): base guests for which to destroy images. 
+            names (list(str)): guests (or services) names for which to destroy images. 
         """
         for guest in guests:
-            if self.client.is_image_in_use(guest.image_name):
-                raise CoreException(f"Unable to delete image {guest.image_name} because it is being used.")
+            image_name = self.description.base_guests[guest].image_name
+            if self.client.is_image_in_use(guest):
+                raise CoreException(f"Unable to delete image {image_name} because it is being used.")
         for guest in guests:
-            self.client.delete_image(guest.image_name)
+            image_name = self.description.base_guests[guest].image_name
+            self.client.delete_image(image_name)
 
     
     def deploy(self, instances, create_instances_images, create_services_images):
@@ -285,9 +289,9 @@ class Core:
                 
             # Destroy images
             if destroy_instances_images:
-                self._destroy_images(self.description.base_guests)
+                self._destroy_images([guest.base_name for guest in self.description.base_guests])
             if destroy_services_images:
-                self._destroy_images(self.description.services)
+                self._destroy_images([service.base_name for service in self.description.services])
     
     def recreate(self, instances, guests, copies):
         """

@@ -195,11 +195,11 @@ class MachineDescription:
 
     @property
     def instance_type(self):
-        self._description.instance_type.get_guest_instance_type(self.memory,
-                                                                self.vcpu,
-                                                                self.gpu,
-                                                                self.monitor,
-                                                                self.description.elastic.monitor_type)
+        return self._description.instance_type.get_guest_instance_type(self.memory,
+                                                                       self.vcpu,
+                                                                       self.gpu,
+                                                                       self.monitor,
+                                                                       self._description.elastic.monitor_type)
 
     #----------- Setters ----------
     @institution.setter
@@ -306,7 +306,9 @@ class BaseGuestDescription(MachineDescription):
     @monitor.setter
     def monitor(self, value):
         validate.boolean("monitor", value)
-        self._monitor = value
+        self._monitor = (self._description.elastic.enable and 
+                         self._description.monitor_type == "endpoint" and
+                         self._monitor)
 
     @red_team_agent.setter
     def red_team_agent(self, value):
@@ -330,6 +332,19 @@ class BaseGuestDescription(MachineDescription):
         self.monitor = data.get("monitor", self.monitor)
         self.red_team_agent = data.get("red_team_agent", self.red_team_agent)
         self.blue_team_agent = data.get("blue_team_agent", self.blue_team_agent)
+
+    def packer_dict(self):
+        """Convert BaseGuestDescription object to the dictionary expected by packer."""
+
+        result = {}
+        result["base_os"] = self.os
+        result["endpoint_monitoring"] = self.monitor
+        result["instance_type"] = self.instance_type
+        result["vcpu"] = self.vcpu
+        result["memory"] = self.memory
+        result["disk"] = self.disk        
+
+        return result
 
 class NetworkInterface():
     def __init__(self, description, guest, network, interface_num):
@@ -675,11 +690,40 @@ class Description:
         self.institution = description_data["institution"]
         self._required(description_data, "lab_name")
         self.base_lab = description_data["lab_name"]
-        # Load institution and lab name as it is needed
+        self._elastic = ElasticDescription(self)
+        self._elastic.load_elastic(description_data.get("elastic", {}))
+        self._caldera = CalderaDescription(self)
+        self._caldera.load_caldera(description_data.get("caldera", {}))
+
+        # Load lab edition data
+        self._required(lab_edition_data, "instance_number")
         self.institution = lab_edition_data.get("institution", self.institution)
         self.lab_name = lab_edition_data.get("lab_edition_name", self.base_lab)
+        self.instance_number = lab_edition_data["instance_number"]
         self.default_os = description_data.get("default_os", "ubuntu22")
+        self.teacher_pubkey_dir = lab_edition_data.get("teacher_pubkey_dir")
+        self.student_prefix = lab_edition_data.get("student_prefix", "trainee")
+        self.student_pubkey_dir = lab_edition_data.get("student_pubkey_dir")
+        self.create_students_passwords = lab_edition_data.get("create_students_passwords", False)
+        self._required(lab_edition_data, "random_seed")
+        self.random_seed = lab_edition_data["random_seed"]
 
+        # Elastic is enabled if it is enabled in the description and
+        # not disabled in the lab edition.
+        enable_elastic = self._elastic.enable and lab_edition_data.get("elastic", {}).get("enable", True)
+        self._elastic.load_elastic(lab_edition_data.get("elastic", {}))
+        self._elastic.enable = enable_elastic
+        self._packetbeat = PacketbeatDescription(self)
+        if enable_elastic and config.platform == "aws":
+            self._packetbeat.enable = True
+
+        # Caldera is enabled if it is enabled in the description and
+        # not disabled in the lab edition.
+        enable_caldera = self._caldera.enable and lab_edition_data.get("caldera", {}).get("enable", True)
+        self._caldera.load_caldera(lab_edition_data.get("caldera", {}))
+        self._caldera.enable = enable_caldera
+
+        # Load base guests and topology
         self._required(description_data, "guest_settings")
         self._base_guests = {}
         for name, guest_data in description_data["guest_settings"].items():
@@ -704,35 +748,6 @@ class Description:
                     raise DescriptionException(f"Undefined member {member} in network {base_name}.")
             network.members = members
             self._topology[network.base_name] = network
-        self._elastic = ElasticDescription(self)
-        self._elastic.load_elastic(description_data.get("elastic", {}))
-        self._caldera = CalderaDescription(self)
-        self._caldera.load_caldera(description_data.get("caldera", {}))
-
-        # Load lab edition data
-        self._required(lab_edition_data, "instance_number")
-        self.instance_number = lab_edition_data["instance_number"]
-        self.teacher_pubkey_dir = lab_edition_data.get("teacher_pubkey_dir")
-        self.student_prefix = lab_edition_data.get("student_prefix", "trainee")
-        self.student_pubkey_dir = lab_edition_data.get("student_pubkey_dir")
-        self.create_students_passwords = lab_edition_data.get("create_students_passwords", False)
-        self._required(lab_edition_data, "random_seed")
-        self.random_seed = lab_edition_data["random_seed"]
-
-        # Elastic is enabled if it is enabled in the description and
-        # not disabled in the lab edition.
-        enable_elastic = self._elastic.enable and lab_edition_data.get("elastic", {}).get("enable", True)
-        self._elastic.load_elastic(lab_edition_data.get("elastic", {}))
-        self._elastic.enable = enable_elastic
-        self._packetbeat = PacketbeatDescription(self)
-        if enable_elastic and config.platform == "aws":
-            self._packetbeat.enable = True
-
-        # Caldera is enabled if it is enabled in the description and
-        # not disabled in the lab edition.
-        enable_caldera = self._caldera.enable and lab_edition_data.get("caldera", {}).get("enable", True)
-        self._caldera.load_caldera(lab_edition_data.get("caldera", {}))
-        self._caldera.enable = enable_caldera
 
         self._scenario_networks = self._compute_scenario_networks()
         self._scenario_guests = self._compute_scenario_guests()
@@ -964,21 +979,21 @@ class Description:
     #----------- Setters ----------
     @base_lab.setter
     def base_lab(self, value):
-        value = re.sub("[^a-zA-Z0-9]+", "", value)
+        value = re.sub("[^a-zA-Z0-9]+", "", value).lower()
         if value == "":
             raise DescriptionException(f"Invalid base_lab {value}. Must have at least one alphanumeric symbol.")
         self._base_lab = value
 
     @institution.setter
     def institution(self, value):
-        value = re.sub("[^a-zA-Z0-9]+", "", value)
+        value = re.sub("[^a-zA-Z0-9]+", "", value).lower()
         if value == "":
             raise DescriptionException(f"Invalid institution {value}. Must have at least one alphanumeric symbol.")
         self._institution = value
 
     @lab_name.setter
     def lab_name(self, value):
-        value = re.sub("[^a-zA-Z0-9]+", "", value)
+        value = re.sub("[^a-zA-Z0-9]+", "", value).lower()
         if value == "":
             raise DescriptionException(f"Invalid lab_edition_name {value}. Must have at least one alphanumeric symbol.")
         self._lab_name = value
