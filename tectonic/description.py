@@ -250,6 +250,9 @@ class MachineDescription:
         self.vcpu = data.get("vcpu", self.vcpu)
         self.disk = data.get("disk", self.disk)
 
+        
+    def toJSON(self):
+        "{}"
 
 class BaseGuestDescription(MachineDescription):
     def __init__(self, description, base_name):

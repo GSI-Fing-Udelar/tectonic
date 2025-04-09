@@ -33,7 +33,11 @@ from collections import OrderedDict
 
 import click
 
+import tectonic.utils as utils
 from tectonic.config import TectonicConfig
+from tectonic.description import Description
+from tectonic.instance_type import InstanceType
+from tectonic.instance_type_aws import InstanceTypeAWS
 from tectonic.core import Core
 
 def log(msg):
@@ -309,7 +313,6 @@ def tectonic(
 
     ctx.ensure_object(dict)
 
-
     config = TectonicConfig.load(config)
     if debug:
         config.debug = debug
@@ -347,7 +350,14 @@ def tectonic(
         config.ansible.timeout = ansible_timeout
 
     ctx.obj["config"] = config
-    ctx.obj["core"] = Core(config, lab_edition_file)
+    if config.platform == "aws":
+        instance_type = InstanceTypeAWS()
+    else:
+        instance_type = InstanceType()
+    ctx.obj["description"] = Description(config, instance_type, lab_edition_file)
+    ctx.obj["core"] = Core(ctx.obj["config"], ctx.obj["description"])
+
+
     # TODO: Do this somewhere else
     # if elastic_stack_version == "latest":
     #     ctx.obj["description"].set_elastic_stack_version(ctx.obj["deployment"].get_elastic_latest_version())
@@ -503,18 +513,19 @@ def create_images(ctx, packetbeat, elastic, caldera, machines, guests):
 
 
 def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
-    if (packetbeat and ctx.obj["description"].platform == "aws") or elastic or caldera:
-        services = {
-            "packetbeat": packetbeat and ctx.obj["description"].platform == "aws",
-            "elastic": elastic,
-            "caldera": caldera
-        }
-        click.echo("Creating services images ...")
-        ctx.obj["deployment"].create_services_images(services)
+    services = []
+    if elastic:
+        services.append("elastic")
+    if packetbeat:
+        services.append("packetbeat")
+    if caldera:
+        services.append("caldera")
+    click.echo("Creating services images ...")
+    # ctx.obj["core"].create_services_images(services)
 
     if machines:
         click.echo("Creating base images...")
-        ctx.obj["deployment"].create_cr_images(guests)
+        ctx.obj["core"].create_cr_images(guests)
 
 
 @tectonic.command(name="list")
@@ -530,7 +541,20 @@ def list_instances(ctx, instances, guests, copies):
     """Print information and state of the cyber range resources."""
     click.echo("Getting Cyber Range status...")
     result = ctx.obj["core"].list(instances, guests, copies)
-    click.echo(result)
+
+    if result.get("instances_status"):
+        headers = ["Name", "Status"]
+        rows = []
+        for machine, status in result.get("instances_status", []).items():
+            rows.append([machine, status])
+        click.echo(utils.create_table(headers,rows))
+
+    if result.get("services_status"):
+        headers = ["Name", "Status"]
+        rows = []
+        for machine, status in result.get("services_status", []).items():
+            rows.append([machine, status])
+        click.echo(utils.create_table(headers,rows))
 
 @tectonic.command()
 @click.pass_context
@@ -741,8 +765,27 @@ def info(ctx):
 def _info(ctx):
     click.echo("Getting Cyber Range information...")
     result = ctx.obj["core"].info()
-    click.echo(result)
-    # _print_student_passwords(ctx)
+
+    if result.get("instances_info"):
+        headers = ["Name", "Status"]
+        rows = []
+        for key, value in result.get("instances_info", []).items():
+            rows.append([key, value])
+        click.echo(utils.create_table(headers,rows))
+
+    if result.get("services_info"):
+        headers = ["Name", "Status"]
+        rows = []
+        for key, value in result.get("instances_info", []).items():
+            rows.append([key, value])
+        click.echo(utils.create_table(headers,rows))
+        
+    if result.get("student_access_password"):
+        headers = ["Name", "Status"]
+        rows = []
+        for key, value in result.get("instances_info", []).items():
+            rows.append([key, value])
+        click.echo(utils.create_table(headers,rows))
     
 def _print_student_passwords(ctx):
     """Print the generated student passwords, if create_student_passwords is True.

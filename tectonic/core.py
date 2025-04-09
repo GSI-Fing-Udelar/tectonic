@@ -64,16 +64,12 @@ class Core:
     ANSIBLE_SERVICE_PLAYBOOK = tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'
     ANSIBLE_TRAINEES_PLAYBOOK = tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'
 
-    def __init__(self, config, lab_edition_path):
+    def __init__(self, config, description):
         """
         Initialize the core object.
         """
         self.config = config
-        if self.config.platform == "aws":
-            instance_type = InstanceTypeAWS()
-        else:
-            instance_type = InstanceType()
-        self.description = Description(self.config, instance_type, lab_edition_path)
+        self.description = description
 
         terraform_backend_info = {
             "gitlab_url": self.config.gitlab_backend_url,
@@ -108,69 +104,79 @@ class Core:
         del self.description
         del self.config
 
-    def create_images(self, create_guests, create_services):
+    def create_cr_images(self, guests=None):
         """
         Create base images.
 
         Parameters:
-            create_guests (bool): whether to create images for guests
-            create_services (bool): whether to create images for services
+            guests (list(str): list of base guests to create images for
         """
         # Create instances images
-        if create_guests:
-            args = {
-                "ansible_playbooks_path": self.description.ansible_dir,
-                "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
-                "ansible_ssh_common_args": self.config.ansible.ssh_common_args,
-                "aws_region": self.config.aws.region,
-                "instance_number": self.description.instance_number,
-                "institution": self.description.institution,
-                "lab_name": self.description.lab_name,
-                "libvirt_storage_pool": self.config.libvirt.storage_pool,
-                "libvirt_uri": self.config.libvirt.uri,
-                "machines_json": json.dumps(self.description.base_guests),
-                "os_data_json": json.dumps(OS_DATA),
-                "platform": self.config.platform,
-                "remove_ansible_logs": str(not self.config.ansible.keep_logs),
-                "elastic_version": self.config.elastic.elastic_stack_version
-            }
-            if self.config.proxy:
-                args["proxy"] = self.config.proxy
-            self._destroy_image(self.description.base_guests)
-            self.instance_manager.create_image(self.packer, self.INSTANCES_PACKER_MODULE, args)
+        machines = [guest for _, guest in self.description.base_guests.items() if not guests or guest.base_name in guests]
+        args = {
+            "ansible_playbooks_path": self.description.ansible_dir,
+            "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
+            "ansible_ssh_common_args": self.config.ansible.ssh_common_args,
+            "aws_region": self.config.aws.region,
+            "instance_number": self.description.instance_number,
+            "institution": self.description.institution,
+            "lab_name": self.description.lab_name,
+            "libvirt_storage_pool": self.config.libvirt.storage_pool,
+            "libvirt_uri": self.config.libvirt.uri,
 
+            "machines_json": json.dumps(machines),
+
+            "os_data_json": json.dumps(OS_DATA),
+            "platform": self.config.platform,
+            "remove_ansible_logs": str(not self.config.ansible.keep_logs),
+            "elastic_version": self.config.elastic.elastic_stack_version
+        }
+        if self.config.proxy:
+            args["proxy"] = self.config.proxy
+        self._destroy_images(machines)
+        self.instance_manager.create_image(self.packer, self.INSTANCES_PACKER_MODULE, args)
+
+    def create_services_images(self, services=None):
+        """
+        Create base images.
+
+        Parameters:
+            services (list(str)): List of services to create
+        """
         # Create services images
-        if create_services:
-            args = {
-                "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.description.platform != "docker" else "",
-                "ansible_ssh_common_args": self.config.ansible.ssh_common_args,
-                "aws_region": self.config.aws.region,
-                "libvirt_storage_pool": self.config.libvirt.storage_pool,
-                "libvirt_uri": self.config.libvirt.uri,
-                "machines_json": json.dumps(self.description.services),
-                "os_data_json": json.dumps(OS_DATA),
-                "platform": self.config.platform,
-                "remove_ansible_logs": str(not self.config.ansible.keep_logs),
-                #TODO: pass variables as a json as part of each host
-                "elastic_version": self.config.elastic.elastic_stack_version, 
-                "elastic_latest_version": str(self.config.elastic.elastic_stack_version == "latest"), # TODO: Check this
-                "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
-                "caldera_version": self.config.caldera.version,
-                "packetbeat_vlan_id": self.config.aws.packetbeat_vlan_id,
-            }
-            if self.config.proxy:
-                args["proxy"] = self.config.proxy
-            # TODO: lo de arriba de generar el args lo pasaría al description? así no hay que poner if con la tecnología acá.
-            self._destroy_image(self.description.services)
-            self.packer.create_image(self.SERVICES_PACKER_MODULE, args)
+        machines = [service for _, service in self.description.services.items() if not services or service.base_name in services]
+        args = {
+            "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
+            "ansible_ssh_common_args": self.config.ansible.ssh_common_args,
+            "aws_region": self.config.aws.region,
+            "libvirt_storage_pool": self.config.libvirt.storage_pool,
+            "libvirt_uri": self.config.libvirt.uri,
+
+            "machines_json": json.dumps(machines),
+
+            "os_data_json": json.dumps(OS_DATA),
+            "platform": self.config.platform,
+            "remove_ansible_logs": str(not self.config.ansible.keep_logs),
+            #TODO: pass variables as a json as part of each host
+            "elastic_version": self.config.elastic.elastic_stack_version, 
+            "elastic_latest_version": str(self.config.elastic.elastic_stack_version == "latest"), # TODO: Check this
+            "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
+            "caldera_version": self.config.caldera.version,
+            "packetbeat_vlan_id": self.config.aws.packetbeat_vlan_id,
+        }
+        if self.config.proxy:
+            args["proxy"] = self.config.proxy
+        # TODO: lo de arriba de generar el args lo pasaría al description? así no hay que poner if con la tecnología acá.
+        self._destroy_images(machines)
+        self.packer.create_image(self.SERVICES_PACKER_MODULE, args)
 
 
-    def _destroy_image(self, guests):
+    def _destroy_images(self, guests):
         """
         Destroy base images.
 
         Parameters:
-            names (list(str)): names of the machines for which to destroy images. 
+            names (list(BaseGuestDescription): base guests for which to destroy images. 
         """
         for guest in guests:
             if self.client.is_image_in_use(guest.image_name):
@@ -188,7 +194,10 @@ class Core:
             create_instances_images: whether to create instances images.
             create_services_images: whether to create services images.
         """
-        self.create_images(create_instances_images, create_services_images)
+        if create_instances_images:
+            self.create_cr_images()
+        if create_services_images:
+            self.create_services_images()
 
         # Deploy instances
         instances_resources_to_create = None
@@ -276,9 +285,9 @@ class Core:
                 
             # Destroy images
             if destroy_instances_images:
-                self._destroy_image(self.description.base_guests)
+                self._destroy_images(self.description.base_guests)
             if destroy_services_images:
-                self._destroy_image(self.description.services)
+                self._destroy_images(self.description.services)
     
     def recreate(self, instances, guests, copies):
         """
@@ -390,14 +399,15 @@ class Core:
             dict: scenario information.
         """
         instances_info = {}
-        if self.description.student_access_required:
-            student_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-student_access")
-            if student_access_ip is not None:
-                instances_info["Student Access IP"] = student_access_ip
-        if self.config.platform == "aws" and self.config.aws.teacher_access == "host":
-            teacher_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-teacher_access")
-            if teacher_access_ip is not None:
-                instances_info["Teacher Access IP"] = teacher_access_ip
+        if self.config.platform == "aws":
+            if self.description.student_access_required:
+                student_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-student_access")
+                if student_access_ip is not None:
+                    instances_info["Student Access IP"] = student_access_ip
+            if self.config.aws.teacher_access == "host":
+                teacher_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-teacher_access")
+                if teacher_access_ip is not None:
+                    instances_info["Teacher Access IP"] = teacher_access_ip
 
         service_info = {}
         for service in self.description.services:
