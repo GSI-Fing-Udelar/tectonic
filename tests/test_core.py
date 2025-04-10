@@ -26,4 +26,9 @@ from tectonic.core import *
 
 def test_core():
     config = TectonicConfig.load("./tectonic.ini")
-    core = Core(config, "./examples/password_cracking.yml")
+    if config.platform == "aws":
+        instance_type = InstanceTypeAWS()
+    else:
+        instance_type = InstanceType()
+    description = Description(config, instance_type, "./examples/password_cracking.yml")
+    core = Core(config, description)

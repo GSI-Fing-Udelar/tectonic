@@ -174,13 +174,13 @@ class ServiceManager(ABC):
         pass
 
     @abstractmethod
-    def get_resources_to_target_destroy(self, instances):
+    def get_resources_to_target_destroy(self, instances, services):
         """
         Get resources name for target destroy.
 
         Parameters:
             instances (list(int)): number of the instances to target destroy.
-        
+            services (list(str)): list of services to destroy
         Return:
             list(str): names of resources.
         """
@@ -203,16 +203,6 @@ class ServiceManager(ABC):
 
         Returns:
             dict: services guest data.
-        """
-        pass
-
-    @abstractmethod
-    def _get_services_network_data(self):
-        """
-        Compute the complete list of services subnetworks.
-
-        Returns:
-            dict: services network data.
         """
         pass
 

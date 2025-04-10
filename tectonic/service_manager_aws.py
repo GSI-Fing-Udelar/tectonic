@@ -73,8 +73,8 @@ class ServiceManagerAWS(ServiceManager):
           list(str): resources name of the subnetworks security groups for the services.
         """
         resources = []
-        for network in self._get_services_network_data():
-            resources.append('aws_security_group.subnet_sg["'f"{network}"'"]')
+        for network_name in self.decsription.auxiliary_networks:
+            resources.append('aws_security_group.subnet_sg["'f"{network_name}"'"]')
         return resources
     
     def _get_dns_resources_name(self):
@@ -85,8 +85,8 @@ class ServiceManagerAWS(ServiceManager):
           list(str): resources name of the aws dns resources for the services.
         """
         resources = []
-        for network in self._get_services_network_data():
-            resources.append('aws_route53_zone.zones["'f"{network.split('-')[2]}"'"]')
+        for _, network in self.description.auxiliary_networks.items():
+            resources.append('aws_route53_zone.zones["'f"{network.base_name}"'"]') # TODO - Check name
             services_data = self._get_services_guest_data() 
             for service in services_data:
                 interfaces_data = services_data[service]["interfaces"]
@@ -168,13 +168,13 @@ class ServiceManagerAWS(ServiceManager):
             resources = resources + self._get_session_resources_name(instances)
         return resources
         
-    def get_resources_to_target_destroy(self, instances):
+    def get_resources_to_target_destroy(self, instances, services):
         """
         Get resources name for target destroy.
 
         Parameters:
             instances (list(int)): number of the instances to target destroy.
-        
+            services (list(str)): list of services to destroy
         Return:
             list(str): names of resources.
         """
@@ -190,13 +190,16 @@ class ServiceManagerAWS(ServiceManager):
         Return:
             dict: variables.
         """
+        networks = {name: network.to_dict()                    
+                    for name, network in self.description.auxiliary_networks}
+
         return {
             "institution": self.description.institution,
             "lab_name": self.description.lab_name,
             "aws_region": self.config.aws.region,
             "network_cidr_block": self.config.network_cidr_block,
             "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps(self._get_services_network_data()),
+            "subnets_json": json.dumps(networks),
             "guest_data_json": json.dumps(self._get_services_guest_data()),
             "os_data_json": json.dumps(OS_DATA),
             "configure_dns": self.config.configure_dns,
@@ -208,27 +211,6 @@ class ServiceManagerAWS(ServiceManager):
             "monitor": self.description.elastic.enable,
         }
     
-    def _get_services_network_data(self):
-        """
-        Compute the complete list of services subnetworks.
-
-        Returns:
-            dict: services network data.
-        """
-        #TODO: ver si se puede mejorar 
-        networks = {
-            f"{self.description.institution}-{self.description.lab_name}-services" : {
-                "cidr" : self.config.services_network_cidr_block,
-                "mode": "none"
-            },
-        }
-        if self.description.elastic.enable or self.description.caldera.enable :
-            networks[f"{self.description.institution}-{self.description.lab_name}-internet"] = {
-                "cidr" : self.config.internet_network_cidr_block,
-                "mode" : "nat",
-            }
-        return networks
-    
     def _get_services_guest_data(self):
         """
         Compute the services guest data as expected by the deployment terraform module.
@@ -236,7 +218,7 @@ class ServiceManagerAWS(ServiceManager):
         Returns:
             dict: services guest data.
         """
-        #TODO: ver si se puede mejorar 
+        #TODO: move to description
         guest_data = {}
         if self.description.elastic.enable:
             guest_data[self.description.elastic.name] = {
@@ -267,7 +249,7 @@ class ServiceManagerAWS(ServiceManager):
                     "disk": self.description.elastic.disk,
                     "port": 5601,
                 }
-        if self.description.deploy_caldera:
+        if self.description.caldera.enable:
             guest_data[self.description.caldera.name] = {
                     "guest_name": self.description.caldera.name,
                     "base_name": "caldera",
@@ -291,9 +273,9 @@ class ServiceManagerAWS(ServiceManager):
                             "mask": str(ipaddress.ip_network(self.config.internet_network_cidr_block).prefixlen),
                         },
                     },
-                    "memory": self.description.caldera["memory"],
-                    "vcpu": self.description.caldera["vcpu"],
-                    "disk": self.description.caldera["disk"],
+                    "memory": self.description.caldera.memory,
+                    "vcpu": self.description.caldera.vcpu,
+                    "disk": self.description.caldera.disk,
                     "port": 8443,
                 }
         return guest_data

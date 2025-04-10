@@ -418,22 +418,22 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     "--images/--no-images",
     default=False,
     show_default=True,
-    help="Whether to destroy the base images of each guest in the lab.",
+    help="Whether to destroy the base images of guests and services in the lab.",
 )
 @click.option(
-    "--packetbeat_image/--no-packetbeat_image",
+    "--packetbeat/--no-packetbeat",
     default=False,
     show_default=True,
-    help="Whether to destroy the base image for packetbeat.",
+    help="Whether to destroy the packetbeat service machine.",
 )
 @click.option(
-    "--elastic_image/--no-elastic_image",
+    "--elastic/--no-elastic",
     default=False,
     show_default=True,
-    help="Whether to destroy the base image for ELK.",
+    help="Whether to destroy the ELK service machine.",
 )
 @click.option(
-    "--caldera_image/--no-caldera_image",
+    "--caldera/--no-caldera",
     default=False,
     show_default=True,
     help="Whether to destroy the base image for Caldera.",
@@ -447,29 +447,32 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     help="Force the destruction of instances without a confirmation prompt.",
     is_flag=True,
 )
-def destroy(ctx, images, instances, packetbeat_image, elastic_image, caldera_image, force):
-    """Delete and destroy all resources of the cyber range."""
+def destroy(ctx, images, instances, packetbeat, elastic, caldera, force):
+    """Delete and destroy all resources of the cyber range. 
+
+    If instances are specified only destroys running guests for those
+    instances. Otherwise, destroys all running guests and services.
+
+    """
 
     if not force:
         confirm_machines(
             ctx, instances, guest_names=None, copies=None, action="Destroying"
         )
 
-    ctx.obj["deployment"].destroy_infraestructure(instances)
+    if (instances and (images or caldera or elastic or packetbeat)):
+        raise TectonicException("You cannot specify a list of instances and image or service destruction at the same time.")
 
-    if instances is None:
-        if images:
-            click.echo("Destroying base images...")
-            ctx.obj["deployment"].delete_cr_images()
+    services = []
+    if packetbeat:
+        services.append("packetbeat")
+    if elastic:
+        services.append("elastic")
+    if caldera:
+        services.append("caldera")
 
-        if (packetbeat_image and ctx.obj["description"].platform == "aws")  or elastic_image or caldera_image:
-            click.echo("Destroying services base image...")
-            services = {
-                "packetbeat": packetbeat_image and ctx.obj["description"].platform == "aws",
-                "elastic": elastic_image,
-                "caldera": caldera_image
-            }
-            ctx.obj["deployment"].delete_services_images(services)
+    ctx.obj["core"].destroy(instances, services, images)
+
 
 @tectonic.command()
 @click.pass_context

@@ -112,7 +112,7 @@ class Core:
             guests (list(str): list of base guests to create images for
         """
         # Create instances images
-        machines = {guest_name: guest.packer_dict() 
+        machines = {guest_name: guest.to_dict() 
                     for guest_name, guest in self.description.base_guests.items() 
                     if not guests or guest.base_name in guests}
         args = {
@@ -126,7 +126,7 @@ class Core:
             "libvirt_storage_pool": self.config.libvirt.storage_pool,
             "libvirt_uri": self.config.libvirt.uri,
 
-            "machines_json": json.dumps(machines, default=lambda o: o.to_json()),
+            "machines_json": json.dumps(machines),
 
             "os_data_json": json.dumps(OS_DATA),
             "platform": self.config.platform,
@@ -261,28 +261,30 @@ class Core:
         if self.description.caldera.enable:
             self.service_manager.install_caldera_agent(self.ansible, instances)
 
-    def destroy(self, instances, destroy_instances_images, destroy_services_images):
+    def destroy(self, instances, services, destroy_images):
         """
         Destroy scenario.
 
         Parameters:
-            instances (list(int)): numbers of the instances to deploy.
-            destroy_instances_images: whether to destroy instances images.
-            destroy_services_images: whether to destroy services images.
+            instances (list(int)): numbers of the instances to destroy.
+            services (list(str)): list of services to destroy
+            destroy_images: whether to destroy instances images.
         """
         services_resources_to_destroy = None
         instances_resources_to_destroy = None
-        if instances is not None:
-            services_resources_to_destroy = self.service_manager.get_resources_to_target_destroy(instances)
+        if instances:
             instances_resources_to_destroy = self.instance_manager.get_resources_to_target_destroy(instances)
+        if instances or set(services) != set([service_name for services_name, _ in self.description.services.items()]):
+            services_resources_to_destroy = self.service_manager.get_resources_to_target_destroy(instances, services)
+            
 
         # Destroy services
-        self.terraform.destroy(self.services_terraform_module, self.service_manager.get_terraform_variables(), services_resources_to_destroy)
+        self.terraform.destroy(self.services_terraform_module, self.service_manager.get_terraform_variables(serivces), services_resources_to_destroy)
 
         # Destrot instances
         self.terraform.destroy(self.instances_terraform_module, self.instance_manager.get_terraform_variables(), instances_resources_to_destroy)
 
-        if instances is None:
+        if instances:
             # Destroy Packetbeat
             if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
                 self.instance_manager.destroy_packetbeat(self.ansible)
@@ -291,7 +293,7 @@ class Core:
             if destroy_instances_images:
                 self._destroy_images([guest.base_name for guest in self.description.base_guests])
             if destroy_services_images:
-                self._destroy_images([service.base_name for service in self.description.services])
+                self._destroy_images(services)
     
     def recreate(self, instances, guests, copies):
         """

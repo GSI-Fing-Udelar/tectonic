@@ -52,17 +52,17 @@ class ServiceManagerLibvirt(ServiceManager):
             resources.append('libvirt_volume.cloned_image["'f"{service}"'"]')
             resources.append('libvirt_cloudinit_disk.commoninit["'f"{service}"'"]')
             resources.append('libvirt_domain.machines["'f"{service}"'"]')
-        for network in self._get_services_network_data():
+        for network in self.description.auxiliary_networks:
             resources.append('libvirt_network.subnets["'f"{network}"'"]')
         return resources
 
-    def get_resources_to_target_destroy(self, instances):
+    def get_resources_to_target_destroy(self, instances, services):
         """
         Get resources name for target destroy.
 
         Parameters:
             instances (list(int)): number of the instances to target destroy.
-        
+            services (list(str)): list of services to destroy
         Return:
             list(str): names of resources.
         """
@@ -75,39 +75,21 @@ class ServiceManagerLibvirt(ServiceManager):
         Return:
             dict: variables.
         """
+        networks = {name: network.to_dict()                    
+                    for name, network in self.description.auxiliary_networks}
+
         return {
             "institution": self.description.institution,
             "lab_name": self.description.lab_name,
             "ssh_public_key_file": self.config.ssh_public_key_file,
             "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps(self._get_services_network_data()),
+            "subnets_json": json.dumps(networks),
             "guest_data_json": json.dumps(self._get_services_guest_data()),
             "os_data_json": json.dumps(OS_DATA),
             "configure_dns": self.config.configure_dns,
             "libvirt_uri": self.config.libvirt.uri,
             "libvirt_storage_pool": self.config.libvirt.storage_pool,
         }
-    
-    def _get_services_network_data(self):
-        """
-        Compute the complete list of services subnetworks.
-
-        Returns:
-            dict: services network data.
-        """
-        #TODO: ver si se puede mejorar 
-        networks = {
-            f"{self.description.institution}-{self.description.lab_name}-services" : {
-                "cidr" : self.config.services_network_cidr_block,
-                "mode": "none"
-            },
-        }
-        if self.description.elastic.enable:
-            networks[f"{self.description.institution}-{self.description.lab_name}-internet"] = {
-                "cidr" : self.config.internet_network_cidr_block,
-                "mode" : "nat",
-            }
-        return networks
     
     def _get_services_guest_data(self):
         """

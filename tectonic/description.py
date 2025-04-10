@@ -79,6 +79,50 @@ class NetworkDescription():
             raise DescriptionException(f"Invalid members {value}. Must be a list of guest names.")
         self._members = value
 
+
+class AuxiliaryNetwork(NetworkDescription):
+
+    def __init__(self, description, network_name, ip_network, mode):
+        super().__init__(description, network_name)
+        self.ip_network = ip_network
+        self.mode = mode
+
+    @property
+    def name(self):
+        return self._institution + "-" + \
+            self._lab_name + "-" + str(self.instance) + "-" + self.base_name
+
+    @property
+    def ip_network(self):
+        return self._ip_network
+
+    @property
+    def mode(self):
+        return self._mode
+
+    @ip_network.setter
+    def ip_network(self, value):
+        if value is not None:
+            validate.ip_network("ip_network", value)
+        self._ip_network = value
+
+    @mode.setter
+    def mode(self, value):
+        validate.supported_value("mode", value, ["none", "nat"])
+        self._mode = value
+
+    def to_dict(self):
+        """Convert an AuxiliaryNetwork object to the dictionary expected by terraform."""
+    
+        result = {}
+        result["base_name"] = self.base_name
+        result["name"] = self.name
+        result["cidr"] = self.ip_network
+        result["mode"] = self.mode
+
+        return result
+    
+
 class ScenarioNetwork(NetworkDescription):
 
     def __init__(self, description, base_network, instance_num, ip_network):
@@ -95,10 +139,6 @@ class ScenarioNetwork(NetworkDescription):
             self._lab_name + "-" + str(self.instance) + "-" + self.base_name
 
     @property
-    def base_name(self):
-        return self._base_name
-
-    @property
     def instance(self):
         return self._instance
 
@@ -109,17 +149,6 @@ class ScenarioNetwork(NetworkDescription):
     @property
     def mode(self):
         return self._mode
-
-    @name.setter
-    def name(self, value):
-        self._name = value
-
-    @base_name.setter
-    def base_name(self, value):
-        value = re.sub("[^a-zA-Z0-9]+", "", value).lower()
-        if value == "":
-            raise DescriptionException(f"Invalid network name {value}. Must have at least one alphanumeric symbol.")
-        self._base_name = value
 
     @instance.setter
     def instance(self, value):
@@ -333,7 +362,7 @@ class BaseGuestDescription(MachineDescription):
         self.red_team_agent = data.get("red_team_agent", self.red_team_agent)
         self.blue_team_agent = data.get("blue_team_agent", self.blue_team_agent)
 
-    def packer_dict(self):
+    def to_dict(self):
         """Convert BaseGuestDescription object to the dictionary expected by packer."""
 
         result = {}
@@ -721,7 +750,7 @@ class Description:
         # not disabled in the lab edition.
         enable_caldera = self._caldera.enable and lab_edition_data.get("caldera", {}).get("enable", True)
         self._caldera.load_caldera(lab_edition_data.get("caldera", {}))
-        self._caldera.enable = enable_caldera
+        self._caldera.enable = enable_caldera      
 
         # Load base guests and topology
         self._required(description_data, "guest_settings")
@@ -754,6 +783,15 @@ class Description:
         self._parameters_files = tectonic.utils.read_files_in_directory(
             Path(self._scenario_dir).joinpath("ansible","parameters")
         )
+
+
+        # Load auxiliary networks
+        self._auxiliary_networks = {}
+        if self._elastic.enable or self._caldera.enable:
+            self._auxiliary_networks["services"] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
+        if self._elastic.enable or self._caldera.enable or self.internet_access_required:
+            self._auxiliary_networks["internet"] = AuxiliaryNetwork(self, "internet", self.config.services_network_cidr_block, "nat")
+
 
 
     def parse_machines(self, instances=[], guests=[], copies=[], only_instances=True, exclude=[]):
@@ -974,6 +1012,10 @@ class Description:
     @property
     def services(self):
         return [service for service in [self._elastic, self._packetbeat, self._caldera] if service.enable]
+
+    @property
+    def auxiliary_networks(self):
+        return self._auxiliary_networks
 
 
     #----------- Setters ----------
