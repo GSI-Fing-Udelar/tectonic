@@ -74,7 +74,7 @@ def read_all_files_in_dir(directory):
         for child in Path(directory).iterdir():
             if child.is_file():
                 content = child.read_text()
-                if content[-1] != "\n":
+                if not content or content[-1] != "\n":
                     content += "\n"
                 contents += content
     return contents

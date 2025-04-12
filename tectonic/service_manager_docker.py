@@ -65,7 +65,13 @@ class ServiceManagerDocker(ServiceManager):
         Return:
             list(str): names of resources.
         """
-        return []
+        resources = []
+        for service_name in services:
+            service = self.description.services[service_name]
+            if service:
+                resources.append('docker_container.machines["'f"{service.name}"'"]')
+
+        return resources
     
     def get_terraform_variables(self):
         """

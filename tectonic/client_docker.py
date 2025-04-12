@@ -125,7 +125,8 @@ class ClientDocker(Client):
         
     def delete_image(self, image_name):
         try:
-            self.connection.images.remove(image_name)
+            if self.get_image_id(image_name):
+                self.connection.images.remove(image_name)
         except Exception as exception:
             raise ClientDockerException(f"{exception}")
         

@@ -167,7 +167,15 @@ class ScenarioNetwork(NetworkDescription):
         validate.supported_value("mode", value, ["none", "nat"])
         self._mode = value
 
+    
+    def to_dict(self):
+        """Convert a ScenarioNetwork object to the dictionary expected by terraform."""
+        
+        result = {}
+        result["name"] = self.name
+        result["ip_network"] = self.ip_network
 
+        return result
 
 
 
@@ -424,13 +432,24 @@ class NetworkInterface():
     def network(self, value):
         self._network = value
 
-    @network.setter
+    @private_ip.setter
     def private_ip(self, value):
         self._private_ip = value
 
     @mask.setter
     def mask(self, value):
         self._mask = value
+
+    def to_dict(self):
+        """Convert a NetworkInterface object to the dictionary expected by terraform."""
+
+        result = {}
+        result["name"] = self.name
+        result["subnetwork_name"] = self.network.name
+        result["private_ip"] = self.private_ip
+
+        return result
+
 
         
     def _get_interface_index_to_sum(self, description, guest):
@@ -455,6 +474,7 @@ class NetworkInterface():
             raise DescriptionException(f"Cannot find {guest.base_name} in network {network.base_name}.")
         hostnum = network.members.index(guest.base_name) + (guest.copy - 1) + 3
         ip_network = ipaddress.ip_network(network.ip_network)
+
         return str(list(ip_network.hosts())[hostnum])
 
 
@@ -575,6 +595,22 @@ class GuestDescription(BaseGuestDescription):
     def advanced_options_file(self, value):
         self._advanced_options_file = value
 
+
+    def to_dict(self):
+        """Convert a GuestDescription object to the dictionary expected by packer."""
+
+        result = {}
+        result["base_name"] = self.base_name
+        result["name"] = self.name
+        result["vcpu"] = self.vcpu
+        result["memory"] = self.memory
+        result["disk"] = self.disk
+        result["hostname"] = self.hostname
+        result["base_os"] = self.os
+        result["is_in_services_network"] = self.is_in_services_network
+        result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
+
+        return result
 
 
 class ServiceDescription(MachineDescription):

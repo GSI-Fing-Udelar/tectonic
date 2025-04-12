@@ -111,10 +111,8 @@ class Core:
         Parameters:
             guests (list(str): list of base guests to create images for
         """
-        # Create instances images
-        machines = {guest_name: guest.to_dict() 
-                    for guest_name, guest in self.description.base_guests.items() 
-                    if not guests or guest.base_name in guests}
+        machines = [guest for _, guest in self.description.base_guests.items()
+                    if not guests or guest.base_name in guests]
         args = {
             "ansible_playbooks_path": self.description.ansible_dir,
             "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
@@ -126,7 +124,7 @@ class Core:
             "libvirt_storage_pool": self.config.libvirt.storage_pool,
             "libvirt_uri": self.config.libvirt.uri,
 
-            "machines_json": json.dumps(machines),
+            "machines_json": json.dumps({guest.base_name: guest.to_dict() for guest in machines}),
 
             "os_data_json": json.dumps(OS_DATA),
             "platform": self.config.platform,
@@ -135,7 +133,7 @@ class Core:
         }
         if self.config.proxy:
             args["proxy"] = self.config.proxy
-        self._destroy_images(guests)
+        self._destroy_images(machines)
         self.instance_manager.create_image(self.packer, self.INSTANCES_PACKER_MODULE, args)
 
     def create_services_images(self, services=None):
@@ -143,10 +141,11 @@ class Core:
         Create base images.
 
         Parameters:
-            services (list(str)): List of services to create
+            services (list(str)): List of services to create. Create all if it is None.
         """
         # Create services images
-        machines = [service for _, service in self.description.services.items() if not services or service.base_name in services]
+        machines = [service for _, service in self.description.services.items()
+                    if services is None or service.base_name in services]
         args = {
             "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
             "ansible_ssh_common_args": self.config.ansible.ssh_common_args,
@@ -154,7 +153,7 @@ class Core:
             "libvirt_storage_pool": self.config.libvirt.storage_pool,
             "libvirt_uri": self.config.libvirt.uri,
 
-            "machines_json": json.dumps(machines),
+            "machines_json": json.dumps({guest.base_name: guest.to_dict() for guest in machines}),
 
             "os_data_json": json.dumps(OS_DATA),
             "platform": self.config.platform,
@@ -169,7 +168,7 @@ class Core:
         if self.config.proxy:
             args["proxy"] = self.config.proxy
         # TODO: lo de arriba de generar el args lo pasaría al description? así no hay que poner if con la tecnología acá.
-        self._destroy_images(services)
+        self._destroy_images(machines)
         self.packer.create_image(self.SERVICES_PACKER_MODULE, args)
 
 
@@ -178,15 +177,13 @@ class Core:
         Destroy base images.
 
         Parameters:
-            names (list(str)): guests (or services) names for which to destroy images. 
+            names (list(MachineDescription)): guests (or services) for which to destroy images. 
         """
         for guest in guests:
-            image_name = self.description.base_guests[guest].image_name
-            if self.client.is_image_in_use(guest):
-                raise CoreException(f"Unable to delete image {image_name} because it is being used.")
+            if self.client.is_image_in_use(guest.base_name):
+                raise CoreException(f"Unable to delete image {guest.image_name} because it is being used.")
         for guest in guests:
-            image_name = self.description.base_guests[guest].image_name
-            self.client.delete_image(image_name)
+            self.client.delete_image(guest.image_name)
 
     
     def deploy(self, instances, create_instances_images, create_services_images):
@@ -266,7 +263,7 @@ class Core:
         Destroy scenario.
 
         Parameters:
-            instances (list(int)): numbers of the instances to destroy.
+            instances (list(int)): numbers of the instances to destroy, if None destroy all.
             services (list(str)): list of services to destroy
             destroy_images: whether to destroy instances images.
         """
@@ -274,26 +271,27 @@ class Core:
         instances_resources_to_destroy = None
         if instances:
             instances_resources_to_destroy = self.instance_manager.get_resources_to_target_destroy(instances)
-        if instances or set(services) != set([service_name for services_name, _ in self.description.services.items()]):
+        if instances or set(services) != set([service.name for service in self.description.services]):
             services_resources_to_destroy = self.service_manager.get_resources_to_target_destroy(instances, services)
-            
 
         # Destroy services
-        self.terraform.destroy(self.services_terraform_module, self.service_manager.get_terraform_variables(serivces), services_resources_to_destroy)
+        self.terraform.destroy(self.services_terraform_module,
+                               self.service_manager.get_terraform_variables(),
+                               services_resources_to_destroy)
+
+        # Destroy Packetbeat Agent running in the host, if necessary
+        if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
+            self.service_manager.destroy_packetbeat(self.ansible)
 
         # Destrot instances
-        self.terraform.destroy(self.instances_terraform_module, self.instance_manager.get_terraform_variables(), instances_resources_to_destroy)
+        self.terraform.destroy(self.instances_terraform_module, 
+                               self.instance_manager.get_terraform_variables(), 
+                               instances_resources_to_destroy)
 
-        if instances:
-            # Destroy Packetbeat
-            if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
-                self.instance_manager.destroy_packetbeat(self.ansible)
-                
-            # Destroy images
-            if destroy_instances_images:
-                self._destroy_images([guest.base_name for guest in self.description.base_guests])
-            if destroy_services_images:
-                self._destroy_images(services)
+        # Destroy images
+        if not instances and destroy_images:
+            self._destroy_images([guest for _, guest in self.description.base_guests.items()])
+            self._destroy_images(services)
     
     def recreate(self, instances, guests, copies):
         """

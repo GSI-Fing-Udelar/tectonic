@@ -294,7 +294,7 @@ class ServiceManagerAWS(ServiceManager):
             extra_vars=variables
         )
     
-    def _destroy_packetbeat(self, ansible):
+    def destroy_packetbeat(self, ansible):
         """
         Destroy Packetbeat for Elastic service network monitoring.
 

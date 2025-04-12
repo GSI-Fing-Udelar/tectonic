@@ -50,7 +50,7 @@ resource "aws_subnet" "instance_subnets" {
   vpc_id                  = module.vpc.vpc_id
   map_public_ip_on_launch = false
   availability_zone       = module.vpc.azs[0]
-  cidr_block              = each.value
+  cidr_block              = lookup(each.value, "ip_network")
 
   tags = {
     Name = each.key
@@ -237,14 +237,14 @@ resource "aws_security_group" "subnet_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = [each.value]
+    cidr_blocks = [lookup(each.value, "ip_network")]
   }
   egress {
     description = "Allow outbound traffic to all instance subnets."
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = [each.value]
+    cidr_blocks = [lookup(each.value, "ip_network")]
   }
 
   tags = {

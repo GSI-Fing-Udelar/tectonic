@@ -129,8 +129,11 @@ class InstanceManagerDocker(InstanceManager):
             "instance_number": self.description.instance_number,
             "ssh_public_key_file": self.config.ssh_public_key_file,
             "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps(self.description.scenario_networks),
-            "guest_data_json": json.dumps(self.description.scenario_guests),
+            "subnets_json": json.dumps({name: network.to_dict() 
+                                        for name, network in self.description.scenario_networks.items()}),
+            "guest_data_json": json.dumps({name: guest.to_dict() 
+                                           for name, guest in self.description.scenario_guests.items()}),
+
             "default_os": self.description.default_os,
             "os_data_json": json.dumps(OS_DATA),
             "configure_dns": self.config.configure_dns,

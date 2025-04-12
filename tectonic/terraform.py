@@ -38,7 +38,7 @@ class Terraform:
         self.lab_name = lab_name
         self.backend_info = backend_info
 
-    def _run_terraform_cmd(t, cmd, variables, **args):
+    def _run_terraform_cmd(self, t, cmd, variables, **args):
         """
         Run terraform command.
 
