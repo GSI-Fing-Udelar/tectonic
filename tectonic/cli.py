@@ -415,6 +415,12 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
 @tectonic.command()
 @click.pass_context
 @click.option(
+    "--destroy-guets/--no-destroy-guests",
+    default=True,
+    show_default=True,
+    help="Whether to destroy running guests in the lab.",
+)
+@click.option(
     "--images/--no-images",
     default=False,
     show_default=True,
@@ -447,12 +453,12 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     help="Force the destruction of instances without a confirmation prompt.",
     is_flag=True,
 )
-def destroy(ctx, images, instances, packetbeat, elastic, caldera, force):
+def destroy(ctx, destroy_guests, images, instances, packetbeat, elastic, caldera, force):
     """Delete and destroy all resources of the cyber range. 
 
     If instances are specified only destroys running guests for those
-    instances. Otherwise, destroys all running guests and services.
-
+    instances. Otherwise, destroys all running guests (if
+    destroy-guests is true), and each specified service.
     """
 
     if not force:
@@ -460,6 +466,8 @@ def destroy(ctx, images, instances, packetbeat, elastic, caldera, force):
             ctx, instances, guest_names=None, copies=None, action="Destroying"
         )
 
+    if (instances and not destroy_guests):
+        raise TectonicException("If you specify a list of instances, destroy-guests must be true.")
     if (instances and (images or caldera or elastic or packetbeat)):
         raise TectonicException("You cannot specify a list of instances and image or service destruction at the same time.")
 
@@ -584,7 +592,7 @@ def start(ctx, instances, guests, copies, force, services):
     """Start (boot up) machines in the cyber range."""
     if not force:
         confirm_machines(ctx, instances, guests, copies, "Start")
-    ctx.obj["deployment"].start(instances, guests, copies, services)
+    ctx.obj["core"].start(instances, guests, copies, services)
 
 
 @tectonic.command()
@@ -618,7 +626,7 @@ def shutdown(ctx, instances, guests, copies, force, services):
     """Shutdown machines in the cyber range."""
     if not force:
         confirm_machines(ctx, instances, guests, copies, "Shut down")
-    ctx.obj["deployment"].shutdown(instances, guests, copies, services)
+    ctx.obj["core"].stop(instances, guests, copies, services)
 
 @tectonic.command()
 @click.pass_context
@@ -645,7 +653,7 @@ def reboot(ctx, instances, guests, copies, force, services):
     """Reboot machines in the cyber range."""
     if not force:
         confirm_machines(ctx, instances, guests, copies, "Reboot")
-    ctx.obj["deployment"].reboot(instances, guests, copies, services)
+    ctx.obj["core"].restart(instances, guests, copies, services)
 
 
 @tectonic.command()
@@ -832,7 +840,7 @@ def recreate(ctx, instances, guests, copies, force):
     """Recreate instances."""
     if not force:
         confirm_machines(ctx, instances, guests, copies, "Recreate")
-    ctx.obj["deployment"].recreate(instances, guests, copies)
+    ctx.obj["core"].recreate(instances, guests, copies)
 
 if __name__ == "__main__":
     obj = {}
