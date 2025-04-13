@@ -407,7 +407,7 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     if images:
         _create_images(ctx, packetbeat_image, elastic_image, caldera_image, True)
 
-    ctx.obj["deployment"].deploy_infraestructure(instances)
+    ctx.obj["core"].deploy(instances, images, False) # TODO: Do the right thing for services
 
     _info(ctx)
 
@@ -415,7 +415,7 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
 @tectonic.command()
 @click.pass_context
 @click.option(
-    "--destroy-guets/--no-destroy-guests",
+    "--machines/--no-machines",
     default=True,
     show_default=True,
     help="Whether to destroy running guests in the lab.",
@@ -453,12 +453,12 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     help="Force the destruction of instances without a confirmation prompt.",
     is_flag=True,
 )
-def destroy(ctx, destroy_guests, images, instances, packetbeat, elastic, caldera, force):
+def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, force):
     """Delete and destroy all resources of the cyber range. 
 
     If instances are specified only destroys running guests for those
     instances. Otherwise, destroys all running guests (if
-    destroy-guests is true), and each specified service.
+    machines is true), and each specified service.
     """
 
     if not force:
@@ -466,8 +466,8 @@ def destroy(ctx, destroy_guests, images, instances, packetbeat, elastic, caldera
             ctx, instances, guest_names=None, copies=None, action="Destroying"
         )
 
-    if (instances and not destroy_guests):
-        raise TectonicException("If you specify a list of instances, destroy-guests must be true.")
+    if (instances and not machines):
+        raise TectonicException("If you specify a list of instances, machines must be true.")
     if (instances and (images or caldera or elastic or packetbeat)):
         raise TectonicException("You cannot specify a list of instances and image or service destruction at the same time.")
 
@@ -479,7 +479,7 @@ def destroy(ctx, destroy_guests, images, instances, packetbeat, elastic, caldera
     if caldera:
         services.append("caldera")
 
-    ctx.obj["core"].destroy(instances, services, images)
+    ctx.obj["core"].destroy(instances, machines, services, images)
 
 
 @tectonic.command()
@@ -531,8 +531,9 @@ def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
         services.append("packetbeat")
     if caldera:
         services.append("caldera")
-    click.echo("Creating services images ...")
-    # ctx.obj["core"].create_services_images(services)
+    if services:
+        click.echo("Creating services images ...")
+        # ctx.obj["core"].create_services_images(services)
 
     if machines:
         click.echo("Creating base images...")
@@ -792,9 +793,9 @@ def _info(ctx):
         click.echo(utils.create_table(headers,rows))
         
     if result.get("student_access_password"):
-        headers = ["Name", "Status"]
+        headers = ["Username", "Password"]
         rows = []
-        for key, value in result.get("instances_info", []).items():
+        for key, value in result.get("student_access_password", {}).items():
             rows.append([key, value])
         click.echo(utils.create_table(headers,rows))
     

@@ -22,6 +22,8 @@ import ipaddress
 import math
 import tempfile
 import random
+import string
+from passlib.hash import sha512_crypt
 import yaml
 from zipfile import ZipFile
 from pathlib import Path
@@ -816,7 +818,7 @@ class Description:
 
         self._scenario_networks = self._compute_scenario_networks()
         self._scenario_guests = self._compute_scenario_guests()
-        self._parameters_files = tectonic.utils.read_files_in_directory(
+        self._parameters_files = tectonic.utils.list_files_in_directory(
             Path(self._scenario_dir).joinpath("ansible","parameters")
         )
 
@@ -901,7 +903,7 @@ class Description:
 
         return result
 
-    def get_parameters(self, instances):
+    def get_parameters(self, instances=None):
         if not instances:
             instances = list(range(1,self.instance_number+1))
         random.seed(self.random_seed)
@@ -918,7 +920,26 @@ class Description:
         return parameters
 
 
+    def generate_student_access_credentials(self):
+        """Returns a dictionary of users with username, password, password_hash and authorized_keys.
+        """
+        users = {}
+        random.seed(self.random_seed)
+        digits = len(str(self.instance_number))
+        for i in range(1,self.instance_number+1):
+            username = f"{self.student_prefix}{i:0{digits}d}"
+            users[username] = {}
+            if self.create_students_passwords:
+                (password, salt) = self._generate_password()
+                users[username]["password"] = password
+                users[username]["password_hash"] = sha512_crypt.using(salt=salt).hash(
+                    password
+                )
 
+            if self.student_pubkey_dir:
+                users[username]["authorized_keys"] = tectonic.utils.read_files_in_dir(
+                    Path(self.student_pubkey_dir) / username)
+        return users
 
     #----------- Getters ----------
     @property
@@ -972,8 +993,9 @@ class Description:
         Concatenates the contents of all the pubkeys in
         teacher_pubkey_dir plus config option ssh_public_key_file.
         """
+    
         keys = ""
-        keys += tectonic.utils.read_all_files_in_dir(self.teacher_pubkey_dir)
+        keys += tectonic.utils.read_files_in_dir(self.teacher_pubkey_dir)
 
         if self.config.ssh_public_key_file is not None:
             p = Path(self.config.ssh_public_key_file).expanduser()
@@ -1216,3 +1238,11 @@ class Description:
             if advanced_options_file.is_file():
                 return advanced_options_file.resolve().as_posix()
         return "/dev/null"
+
+    def _generate_password(self):
+        """Generate a pseudo random password and salt."""
+        characters = string.ascii_letters + string.digits
+        password = "".join(random.choice(characters) for _ in range(12))
+        salt = "".join(random.choice(characters) for _ in range(16))
+        return password, salt
+

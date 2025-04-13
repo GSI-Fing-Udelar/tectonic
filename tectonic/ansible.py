@@ -77,18 +77,18 @@ class Ansible:
             ssh_args += f' -o ProxyCommand="{proxy_command}"'
 
         networks = {}
-        for guest in self.description.scenario_guests:
+        for _, guest in self.description.scenario_guests.items():
             if guest.instance not in networks:
                 networks[guest.instance] = {}
             for _, interface in guest.interfaces.items():
                 if interface.network.name not in networks[guest.instance]:
                     networks[guest.instance][interface.network.name] = {}
-                networks[guest.instance][interface.network.base_name][guest.base_name] = interface
+                networks[guest.instance][interface.network.name][guest.base_name] = interface.name
 
         for machine_name in machine_list:
             machine = self.description.scenario_guests[machine_name]
             ansible_username = username or machine.admin_username
-            hostname = self.instance_manager.get_ssh_hostname(machine)
+            hostname = self.instance_manager.get_ssh_hostname(machine_name)
 
             if not inventory.get(machine.base_name):
                 inventory[machine.base_name] = {
@@ -100,13 +100,13 @@ class Ansible:
                                 "platform": self.config.platform,
                                 "institution": self.description.institution,
                                 "lab_name": self.description.lab_name,
-                                "ansible_connection" : "community.docker.docker_api" if self.description.platform == "docker" else "ssh", #export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES on macos
+                                "ansible_connection" : "community.docker.docker_api" if self.config.platform == "docker" else "ssh", #export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES on macos
                                 "docker_host": self.config.docker.uri,
                             } | extra_vars,
                 }
 
             inventory[machine.base_name]["hosts"][machine.name] = {
-                "ansible_host": hostname if self.description.platform != "docker" else machine,
+                "ansible_host": hostname if self.config.platform != "docker" else machine.name,
                 "ansible_user": ansible_username,
                 "ansible_ssh_common_args": ssh_args,
                 "machine_name": machine.name,
@@ -200,6 +200,7 @@ class Ansible:
                 username=username,
                 extra_vars=extra_vars
             )
+
         self.output = ""
         self.debug_outputs = []
         extravars = { "ansible_no_target_syslog" : not self.config.ansible.keep_logs }
@@ -226,11 +227,12 @@ class Ansible:
 
     def wait_for_connections(self, instances=None, guests=None, copies=None, only_instances=True, exclude=[], username=None, inventory=None):
         """Wait for machines to respond to ssh connections for ansible."""
-
         playbook = tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'
+
         return self.run(
             instances=instances, guests=guests, copies=copies,
             only_instances=only_instances,
             playbook=playbook, quiet=True,
             exclude=exclude, username=username, inventory=inventory
         )
+

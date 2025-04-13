@@ -19,6 +19,7 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 from abc import ABC, abstractmethod
+import importlib.resources as tectonic_resources
 
 class InstanceManagerException(Exception):
     pass
@@ -164,3 +165,14 @@ class InstanceManager(ABC):
             str: ssh hostname to use.
         """
         return self.client.get_machine_private_ip(machine)
+
+
+    def configure_student_access(self, instances):
+        """Creates users for the students in all entry points of INSTANCES.
+
+        Generates pseudo-random passwords and/or sets public SSH keys for the users.
+        Returns a dictionary of created users.
+        """
+        entry_points = [ base_name for base_name, guest in self.description.base_guests.items()
+                         if guest.entry_point ]
+        self._student_access(instances, entry_points)

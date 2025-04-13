@@ -31,7 +31,7 @@ def create_table(headers, rows):
     table.add_rows(rows)
     return table
 
-def read_files_in_directory(directory_path):
+def list_files_in_directory(directory_path):
     """
     Returns full path to files in directory
 
@@ -68,7 +68,7 @@ def absolute_path(path, base_dir=None, expand_user=True):
 
 
 
-def read_all_files_in_dir(directory):
+def read_files_in_dir(directory):
     contents = ""
     if directory and Path(directory).is_dir():
         for child in Path(directory).iterdir():
