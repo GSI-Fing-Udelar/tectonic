@@ -18,24 +18,31 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
+from tectonic.terraform import Terraform
+
 import json
 from tectonic.constants import OS_DATA
 
-from tectonic.instance_manager import InstanceManager
-
-class InstanceManagerDockerException(Exception):
+class TerraformDockerException(Exception):
     pass
 
-class InstanceManagerDocker(InstanceManager):
+class TerraformDocker(Terraform):
     """
-    InstanceManagerDocker class.
+    Terraform class.
 
-    Description: manages scenario instances for Docker.
+    Description: manages interaction with Terraform to deploy/destroy scenarios.
     """
 
-    def __init__(self, config, description, client):
-        super().__init__(config, description, client)
-    
+    def __init__(self, config, description):
+        """
+        Initialize the Terraform object.
+
+        Parameters:
+            config (Config): Tectonic config object.
+            description (Description): Tectonic description object.
+        """
+        super().__init__(config, description)
+
     def _get_machine_resources_name(self, instances, guests, copies):
         """
         Returns the name of the docker_container resource of the Docker Terraform module for the instances.
@@ -51,9 +58,11 @@ class InstanceManagerDocker(InstanceManager):
         machines = self.description.parse_machines(instances, guests, copies, True)
         resources = []
         for machine in machines:
-            resources.append('docker_container.machines["' f"{machine}" '"]')
+            resources.append('libvirt_domain.machines["' f"{machine}" '"]')
+            resources.append('libvirt_volume.cloned_image["' f"{machine}" '"]')
+            resources.append('libvirt_cloudinit_disk.commoninit["' f"{machine}" '"]')
         return resources
-    
+
     def _get_subnet_resources_name(self, instances):
         """
         Returns the name of the docker_network resource of the Docker Terraform module for the instances.
@@ -65,16 +74,22 @@ class InstanceManagerDocker(InstanceManager):
           list(str): resources name of the aws_subnet for the instances.
         """
         resources = []
-        for instance in filter(lambda i: i <= self.description.instance_number, instances or range(1, self.description.instance_number+1)):
+        for instance in filter(
+            lambda i: i <= self.description.instance_number, instances or range(1, self.description.instance_number+1)
+        ):
             for network in self.description.topology:
                 resources.append(
-                    'docker_network.subnets["'
+                    'libvirt_network.subnets["'
                     f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network['name']}"
                     '"]'
                 )
         return resources
 
-    def get_resources_to_target_apply(self, instances):
+    def _get_dns_resources_name(self, instances):
+        # TODO
+        return []
+
+    def _get_resources_to_target_apply(self, instances):
         """
         Returns the name of the docker resource of the Docker Terraform module to target apply base on the instances number.
 
@@ -84,13 +99,11 @@ class InstanceManagerDocker(InstanceManager):
         Return:
             list(str): names of resources.
         """
-        resources = self._get_machine_resources_name(instances)
+        resources = self._get_machine_resources_name(instances, None, None)
         resources = resources + self._get_subnet_resources_name(instances)
-        if self.description.configure_dns:
-            resources = resources + self._get_dns_resources_name(instances)
         return resources
 
-    def get_resources_to_target_destroy(self, instances):
+    def _get_resources_to_target_destroy(self, instances):
         """
         Returns the name of the docker resource of the Docker Terraform module to target destroy base on the instances number.
 
@@ -100,9 +113,15 @@ class InstanceManagerDocker(InstanceManager):
         Return:
             list(str): names of resources.
         """
-        return self._get_machine_resources_name(instances, None, None)
+        machines = self.description.parse_machines(instances, None, None, True)
+        resources = []
+        for machine in machines:
+            resources.append('libvirt_domain.machines["' f"{machine}" '"]')
+        if self.description.configure_dns:
+            resources = resources + self._get_dns_resources_name(instances)
+        return resources
 
-    def get_resources_to_recreate(self, instances, guests, copies):
+    def _get_resources_to_recreate(self, instances, guests, copies):
         """
         Returns the name of the docker resource of the Docker Terraform module to recreate base on the machines names.
 
@@ -114,9 +133,14 @@ class InstanceManagerDocker(InstanceManager):
         Returns:
           list(str): resources name to recreate.
         """
-        return self._get_machine_resources_name(instances, guests, copies)
-    
-    def get_terraform_variables(self):
+        machines = self.description.parse_machines(instances, guests, copies, True)
+        resources = []
+        for machine in machine:
+            resources.append('libvirt_domain.machines["' f"{machine}" '"]')
+            resources.append('libvirt_volume.cloned_image["' f"{machine}" '"]')
+        return resources
+
+    def _get_terraform_variables(self):
         """
         Get variables to use in Terraform.
 
@@ -134,15 +158,12 @@ class InstanceManagerDocker(InstanceManager):
             "default_os": self.description.default_os,
             "os_data_json": json.dumps(OS_DATA),
             "configure_dns": self.description.configure_dns,
-            "docker_uri": self.description.docker_uri,
+            "libvirt_uri": self.description.libvirt_uri,
+            "libvirt_storage_pool": self.description.libvirt_storage_pool,
+            "libvirt_student_access": self.description.libvirt_student_access,
+            "libvirt_bridge": self.description.libvirt_bridge,
+            "libvirt_external_network": self.description.libvirt_external_network,
+            "libvirt_bridge_base_ip": self.description.libvirt_bridge_base_ip,
+            "services_network": self.description.services_network,
+            "services_network_base_ip": 9,
             }
-
-    def console(self, machine_name, username):
-        """
-        Connect to a specific scenario machine.
-
-        Parameters:
-            machine_name (str): name of the machine.
-            username (str): username to use. Default: None
-        """
-        self.client.connect(machine_name, username)

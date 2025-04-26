@@ -18,20 +18,20 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
+from tectonic.terraform import Terraform
 from tectonic.constants import OS_DATA
 import importlib.resources as tectonic_resources
 
-class ServiceManager(Exception):
+class TerraformServiceException(Exception):
     pass
 
-class ServiceManager(ABC):
+class TerraformService(Terraform):
     """
-    ServiceManager class.
+    TerraformService class.
 
-    Description: manages services instances.
-    You must implement this class if you add a new platform
+    Description: manages interaction with Terraform to deploy/destroy services.
     """
 
     PACKETBEAT_PLAYBOOK = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'agent_manage.yml'
@@ -48,9 +48,34 @@ class ServiceManager(ABC):
             description (Description): Tectonic description object.
             client (Client): Tectonic client object
         """
-        self.config = config
-        self.description = description
+        super().__init__(config, description)
         self.client = client
+
+    @abstractmethod
+    def _get_resources_to_target_apply(self, instances):
+        """
+        Get resources name for target apply.
+
+        Parameters:
+            instances (list(int)): number of the instances to target apply.
+        
+        Return:
+            list(str): names of resources.
+        """
+        pass
+
+    @abstractmethod
+    def _get_resources_to_target_destroy(self, instances):
+        """
+        Get resources name for target destroy.
+
+        Parameters:
+            instances (list(int)): number of the instances to target destroy.
+        
+        Return:
+            list(str): names of resources.
+        """
+        pass
 
     def get_service_credentials(self, service_base_name, ansible):
         """
@@ -151,43 +176,7 @@ class ServiceManager(ABC):
                 machines_blue = self.description.parse_machines(instances, blue_team_machines)
                 inventory_blue = ansible.build_inventory(machines_blue, extra_vars)
                 ansible.run(inventory_blue, self.CALDERA_AGENT_INSTALL_PLAYBOOK, True)
-
-    @abstractmethod
-    def get_resources_to_target_apply(self, instances):
-        """
-        Get resources name for target apply.
-
-        Parameters:
-            instances (list(int)): number of the instances to target apply.
-        
-        Return:
-            list(str): names of resources.
-        """
-        pass
-
-    @abstractmethod
-    def get_resources_to_target_destroy(self, instances):
-        """
-        Get resources name for target destroy.
-
-        Parameters:
-            instances (list(int)): number of the instances to target destroy.
-        
-        Return:
-            list(str): names of resources.
-        """
-        pass
     
-    @abstractmethod
-    def get_terraform_variables(self):
-        """
-        Get variables to use in Terraform.
-
-        Return:
-            dict: variables.
-        """
-        pass
-
     @abstractmethod
     def _get_services_guest_data(self):
         """

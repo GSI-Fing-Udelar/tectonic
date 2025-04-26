@@ -18,39 +18,30 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-import json
+from tectonic.terraform import Terraform
 
-from tectonic.instance_manager import InstanceManager
-from tectonic.ssh import interactive_shell
-import importlib.resources as tectonic_resources
+import json
 from tectonic.constants import OS_DATA
 
-class InstanceManagerAWSException(Exception):
+class TerraformAWSException(Exception):
     pass
 
-class InstanceManagerAWS(InstanceManager):
+class TerraformAWS(Terraform):
     """
-    InstanceManagerAWS class.
+    Terraform class.
 
-    Description: manages scenario instances for AWS.
+    Description: manages interaction with Terraform to deploy/destroy scenarios.
     """
 
-    EIC_ENDPOINT_SSH_PROXY = "aws ec2-instance-connect open-tunnel --instance-id %h"
-    
-    def __init__(self, config, description, client):
-        super().__init__(config, description, client)
-
-    def create_image(self, packer, packer_module, variables):
+    def __init__(self, config, description):
         """
-        Create images using Packer.
+        Initialize the Terraform object.
 
         Parameters:
-            packer (Packer): Tectonic packer object.
-            packer_module (str): path to the Packer module.
-            variables (dict): variables of the Packer module.
+            config (Config): Tectonic config object.
+            description (Description): Tectonic description object.
         """
-        super().create_image(packer, packer_module, variables)
-        self.client.delete_security_groups("Temporary group for Packer")
+        super().__init__(config, description)
 
     def _get_machine_resources_name(self, instances, guests, copies):
         """
@@ -216,7 +207,7 @@ class InstanceManagerAWS(InstanceManager):
                     network_index = network_index + 1
         return resources
     
-    def get_resources_to_target_apply(self, instances):
+    def _get_resources_to_target_apply(self, instances):
         """
         Returns the name of the aws resource of the AWS Terraform module to target apply base on the instances number.
 
@@ -250,7 +241,7 @@ class InstanceManagerAWS(InstanceManager):
             resources = resources + self._get_dns_resources_name(instances)
         return resources
     
-    def get_resources_to_target_destroy(self, instances):
+    def _get_resources_to_target_destroy(self, instances):
         """
         Returns the name of the aws resource of the AWS Terraform module to target destroy base on the instances number.
 
@@ -266,7 +257,7 @@ class InstanceManagerAWS(InstanceManager):
             resources = resources + self._get_dns_resources_name(instances)
         return resources
 
-    def get_resources_to_recreate(self, instances, guests, copies):
+    def _get_resources_to_recreate(self, instances, guests, copies):
         """
         Returns the name of the aws resource of the AWS Terraform module to recreate base on the machines names.
 
@@ -319,75 +310,3 @@ class InstanceManagerAWS(InstanceManager):
             "services_internet_access": self.description.deploy_elastic,
             "monitor_type": self.description.monitor_type,
         }
-    
-    def console(self, machine_name, username):
-        """
-        Connect to a specific scenario machine.
-
-        Parameters:
-            machine_name (str): name of the machine.
-            username (str): username to use. Default: None
-        """
-        if machine_name == self.description.get_teacher_access_name():
-            interactive_shell(self._get_teacher_access_ip(), self._get_teacher_access_username())
-        else:
-            hostname = self.get_ssh_hostname(machine_name)
-            username = username or self.description.get_guest_username(self.description.get_base_name(machine_name))
-            if self.description.teacher_access == "host":
-                gateway = (self._get_teacher_access_ip(), self._get_teacher_access_username())
-            else:
-                gateway = self.EIC_ENDPOINT_SSH_PROXY
-            if not hostname:
-                raise InstanceManagerAWSException(f"Instance {machine_name} not found.")
-            interactive_shell(hostname, username, gateway)
-
-    def get_ssh_proxy_command(self):
-        """
-        Returns the appropriate SSH proxy configuration to access guest machines.
-
-        Return:
-            str: ssh proxy command to use.
-        """
-        if self.description.teacher_access == "endpoint":
-            proxy_command = self.EIC_ENDPOINT_SSH_PROXY
-        else:
-            access_ip = self._get_teacher_access_ip()
-            username = self._get_teacher_access_username()
-            connection_string = f"{username}@{access_ip}"
-            proxy_command = f"ssh {self.description.ansible_ssh_common_args} -W %h:%p {connection_string}"
-        return proxy_command
-    
-    def get_ssh_hostname(self, machine):
-        """
-        Returns the hostname to use for ssh connection to the machine.
-
-        Parameters:
-            machine (str): machine name.
-
-        Return:
-            str: ssh hostname to use.
-        """
-        if self.description.teacher_access == "endpoint":
-            return self.client.get_instance_property(machine, "InstanceId")
-        else:
-            return self.client.get_machine_private_ip(machine)
-        
-    def _get_teacher_access_username(self):
-        """
-        Returns username for connection to teacher access host.
-
-        Return:
-            str: username to use.
-        """
-        return OS_DATA[self.description.default_os]["username"]
-    
-    def _get_teacher_access_ip(self):
-        """
-        Returns the public IP assigned to the teacher access host.
-
-        Return:
-            str: public IP for teacher access.
-        """
-        if self.description.teacher_access == "host":
-            return self.client.get_machine_public_ip(self.description.get_teacher_access_name())
-        return None

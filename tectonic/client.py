@@ -152,3 +152,35 @@ class Client(ABC):
             machine_name (str): name of the machine.
         """
         pass
+
+    @abstractmethod
+    def console(self, machine_name, username):
+        """
+        Connect to a specific scenario machine.
+
+        Parameters:
+            machine_name (str): name of the machine.
+            username (str): username to use.
+        """
+        pass
+
+    def get_ssh_proxy_command(self):
+        """
+        Returns the appropriate SSH proxy configuration to access guest machines.
+
+        Return:
+            str: ssh proxy command to use.
+        """
+        return None
+    
+    def get_ssh_hostname(self, machine):
+        """
+        Returns the hostname to use for ssh connection to the machine.
+
+        Parameters:
+            machine (str): machine name.
+
+        Return:
+            str: ssh hostname to use.
+        """
+        return self.get_machine_private_ip(machine)

@@ -20,14 +20,14 @@
 
 import json
 import ipaddress
+
 from tectonic.constants import OS_DATA
+from tectonic.terraform_service import TerraformService
 
-from tectonic.service_manager import ServiceManager
-
-class ServiceManagerLibvirt(Exception):
+class TerraformServiceLibvirtException(Exception):
     pass
 
-class ServiceManagerLibvirt(ServiceManager):
+class ServiceManagerLibvirt(TerraformService):
     """
     ServiceManagerLibvirt class.
 
@@ -37,7 +37,7 @@ class ServiceManagerLibvirt(ServiceManager):
     def __init__(self, config, description, client):
         super().__init__(config, description, client)
 
-    def get_resources_to_target_apply(self, instances):
+    def _get_resources_to_target_apply(self, instances):
         """
         Get resources name for target apply.
 
@@ -56,7 +56,7 @@ class ServiceManagerLibvirt(ServiceManager):
             resources.append('libvirt_network.subnets["'f"{network}"'"]')
         return resources
 
-    def get_resources_to_target_destroy(self, instances):
+    def _get_resources_to_target_destroy(self, instances):
         """
         Get resources name for target destroy.
 
@@ -68,7 +68,7 @@ class ServiceManagerLibvirt(ServiceManager):
         """
         return []
     
-    def get_terraform_variables(self):
+    def _get_terraform_variables(self):
         """
         Get variables to use in Terraform.
 

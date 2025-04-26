@@ -19,6 +19,7 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 from tectonic.client import Client
+from tectonic.ssh import interactive_shell
 
 import libvirt
 import libvirt_qemu
@@ -222,4 +223,17 @@ class ClientLibvirt(Client):
                 domain.create()
         except Exception as exception:
             raise ClientLibvirtException(f"{exception}") from exception
+        
+    def console(self, machine_name, username):
+        """
+        Connect to a specific scenario machine.
+
+        Parameters:
+            machine_name (str): name of the machine.
+            username (str): username to use. Default: None
+        """
+        hostname = self.get_machine_private_ip(machine_name)
+        if not hostname:
+            raise ClientLibvirtException(f"Instance {machine_name} not found.")
+        interactive_shell(hostname, username)
         

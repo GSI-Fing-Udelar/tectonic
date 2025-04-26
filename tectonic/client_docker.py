@@ -58,25 +58,6 @@ class ClientDocker(Client):
             self.connection = None
             raise ClientDockerException(f"Cannot connect to docker server at {docker_uri}")
         
-    def connect(self, machine_name, username):
-        try:
-            container = self.connection.containers.get(machine_name)
-            subprocess.run([f"docker exec -u {username} -it {container.id} /bin/bash"], shell=True)
-            # TODO: Fix terminal using sockets
-            # container = self.connection.containers.get(machine_name)
-            # (_,s) = container.exec_run("/bin/bash", stdin=True, socket=True, user=username)
-            # while True:
-            #     original_text_to_send = input("$") + '\n'
-            #     if(original_text_to_send == "exit\n"):
-            #         s.close()
-            #         break
-            #     else:
-            #         s._sock.send(original_text_to_send.encode('utf-8'))
-            #         msg = s._sock.recv(1024)
-            #         print(msg.decode()[8:])
-        except Exception as exception:
-            raise ClientDockerException(f"{exception}")
-        
     def get_machine_status(self, machine_name):
         try:
             container = self.connection.containers.get(machine_name)
@@ -148,6 +129,25 @@ class ClientDocker(Client):
         try:
             container = self.connection.containers.get(machine_name)
             container.restart()
+        except Exception as exception:
+            raise ClientDockerException(f"{exception}")
+        
+    def console(self, machine_name, username):
+        try:
+            container = self.connection.containers.get(machine_name)
+            subprocess.run([f"docker exec -u {username} -it {container.id} /bin/bash"], shell=True)
+            # TODO: Fix terminal using sockets
+            # container = self.connection.containers.get(machine_name)
+            # (_,s) = container.exec_run("/bin/bash", stdin=True, socket=True, user=username)
+            # while True:
+            #     original_text_to_send = input("$") + '\n'
+            #     if(original_text_to_send == "exit\n"):
+            #         s.close()
+            #         break
+            #     else:
+            #         s._sock.send(original_text_to_send.encode('utf-8'))
+            #         msg = s._sock.recv(1024)
+            #         print(msg.decode()[8:])
         except Exception as exception:
             raise ClientDockerException(f"{exception}")
         

@@ -19,6 +19,8 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 from tectonic.client import Client
+from tectonic.ssh import interactive_shell
+from tectonic.constants import OS_DATA
 
 import boto3
 
@@ -49,6 +51,7 @@ class ClientAWS(Client):
         "stopped": "STOPPED",
         "terminated": "NOT FOUND",
     }
+    EIC_ENDPOINT_SSH_PROXY = "aws ec2-instance-connect open-tunnel --instance-id %h"
 
     def __init__(self, description, aws_region):
         """
@@ -225,3 +228,75 @@ class ClientAWS(Client):
             return self.get_machine_property(machine_name, "InstanceId")
         except Exception as exception:
             raise ClientAWSException(f"{exception}")
+        
+    def console(self, machine_name, username):
+        """
+        Connect to a specific scenario machine.
+
+        Parameters:
+            machine_name (str): name of the machine.
+            username (str): username to use. Default: None
+        """
+        if machine_name == self.description.get_teacher_access_name():
+            interactive_shell(self._get_teacher_access_ip(), self._get_teacher_access_username())
+        else:
+            hostname = self.get_ssh_hostname(machine_name)
+            username = username or self.description.get_guest_username(self.description.get_base_name(machine_name))
+            if self.description.teacher_access == "host":
+                gateway = (self._get_teacher_access_ip(), self._get_teacher_access_username())
+            else:
+                gateway = self.EIC_ENDPOINT_SSH_PROXY
+            if not hostname:
+                raise ClientAWSException(f"Instance {machine_name} not found.")
+            interactive_shell(hostname, username, gateway)
+
+    def get_ssh_proxy_command(self):
+        """
+        Returns the appropriate SSH proxy configuration to access guest machines.
+
+        Return:
+            str: ssh proxy command to use.
+        """
+        if self.description.teacher_access == "endpoint":
+            proxy_command = self.EIC_ENDPOINT_SSH_PROXY
+        else:
+            access_ip = self._get_teacher_access_ip()
+            username = self._get_teacher_access_username()
+            connection_string = f"{username}@{access_ip}"
+            proxy_command = f"ssh {self.description.ansible_ssh_common_args} -W %h:%p {connection_string}"
+        return proxy_command
+    
+    def get_ssh_hostname(self, machine):
+        """
+        Returns the hostname to use for ssh connection to the machine.
+
+        Parameters:
+            machine (str): machine name.
+
+        Return:
+            str: ssh hostname to use.
+        """
+        if self.description.teacher_access == "endpoint":
+            return self._get_machine_property(machine, "InstanceId")
+        else:
+            return self.get_machine_private_ip(machine)
+        
+    def _get_teacher_access_username(self):
+        """
+        Returns username for connection to teacher access host.
+
+        Return:
+            str: username to use.
+        """
+        return OS_DATA[self.description.default_os]["username"]
+    
+    def _get_teacher_access_ip(self):
+        """
+        Returns the public IP assigned to the teacher access host.
+
+        Return:
+            str: public IP for teacher access.
+        """
+        if self.description.teacher_access == "host":
+            return self.get_machine_public_ip(self.description.get_teacher_access_name())
+        return None

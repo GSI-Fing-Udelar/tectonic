@@ -18,24 +18,31 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
+from tectonic.terraform import Terraform
+
 import json
 from tectonic.constants import OS_DATA
 
-from tectonic.instance_manager import InstanceManager
-from tectonic.ssh import interactive_shell
-
-class InstanceManagerLibvirtException(Exception):
+class TerraformLibvirtException(Exception):
     pass
 
-class InstanceManagerLibvirt(InstanceManager):
+class TerraformLibvirt(Terraform):
     """
-    InstanceManagerLibvirt class.
+    Terraform class.
 
-    Description: manages scenario instances for Libvirt.
+    Description: manages interaction with Terraform to deploy/destroy scenarios.
     """
 
-    def __init__(self, config, description, client):
-        super().__init__(config, description, client)
+    def __init__(self, config, description):
+        """
+        Initialize the Terraform object.
+
+        Parameters:
+            config (Config): Tectonic config object.
+            description (Description): Tectonic description object.
+        """
+        super().__init__(config, description)
+
 
     def _get_machine_resources_name(self, instances, guests, copies):
         """
@@ -83,7 +90,7 @@ class InstanceManagerLibvirt(InstanceManager):
         # TODO
         return []
 
-    def get_resources_to_target_apply(self, instances):
+    def _get_resources_to_target_apply(self, instances):
         """
         Returns the name of the docker resource of the Docker Terraform module to target apply base on the instances number.
 
@@ -97,7 +104,7 @@ class InstanceManagerLibvirt(InstanceManager):
         resources = resources + self._get_subnet_resources_name(instances)
         return resources
 
-    def get_resources_to_target_destroy(self, instances):
+    def _get_resources_to_target_destroy(self, instances):
         """
         Returns the name of the docker resource of the Docker Terraform module to target destroy base on the instances number.
 
@@ -115,7 +122,7 @@ class InstanceManagerLibvirt(InstanceManager):
             resources = resources + self._get_dns_resources_name(instances)
         return resources
 
-    def get_resources_to_recreate(self, instances, guests, copies):
+    def _get_resources_to_recreate(self, instances, guests, copies):
         """
         Returns the name of the docker resource of the Docker Terraform module to recreate base on the machines names.
 
@@ -129,12 +136,12 @@ class InstanceManagerLibvirt(InstanceManager):
         """
         machines = self.description.parse_machines(instances, guests, copies, True)
         resources = []
-        for machine in machine:
+        for machine in machines:
             resources.append('libvirt_domain.machines["' f"{machine}" '"]')
             resources.append('libvirt_volume.cloned_image["' f"{machine}" '"]')
         return resources
 
-    def get_terraform_variables(self):
+    def _get_terraform_variables(self):
         """
         Get variables to use in Terraform.
 
@@ -161,17 +168,3 @@ class InstanceManagerLibvirt(InstanceManager):
             "services_network": self.description.services_network,
             "services_network_base_ip": 9,
             }
-
-    
-    def console(self, machine_name, username):
-        """
-        Connect to a specific scenario machine.
-
-        Parameters:
-            machine_name (str): name of the machine.
-            username (str): username to use. Default: None
-        """
-        hostname = self.client.get_machine_private_ip(machine_name)
-        if not hostname:
-            raise InstanceManagerLibvirtException(f"Instance {machine_name} not found.")
-        interactive_shell(hostname, username)

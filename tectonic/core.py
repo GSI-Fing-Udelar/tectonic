@@ -18,7 +18,6 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-import json
 import math
 import ipaddress
 import random
@@ -28,23 +27,20 @@ import os
 
 from tectonic.description import Description
 from tectonic.ansible import Ansible
-from tectonic.packer import Packer
-from tectonic.terraform import Terraform
-from tectonic.ssh import ssh_version
 from tectonic.constants import OS_DATA
 import importlib.resources as tectonic_resources
-from tectonic.client import Client
 from tectonic.client_aws import ClientAWS
 from tectonic.client_libvirt import ClientLibvirt
 from tectonic.client_docker import ClientDocker
-from tectonic.instance_manager import InstanceManager
-from tectonic.instance_manager_aws import InstanceManagerAWS
-from tectonic.instance_manager_libvirt import InstanceManagerLibvirt
-from tectonic.instance_manager_docker import InstanceManagerDocker
-from tectonic.service_manager import ServiceManager
-from tectonic.service_manager_aws import ServiceManagerAWS
-from tectonic.service_manager_libvirt import ServiceManagerLibvirt
-from tectonic.service_manager_docker import ServiceManagerDocker
+from tectonic.packer_aws import PackerAWS
+from tectonic.packer_libvirt import PackerLibvirt
+from tectonic.packer_docker import PackerDocker
+from tectonic.terraform_aws import TerraformAWS
+from tectonic.terraform_libvirt import TerraformLibvirt
+from tectonic.terraform_docker import TerraformDocker
+from tectonic.terraform_service_aws import TerraformServiceAWS
+from tectonic.terraform_service_docker import TerraformServiceDocker
+from tectonic.terraform_service_libvirt import TerraformServiceLibvirt
 
 class CoreException(Exception):
     pass
@@ -55,53 +51,43 @@ class Core:
 
     Description: orchestrate Tectonic main functionalities using InstanceManagement and ServiceManagement.
     """
-    TECHNOLOGY = "docker" # TODO: obtener esto
-
-    INSTANCES_PACKER_MODULE = tectonic_resources.files('tectonic') / 'image_generation' / 'create_image.pkr.hcl'
-    SERVICES_PACKER_MODULE = tectonic_resources.files('tectonic') / 'services' / 'image_generation' / 'create_image.pkr.hcl'
     ANSIBLE_SERVICE_PLAYBOOK = tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'
     ANSIBLE_TRAINEES_PLAYBOOK = tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'
 
-    def __init__(self): #TODO: que recibe?
+    def __init__(self, config):
         """
         Initialize the core object.            
         """
 
-        #TODO: create objects. Leer archivos?
-        self.config = Config()
+        self.config = config
         self.description = Description()
-        self.packer = Packer()
         self.ansible = Ansible()
-        terraform_backend_info = {
-            "gitlab_url": self.config.gitlab_backend_url,
-            "gitlab_username": self.config.gitlab_backend_username,
-            "gitlab_access_token": self.config.gitlab_backend_access_token
-        }
-        self.terraform = Terraform(self.description.institution, self.description.lab_name, terraform_backend_info)
-        self.instances_terraform_module = tectonic_resources.files('tectonic') / 'terraform' / 'modules' / f"gsi-lab-{self.description.platform}"
-        self.services_terraform_module = tectonic_resources.files('tectonic') / 'services' / 'terraform' / f"services-{self.description.platform}"
 
-        if self.TECHNOLOGY == "aws": #TODO: fix initialization
+        if self.config.platform == "aws":
+            self.terraform = TerraformAWS(self,config, self.description)
             self.client = ClientAWS(self.description, self.description.aws_region)
-            self.instance_manager = InstanceManagerAWS(self.config, self.description, self.client)
-            self.service_manager = ServiceManagerAWS(self.config, self.description, self.client)
-        elif self.TECHNOLOGY == "libvirt":
+            self.packer = PackerAWS(self.config, self.description, self.client)
+            self.terraform_service = TerraformServiceAWS(self.config, self.description, self.client)
+        elif self.config.platform == "libvirt":
+            self.terraform = TerraformLibvirt(self.config, self.description)
             self.client = ClientLibvirt(self.description, self.description.libvirt_uri)
-            self.instance_manager = InstanceManagerLibvirt(self.config, self.description, self.client)
-            self.service_manager = ServiceManagerLibvirt(self.config, self.description, self.client)
-        elif self.TECHNOLOGY == "docker":
+            self.packer = PackerLibvirt(self.config, self.description, self.client)
+            self.terraform_service = TerraformServiceLibvirt(self.config, self.description, self.client)
+        elif self.config.platform == "docker":
+            self.terraform = TerraformDocker(self.config, self.description)
             self.client = ClientDocker(self.description, self.description.docker_uri)
-            self.instance_manager = InstanceManagerDocker(self.config, self.description, self.client)
-            self.service_manager = ServiceManagerDocker(self.config, self.description, self.client)
+            self.packer = PackerDocker(self.config, self.description, self.client)
+            self.terraform_service = TerraformServiceDocker(self.config, self.description, self.client)
         else:
             raise CoreException("Unknown technology.")
         
     def __del__(self):
-        del self.service_manager
-        del self.instance_manager
+        del self.terraform_service
+        del self.packer
         del self.client
+        del self.terraform
+        del self.ansible
         del self.description
-        del self.config
 
     def create_images(self, guests, services):
         """
@@ -113,102 +99,13 @@ class Core:
         """
         # Create instances images
         if guests is not None:
-            machines = {}
-            for guest_name in guests:
-                monitor = True if self.description.deploy_elastic and self.description.get_guest_attr(guest_name, "monitor", False) and self.description.monitor_type == "endpoint" else False
-                machines[guest_name] = {
-                    "base_os": self.description.get_guest_attr(guest_name, "base_os", self.description.default_os),
-                    "endpoint_monitoring" : monitor,
-                }
-                if self.description.platform == "libvirt":
-                    machines[guest_name]["vcpu"] = self.description.get_guest_attr(guest_name, "vcpu", 1)
-                    machines[guest_name]["memory"] = self.description.get_guest_attr(guest_name, "memory", 1024)
-                    machines[guest_name]["disk"] = self.description.get_guest_attr(guest_name, "disk", 10)
-                elif self.description.platform == "aws":
-                    machines[guest_name]["disk"] = self.description.get_guest_attr(guest_name, "disk", 8)
-                    machines[guest_name]["instance_type"] = self.description.instance_type.get_guest_instance_type(
-                        self.description.get_guest_attr(guest_name, "memory", 1),
-                        self.description.get_guest_attr(guest_name, "vcpu", 1),
-                        self.description.get_guest_attr(guest_name, "gpu", False),
-                        monitor,
-                        self.description.monitor_type,
-                    )
-            args = {
-                "ansible_playbooks_path": self.description.ansible_playbooks_path,
-                "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.description.platform != "docker" else "",
-                "ansible_ssh_common_args": self.description.ansible_ssh_common_args,
-                "aws_region": self.description.aws_region,
-                "instance_number": self.description.instance_number,
-                "institution": self.description.institution,
-                "lab_name": self.description.lab_name,
-                "libvirt_storage_pool": self.description.libvirt_storage_pool,
-                "libvirt_uri": self.description.libvirt_uri,
-                "machines_json": json.dumps(machines),
-                "os_data_json": json.dumps(OS_DATA),
-                "platform": self.description.platform,
-                "remove_ansible_logs": str(not self.description.keep_ansible_logs),
-                "elastic_version": self.description.elastic_stack_version
-            }
-            if self.description.proxy is not None and self.description.proxy != "":
-                args["proxy"] = self.description.proxy
-            self._destroy_image(guests)
-            self.instance_manager.create_image(self.packer, self.INSTANCES_PACKER_MODULE, args)
+            self.packer.destroy_image(guests)
+            self.packer.create_instance_image(guests)
 
         # Create services images
         if services is not None:
-            machines = {}
-            for service in services:
-                machines[service] = {
-                    "base_os": self.description.get_service_base_os(service),
-                    "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / service / 'base_config.yml'),
-                }
-                if self.description.platform == "libvirt":
-                    machines[service]["vcpu"] = self.description.services[service]["vcpu"]
-                    machines[service]["memory"] = self.description.services[service]["memory"]
-                    machines[service]["disk"] = self.description.services[service]["disk"]
-                elif self.description.platform == "aws":
-                    machines[service]["disk"] = self.description.services[service]["disk"]
-                    if service in ["caldera", "elastic"]:
-                        machines[service]["instance_type"] = self.description.instance_type.get_guest_instance_type(self.description.services[service]["memory"], self.description.services[service]["vcpu"], False, False, self.description.monitor_type)
-                    elif service == "packetbeat":
-                        machines[service]["instance_type"] = "t2.micro"
-            args = {
-                "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.description.platform != "docker" else "",
-                "ansible_ssh_common_args": self.description.ansible_ssh_common_args,
-                "aws_region": self.description.aws_region,
-                "proxy": self.description.proxy,
-                "libvirt_storage_pool": self.description.libvirt_storage_pool,
-                "libvirt_uri": self.description.libvirt_uri,
-                "machines_json": json.dumps(machines),
-                "os_data_json": json.dumps(OS_DATA),
-                "platform": self.description.platform,
-                "remove_ansible_logs": str(not self.description.keep_ansible_logs),
-                #TODO: pass variables as a json as part of each host
-                "elastic_version": self.description.elastic_stack_version, 
-                "elastic_latest_version": "yes" if self.description.is_elastic_stack_latest_version else "no",
-                "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
-                "caldera_version": self.description.caldera_version,
-                "packetbeat_vlan_id": self.description.packetbeat_vlan_id,
-            }
-            # TODO: lo de arriba de generar el args lo pasaría al description? así no hay que poner if con la tecnología acá.
-            self._destroy_image(services)
-            self.packer.create_image(self.SERVICES_PACKER_MODULE, args)
-
-
-    def _destroy_image(self, names):
-        """
-        Destroy base images.
-
-        Parameters:
-            names (list(str)): names of the machines for which to destroy images. 
-        """
-        for guest_name in names:
-            image_name = self.description.get_image_name(guest_name)
-            if self.client.is_image_in_use(image_name):
-                raise CoreException(f"Unable to delete image {image_name} because it is being used.")
-        for guest_name in names:
-            self.client.delete_image(self.description.get_image_name(guest_name))
-
+            self.packer.destroy_image(services)
+            self.packer.create_service_image(services)
     
     def deploy(self, instances, create_instances_images, create_services_images):
         """
@@ -226,17 +123,10 @@ class Core:
             self.create_images(None, self.description.get_services_to_deploy())
 
         # Deploy instances
-        instances_resources_to_create = None
-        services_resources_to_create = None
-        if instances is not None:
-            instances_resources_to_create = self.instance_manager.get_resources_to_target_apply(instances)
-            services_resources_to_create = self.service_manager.get_resources_to_target_apply(instances)
-
-        # Deploy instances
-        self.terraform.apply(self.instances_terraform_module, self.instance_manager.get_terraform_variables(), instances_resources_to_create)
+        self.terraform.deploy(instances)
             
         # Deploy services
-        self.terraform.apply(self.services_terraform_module, self.service_manager.get_terraform_variables(), services_resources_to_create)
+        self.terraform_service.deploy(instances)
         
         # Wait for services to bootup
         services_to_deploy = []
@@ -272,18 +162,18 @@ class Core:
         self.ansible.run(instances, quiet=True)
 
         # Configure student access on instances
-        self.instance_manager.configure_students_access(instances)  
+        self.configure_students_access(instances)  
 
         # Configure Elastic monitoring
         if self.description.deploy_elastic:
             if self.description.monitor_type == "traffic":
-                self.service_manager.deploy_packetbeat(self.ansible)
+                self.terraform_service.deploy_packetbeat(self.ansible)
             elif self.description.monitor_type == "endpoint":
-                self.service_manager.install_elastic_agent(self.ansible, instances)
+                self.terraform_service.install_elastic_agent(self.ansible, instances)
 
         # Configure Caldera agents
         if self.description.deploy_caldera:
-            self.service_manager.install_caldera_agent(self.ansible, instances)
+            self.terraform_service.install_caldera_agent(self.ansible, instances)
 
     def destroy(self, instances, destroy_instances_images, destroy_services_images):
         """
@@ -294,28 +184,22 @@ class Core:
             destroy_instances_images: whether to destroy instances images.
             destroy_services_images: whether to destroy services images.
         """
-        services_resources_to_destroy = None
-        instances_resources_to_destroy = None
-        if instances is not None:
-            services_resources_to_destroy = self.service_manager.get_resources_to_target_destroy(instances)
-            instances_resources_to_destroy = self.instance_manager.get_resources_to_target_destroy(instances)
-
         # Destroy services
-        self.terraform.destroy(self.services_terraform_module, self.service_manager.get_terraform_variables(), services_resources_to_destroy)
+        self.terraform_service.destroy(instances)
 
         # Destrot instances
-        self.terraform.destroy(self.instances_terraform_module, self.instance_manager.get_terraform_variables(), instances_resources_to_destroy)
+        self.terraform.destroy(instances)
 
         if instances is None:
             # Destroy Packetbeat
             if self.description.deploy_elastic and self.description.monitor_type == "traffic":
-                self.instance_manager.destroy_packetbeat(self.ansible)
+                self.terraform_service.destroy_packetbeat(self.ansible)
                 
             # Destroy images
             if destroy_instances_images:
-                self._destroy_image(self.description.guest_settings.keys())
+                self.packer.destroy_image(self.description.guest_settings.keys())
             if destroy_services_images:
-                self._destroy_image(self.description.get_services_to_deploy())
+                self.packer.destroy_image(self.description.get_services_to_deploy())
     
     def recreate(self, instances, guests, copies):
         """
@@ -327,8 +211,7 @@ class Core:
             copies (list(int)): number of the copies to start.
         """
         # Recreate instances
-        resources_to_recreate = self.instance_manager.get_resources_to_recreate(instances, guests, copies)
-        self.terraform.apply(self.instances_terraform_module, self.instance_manager.get_terraform_variables(), resources_to_recreate)
+        self.terraform.recreate(instances, guests, copies)
 
         # Wait for instances to bootup
         self.ansible.wait_for_connections(instances, guests, copies, False, self.description.get_services_to_deploy())
@@ -337,15 +220,15 @@ class Core:
         self.ansible.run(instances, guests, copies, quiet=True, only_instances=False)
 
         # Configure student access on instances
-        self.instance_manager.configure_students_access(instances)
+        self.configure_students_access(instances)
 
         # Configure Elastic monitoring
         if self.description.deploy_elastic and self.description.monitor_type == "endpoint":
-            self.service_manager.install_elastic_agent(self.ansible, instances)
+            self.terraform_service.install_elastic_agent(self.ansible, instances)
 
         # Configure Caldera agents
         if self.description.deploy_caldera:
-            self.service_manager.install_caldera_agent(self.ansible, instances)
+            self.terraform_service.install_caldera_agent(self.ansible, instances)
 
     def start(self, instances, guests, copies, start_services):
         """
@@ -368,7 +251,7 @@ class Core:
             for service in services_to_start:
                 self.client.start_machine(service)
             if self.description.deploy_elastic and self.description.monitor_type == "traffic":
-                self.service_manager.manage_packetbeat(self.ansible, "started") # TODO: ver que pasa en AWS con start, stop, restart del servicio de packetbeat 
+                self.terraform_service.manage_packetbeat(self.ansible, "started") # TODO: ver que pasa en AWS con start, stop, restart del servicio de packetbeat 
                                                                                 # ya que la máquina donde se instala también sufre esta acción. En libvirt y docker esto no pasa. 
 
     def stop(self, instances, guests, copies, stop_services):
@@ -392,7 +275,7 @@ class Core:
             for service in services_to_stop:
                 self.client.stop_machine(service)
             if self.description.deploy_elastic and self.description.monitor_type == "traffic":
-                self.service_manager.manage_packetbeat(self.ansible, "stopped") 
+                self.terraform_service.manage_packetbeat(self.ansible, "stopped") 
 
     def restart(self, instances, guests, copies, restart_services):
         """
@@ -415,7 +298,7 @@ class Core:
             for service in services_to_restart:
                 self.client.restart_machine(service)
             if self.description.deploy_elastic and self.description.monitor_type == "traffic":
-                self.service_manager.manage_packetbeat(self.ansible, "restarted")
+                self.terraform_service.manage_packetbeat(self.ansible, "restarted")
 
         raise NotImplementedError
 
@@ -438,7 +321,7 @@ class Core:
 
         service_info = {}
         for service in self.description.get_services_to_deploy():
-            credentials = self.service_manager.get_service_credentials(service, self.ansible)
+            credentials = self.terraform_service.get_service_credentials(service, self.ansible)
             ip = self.client.get_machine_private_ip(service) # En docker tiene que ser 127.0.0.1 ver como arreglar.
             service_info[service] = {
                 "ip": ip,
@@ -472,7 +355,7 @@ class Core:
         for service in self.description.get_services_to_deploy():
             services_status[service] = self.client.get_machine_status(service)
         if self.description.monitor_type == "traffic":
-            packetbeat_status = self.service_manager.manage_packetbeat(self.ansible,"status")
+            packetbeat_status = self.terraform_service.manage_packetbeat(self.ansible,"status")
             if packetbeat_status is not None:
                 services_status[f"{self.description.institution}-{self.description.lab_name}-packetbeat"] = packetbeat_status
         return {
@@ -581,7 +464,3 @@ class Core:
             for username, user in users.items():
                 passwords[username] = user['password']
         return passwords
-    
-
-#TODO: manejo de excepciones
-#Logging con patron observer?

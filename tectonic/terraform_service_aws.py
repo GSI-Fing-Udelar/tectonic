@@ -22,14 +22,14 @@ import json
 import ipaddress
 
 
-from tectonic.service_manager import ServiceManager
+from tectonic.terraform_service import TerraformService
 from tectonic.constants import OS_DATA
 import importlib.resources as tectonic_resources
 
-class ServiceManagerAWS(Exception):
+class TerraformServiceAWSException(Exception):
     pass
 
-class ServiceManagerAWS(ServiceManager):
+class TerraformServiceAWS(TerraformService):
     """
     ServiceManagerAWS class.
 
@@ -129,7 +129,7 @@ class ServiceManagerAWS(ServiceManager):
                     network_index = network_index + 1
         return resources
 
-    def get_resources_to_target_apply(self, instances):
+    def _get_resources_to_target_apply(self, instances):
         """
         Get resources name for target apply.
 
@@ -160,7 +160,7 @@ class ServiceManagerAWS(ServiceManager):
             resources = resources + self._get_session_resources_name(instances)
         return resources
         
-    def get_resources_to_target_destroy(self, instances):
+    def _get_resources_to_target_destroy(self, instances):
         """
         Get resources name for target destroy.
 
@@ -175,7 +175,7 @@ class ServiceManagerAWS(ServiceManager):
             resources = resources + self._get_session_resources_name(instances)
         return resources
     
-    def get_terraform_variables(self):
+    def _get_terraform_variables(self):
         """
         Get variables to use in Terraform.
 

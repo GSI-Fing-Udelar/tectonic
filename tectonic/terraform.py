@@ -18,13 +18,16 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
+import importlib.resources as tectonic_resources
+
 import python_terraform
 import os
+from abc import ABC, abstractmethod
 
 class TerraformException(Exception):
     pass
 
-class Terraform:
+class Terraform(ABC):
     """
     Terraform class.
 
@@ -33,10 +36,17 @@ class Terraform:
 
     BACKEND_TYPE = "FILE" # Possible values: FILE (for local files as backend), GITLAB (use gitlab as backend. You must change backend.tf of each terraform module).
 
-    def __init__(self, institution, lab_name, backend_info):
-        self.institution = institution
-        self.lab_name = lab_name
-        self.backend_info = backend_info
+    def __init__(self, config, description):
+        """
+        Initialize the Terraform object.
+
+        Parameters:
+            config (Config): Tectonic config object.
+            description (Description): Tectonic description object.
+        """
+        self.config = config
+        self.descriptio = description
+        self.terraform_instances_module = tectonic_resources.files('tectonic') / 'terraform' / 'modules' / f"gsi-lab-{self.config.platform}"
 
     def _run_terraform_cmd(t, cmd, variables, **args):
         """
@@ -50,7 +60,6 @@ class Terraform:
         
         Return:
             str: output of the action (stdout)
-        
         """
         return_code, stdout, stderr = t.cmd(cmd, no_color=python_terraform.IsFlagged, var=variables, **args)
         if return_code != 0:
@@ -67,22 +76,22 @@ class Terraform:
         terraform_module_name = os.path.basename(os.path.normpath(terraform_dir))
         if self.BACKEND_TYPE == "FILE":
             return [
-                f"path=terraform-states/{self.institution}-{self.lab_name}-{terraform_module_name}"
+                f"path=terraform-states/{self.description.institution}-{self.description.lab_name}-{terraform_module_name}"
             ]
         elif self.BACKEND_TYPE == "GITLAB":
-            address = f"{self.backend_info.get("gitlab_url")}/{self.institution}-{self.lab_name}-{terraform_module_name}"
+            address = f"{self.config.gitlab_url}/{self.description.institution}-{self.description.lab_name}-{terraform_module_name}"
             return [
                 f"address={address}",
                 f"lock_address={address}/lock",
                 f"unlock_address={address}/lock",
-                f"username={self.backend_info.get("gitlab_username")}",
-                f"password={self.backend_info.get("gitlab_access_token")}",
+                f"username={self.config.gitlab_username}",
+                f"password={self.config.gitlab_access_token}",
                 "lock_method=POST",
                 "unlock_method=DELETE",
                 "retry_wait_min=5",
             ]
         
-    def apply(self, terraform_dir, variables, resources=None):
+    def _apply(self, terraform_dir, variables, resources=None):
         """
         Execute terraform apply command.
 
@@ -96,7 +105,7 @@ class Terraform:
         self._run_terraform_cmd(t, "plan", variables, input=False, target=resources)
         self._run_terraform_cmd(t, "apply", variables, auto_approve=True, input=False, target=resources)
 
-    def destroy(self, terraform_dir, variables, resources=None):
+    def _destroy(self, terraform_dir, variables, resources=None):
         """
         Execute terraform destroy command.
 
@@ -108,3 +117,120 @@ class Terraform:
         t = python_terraform.Terraform(working_dir=terraform_dir)
         self._run_terraform_cmd(t, "init", [], reconfigure=python_terraform.IsFlagged, backend_config=self._generate_backend_config(terraform_dir))
         self._run_terraform_cmd(t, "destroy", variables, auto_approve=True, input=False, target=resources)
+
+    @abstractmethod
+    def _get_machine_resources_name(self, instances, guests, copies):
+        """
+        Returns the name of the aws_instance resource of the AWS Terraform module for the instances.
+
+        Parameters:
+          instances (list(int)): instances to use.
+          guests (list(str)): guests names to use.
+          copies (list(int)): copies numbers to use.
+
+        Returns:
+          list(str): resources name of the aws_instances for the instances.
+        """
+        pass
+
+    @abstractmethod
+    def _get_subnet_resources_name(self, instances):
+        """
+        Returns the name of the aws_subnet resource of the AWS Terraform module for the instances.
+
+        Parameters:
+          instances (list(str)): instances to use.
+
+        Returns:
+          list(str): resources name of the aws_subnet for the instances.
+        """
+        pass
+
+    @abstractmethod
+    def _get_resources_to_target_apply(self, instances):
+        """
+        Get resources name for target apply.
+
+        Parameters:
+            instances (list(int)): number of the instances to target apply.
+        
+        Return:
+            list(str): names of resources.
+        """
+        pass
+
+    @abstractmethod
+    def _get_resources_to_target_destroy(self, instances):
+        """
+        Get resources name for target destroy.
+
+        Parameters:
+            instances (list(int)): number of the instances to target destroy.
+        
+        Return:
+            list(str): names of resources.
+        """
+        pass
+
+    @abstractmethod
+    def _get_resources_to_recreate(self, instances, guests, copies):
+        """
+        Get resources name to recreate.
+
+        Parameters:
+            instances (list(int)): number of the instances to recreate.
+            guests (list(str)): guests names to use.
+            copies (list(int)): copies numbers to use.
+        
+        Return:
+            list(str): names of resources.
+        """
+        pass
+    
+    @abstractmethod
+    def _get_terraform_variables(self):
+        """
+        Get variables to use in Terraform.
+
+        Return:
+            dict: variables.
+        """
+        pass
+
+    def deploy(self, instances):
+        """
+        Deploy scenario instances.
+
+        Parameters:
+            instances (list(int)): number of the instances to start.
+        """
+        resources_to_create = None
+        if instances is not None:
+            resources_to_create = self._get_resources_to_target_apply(instances)
+        self._apply(self.terraform_instances_module, self._get_terraform_variables(), resources_to_create)
+
+    def destroy(self, instances):
+        """
+        Destroy scenario instances.
+
+        Parameters:
+            instances (list(int)): number of the instances to start.
+        """
+        resources_to_destroy = None
+        if instances is not None:
+            resources_to_destroy = self._get_resources_to_target_destroy(instances)
+        self._apply(self.terraform_instances_module, self._get_terraform_variables(), resources_to_destroy)
+
+    def recreate(self, instances, guests, copies): 
+        """
+        Recreate scenario instances.
+
+        Parameters:
+            instances (list(int)): number of the instances to start.
+            guests (list(str)): name of the guests to start.
+            copies (list(int)): number of the copies to start.
+        """
+        resources_to_recreate = self._get_resources_to_recreate(instances, guests, copies)
+        self._apply(self.terraform_instances_module, self._get_terraform_variables(), resources_to_recreate)
+
+    #TODO deploy/destroy/recreate services
