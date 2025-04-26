@@ -25,7 +25,11 @@ from passlib.hash import sha512_crypt
 import string
 import os
 
-from tectonic.description import Description
+import tectonic.utils
+from tectonic.config import TectonicConfig
+from tectonic.instance_type import InstanceType
+from tectonic.instance_type_aws import InstanceTypeAWS
+from tectonic.description import Description, BaseGuestDescription
 from tectonic.ansible import Ansible
 from tectonic.constants import OS_DATA
 import importlib.resources as tectonic_resources
@@ -54,10 +58,12 @@ class Core:
     ANSIBLE_SERVICE_PLAYBOOK = tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'
     ANSIBLE_TRAINEES_PLAYBOOK = tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'
 
-    def __init__(self, config):
+    def __init__(self, config, description):
         """
-        Initialize the core object.            
+        Initialize the core object.
         """
+        self.config = config
+        self.description = description
 
         self.config = config
         self.description = Description()
@@ -79,7 +85,9 @@ class Core:
             self.packer = PackerDocker(self.config, self.description, self.client)
             self.terraform_service = TerraformServiceDocker(self.config, self.description, self.client)
         else:
-            raise CoreException("Unknown technology.")
+            raise CoreException("Unknown platform.")
+        self.ansible = Ansible(self.config, self.description, self.instance_manager)
+        self.packer = Packer(self.config, self.description, self.client)
         
     def __del__(self):
         del self.terraform_service
@@ -89,7 +97,7 @@ class Core:
         del self.ansible
         del self.description
 
-    def create_images(self, guests, services):
+    def create_cr_images(self, guests=None):
         """
         Create base images.
 
@@ -102,6 +110,13 @@ class Core:
             self.packer.destroy_image(guests)
             self.packer.create_instance_image(guests)
 
+    def create_services_images(self, services=None):
+        """
+        Create base images.
+
+        Parameters:
+            services (list(str)): List of services to create. Create all if it is None.
+        """
         # Create services images
         if services is not None:
             self.packer.destroy_image(services)
@@ -116,11 +131,10 @@ class Core:
             create_instances_images: whether to create instances images.
             create_services_images: whether to create services images.
         """
-        # Create images
         if create_instances_images:
-            self.create_images(self.description.guest_settings.keys(), None)
+            self.create_cr_images()
         if create_services_images:
-            self.create_images(None, self.description.get_services_to_deploy())
+            self.create_services_images()
 
         # Deploy instances
         self.terraform.deploy(instances)
@@ -129,23 +143,21 @@ class Core:
         self.terraform_service.deploy(instances)
         
         # Wait for services to bootup
-        services_to_deploy = []
-        for service in self.description.get_services_to_deploy():
-            services_to_deploy.append(self.description.get_service_name(service))
+        services_to_deploy = [service.name for service in self.description.services]
         extra_vars = {
             "elastic" : {
-                "monitor_type": self.description.monitor_type,
-                "deploy_policy": self.description.elastic_deploy_default_policy,
-                "policy_name": self.description.packetbeat_policy_name if self.description.monitor_type == "traffic" else self.description.endpoint_policy_name,
-                "http_proxy" : self.description.proxy,
-                "description_path": self.description.description_dir,
-                "ip": str(ipaddress.IPv4Network(self.description.services_network)[2]),
-                "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
-                "dns": self.description.docker_dns,
+                "monitor_type": self.description.elastic.monitor_type,
+                "deploy_policy": self.description.elastic.deploy_default_policy,
+                "policy_name": self.config.elastic.packetbeat_policy_name if self.description.elastic.monitor_type == "traffic" else self.config.elastic.endpoint_policy_name,
+                "http_proxy" : self.config.proxy,
+                "description_path": self.description.scenario_dir,
+                "ip": str(ipaddress.IPv4Network(self.config.services_network_cidr_block)[2]),
+                "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
+                "dns": self.config.docker.dns,
             },
             "caldera":{
-                "ip": str(ipaddress.IPv4Network(self.description.services_network)[4]),
-                "description_path": self.description.description_dir,
+                "ip": str(ipaddress.IPv4Network(self.config.services_network_cidr_block)[4]),
+                "description_path": self.description.scenario_dir,
             },
         }
         #TODO: mejorar la creación de este inventario para servicios pensando en que se agreguen otros servicios.
@@ -165,24 +177,25 @@ class Core:
         self.configure_students_access(instances)  
 
         # Configure Elastic monitoring
-        if self.description.deploy_elastic:
-            if self.description.monitor_type == "traffic":
+        if self.description.elastic.enable:
+            if self.description.elastic.monitor_type == "traffic":
                 self.terraform_service.deploy_packetbeat(self.ansible)
-            elif self.description.monitor_type == "endpoint":
+            elif self.description.elastic.monitor_type == "endpoint":
                 self.terraform_service.install_elastic_agent(self.ansible, instances)
 
         # Configure Caldera agents
-        if self.description.deploy_caldera:
+        if self.description.caldera.enable:
             self.terraform_service.install_caldera_agent(self.ansible, instances)
 
-    def destroy(self, instances, destroy_instances_images, destroy_services_images):
+    def destroy(self, instances, machines, services, destroy_images):
         """
         Destroy scenario.
 
         Parameters:
-            instances (list(int)): numbers of the instances to deploy.
-            destroy_instances_images: whether to destroy instances images.
-            destroy_services_images: whether to destroy services images.
+            instances (list(int)): numbers of the instances to destroy, if None destroy all.
+            machines (bool): whether to destroy scenario machines.
+            services (list(str)): list of services to destroy
+            destroy_images (bool): whether to destroy instances images.
         """
         # Destroy services
         self.terraform_service.destroy(instances)
@@ -214,20 +227,21 @@ class Core:
         self.terraform.recreate(instances, guests, copies)
 
         # Wait for instances to bootup
-        self.ansible.wait_for_connections(instances, guests, copies, False, self.description.get_services_to_deploy())
+        self.ansible.wait_for_connections(instances, guests, copies, False, self.description.services)
         
         # Run instances post clone configuration
         self.ansible.run(instances, guests, copies, quiet=True, only_instances=False)
 
         # Configure student access on instances
         self.configure_students_access(instances)
+        self.configure_students_access(instances)
 
         # Configure Elastic monitoring
-        if self.description.deploy_elastic and self.description.monitor_type == "endpoint":
+        if self.description.elastic.enable and self.description.elastic.monitor_type == "endpoint":
             self.terraform_service.install_elastic_agent(self.ansible, instances)
 
         # Configure Caldera agents
-        if self.description.deploy_caldera:
+        if self.description.caldera.enable:
             self.terraform_service.install_caldera_agent(self.ansible, instances)
 
     def start(self, instances, guests, copies, start_services):
@@ -241,16 +255,16 @@ class Core:
             start_services (bool): whether the services should be started.
         """
         #Start instances
-        machines_to_start = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
+        machines_to_start = self.description.parse_machines(instances, guests, copies, False,
+                                                            [service.base_name for service in self.description.services])
         for machine in machines_to_start:
             self.client.start_machine(machine)
 
         #Start services
         if start_services:
-            services_to_start = self.description.get_services_to_deploy() # TODO: implement this for each technology?
-            for service in services_to_start:
-                self.client.start_machine(service)
-            if self.description.deploy_elastic and self.description.monitor_type == "traffic":
+            for service in self.description.services:
+                self.client.start_machine(service.name)
+            if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
                 self.terraform_service.manage_packetbeat(self.ansible, "started") # TODO: ver que pasa en AWS con start, stop, restart del servicio de packetbeat 
                                                                                 # ya que la máquina donde se instala también sufre esta acción. En libvirt y docker esto no pasa. 
 
@@ -265,17 +279,17 @@ class Core:
             stop_services (bool): whether the services should be stopped.
         """
         #Stop instances
-        machines_to_stop = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
+        machines_to_stop = self.description.parse_machines(instances, guests, copies, False,
+                                                           [service.base_name for service in self.description.services])
         for machine in machines_to_stop:
             self.client.stop_machine(machine)
 
         #Stop services
         if stop_services:
-            services_to_stop = self.description.get_services_to_deploy() # TODO: implement this for each technology.
-            for service in services_to_stop:
-                self.client.stop_machine(service)
-            if self.description.deploy_elastic and self.description.monitor_type == "traffic":
-                self.terraform_service.manage_packetbeat(self.ansible, "stopped") 
+            for service in self.description.services:
+                self.client.stop_machine(service.name)
+            if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
+                self.terraform_service.manage_packetbeat(self.ansible, "stopped")
 
     def restart(self, instances, guests, copies, restart_services):
         """
@@ -288,16 +302,16 @@ class Core:
             restart_services (bool): whether the services should be restarted.
         """
         #Stop instances
-        machines_to_restart = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
+        machines_to_restart = self.description.parse_machines(instances, guests, copies, False,
+                                                              [service.base_name for service in self.description.services])
         for machine in machines_to_restart:
             self.client.restart_machine(machine)
 
         #Stop services
         if restart_services:
-            services_to_restart = self.description.get_services_to_deploy() # TODO: implement this for each technology.
-            for service in services_to_restart:
-                self.client.restart_machine(service)
-            if self.description.deploy_elastic and self.description.monitor_type == "traffic":
+            for service in self.description.services:
+                self.client.restart_machine(service.name)
+            if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
                 self.terraform_service.manage_packetbeat(self.ansible, "restarted")
 
         raise NotImplementedError
@@ -310,20 +324,21 @@ class Core:
             dict: scenario information.
         """
         instances_info = {}
-        if self.description.is_student_access():
-            student_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-student_access")
-            if student_access_ip is not None:
-                instances_info["Student Access IP"] = student_access_ip
-        if self.description.teacher_access == "host":
-            teacher_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-teacher_access")
-            if teacher_access_ip is not None:
-                instances_info["Teacher Access IP"] = teacher_access_ip
+        if self.config.platform == "aws":
+            if self.description.student_access_required:
+                student_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-student_access")
+                if student_access_ip is not None:
+                    instances_info["Student Access IP"] = student_access_ip
+            if self.config.aws.teacher_access == "host":
+                teacher_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-teacher_access")
+                if teacher_access_ip is not None:
+                    instances_info["Teacher Access IP"] = teacher_access_ip
 
         service_info = {}
-        for service in self.description.get_services_to_deploy():
+        for service in self.description.services:
             credentials = self.terraform_service.get_service_credentials(service, self.ansible)
-            ip = self.client.get_machine_private_ip(service) # En docker tiene que ser 127.0.0.1 ver como arreglar.
-            service_info[service] = {
+            ip = self.client.get_machine_private_ip(service.name) # En docker tiene que ser 127.0.0.1 ver como arreglar.
+            service_info[service.name] = {
                 "ip": ip,
                 "credentials": credentials,
             }
@@ -331,7 +346,7 @@ class Core:
         return {
             "instances_info": instances_info,
             "services_info": service_info,
-            "student_access_password": self.get_students_password(),
+            "student_access_password": self._get_students_passwords(),
         }
 
     def list(self, instances, guests, copies):
@@ -347,14 +362,15 @@ class Core:
             dict: status of instances.
         """
         instances_status = {}
-        machines_to_list = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
+        machines_to_list = self.description.parse_machines(instances, guests, copies, False,
+                                                           [service.base_name for service in self.description.services])
         for machine in machines_to_list:
             instances_status[machine] = self.client.get_machine_status(machine)
 
         services_status = {}
-        for service in self.description.get_services_to_deploy():
-            services_status[service] = self.client.get_machine_status(service)
-        if self.description.monitor_type == "traffic":
+        for service in self.description.services:
+            services_status[service.name] = self.client.get_machine_status(service.name)
+        if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
             packetbeat_status = self.terraform_service.manage_packetbeat(self.ansible,"status")
             if packetbeat_status is not None:
                 services_status[f"{self.description.institution}-{self.description.lab_name}-packetbeat"] = packetbeat_status
@@ -404,7 +420,7 @@ class Core:
         if len(machine_to_connect) != 1:
             raise CoreException("You must specify only one machine to connect.")
         machine_name = machine_to_connect[0]
-        username = username or self.description.get_guest_username(self.description.get_base_name(machine_name))
+        username = username or self.description.scenario_guests[machine_name].admin_username
         self.instance_manager.connect(machine_name, username)
 
     def configure_students_access(self, instances):
@@ -414,53 +430,33 @@ class Core:
         Credentials can be public SSH keys and/or autogenerated passwords.
         """
         only_instances = True
-        entry_points = [ base_name for base_name, guest in self.description.guest_settings.items() if guest and guest.get("entry_point") ]
-        if self.description.is_student_access(): # TODO: haría un description por platform
+        entry_points = [guest.base_name for _, guest in self.description.base_guests.items() if guest.entry_point]
+        if self.config.platform == "aws" and entry_points:
             entry_points.append("student_access")
             only_instances = False
-        users = self._generate_students_credentials()
+        users = self.description.generate_student_access_credentials()
         self.ansible.run(
             instances=instances,
             guests=entry_points,
             copies=None,
             playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
             only_instances=only_instances,
-            extra_vars={"users": users, "prefix": self.description.student_prefix, "ssh_password_login": self.description.create_student_passwords},
+            extra_vars={"users": users, "prefix": self.description.student_prefix,
+                        "ssh_password_login": self.description.create_students_passwords},
             quiet=True,
         )
-
-    def _generate_students_credentials(self):
-        """
-        Generates student credentials to access the cyber range.
-        
-        Return:
-            dict: password and hash or public key for each user.
-        """
-        credentials = {}
-        random.seed(self.description.random_seed)
-        for i in self.description.get_instance_range():
-            username = f"{self.description.student_prefix}{i:02d}"
-            credentials[username] = {}
-            if self.description.create_student_passwords:
-                characters = string.ascii_letters + string.digits
-                password = "".join(random.choice(characters) for _ in range(12))
-                salt = "".join(random.choice(characters) for _ in range(16))
-                credentials[username]["password"] = password
-                credentials[username]["password_hash"] = sha512_crypt.using(salt=salt).hash(password)
-            if self.description.student_pubkey_dir:
-                credentials[username]["authorized_keys"] = self.description.read_pubkeys(os.path.join(self.description.student_pubkey_dir, username))
-        return credentials
-
-    def get_students_password(self):
+    
+    def _get_students_passwords(self):
         """
         Get the generated students password.
 
         Return:
             dic: the password for each user.
         """
-        passwords = {}
-        if self.description.create_student_passwords:
-            users = self._generate_students_credentials()
-            for username, user in users.items():
-                passwords[username] = user['password']
-        return passwords
+        if not self.description.create_students_passwords:
+            return {}
+        credentials = self.description.generate_student_access_credentials()
+        return {username: user['password'] for username, user in credentials.items()}
+
+#TODO: manejo de excepciones
+#Logging con patron observer?

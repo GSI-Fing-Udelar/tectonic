@@ -55,7 +55,7 @@ class TerraformAWS(Terraform):
         Returns:
           list(str): resources name of the aws_instances for the instances.
         """
-        machines = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
+        machines = self.description.parse_machines(instances, guests, copies, False, [s.name for s in self.description.services])
         resources = []
         for machine in machines:
             resources.append('aws_instance.machines["' f"{machine}" '"]')
@@ -76,10 +76,10 @@ class TerraformAWS(Terraform):
             lambda i: i <= self.description.instance_number,
             instances or range(1, self.description.instance_number + 1),
         ):
-            for network in self.description.topology:
+            for network in self.description.topology.keys():
                 resources.append(
                     'aws_route_table_association.scenario_internet_access["'
-                    f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network['name']}"
+                    f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network}"
                     '"]'
                 )
         return resources
@@ -95,37 +95,37 @@ class TerraformAWS(Terraform):
           list(str): resources name of the aws dns resources for the instances.
         """
         resources = ["aws_route53_zone.reverse[0]"]
-        for network in self.description.topology:
+        for network in self.description.topology.keys():
             resources.append(
-                'aws_route53_zone.zones["{name}"]'.format(name=network["name"])
+                'aws_route53_zone.zones["{name}"]'.format(name=network)
             )
         for instance in filter(
             lambda i: i <= self.description.instance_number,
             instances or range(1, self.description.instance_number + 1),
         ):
-            for guest in self.description.guest_settings.keys():
-                for network in self.description.get_guest_networks(guest):
-                    if self.description.get_guest_copies(guest) == 1:
+            for _, guest in self.description.base_guests.items():
+                for network in guest.networks:
+                    if guest.copies == 1:
                         resources.append(
                             'aws_route53_record.records["'
-                            f"{guest}-{str(instance)}-{network}"
+                            f"{guest.name}-{str(instance)}-{network}"
                             '"]'
                         )
                         resources.append(
                             'aws_route53_record.records_reverse["'
-                            f"{guest}-{str(instance)}-{network}"
+                            f"{guest.name}-{str(instance)}-{network}"
                             '"]'
                         )
                     else:
-                        for copy in self.description.get_copy_range(guest):
+                        for copy in range(1, guest.copies + 1):
                             resources.append(
                                 'aws_route53_record.records["'
-                                f"{guest}-{str(copy)}-{str(instance)}-{network}"
+                                f"{guest.name}-{str(copy)}-{str(instance)}-{network}"
                                 '"]'
                             )
                             resources.append(
                                 'aws_route53_record.records_reverse["'
-                                f"{guest}-{str(copy)}-{str(instance)}-{network}"
+                                f"{guest.name}-{str(copy)}-{str(instance)}-{network}"
                                 '"]'
                             )
         return resources
@@ -145,10 +145,10 @@ class TerraformAWS(Terraform):
             lambda i: i <= self.description.instance_number,
             instances or range(1, self.description.instance_number + 1),
         ):
-            for network in self.description.topology:
+            for network in self.description.topology.keys():
                 resources.append(
                     'aws_security_group.subnet_sg["'
-                    f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network['name']}"
+                    f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network}"
                     '"]'
                 )
         return resources
@@ -165,10 +165,10 @@ class TerraformAWS(Terraform):
         """
         resources = []
         for instance in filter(lambda i: i <= self.description.instance_number, instances or range(1, self.description.instance_number + 1)):
-            for network in self.description.topology:
+            for network in self.description.topology.keys():
                 resources.append(
                     'aws_subnet.instance_subnets["'
-                    f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network['name']}"
+                    f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network}"
                     '"]'
                 )
         return resources
@@ -184,27 +184,12 @@ class TerraformAWS(Terraform):
           list(str): resources name of the aws_network_interface for the instances.
         """
         resources = []
-        for instance in filter(
-            lambda i: i <= self.description.instance_number,
-            instances or range(1, self.description.instance_number + 1),
-        ):
-            for guest in self.description.guest_settings.keys():
-                network_index = 1
-                for _ in self.description.get_guest_networks(guest):
-                    if self.description.get_guest_copies(guest) == 1:
-                        resources.append(
-                            'aws_network_interface.interfaces["'
-                            f"{self.description.institution}-{self.description.lab_name}-{instance}-{guest}-{network_index}"
-                            '"]'
-                        )
-                    else:
-                        for copy in self.description.get_copy_range(guest):
-                            resources.append(
-                                'aws_network_interface.interfaces["'
-                                f"{self.description.institution}-{self.description.lab_name}-{instance}-{guest}-{copy}-{network_index}"
-                                '"]'
-                            )
-                    network_index = network_index + 1
+        for guest in self.description.scenario_guests:
+            if instances and guest.instance not in instances:
+                continue
+            for _, interface in guest.interfaces.items():
+                resources.append(f"aws_network_interface.interfaces[\"{interface.name}\"]")
+
         return resources
     
     def _get_resources_to_target_apply(self, instances):
@@ -229,15 +214,15 @@ class TerraformAWS(Terraform):
         resources = resources + self._get_subnet_resources_name(instances)
         resources = resources + self._get_security_group_resources_name(instances)
         resources = resources + self._get_machine_resources_name(instances, None, None)
-        if self.description.teacher_access == "endpoint":
+        if self.config.aws.teacher_access == "endpoint":
             resources.append("aws_ec2_instance_connect_endpoint.teacher_access[0]")
         else:
             resources.append("aws_instance.teacher_access_host[0]")
-        if self.description.is_internet_access():
+        if self.description.internet_access_required():
             resources.append("aws_route_table.scenario_internet_access[0]")
             resources.append("aws_security_group.internet_access_sg[0]")
             resources = resources + self._get_route_table_resources_name(instances)
-        if self.description.configure_dns:
+        if self.config.configure_dns:
             resources = resources + self._get_dns_resources_name(instances)
         return resources
     
@@ -253,7 +238,7 @@ class TerraformAWS(Terraform):
         """
         resources = self._get_machine_resources_name(instances, None, None)
         # resources = resources + self._get_interface_resources_name(instances) #TODO: fix this. If interfaces are added to be removed then all machines are removed.
-        if self.description.configure_dns:
+        if self.config.configure_dns:
             resources = resources + self._get_dns_resources_name(instances)
         return resources
 
@@ -269,7 +254,7 @@ class TerraformAWS(Terraform):
         Returns:
           list(str): resources name to recreate.
         """
-        machines_to_recreate = self.description.parse_machines(instances, guests, copies, False, self.description.get_services_to_deploy())
+        machines_to_recreate = self.description.parse_machines(instances, guests, copies, False, [s.name for s in self.description.services])
         student_access_name = f"{self.description.institution}-{self.description.lab_name}-student_access"
         teacher_access_name = f"{self.description.institution}-{self.description.lab_name}-teacher_access"
         resource_to_recreate = []
@@ -294,19 +279,19 @@ class TerraformAWS(Terraform):
             "institution": self.description.institution,
             "lab_name": self.description.lab_name,
             "instance_number": self.description.instance_number,
-            "aws_region": self.description.aws_region,
-            "network_cidr_block": self.description.network_cidr_block,
-            "services_network_cidr_block": self.description.services_network,
-            "internet_network_cidr_block": self.description.internet_network,
-            "ssh_public_key_file": self.description.ssh_public_key_file,
-            "teacher_access": self.description.teacher_access,
+            "aws_region": self.config.aws.region,
+            "network_cidr_block": self.config.network_cidr_block,
+            "services_network_cidr_block": self.config.services_network_cidr_block,
+            "internet_network_cidr_block": self.config.internet_network_cidr_block,
+            "ssh_public_key_file": self.config.ssh_public_key_file,
+            "teacher_access": self.config.aws.teacher_access,
             "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps(self.description.subnets),
-            "guest_data_json": json.dumps(self.description.get_guest_data()),
-            "aws_default_instance_type": self.description.aws_default_instance_type,
+            "subnets_json": json.dumps(self.description.scenario_networks), # TODO: Fix json
+            "guest_data_json": json.dumps(self.description.scenario_guests), # TODO: Fix json
+            "access_host_instance_type": self.description.access_host_instance_type,
             "default_os": self.description.default_os,
             "os_data_json": json.dumps(OS_DATA),
-            "configure_dns": self.description.configure_dns,
-            "services_internet_access": self.description.deploy_elastic,
-            "monitor_type": self.description.monitor_type,
+            "configure_dns": self.config.configure_dns,
+            "services_internet_access": self.description.elastic.enable,
+            "monitor_type": self.description.elastic.monitor_type,
         }

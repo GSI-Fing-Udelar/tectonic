@@ -18,18 +18,20 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-from prettytable import PrettyTable, SINGLE_BORDER
-from os import listdir
+from prettytable import PrettyTable, TableStyle
+import os
 from os.path import isfile, join, isdir
+from pathlib import Path
+
 
 def create_table(headers, rows):
     table = PrettyTable()
-    table.set_style(SINGLE_BORDER)
+    table.set_style(TableStyle.SINGLE_BORDER)
     table.field_names = headers
     table.add_rows(rows)
     return table
 
-def read_files_in_directory(directory_path):
+def list_files_in_directory(directory_path):
     """
     Returns full path to files in directory
 
@@ -40,6 +42,50 @@ def read_files_in_directory(directory_path):
         list: full path to files in directory
     """
     if isdir(directory_path):
-        return [join(directory_path, f) for f in listdir(directory_path) if isfile(join(directory_path, f))]
+        return [join(directory_path, f) for f in os.listdir(directory_path) if isfile(join(directory_path, f))]
     else:
         return []
+
+
+def absolute_path(path, base_dir=None, expand_user=True):
+    """Return an absolute path if the given path is relative.
+    
+    Expand starting tilde to the user homedir if expand_user is True.
+    Returns path unchanged if there is an error.
+    """
+    if base_dir is None:
+        base_dir = os.getcwd()
+    try:
+        p = Path(path)
+        if expand_user:
+            p = p.expanduser()
+        if not p.is_absolute():
+            p = Path(base_dir).joinpath(p)
+    except:
+        return path
+    return str(p)
+
+
+
+
+def read_files_in_dir(directory):
+    contents = ""
+    if directory and Path(directory).is_dir():
+        for child in Path(directory).iterdir():
+            if child.is_file():
+                content = child.read_text()
+                if not content or content[-1] != "\n":
+                    content += "\n"
+                contents += content
+    return contents
+
+
+
+
+
+
+
+
+
+
+

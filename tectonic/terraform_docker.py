@@ -77,10 +77,10 @@ class TerraformDocker(Terraform):
         for instance in filter(
             lambda i: i <= self.description.instance_number, instances or range(1, self.description.instance_number+1)
         ):
-            for network in self.description.topology:
+            for network in self.description.topology.keys:
                 resources.append(
                     'libvirt_network.subnets["'
-                    f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network['name']}"
+                    f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network}"
                     '"]'
                 )
         return resources
@@ -117,7 +117,7 @@ class TerraformDocker(Terraform):
         resources = []
         for machine in machines:
             resources.append('libvirt_domain.machines["' f"{machine}" '"]')
-        if self.description.configure_dns:
+        if self.config.configure_dns:
             resources = resources + self._get_dns_resources_name(instances)
         return resources
 
@@ -135,7 +135,7 @@ class TerraformDocker(Terraform):
         """
         machines = self.description.parse_machines(instances, guests, copies, True)
         resources = []
-        for machine in machine:
+        for machine in machines:
             resources.append('libvirt_domain.machines["' f"{machine}" '"]')
             resources.append('libvirt_volume.cloned_image["' f"{machine}" '"]')
         return resources
@@ -151,19 +151,19 @@ class TerraformDocker(Terraform):
             "institution": self.description.institution,
             "lab_name": self.description.lab_name,
             "instance_number": self.description.instance_number,
-            "ssh_public_key_file": self.description.ssh_public_key_file,
+            "ssh_public_key_file": self.config.ssh_public_key_file,
             "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps(self.description.subnets),
-            "guest_data_json": json.dumps(self.description.get_guest_data()),
+            "subnets_json": json.dumps(self.description.scenario_networks), # TODO: Fix json
+            "guest_data_json": json.dumps(self.description.scenario_guests), # TODO: Fix json
             "default_os": self.description.default_os,
             "os_data_json": json.dumps(OS_DATA),
-            "configure_dns": self.description.configure_dns,
-            "libvirt_uri": self.description.libvirt_uri,
-            "libvirt_storage_pool": self.description.libvirt_storage_pool,
-            "libvirt_student_access": self.description.libvirt_student_access,
-            "libvirt_bridge": self.description.libvirt_bridge,
-            "libvirt_external_network": self.description.libvirt_external_network,
-            "libvirt_bridge_base_ip": self.description.libvirt_bridge_base_ip,
-            "services_network": self.description.services_network,
+            "configure_dns": self.config.configure_dns,
+            "libvirt_uri": self.config.libvirt.uri,
+            "libvirt_storage_pool": self.config.storage_pool,
+            "libvirt_student_access": self.config.libvirt.student_access,
+            "libvirt_bridge": self.config.libvirt.bridge,
+            "libvirt_external_network": self.config.external_network,
+            "libvirt_bridge_base_ip": self.config.libvirt.bridge_base_ip,
+            "services_network": self.config.services_network_cidr_block,
             "services_network_base_ip": 9,
             }

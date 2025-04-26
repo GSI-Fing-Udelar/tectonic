@@ -48,7 +48,7 @@ class Terraform(ABC):
         self.descriptio = description
         self.terraform_instances_module = tectonic_resources.files('tectonic') / 'terraform' / 'modules' / f"gsi-lab-{self.config.platform}"
 
-    def _run_terraform_cmd(t, cmd, variables, **args):
+    def _run_terraform_cmd(self, t, cmd, variables, **args):
         """
         Run terraform command.
 

@@ -50,7 +50,7 @@ resource "aws_subnet" "instance_subnets" {
   vpc_id                  = module.vpc.vpc_id
   map_public_ip_on_launch = false
   availability_zone       = module.vpc.azs[0]
-  cidr_block              = each.value
+  cidr_block              = lookup(each.value, "ip_network")
 
   tags = {
     Name = each.key
@@ -73,7 +73,7 @@ resource "aws_instance" "teacher_access_host" {
   count = var.teacher_access == "host" ? 1 : 0
 
   ami           = data.aws_ami.student_access_host.id
-  instance_type = var.aws_default_instance_type
+  instance_type = var.access_host_instance_type
 
   key_name = aws_key_pair.admin_pubkey.key_name
 
@@ -237,14 +237,14 @@ resource "aws_security_group" "subnet_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = [each.value]
+    cidr_blocks = [lookup(each.value, "ip_network")]
   }
   egress {
     description = "Allow outbound traffic to all instance subnets."
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = [each.value]
+    cidr_blocks = [lookup(each.value, "ip_network")]
   }
 
   tags = {
@@ -394,7 +394,7 @@ resource "aws_instance" "student_access" {
   count = local.student_access ? 1 : 0
   ami = data.aws_ami.student_access_host.id
 
-  instance_type = var.aws_default_instance_type
+  instance_type = var.access_host_instance_type
 
   key_name = aws_key_pair.admin_pubkey.key_name
 

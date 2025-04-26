@@ -53,17 +53,18 @@ class ClientLibvirt(Client):
         libvirt.VIR_DOMAIN_PMSUSPENDED: "SUSPENDED",
     }
 
-    def __init__(self, description, libvirt_uri):
+    def __init__(self, config, description):
         """
         Init method.
 
         Parameters:
-            libvirt_uri (str): Libvirt URI for connection.
+            config (Config): Tectonic config object.
+            description (Description): Tectonic description object.
         """
-        super().__init__(description) #Ver si realmente es necesario tener el description.
+        super().__init__(config, description)
         libvirt.registerErrorHandler(f=libvirt_callback, ctx=None)
         try:
-            self.connection = libvirt.open(libvirt_uri)
+            self.connection = libvirt.open(config.libvirt.uri)
         except Exception as exception:
             raise ClientLibvirtException(f"{exception}") from exception
 
@@ -106,11 +107,9 @@ class ClientLibvirt(Client):
             return None
         try:
             self._wait_for_agent(domain)
-            lab_network = ip_network(self.description.network_cidr_block)
-            services_network = ip_network(self.description.services_network)
-            services_list = []
-            for service in self.description.get_services_to_deploy():
-                services_list.append(self.description.get_service_name(service))
+            lab_network = ip_network(self.config.network_cidr_block)
+            services_network = ip_network(self.config.services_network_cidr_block)
+            services_list = [s.name for s in self.description.services]
             interfaces = domain.interfaceAddresses(
                 libvirt.VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT, 0
             )
@@ -119,9 +118,9 @@ class ClientLibvirt(Client):
                     for ipaddr in val["addrs"]:
                         if machine_name in services_list:
                             # TODO: The first time this fails and returns None as the interfaces other than localhost are empty. 
-                            # The rest of the times it works ok. 
+                            # The rest of the times it works ok.
                             if ip_address(ipaddr["addr"]) in services_network:
-                                return ipaddr["addr"]                         
+                                return ipaddr["addr"]
                         else:
                             if ip_address(ipaddr["addr"]) in lab_network:
                                 return ipaddr["addr"]
@@ -175,9 +174,9 @@ class ClientLibvirt(Client):
         
     def delete_image(self, image_name):
         try:
-            pool = self.conn.storagePoolLookupByName(self.description.libvirt_pool_name)
+            pool = self.conn.storagePoolLookupByName(self.config.libvirt.storage_pool)
         except libvirt.libvirtError:
-            raise ClientLibvirtException(f"Failed to locate {self.description.libvirt_pool_name} storage pool.")
+            raise ClientLibvirtException(f"Failed to locate {self.config.libvirt.storage_pool} storage pool.")
         vol = None
         try:
             vol = pool.storageVolLookupByName(image_name)

@@ -63,7 +63,7 @@ class Packer(ABC):
             packer_module (str): path to the Packer module.
             variables (dict): variables of the Packer module.
         """
-        p = packerpy.PackerExecutable(executable_path=self.packer_executable_path)
+        p = packerpy.PackerExecutable(executable_path=self.config.packer_executable_path)
         return_code, stdout, _ = p.execute_cmd("init", str(packer_module))
         if return_code != 0:
             raise PackerException(f"Packer init returned an error:\n{stdout.decode()}")
@@ -97,6 +97,8 @@ class Packer(ABC):
             name (list(str)): names of the machines for which to destroy images.
         """
         for guest_name in names:
+            image_name = self.description.get_image_name(guest_name)
+            if self.client.is_image_in_use(image_name):
             image_name = self.description.get_image_name(guest_name)
             if self.client.is_image_in_use(image_name):
                 raise PackerException(f"Unable to delete image {image_name} because it is being used.")

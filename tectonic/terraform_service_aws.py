@@ -73,8 +73,8 @@ class TerraformServiceAWS(TerraformService):
           list(str): resources name of the subnetworks security groups for the services.
         """
         resources = []
-        for network in self._get_services_network_data():
-            resources.append('aws_security_group.subnet_sg["'f"{network}"'"]')
+        for network_name in self.decsription.auxiliary_networks:
+            resources.append('aws_security_group.subnet_sg["'f"{network_name}"'"]')
         return resources
     
     def _get_dns_resources_name(self):
@@ -85,8 +85,8 @@ class TerraformServiceAWS(TerraformService):
           list(str): resources name of the aws dns resources for the services.
         """
         resources = []
-        for network in self._get_services_network_data():
-            resources.append('aws_route53_zone.zones["'f"{network.split('-')[2]}"'"]')
+        for _, network in self.description.auxiliary_networks.items():
+            resources.append('aws_route53_zone.zones["'f"{network.base_name}"'"]') # TODO - Check name
             services_data = self._get_services_guest_data() 
             for service in services_data:
                 interfaces_data = services_data[service]["interfaces"]
@@ -106,27 +106,35 @@ class TerraformServiceAWS(TerraformService):
           list(str): resources name of the aws_ec2_traffic_mirror_session for the services.
         """
         resources = []
-        for instance in filter(
-            lambda i: i <= self.description.instance_number,
-            instances or range(1, self.description.instance_number + 1),
-        ):
-            for guest in self.description.get_machines_to_monitor():
-                network_index = 1
-                for _ in self.description.get_guest_networks(guest):
-                    if self.description.get_guest_copies(guest) == 1:
-                        resources.append(
-                            'aws_ec2_traffic_mirror_session.session["'
-                            f"{self.description.institution}-{self.description.lab_name}-{instance}-{guest}-{network_index}"
-                            '"]'
-                        )
-                    else:
-                        for copy in self.description.get_copy_range(guest):
-                            resources.append(
-                                'aws_ec2_traffic_mirror_session.session["'
-                                f"{self.description.institution}-{self.description.lab_name}-{instance}-{guest}-{copy}-{network_index}"
-                                '"]'
-                            )
-                    network_index = network_index + 1
+        # TODO: Check if this is equivalent to what was before
+        for guest in self.description.scenario_guests:
+            if instances and guest.instance not in instances:
+                continue
+            for _, interface in guest.interfaces.items():
+                resources.append(f"aws_ec2_traffic_mirror_session.session[\"{interface.name}\"]")
+
+        # TODO: Here
+        # for instance in filter(
+        #     lambda i: i <= self.description.instance_number,
+        #     instances or range(1, self.description.instance_number + 1),
+        # ):
+        #     for _, guest in  self.description._base_guests.items:
+        #         network_index = 1
+        #         for _ in self.description.get_guest_networks(guest):
+        #             if self.description.get_guest_copies(guest) == 1:
+        #                 resources.append(
+        #                     'aws_ec2_traffic_mirror_session.session["'
+        #                     f"{self.description.institution}-{self.description.lab_name}-{instance}-{guest}-{network_index}"
+        #                     '"]'
+        #                 )
+        #             else:
+        #                 for copy in self.description.get_copy_range(guest):
+        #                     resources.append(
+        #                         'aws_ec2_traffic_mirror_session.session["'
+        #                         f"{self.description.institution}-{self.description.lab_name}-{instance}-{guest}-{copy}-{network_index}"
+        #                         '"]'
+        #                     )
+        #             network_index = network_index + 1
         return resources
 
     def _get_resources_to_target_apply(self, instances):
@@ -148,9 +156,9 @@ class TerraformServiceAWS(TerraformService):
         resources = resources + self._get_machine_resources_name()
         resources = resources + self._get_security_group_resources_name()
         resources = resources + self._get_interface_resources_name()
-        if self.description.configure_dns:
+        if self.config.configure_dns:
             resources = resources + self._get_dns_resources_name()
-        if self.description.deploy_elastic and self.description.monitor_type == "traffic":
+        if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
             resources = resources + [
                 "aws_ec2_traffic_mirror_target.packetbeat[0]",
                 "aws_ec2_traffic_mirror_filter.filter[0]",
@@ -166,12 +174,12 @@ class TerraformServiceAWS(TerraformService):
 
         Parameters:
             instances (list(int)): number of the instances to target destroy.
-        
+            services (list(str)): list of services to destroy
         Return:
             list(str): names of resources.
         """
         resources = []
-        if self.description.deploy_elastic and self.description.monitor_type == "traffic":
+        if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
             resources = resources + self._get_session_resources_name(instances)
         return resources
     
@@ -182,42 +190,26 @@ class TerraformServiceAWS(TerraformService):
         Return:
             dict: variables.
         """
+        networks = {name: network.to_dict()                    
+                    for name, network in self.description.auxiliary_networks}
+
         return {
             "institution": self.description.institution,
             "lab_name": self.description.lab_name,
-            "aws_region": self.description.aws_region,
-            "network_cidr_block": self.description.network_cidr_block,
+            "aws_region": self.config.aws.region,
+            "network_cidr_block": self.config.network_cidr_block,
             "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps(self._get_services_network_data()),
+            "subnets_json": json.dumps(networks),
             "guest_data_json": json.dumps(self._get_services_guest_data()),
             "os_data_json": json.dumps(OS_DATA),
-            "configure_dns": self.description.configure_dns,
-            "monitor_type": self.description.monitor_type,
-            "packetbeat_vlan_id": self.description.packetbeat_vlan_id,
-            "machines_to_monitor": self.description.get_machines_to_monitor(),
-            "monitor": self.description.deploy_elastic,
+            "configure_dns": self.config.configure_dns,
+            "monitor_type": self.description.elastic.monitor_type,
+            "packetbeat_vlan_id": self.config.aws.packetbeat_vlan_id,
+            "machines_to_monitor": [guest_name for guest_name, guest
+                                    in self.description.base_guests.items()
+                                    if guest.monitor],
+            "monitor": self.description.elastic.enable,
         }
-    
-    def _get_services_network_data(self):
-        """
-        Compute the complete list of services subnetworks.
-
-        Returns:
-            dict: services network data.
-        """
-        #TODO: ver si se puede mejorar 
-        networks = {
-            f"{self.description.institution}-{self.description.lab_name}-services" : {
-                "cidr" : self.description.services_network,
-                "mode": "none"
-            },
-        }
-        if self.description.deploy_elastic or self.description.deploy_caldera :
-            networks[f"{self.description.institution}-{self.description.lab_name}-internet"] = {
-                "cidr" : self.description.internet_network,
-                "mode" : "nat",
-            }
-        return networks
     
     def _get_services_guest_data(self):
         """
@@ -226,64 +218,64 @@ class TerraformServiceAWS(TerraformService):
         Returns:
             dict: services guest data.
         """
-        #TODO: ver si se puede mejorar 
+        #TODO: move to description
         guest_data = {}
-        if self.description.deploy_elastic:
-            guest_data[self.description.get_service_name("elastic")] = {
-                    "guest_name": self.description.get_service_name("elastic"),
+        if self.description.elastic.enable:
+            guest_data[self.description.elastic.name] = {
+                    "guest_name": self.description.elastic.name,
                     "base_name": "elastic",
                     "hostname": "elastic",
-                    "base_os": self.description.get_service_base_os("elastic"),
+                    "base_os": self.description.elastic.os,
                     "interfaces": {
-                        f'{self.description.get_service_name("elastic")}-1' : {
-                            "name": f'{self.description.get_service_name("elastic")}-1',
-                            "guest_name": self.description.get_service_name("elastic"),
+                        f'{self.description.elastic.name}-1' : {
+                            "name": f'{self.description.elastic.name}-1',
+                            "guest_name": self.description.elastic.name,
                             "network_name": "services",
                             "subnetwork_name": f"{self.description.institution}-{self.description.lab_name}-services",
-                            "private_ip": str(ipaddress.IPv4Network(self.description.services_network)[2]),
-                            "mask": str(ipaddress.ip_network(self.description.services_network).prefixlen),
+                            "private_ip": str(ipaddress.IPv4Network(self.config.services_network_cidr_block)[2]),
+                            "mask": str(ipaddress.ip_network(self.config.services_network_cidr_block).prefixlen),
                         },
-                        f'{self.description.get_service_name("elastic")}-2' : {
-                            "name": f'{self.description.get_service_name("elastic")}-2',
-                            "guest_name": self.description.get_service_name("elastic"),
+                        f'{self.description.elastic.name}-2' : {
+                            "name": f'{self.description.elastic.name}-2',
+                            "guest_name": self.description.elastic.name,
                             "network_name": "internet",
                             "subnetwork_name": f"{self.description.institution}-{self.description.lab_name}-internet",
-                            "private_ip": str(ipaddress.IPv4Network(self.description.internet_network)[2]),
-                            "mask": str(ipaddress.ip_network(self.description.internet_network).prefixlen),
+                            "private_ip": str(ipaddress.IPv4Network(self.config.internet_network_cidr_block)[2]),
+                            "mask": str(ipaddress.ip_network(self.config.internet_network_cidr_block).prefixlen),
                         },
                     },
-                    "memory": self.description.services["elastic"]["memory"],
-                    "vcpu": self.description.services["elastic"]["vcpu"],
-                    "disk": self.description.services["elastic"]["disk"],
+                    "memory": self.description.elastic.memory,
+                    "vcpu": self.description.elastic.vcpu,
+                    "disk": self.description.elastic.disk,
                     "port": 5601,
                 }
-        if self.description.deploy_caldera:
-            guest_data[self.description.get_service_name("caldera")] = {
-                    "guest_name": self.description.get_service_name("caldera"),
+        if self.description.caldera.enable:
+            guest_data[self.description.caldera.name] = {
+                    "guest_name": self.description.caldera.name,
                     "base_name": "caldera",
                     "hostname": "caldera",
-                    "base_os": self.description.get_service_base_os("caldera"),
+                    "base_os": self.description.caldera.os,
                     "interfaces": {
-                        f'{self.description.get_service_name("caldera")}-1' : {
-                            "name": f'{self.description.get_service_name("caldera")}-1',
-                            "guest_name": self.description.get_service_name("caldera"),
+                        f'{self.description.caldera.name}-1' : {
+                            "name": f'{self.description.caldera.name}-1',
+                            "guest_name": self.description.caldera.name,
                             "network_name": "services",
                             "subnetwork_name": f"{self.description.institution}-{self.description.lab_name}-services",
-                            "private_ip": str(ipaddress.IPv4Network(self.description.services_network)[4]),
-                            "mask": str(ipaddress.ip_network(self.description.services_network).prefixlen),
+                            "private_ip": str(ipaddress.IPv4Network(self.config.services_network_cidr_block)[4]),
+                            "mask": str(ipaddress.ip_network(self.config.services_network_cidr_block).prefixlen),
                         },
-                        f'{self.description.get_service_name("caldera")}-2' : {
-                            "name": f'{self.description.get_service_name("caldera")}-2',
-                            "guest_name": self.description.get_service_name("caldera"),
+                        f'{self.description.caldera.name}-2' : {
+                            "name": f'{self.description.caldera.name}-2',
+                            "guest_name": self.description.caldera.name,
                             "network_name": "internet",
                             "subnetwork_name": f"{self.description.institution}-{self.description.lab_name}-internet",
-                            "private_ip": str(ipaddress.IPv4Network(self.description.internet_network)[4]),
-                            "mask": str(ipaddress.ip_network(self.description.internet_network).prefixlen),
+                            "private_ip": str(ipaddress.IPv4Network(self.config.internet_network_cidr_block)[4]),
+                            "mask": str(ipaddress.ip_network(self.config.internet_network_cidr_block).prefixlen),
                         },
                     },
-                    "memory": self.description.services["caldera"]["memory"],
-                    "vcpu": self.description.services["caldera"]["vcpu"],
-                    "disk": self.description.services["caldera"]["disk"],
+                    "memory": self.description.caldera.memory,
+                    "vcpu": self.description.caldera.vcpu,
+                    "disk": self.description.caldera.disk,
                     "port": 8443,
                 }
         return guest_data
@@ -297,12 +289,12 @@ class TerraformServiceAWS(TerraformService):
             variables: variables for Ansible playbook.
         """ 
         return ansible.build_inventory(
-            machine_list=[self.description.get_service_name("packetbeat")],
-            username=OS_DATA[self.description.get_service_base_os("packetbeat")]["username"],
+            machine_list=[self.description.packetbeat.name],
+            username=OS_DATA[self.description.packetbeat.os]["username"],
             extra_vars=variables
         )
     
-    def _destroy_packetbeat(self, ansible):
+    def destroy_packetbeat(self, ansible):
         """
         Destroy Packetbeat for Elastic service network monitoring.
 

@@ -52,7 +52,7 @@ class ServiceManagerLibvirt(TerraformService):
             resources.append('libvirt_volume.cloned_image["'f"{service}"'"]')
             resources.append('libvirt_cloudinit_disk.commoninit["'f"{service}"'"]')
             resources.append('libvirt_domain.machines["'f"{service}"'"]')
-        for network in self._get_services_network_data():
+        for network in self.description.auxiliary_networks:
             resources.append('libvirt_network.subnets["'f"{network}"'"]')
         return resources
 
@@ -62,7 +62,7 @@ class ServiceManagerLibvirt(TerraformService):
 
         Parameters:
             instances (list(int)): number of the instances to target destroy.
-        
+            services (list(str)): list of services to destroy
         Return:
             list(str): names of resources.
         """
@@ -75,39 +75,21 @@ class ServiceManagerLibvirt(TerraformService):
         Return:
             dict: variables.
         """
+        networks = {name: network.to_dict()                    
+                    for name, network in self.description.auxiliary_networks}
+
         return {
             "institution": self.description.institution,
             "lab_name": self.description.lab_name,
-            "ssh_public_key_file": self.description.ssh_public_key_file,
+            "ssh_public_key_file": self.config.ssh_public_key_file,
             "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps(self._get_services_network_data()),
+            "subnets_json": json.dumps(networks),
             "guest_data_json": json.dumps(self._get_services_guest_data()),
             "os_data_json": json.dumps(OS_DATA),
-            "configure_dns": self.description.configure_dns,
-            "libvirt_uri": self.description.libvirt_uri,
-            "libvirt_storage_pool": self.description.libvirt_storage_pool,
+            "configure_dns": self.config.configure_dns,
+            "libvirt_uri": self.config.libvirt.uri,
+            "libvirt_storage_pool": self.config.libvirt.storage_pool,
         }
-    
-    def _get_services_network_data(self):
-        """
-        Compute the complete list of services subnetworks.
-
-        Returns:
-            dict: services network data.
-        """
-        #TODO: ver si se puede mejorar 
-        networks = {
-            f"{self.description.institution}-{self.description.lab_name}-services" : {
-                "cidr" : self.description.services_network,
-                "mode": "none"
-            },
-        }
-        if self.description.deploy_elastic:
-            networks[f"{self.description.institution}-{self.description.lab_name}-internet"] = {
-                "cidr" : self.description.internet_network,
-                "mode" : "nat",
-            }
-        return networks
     
     def _get_services_guest_data(self):
         """
@@ -118,55 +100,55 @@ class ServiceManagerLibvirt(TerraformService):
         """
         #TODO: ver si se puede mejorar 
         guest_data = {}
-        if self.description.deploy_elastic:
-            guest_data[self.description.get_service_name("elastic")] = {
-                    "guest_name": self.description.get_service_name("elastic"),
+        if self.description.elastic.enable:
+            guest_data[self.description.elastic.name] = {
+                    "guest_name": self.description.elastic.name,
                     "base_name": "elastic",
                     "hostname": "elastic",
-                    "base_os": self.description.get_service_base_os("elastic"),
+                    "base_os": self.description.elastic.os,
                     "interfaces": {
-                        f'{self.description.get_service_name("elastic")}-1' : {
-                            "name": f'{self.description.get_service_name("elastic")}-1',
+                        f'{self.description.elastic.name}-1' : {
+                            "name": f'{self.description.elastic.name}-1',
                             "index": 3,
-                            "guest_name": self.description.get_service_name("elastic"),
+                            "guest_name": self.description.elastic.name,
                             "network_name": "internet",
                             "subnetwork_name": f"{self.description.institution}-{self.description.lab_name}-internet",
-                            "private_ip": str(ipaddress.IPv4Network(self.description.internet_network)[2]),
-                            "mask": str(ipaddress.ip_network(self.description.internet_network).prefixlen),
+                            "private_ip": str(ipaddress.IPv4Network(self.config.internet_network_cidr_block)[2]),
+                            "mask": str(ipaddress.ip_network(self.config.internet_network_cidr_block).prefixlen),
                         },
-                        f'{self.description.get_service_name("elastic")}-2' : {
-                            "name": f'{self.description.get_service_name("elastic")}-2',
+                        f'{self.description.elastic.name}-2' : {
+                            "name": f'{self.description.elastic.name}-2',
                             "index": 4,
-                            "guest_name": self.description.get_service_name("elastic"),
+                            "guest_name": self.description.elastic.name,
                             "network_name": "services",
                             "subnetwork_name": f"{self.description.institution}-{self.description.lab_name}-services",
-                            "private_ip": str(ipaddress.IPv4Network(self.description.services_network)[2]),
-                            "mask": str(ipaddress.ip_network(self.description.services_network).prefixlen),
+                            "private_ip": str(ipaddress.IPv4Network(self.config.services_network_cidr_block)[2]),
+                            "mask": str(ipaddress.ip_network(self.config.services_network_cidr_block).prefixlen),
                         }
                     },
-                    "memory": self.description.services["elastic"]["memory"],
-                    "vcpu": self.description.services["elastic"]["vcpu"],
-                    "disk": self.description.services["elastic"]["disk"],
+                    "memory": self.description.elastic.memory,
+                    "vcpu": self.description.elastic.vcpu,
+                    "disk": self.description.elastic.disk,
                 }
-        if self.description.deploy_caldera:
-            guest_data[self.description.get_service_name("caldera")] = {
-                    "guest_name": self.description.get_service_name("caldera"),
+        if self.description.caldera.enable:
+            guest_data[self.description.caldera.name] = {
+                    "guest_name": self.description.caldera.name,
                     "base_name": "caldera",
                     "hostname": "caldera",
-                    "base_os": self.description.get_service_base_os("caldera"),
+                    "base_os": self.description.caldera.os,
                     "interfaces": {
-                        f'{self.description.get_service_name("caldera")}-1' : {
-                            "name": f'{self.description.get_service_name("caldera")}-1',
+                        f'{self.description.caldera.name}-1' : {
+                            "name": f'{self.description.caldera.name}-1',
                             "index": 3,
-                            "guest_name": self.description.get_service_name("caldera"),
+                            "guest_name": self.description.caldera.name,
                             "network_name": "services",
                             "subnetwork_name": f"{self.description.institution}-{self.description.lab_name}-services",
-                            "private_ip": str(ipaddress.IPv4Network(self.description.services_network)[4]),
-                            "mask": str(ipaddress.ip_network(self.description.services_network).prefixlen),
+                            "private_ip": str(ipaddress.IPv4Network(self.config.services_network_cidr_block)[4]),
+                            "mask": str(ipaddress.ip_network(self.config.services_network_cidr_block).prefixlen),
                         }
                     },
-                    "memory": self.description.services["caldera"]["memory"],
-                    "vcpu": self.description.services["caldera"]["vcpu"],
-                    "disk": self.description.services["caldera"]["disk"],
+                    "memory": self.description.caldera.memory,
+                    "vcpu": self.description.caldera.vcpu,
+                    "disk": self.description.caldera.disk,
                 }
         return guest_data
