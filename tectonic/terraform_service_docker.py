@@ -29,7 +29,7 @@ class TerraformServiceDockerException(Exception):
 
 class TerraformServiceDocker(TerraformService):
     """
-    ServiceManagerDocker class.
+    TerraformServiceDocker class.
 
     Description: manages services instances for Docker.
     """
@@ -80,9 +80,7 @@ class TerraformServiceDocker(TerraformService):
         Return:
             dict: variables.
         """
-        networks = {name: network.to_dict()                    
-                    for name, network in self.description.auxiliary_networks}
-
+        networks = {name: network.to_dict() for name, network in self.description.auxiliary_networks}
         return {
             "institution": self.description.institution,
             "lab_name": self.description.lab_name,

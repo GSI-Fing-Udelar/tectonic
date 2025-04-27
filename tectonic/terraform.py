@@ -45,7 +45,7 @@ class Terraform(ABC):
             description (Description): Tectonic description object.
         """
         self.config = config
-        self.descriptio = description
+        self.description = description
         self.terraform_instances_module = tectonic_resources.files('tectonic') / 'terraform' / 'modules' / f"gsi-lab-{self.config.platform}"
 
     def _run_terraform_cmd(self, t, cmd, variables, **args):
@@ -118,7 +118,7 @@ class Terraform(ABC):
         self._run_terraform_cmd(t, "init", [], reconfigure=python_terraform.IsFlagged, backend_config=self._generate_backend_config(terraform_dir))
         self._run_terraform_cmd(t, "destroy", variables, auto_approve=True, input=False, target=resources)
 
-    @abstractmethod
+    #@abstractmethod
     def _get_machine_resources_name(self, instances, guests, copies):
         """
         Returns the name of the aws_instance resource of the AWS Terraform module for the instances.
@@ -133,7 +133,7 @@ class Terraform(ABC):
         """
         pass
 
-    @abstractmethod
+    #@abstractmethod
     def _get_subnet_resources_name(self, instances):
         """
         Returns the name of the aws_subnet resource of the AWS Terraform module for the instances.
@@ -172,7 +172,7 @@ class Terraform(ABC):
         """
         pass
 
-    @abstractmethod
+    #@abstractmethod
     def _get_resources_to_recreate(self, instances, guests, copies):
         """
         Get resources name to recreate.
@@ -219,7 +219,7 @@ class Terraform(ABC):
         resources_to_destroy = None
         if instances is not None:
             resources_to_destroy = self._get_resources_to_target_destroy(instances)
-        self._apply(self.terraform_instances_module, self._get_terraform_variables(), resources_to_destroy)
+        self._destroy(self.terraform_instances_module, self._get_terraform_variables(), resources_to_destroy)
 
     def recreate(self, instances, guests, copies): 
         """
@@ -232,5 +232,3 @@ class Terraform(ABC):
         """
         resources_to_recreate = self._get_resources_to_recreate(instances, guests, copies)
         self._apply(self.terraform_instances_module, self._get_terraform_variables(), resources_to_recreate)
-
-    #TODO deploy/destroy/recreate services

@@ -40,7 +40,7 @@ class Packer(ABC):
     INSTANCES_PACKER_MODULE = tectonic_resources.files('tectonic') / 'image_generation' / 'create_image.pkr.hcl'
     SERVICES_PACKER_MODULE = tectonic_resources.files('tectonic') / 'services' / 'image_generation' / 'create_image.pkr.hcl'
 
-    def __init__(self, config, description, client, packer_executable_path="packer"):
+    def __init__(self, config, description, client):
         """
         Initialize the packer object.
 
@@ -48,12 +48,10 @@ class Packer(ABC):
             config (Config): Tectonic config object.
             description (Description): Tectonic description object.
             client (Client): Tectonic client object
-            packer_executable_path (str): Path to the packer executable on the S.O. Default: packer
         """
         self.config = config
         self.description = description
         self.client = client
-        self.packer_executable_path = packer_executable_path
     
     def _invoke_packer(self, packer_module, variables):
         """
@@ -89,34 +87,19 @@ class Packer(ABC):
         """
         self._invoke_packer(self.INSTANCES_PACKER_MODULE, self._get_service_variables(services))
 
-    def destroy_image(self, names):
+    def destroy_image(self, guests):
         """
         Destroy base images.
 
         Parameters:
-            name (list(str)): names of the machines for which to destroy images.
+            guests (list(str)): names of the guests for which to destroy images.
         """
-        for guest_name in names:
-            image_name = self.description.get_image_name(guest_name)
-            if self.client.is_image_in_use(image_name):
-            image_name = self.description.get_image_name(guest_name)
-            if self.client.is_image_in_use(image_name):
-                raise PackerException(f"Unable to delete image {image_name} because it is being used.")
-        for guest_name in names:
-            self.client.delete_image(self.description.get_image_name(guest_name))
-
-    @abstractmethod
-    def _get_instance_machines(self, guests):
-        """
-        Return machines for creating instances images.
-
-        Parameters:
-            guests (list(str)): names of the guests for which to create images.
-
-        Returns:
-            dict: machines dictionary.
-        """
-        pass
+        machines = [guest for _, guest in self.description.base_guests.items() if not guests or guest.base_name in guests]
+        for machine in machines:
+            if self.client.is_image_in_use(machine.image_name):
+                raise PackerException(f"Unable to delete image {machine.base_name} because it is being used.")
+        for machine in machines:
+            self.client.delete_image(machine.image_name)
 
     @abstractmethod
     def _get_service_machines(self, services):
@@ -141,25 +124,25 @@ class Packer(ABC):
         Returns:
             dict: variables of the Packer module.
         """
-        machines = self._get_instance_machines(guests)
+        machines = [guest for _, guest in self.description.base_guests.items() if not guests or guest.base_name in guests]
         args = {
-            "ansible_playbooks_path": self.description.ansible_playbooks_path,
+            "ansible_playbooks_path": self.description.ansible_dir,
             "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
-            "ansible_ssh_common_args": self.description.ansible_ssh_common_args,
-            "aws_region": self.description.aws_region,
+            "ansible_ssh_common_args": self.config.ansible.ssh_common_args,
+            "aws_region": self.config.aws.region,
             "instance_number": self.description.instance_number,
             "institution": self.description.institution,
             "lab_name": self.description.lab_name,
-            "libvirt_storage_pool": self.description.libvirt_storage_pool,
-            "libvirt_uri": self.description.libvirt_uri,
-            "machines_json": json.dumps(machines),
+            "libvirt_storage_pool": self.config.libvirt.storage_pool,
+            "libvirt_uri": self.config.libvirt.uri,
+            "machines_json": json.dumps({guest.base_name: guest.to_dict() for guest in machines}),
             "os_data_json": json.dumps(OS_DATA),
             "platform": self.config.platform,
-            "remove_ansible_logs": str(not self.description.keep_ansible_logs),
-            "elastic_version": self.description.elastic_stack_version
+            "remove_ansible_logs": str(not self.config.ansible.keep_logs),
+            "elastic_version": self.config.elastic.elastic_stack_version
         }
-        if self.description.proxy is not None and self.description.proxy != "":
-            args["proxy"] = self.description.proxy
+        if self.config.proxy:
+            args["proxy"] = self.config.proxy
         return args
 
     def _get_service_variables(self, services):
@@ -172,23 +155,24 @@ class Packer(ABC):
         Returns:
             dict: variables of the Packer module.
         """
-        machines = self._get_service_machines(services)
+        machines = [guest for _, guest in self.description.base_guests.items() if not services or guest.base_name in services]
         args = {
             "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
-            "ansible_ssh_common_args": self.description.ansible_ssh_common_args,
-            "aws_region": self.description.aws_region,
-            "proxy": self.description.proxy,
-            "libvirt_storage_pool": self.description.libvirt_storage_pool,
-            "libvirt_uri": self.description.libvirt_uri,
-            "machines_json": json.dumps(machines),
+            "ansible_ssh_common_args": self.config.ansible.ssh_common_args,
+            "aws_region": self.config.aws.region,
+            "libvirt_storage_pool": self.config.libvirt.storage_pool,
+            "libvirt_uri": self.config.libvirt.uri,
+            "machines_json": json.dumps({guest.base_name: guest.to_dict() for guest in machines}),
             "os_data_json": json.dumps(OS_DATA),
             "platform": self.config.platform,
-            "remove_ansible_logs": str(not self.description.keep_ansible_logs),
+            "remove_ansible_logs": str(not self.config.ansible.keep_logs),
             #TODO: pass variables as a json as part of each host
-            "elastic_version": self.description.elastic_stack_version, 
-            "elastic_latest_version": "yes" if self.description.is_elastic_stack_latest_version else "no",
-            "elasticsearch_memory": math.floor(self.description.services["elastic"]["memory"] / 1000 / 2)  if self.description.deploy_elastic else None,
-            "caldera_version": self.description.caldera_version,
-            "packetbeat_vlan_id": self.description.packetbeat_vlan_id,
+            "elastic_version": self.config.elastic.elastic_stack_version, 
+            "elastic_latest_version": str(self.config.elastic.elastic_stack_version == "latest"), # TODO: Check this
+            "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
+            "caldera_version": self.config.caldera.version,
+            "packetbeat_vlan_id": self.config.aws.packetbeat_vlan_id,
         }
+        if self.config.proxy:
+            args["proxy"] = self.config.proxy
         return args

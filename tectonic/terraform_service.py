@@ -77,7 +77,7 @@ class TerraformService(Terraform):
         """
         pass
 
-    def get_service_credentials(self, service_base_name, ansible):
+    def get_service_credentials(self, service, ansible):
         """
         Get service credentials. Use Ansible to connect to machine and get the credentials.
 
@@ -100,7 +100,7 @@ class TerraformService(Terraform):
             result[credential_split[0]] = credential_split[1]
         return result
         
-    def _get_service_info(self, service_base_name, ansible, playbook, ansible_vars):
+    def _get_service_info(self, service, ansible, playbook, ansible_vars):
         """
         Get service info. Use Ansible to execute action against service and get specific info.
 

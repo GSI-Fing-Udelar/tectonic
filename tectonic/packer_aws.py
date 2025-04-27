@@ -32,7 +32,7 @@ class PackerAWS(Packer):
     Description: manages interaction with Packer to build images.
     """
 
-    def __init__(self, config, description, client, packer_executable_path="packer"):
+    def __init__(self, config, description, client):
         """
         Initialize the packer object.
 
@@ -40,9 +40,8 @@ class PackerAWS(Packer):
             config (Config): Tectonic config object.
             description (Description): Tectonic description object.
             client (Client): Tectonic client object
-            packer_executable_path (str): Path to the packer executable on the S.O. Default: packer
         """
-        super().__init__(config, description, client, packer_executable_path)
+        super().__init__(config, description, client)
 
     def create_instance_image(self, guests):
         """
@@ -63,34 +62,7 @@ class PackerAWS(Packer):
         """
         super().create_instance_image(services)
         self.client.delete_security_groups("Temporary group for Packer")
-
-    def _get_instance_machines(self, guests):
-        """
-        Return machines for creating instances images.
-
-        Parameters:
-            guests (list(str)): names of the guests for which to create images.
-
-        Returns:
-            dict: machines dictionary.
-        """
-        machines = {}
-        for guest_name in guests:
-            monitor = True if self.description.deploy_elastic and self.description.get_guest_attr(guest_name, "monitor", False) and self.description.monitor_type == "endpoint" else False
-            machines[guest_name] = {
-                "base_os": self.description.get_guest_attr(guest_name, "base_os", self.description.default_os),
-                "endpoint_monitoring" : monitor,
-            }
-            machines[guest_name]["disk"] = self.description.get_guest_attr(guest_name, "disk", 8)
-            machines[guest_name]["instance_type"] = self.description.instance_type.get_guest_instance_type(
-                self.description.get_guest_attr(guest_name, "memory", 1),
-                self.description.get_guest_attr(guest_name, "vcpu", 1),
-                self.description.get_guest_attr(guest_name, "gpu", False),
-                monitor,
-                self.description.monitor_type,
-            )
-        return machines
-    
+  
     def _get_service_machines(self, services):
         """
         Return machines for creating services images.

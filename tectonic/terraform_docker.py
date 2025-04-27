@@ -58,9 +58,7 @@ class TerraformDocker(Terraform):
         machines = self.description.parse_machines(instances, guests, copies, True)
         resources = []
         for machine in machines:
-            resources.append('libvirt_domain.machines["' f"{machine}" '"]')
-            resources.append('libvirt_volume.cloned_image["' f"{machine}" '"]')
-            resources.append('libvirt_cloudinit_disk.commoninit["' f"{machine}" '"]')
+            resources.append('docker_container.machines["' f"{machine}" '"]')
         return resources
 
     def _get_subnet_resources_name(self, instances):
@@ -74,12 +72,10 @@ class TerraformDocker(Terraform):
           list(str): resources name of the aws_subnet for the instances.
         """
         resources = []
-        for instance in filter(
-            lambda i: i <= self.description.instance_number, instances or range(1, self.description.instance_number+1)
-        ):
-            for network in self.description.topology.keys:
+        for instance in filter(lambda i: i <= self.description.instance_number, instances or range(1, self.description.instance_number+1)):
+            for network in self.description.topology.keys():
                 resources.append(
-                    'libvirt_network.subnets["'
+                    'docker_network.subnets["'
                     f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network}"
                     '"]'
                 )
@@ -101,6 +97,8 @@ class TerraformDocker(Terraform):
         """
         resources = self._get_machine_resources_name(instances, None, None)
         resources = resources + self._get_subnet_resources_name(instances)
+        if self.config.configure_dns:
+            resources = resources + self._get_dns_resources_name(instances)
         return resources
 
     def _get_resources_to_target_destroy(self, instances):
@@ -113,13 +111,7 @@ class TerraformDocker(Terraform):
         Return:
             list(str): names of resources.
         """
-        machines = self.description.parse_machines(instances, None, None, True)
-        resources = []
-        for machine in machines:
-            resources.append('libvirt_domain.machines["' f"{machine}" '"]')
-        if self.config.configure_dns:
-            resources = resources + self._get_dns_resources_name(instances)
-        return resources
+        return self._get_machine_resources_name(instances, None, None)
 
     def _get_resources_to_recreate(self, instances, guests, copies):
         """
@@ -133,12 +125,7 @@ class TerraformDocker(Terraform):
         Returns:
           list(str): resources name to recreate.
         """
-        machines = self.description.parse_machines(instances, guests, copies, True)
-        resources = []
-        for machine in machines:
-            resources.append('libvirt_domain.machines["' f"{machine}" '"]')
-            resources.append('libvirt_volume.cloned_image["' f"{machine}" '"]')
-        return resources
+        return self._get_machine_resources_name(instances, guests, copies)
 
     def _get_terraform_variables(self):
         """
@@ -153,17 +140,10 @@ class TerraformDocker(Terraform):
             "instance_number": self.description.instance_number,
             "ssh_public_key_file": self.config.ssh_public_key_file,
             "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps(self.description.scenario_networks), # TODO: Fix json
-            "guest_data_json": json.dumps(self.description.scenario_guests), # TODO: Fix json
+            "subnets_json": json.dumps({name: network.to_dict() for name, network in self.description.scenario_networks.items()}),
+            "guest_data_json": json.dumps({name: guest.to_dict() for name, guest in self.description.scenario_guests.items()}),
             "default_os": self.description.default_os,
             "os_data_json": json.dumps(OS_DATA),
             "configure_dns": self.config.configure_dns,
-            "libvirt_uri": self.config.libvirt.uri,
-            "libvirt_storage_pool": self.config.storage_pool,
-            "libvirt_student_access": self.config.libvirt.student_access,
-            "libvirt_bridge": self.config.libvirt.bridge,
-            "libvirt_external_network": self.config.external_network,
-            "libvirt_bridge_base_ip": self.config.libvirt.bridge_base_ip,
-            "services_network": self.config.services_network_cidr_block,
-            "services_network_base_ip": 9,
-            }
+            "docker_uri": self.config.docker.uri,
+        }

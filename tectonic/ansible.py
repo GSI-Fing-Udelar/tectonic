@@ -35,10 +35,10 @@ class AnsibleException(Exception):
 class Ansible:
     """ Class for managing Ansible connections. """
 
-    def __init__(self, config, description, instance_manager):
+    def __init__(self, config, description, client):
         self.config = config
         self.description = description
-        self.instance_manager = instance_manager
+        self.client = client
 
         self.output = ""
         self.debug_outputs = []
@@ -72,7 +72,7 @@ class Ansible:
 
         ssh_args = self.config.ansible.ssh_common_args
 
-        proxy_command = self.instance_manager.get_ssh_proxy_command()
+        proxy_command = self.client.get_ssh_proxy_command()
         if proxy_command:
             ssh_args += f' -o ProxyCommand="{proxy_command}"'
 
@@ -88,7 +88,7 @@ class Ansible:
         for machine_name in machine_list:
             machine = self.description.scenario_guests[machine_name]
             ansible_username = username or machine.admin_username
-            hostname = self.instance_manager.get_ssh_hostname(machine_name)
+            hostname = self.client.get_ssh_hostname(machine_name)
 
             if not inventory.get(machine.base_name):
                 inventory[machine.base_name] = {

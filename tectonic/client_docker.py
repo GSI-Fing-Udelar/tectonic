@@ -39,7 +39,7 @@ class ClientDocker(Client):
         "running": "RUNNING",
         "paused": "STOPPED",
         "restarting": "RESTARTING",
-        "exited": "EXITED",
+        "exited": "STOPPED",
         "removing": "REMOVING",
         "dead": "DEAD",
     }
@@ -57,12 +57,12 @@ class ClientDocker(Client):
             self.connection = docker.DockerClient(base_url=config.docker.uri)
         except:
             self.connection = None
-            raise ClientDockerException(f"Cannot connect to docker server at {docker_uri}")
+            raise ClientDockerException(f"Cannot connect to docker server at {config.docker.uri}")
         
     def get_machine_status(self, machine_name):
         try:
             container = self.connection.containers.get(machine_name)
-            return self.STATE_MSG.get(container.status.upper(), "NOT FOUND")
+            return self.STATE_MSG.get(container.status, "NOT FOUND")
         except docker.errors.NotFound:
             return "NOT FOUND"
         except Exception as exception:

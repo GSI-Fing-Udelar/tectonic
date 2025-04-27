@@ -27,9 +27,9 @@ from tectonic.terraform_service import TerraformService
 class TerraformServiceLibvirtException(Exception):
     pass
 
-class ServiceManagerLibvirt(TerraformService):
+class TerraformServiceLibvirt(TerraformService):
     """
-    ServiceManagerLibvirt class.
+    TerraformServiceLibvirt class.
 
     Description: manages services instances for Libvirt.
     """

@@ -505,8 +505,7 @@ class GuestDescription(BaseGuestDescription):
 
         self._interfaces = {}
         interface_num = 1
-        for network in [n for _ , n in description.scenario_networks.items()
-                        if base_guest.base_name in n.members]:
+        for network in [n for _ , n in description.scenario_networks.items() if base_guest.base_name in n.members and self.instance == n.instance ]:
             interface = NetworkInterface(description, self, network, interface_num)
             self._interfaces[interface.name] = interface
             interface_num += 1
@@ -925,17 +924,14 @@ class Description:
         """
         users = {}
         random.seed(self.random_seed)
-        digits = len(str(self.instance_number))
+        digits = len(str(self.instance_number))+1
         for i in range(1,self.instance_number+1):
             username = f"{self.student_prefix}{i:0{digits}d}"
             users[username] = {}
             if self.create_students_passwords:
                 (password, salt) = self._generate_password()
                 users[username]["password"] = password
-                users[username]["password_hash"] = sha512_crypt.using(salt=salt).hash(
-                    password
-                )
-
+                users[username]["password_hash"] = sha512_crypt.using(salt=salt).hash(password)
             if self.student_pubkey_dir:
                 users[username]["authorized_keys"] = tectonic.utils.read_files_in_dir(
                     Path(self.student_pubkey_dir) / username)
@@ -1170,7 +1166,7 @@ class Description:
                 pkg.extractall(path=self.extract_tmpdir.name)
                 return Path(self.extract_tmpdir.name)
             else:
-                raise DescriptionException(f"{base_lab} not found in {config.lab_repo_uri}.")
+                raise DescriptionException(f"{base_lab} not found in {self.config.lab_repo_uri}.")
 
 
     def _compute_scenario_networks(self):

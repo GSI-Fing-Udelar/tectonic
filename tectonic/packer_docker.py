@@ -32,7 +32,7 @@ class PackerDocker(Packer):
     Description: manages interaction with Packer to build images.
     """
 
-    def __init__(self, config, description, client, packer_executable_path="packer"):
+    def __init__(self, config, description, client):
         """
         Initialize the packer object.
 
@@ -40,28 +40,8 @@ class PackerDocker(Packer):
             config (Config): Tectonic config object.
             description (Description): Tectonic description object.
             client (Client): Tectonic client object
-            packer_executable_path (str): Path to the packer executable on the S.O. Default: packer
         """
-        super().__init__(config, description, client, packer_executable_path)
-
-    def _get_instance_machines(self, guests):
-        """
-        Return machines for creating instances images.
-
-        Parameters:
-            guests (list(str)): names of the guests for which to create images.
-
-        Returns:
-            dict: machines dictionary.
-        """
-        machines = {}
-        for guest_name in guests:
-            monitor = True if self.description.deploy_elastic and self.description.get_guest_attr(guest_name, "monitor", False) and self.description.monitor_type == "endpoint" else False
-            machines[guest_name] = {
-                "base_os": self.description.get_guest_attr(guest_name, "base_os", self.description.default_os),
-                "endpoint_monitoring" : monitor,
-            }
-        return machines
+        super().__init__(config, description, client)
     
     def _get_service_machines(self, services):
         """
