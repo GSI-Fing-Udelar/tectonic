@@ -23,6 +23,8 @@ import pytest
 from tectonic.description import DescriptionException, Description
 from tectonic.config import TectonicConfig
 from tectonic.core import *
+from tectonic.instance_type import InstanceType
+from tectonic.instance_type_aws import InstanceTypeAWS
 
 def test_core():
     config = TectonicConfig.load("./tectonic.ini")
