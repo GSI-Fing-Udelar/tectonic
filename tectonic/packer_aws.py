@@ -62,26 +62,20 @@ class PackerAWS(Packer):
         """
         super().create_instance_image(services)
         self.client.delete_security_groups("Temporary group for Packer")
-  
-    def _get_service_machines(self, services):
+      
+    def _get_service_machine_variables(self, service):
         """
         Return machines for creating services images.
 
         Parameters:
-            services (list(str)): names of the services for which to create images.
+            service (ServiceDescription): services for which to create images.
 
         Returns:
-            dict: machines dictionary.
+            dict: machines variables.
         """
-        machines = {}
-        for service in services:
-            machines[service] = {
-                "base_os": self.description.get_service_base_os(service),
-                "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / service / 'base_config.yml'),
-            }
-            machines[service]["disk"] = self.description.services[service]["disk"]
-            if service in ["caldera", "elastic"]:
-                machines[service]["instance_type"] = self.description.instance_type.get_guest_instance_type(self.description.services[service]["memory"], self.description.services[service]["vcpu"], False, False, self.description.monitor_type)
-            elif service == "packetbeat":
-                machines[service]["instance_type"] = "t2.micro"
-        return machines
+        result = {}
+        result["base_os"] = service.os  
+        result["ansible_playbook"] = str(tectonic_resources.files('tectonic') / 'services' / service.base_name / 'base_config.yml')
+        result["disk"] = service.disk
+        result["instance_type"] = service.instance_type
+        return result

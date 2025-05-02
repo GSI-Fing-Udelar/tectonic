@@ -89,9 +89,7 @@ class Core:
 
         Parameters:
             guests (list(str)): names of the guests for which to create images. 
-            services (list(str)): names of the services for which to create images.
         """
-        # Create instances images
         if guests is not None:
             self.packer.destroy_image(guests)
             self.packer.create_instance_image(guests)
@@ -101,9 +99,8 @@ class Core:
         Create base images.
 
         Parameters:
-            services (list(str)): List of services to create. Create all if it is None.
+            services (list(str)): List of services to create.
         """
-        # Create services images
         if services is not None:
             self.packer.destroy_image(services)
             self.packer.create_service_image(services)
@@ -122,36 +119,19 @@ class Core:
         if create_services_images:
             self.create_services_images()
 
-        # Deploy instances
-        self.terraform.deploy(instances)
-            
-        # # Deploy services
-        # self.terraform_service.deploy(instances)
-        
-        # # Wait for services to bootup
-        # services_to_deploy = [service.name for service in self.description.services]
-        # extra_vars = {
-        #     "elastic" : {
-        #         "monitor_type": self.description.elastic.monitor_type,
-        #         "deploy_policy": self.description.elastic.deploy_default_policy,
-        #         "policy_name": self.config.elastic.packetbeat_policy_name if self.description.elastic.monitor_type == "traffic" else self.config.elastic.endpoint_policy_name,
-        #         "http_proxy" : self.config.proxy,
-        #         "description_path": self.description.scenario_dir,
-        #         "ip": str(ipaddress.IPv4Network(self.config.services_network_cidr_block)[2]),
-        #         "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
-        #         "dns": self.config.docker.dns,
-        #     },
-        #     "caldera":{
-        #         "ip": str(ipaddress.IPv4Network(self.config.services_network_cidr_block)[4]),
-        #         "description_path": self.description.scenario_dir,
-        #     },
-        # }
-        # #TODO: mejorar la creación de este inventario para servicios pensando en que se agreguen otros servicios.
-        # inventory = self.ansible.build_inventory(machine_list=services_to_deploy, extra_vars=extra_vars)
-        # self.ansible.wait_for_connections(inventory=inventory)
+        if self.config.platform in ["docker", "libvirt"]:
+            self.terraform_service.deploy(instances)
 
-        # # Configure services
-        # self.ansible.run(inventory=inventory, playbook=self.ANSIBLE_SERVICE_PLAYBOOK, quiet=True)
+            self.ansible.configure_services()
+
+            self.terraform.deploy(instances)
+
+        elif self.config.platform in ["aws"]:
+            self.terraform.deploy(instances)
+                
+            self.terraform_service.deploy(instances)
+            
+            self.ansible.configure_services()
 
         # Wait for instances to bootup
         self.ansible.wait_for_connections(instances=instances)
@@ -183,12 +163,13 @@ class Core:
             services (list(str)): list of services to destroy
             destroy_images (bool): whether to destroy instances images.
         """
-        # # Destroy services
-        # self.terraform_service.destroy(instances)
-
-        # Destrot instances
-        self.terraform.destroy(instances)
-
+        if self.config.platform in ["docker", "libvirt"]:
+            self.terraform.destroy(instances)
+            self.terraform_service.destroy(instances)
+        elif self.config.platform in ["aws"]:
+            self.terraform_service.destroy(instances)
+            self.terraform.destroy(instances)
+        
         if instances is None:
             # Destroy Packetbeat
             if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
@@ -317,14 +298,13 @@ class Core:
                     instances_info["Teacher Access IP"] = teacher_access_ip
 
         service_info = {}
-        for service in self.description.services:
+        for service_name, service in self.description.services_guests.items():
             credentials = self.terraform_service.get_service_credentials(service, self.ansible)
             ip = self.client.get_machine_private_ip(service.name) # En docker tiene que ser 127.0.0.1 ver como arreglar.
-            service_info[service.name] = {
+            service_info[service.base_name] = {
                 "ip": ip,
                 "credentials": credentials,
             }
-
         return {
             "instances_info": instances_info,
             "services_info": service_info,

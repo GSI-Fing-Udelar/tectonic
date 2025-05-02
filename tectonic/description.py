@@ -28,17 +28,15 @@ import yaml
 from zipfile import ZipFile
 from pathlib import Path
 import re
-import os
 import json
 
 from tectonic.constants import OS_DATA
 import tectonic.utils
 import tectonic.validate as validate
+import importlib.resources as tectonic_resources
 
 class DescriptionException(Exception):
     pass
-
-
 class NetworkDescription():
 
     def __init__(self, description, base_name):
@@ -80,19 +78,20 @@ class NetworkDescription():
         except:
             raise DescriptionException(f"Invalid members {value}. Must be a list of guest names.")
         self._members = value
-
-
 class AuxiliaryNetwork(NetworkDescription):
 
     def __init__(self, description, network_name, ip_network, mode):
         super().__init__(description, network_name)
         self.ip_network = ip_network
         self.mode = mode
+        self.instance = None
 
     @property
     def name(self):
-        return self._institution + "-" + \
-            self._lab_name + "-" + str(self.instance) + "-" + self.base_name
+        if self.instance is not None:
+            return self._institution + "-" + self._lab_name + "-" + str(self.instance) + "-" + self.base_name
+        else:
+            return self._institution + "-" + self._lab_name + "-" + self.base_name
 
     @property
     def ip_network(self):
@@ -115,15 +114,12 @@ class AuxiliaryNetwork(NetworkDescription):
 
     def to_dict(self):
         """Convert an AuxiliaryNetwork object to the dictionary expected by terraform."""
-    
         result = {}
         result["base_name"] = self.base_name
         result["name"] = self.name
         result["cidr"] = self.ip_network
         result["mode"] = self.mode
-
         return result
-    
 
 class ScenarioNetwork(NetworkDescription):
 
@@ -169,17 +165,12 @@ class ScenarioNetwork(NetworkDescription):
         validate.supported_value("mode", value, ["none", "nat"])
         self._mode = value
 
-    
     def to_dict(self):
         """Convert a ScenarioNetwork object to the dictionary expected by terraform."""
-        
         result = {}
         result["name"] = self.name
         result["ip_network"] = self.ip_network
-
         return result
-
-
 
 class MachineDescription:
     def __init__(self, description, base_name, os=None):
@@ -253,9 +244,7 @@ class MachineDescription:
     def base_name(self, value):
         value = re.sub("[^a-zA-Z0-9]+", "", value).lower()
         if value == "":
-            raise DescriptionException(
-                f"Invalid machine name {value}. Must have at least one alphanumeric symbol."
-            )
+            raise DescriptionException(f"Invalid machine name {value}. Must have at least one alphanumeric symbol.")
         self._base_name = value
 
     @os.setter
@@ -289,7 +278,6 @@ class MachineDescription:
         self.vcpu = data.get("vcpu", self.vcpu)
         self.disk = data.get("disk", self.disk)
 
-        
     def toJSON(self):
         "{}"
 
@@ -345,9 +333,7 @@ class BaseGuestDescription(MachineDescription):
     @monitor.setter
     def monitor(self, value):
         validate.boolean("monitor", value)
-        self._monitor = (self._description.elastic.enable and 
-                         self._description.monitor_type == "endpoint" and
-                         self._monitor)
+        self._monitor = self._description.elastic.enable and self._description.elastic.monitor_type == "endpoint" and value
 
     @red_team_agent.setter
     def red_team_agent(self, value):
@@ -362,7 +348,6 @@ class BaseGuestDescription(MachineDescription):
     def load_base_guest(self, data):
         """Loads the information from the yaml structure in data."""
         self.load_machine(data)
-
         self.base_name = data.get("name", self.base_name)
         self.entry_point = data.get("entry_point", self.entry_point)
         self.os = data.get("os", self.os)
@@ -374,7 +359,6 @@ class BaseGuestDescription(MachineDescription):
 
     def to_dict(self):
         """Convert BaseGuestDescription object to the dictionary expected by packer."""
-
         result = {}
         result["base_os"] = self.os
         result["endpoint_monitoring"] = self.monitor
@@ -382,16 +366,15 @@ class BaseGuestDescription(MachineDescription):
         result["vcpu"] = self.vcpu
         result["memory"] = self.memory
         result["disk"] = self.disk        
-
         return result
 
 class NetworkInterface():
-    def __init__(self, description, guest, network, interface_num):
+    def __init__(self, description, guest, network, interface_num, private_ip=None):
         self.name = f"{guest.name}-{interface_num+1}"
         self.index = interface_num + self._get_interface_index_to_sum(description, guest)
         self.guest_name = guest.name
         self.network = network
-        self.private_ip = self._get_guest_ip_address(guest, network)
+        self.private_ip = self._get_guest_ip_address(guest, network) if private_ip is None else private_ip
         self.mask = ipaddress.ip_network(network.ip_network).prefixlen
 
     @property
@@ -444,15 +427,11 @@ class NetworkInterface():
 
     def to_dict(self):
         """Convert a NetworkInterface object to the dictionary expected by terraform."""
-
         result = {}
         result["name"] = self.name
         result["subnetwork_name"] = self.network.name
         result["private_ip"] = self.private_ip
-
         return result
-
-
         
     def _get_interface_index_to_sum(self, description, guest):
         """Returns number to be added to interface index.
@@ -476,14 +455,10 @@ class NetworkInterface():
             raise DescriptionException(f"Cannot find {guest.base_name} in network {network.base_name}.")
         hostnum = network.members.index(guest.base_name) + (guest.copy - 1) + 3
         ip_network = ipaddress.ip_network(network.ip_network)
-
         return str(list(ip_network.hosts())[hostnum])
 
-
-
 class GuestDescription(BaseGuestDescription):
-    def __init__(self, description, base_guest, instance_num, copy,
-                 is_in_services_network=False):
+    def __init__(self, description, base_guest, instance_num, copy, is_in_services_network=False):
         super().__init__(description, base_guest.base_name)
         # Copy base_guest data
         self.base_name = base_guest.base_name
@@ -513,7 +488,6 @@ class GuestDescription(BaseGuestDescription):
         self.entry_point_index = 0
         self.services_network_index = 0
         self.advanced_options_file = None
-
 
     @property
     def name(self):
@@ -596,10 +570,8 @@ class GuestDescription(BaseGuestDescription):
     def advanced_options_file(self, value):
         self._advanced_options_file = value
 
-
     def to_dict(self):
         """Convert a GuestDescription object to the dictionary expected by packer."""
-
         result = {}
         result["base_name"] = self.base_name
         result["name"] = self.name
@@ -610,15 +582,16 @@ class GuestDescription(BaseGuestDescription):
         result["base_os"] = self.os
         result["is_in_services_network"] = self.is_in_services_network
         result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
-
         return result
-
-
 class ServiceDescription(MachineDescription):
     def __init__(self, description, base_name, os):
         super().__init__(description, base_name, os)
         self.base_name = base_name
         self.enable = False
+        self._interfaces = {}
+        self.monitor = False
+        self.instance = 1
+        self.copy = 1
 
     @property
     def base_name(self):
@@ -646,6 +619,25 @@ class ServiceDescription(MachineDescription):
         self.load_machine(data)
         self.enable = data.get("enable", self.enable)
 
+    @property
+    def interfaces(self):
+        return self._interfaces
+    
+    def load_interfaces(self, auxiliary_networks):
+        interface_num = 0
+        for _, network in auxiliary_networks.items():
+            if self._base_name in network.members:
+                ip_network = ipaddress.ip_network(network.ip_network)
+                private_ip = str(list(ip_network.hosts())[network.members.index(self._base_name)+2])
+                interface = NetworkInterface(self._description, self, network, interface_num, private_ip)
+                self._interfaces[interface.name] = interface
+                interface_num += 1
+
+    @property
+    def service_ip(self):
+        for _, interface in self.interfaces.items():
+            if interface.network.base_name == "services":
+                return interface.private_ip
 
 class ElasticDescription(ServiceDescription):
     supported_monitor_types = ["traffic", "endpoint"]
@@ -655,9 +647,9 @@ class ElasticDescription(ServiceDescription):
         self.memory = 8192
         self.vcpu = 4
         self.disk = 50
-
         self.monitor_type = self.supported_monitor_types[0]
         self.deploy_default_policy = True
+        self.port = 5601
 
     @property
     def monitor_type(self):
@@ -669,9 +661,7 @@ class ElasticDescription(ServiceDescription):
 
     @monitor_type.setter
     def monitor_type(self, value):
-        validate.supported_value("monitor_type", value,
-                                 self.supported_monitor_types,
-                                 case_sensitive=False)
+        validate.supported_value("monitor_type", value, self.supported_monitor_types, case_sensitive=False)
         self._monitor_type = value
 
     @deploy_default_policy.setter
@@ -683,16 +673,15 @@ class ElasticDescription(ServiceDescription):
         """Loads the information from the yaml structure in data."""
         self.load_service(data)
         self.monitor_type = data.get("monitor_type", self.monitor_type)
-        self.deploy_default_policy = data.get("deploy_default_policy", 
-                                              self.deploy_default_policy)
-
-
+        self.deploy_default_policy = data.get("deploy_default_policy", self.deploy_default_policy)
+        
 class CalderaDescription(ServiceDescription):
     def __init__(self, description):
         super().__init__(description, "caldera", "rocky8")
         self.memory = 2048
         self.vcpu = 2
         self.disk = 20
+        self.port = 8443
         
     def load_caldera(self, data):
         """Loads the information from the yaml structure in data."""
@@ -708,7 +697,6 @@ class PacketbeatDescription(ServiceDescription):
     def load_packetbeat(self, data):
         """Loads the information from the yaml structure in data."""
         self.load_service(data)
-
 
 class Description:
 
@@ -757,9 +745,9 @@ class Description:
         self._required(description_data, "lab_name")
         self.base_lab = description_data["lab_name"]
         self._elastic = ElasticDescription(self)
-        self._elastic.load_elastic(description_data.get("elastic", {}))
+        self._elastic.load_elastic(description_data.get("elastic_settings", {}))
         self._caldera = CalderaDescription(self)
-        self._caldera.load_caldera(description_data.get("caldera", {}))
+        self._caldera.load_caldera(description_data.get("caldera_settings", {}))
 
         # Load lab edition data
         self._required(lab_edition_data, "instance_number")
@@ -780,7 +768,7 @@ class Description:
         self._elastic.load_elastic(lab_edition_data.get("elastic", {}))
         self._elastic.enable = enable_elastic
         self._packetbeat = PacketbeatDescription(self)
-        if enable_elastic and config.platform == "aws":
+        if enable_elastic and config.platform == "aws" and self._elastic.monitor_type == "traffic":
             self._packetbeat.enable = True
 
         # Caldera is enabled if it is enabled in the description and
@@ -805,7 +793,7 @@ class Description:
             # Repeat members for each copy
             members = [member for member in network_data["members"]
                        for copy in range(self._base_guests[member].copies)
-                       ]
+                       ] #TODO: el copy no se está usando?
             network = NetworkDescription(self, base_name)
             network.index = network_index
             network_index += 1
@@ -817,19 +805,28 @@ class Description:
 
         self._scenario_networks = self._compute_scenario_networks()
         self._scenario_guests = self._compute_scenario_guests()
-        self._parameters_files = tectonic.utils.list_files_in_directory(
-            Path(self._scenario_dir).joinpath("ansible","parameters")
-        )
-
+        self._parameters_files = tectonic.utils.list_files_in_directory(Path(self._scenario_dir).joinpath("ansible","parameters"))
 
         # Load auxiliary networks
         self._auxiliary_networks = {}
         if self._elastic.enable or self._caldera.enable:
-            self._auxiliary_networks["services"] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
+            auxiliary_network_name = f"{self.institution}-{self.lab_name}-services"
+            self._auxiliary_networks[auxiliary_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
+            if self.config.platform == "aws" and self._elastic.monitor_type == "traffic":
+                self._auxiliary_networks[auxiliary_network_name].members = ["elastic", "packetbeat", "caldera"]
+            else:
+                self._auxiliary_networks[auxiliary_network_name].members = ["elastic", "caldera"]
         if self._elastic.enable or self._caldera.enable or self.internet_access_required:
-            self._auxiliary_networks["internet"] = AuxiliaryNetwork(self, "internet", self.config.services_network_cidr_block, "nat")
+            auxiliary_network_name = f"{self.institution}-{self.lab_name}-internet"
+            self._auxiliary_networks[auxiliary_network_name] = AuxiliaryNetwork(self, "internet", self.config.internet_network_cidr_block, "nat")
+            self._auxiliary_networks[auxiliary_network_name].members = ["elastic"]
 
+        #Load services interfaces
+        self._elastic.load_interfaces(self._auxiliary_networks)
+        self._packetbeat.load_interfaces(self._auxiliary_networks)
+        self._caldera.load_interfaces(self._auxiliary_networks)
 
+        self._services_guests = self._compute_services_guests()
 
     def parse_machines(self, instances=[], guests=[], copies=[], only_instances=True, exclude=[]):
         """
@@ -918,13 +915,13 @@ class Description:
             parameters[instance] = parameter
         return parameters
 
-
     def generate_student_access_credentials(self):
-        """Returns a dictionary of users with username, password, password_hash and authorized_keys.
+        """
+        Returns a dictionary of users with username, password, password_hash and authorized_keys.
         """
         users = {}
         random.seed(self.random_seed)
-        digits = len(str(self.instance_number))+1
+        digits = len(str(self.instance_number))
         for i in range(1,self.instance_number+1):
             username = f"{self.student_prefix}{i:0{digits}d}"
             users[username] = {}
@@ -989,10 +986,8 @@ class Description:
         Concatenates the contents of all the pubkeys in
         teacher_pubkey_dir plus config option ssh_public_key_file.
         """
-    
         keys = ""
         keys += tectonic.utils.read_files_in_dir(self.teacher_pubkey_dir)
-
         if self.config.ssh_public_key_file is not None:
             p = Path(self.config.ssh_public_key_file).expanduser()
             if p.is_file():
@@ -1000,9 +995,7 @@ class Description:
                 if key[-1] != "\n":
                     key += "\n"
                 keys += key
-
         return keys
-
 
     @property
     def student_prefix(self):
@@ -1041,7 +1034,6 @@ class Description:
     def internet_access_required(self):
         any(guest.internet_access for _, guest in self._base_guests.items())
 
-
     @property
     def parameters_files(self):
         return self._parameters_files
@@ -1053,7 +1045,10 @@ class Description:
     @property
     def scenario_guests(self):
         return self._scenario_guests
-
+    
+    @property
+    def services_guests(self):
+        return self._services_guests
 
     @property
     def elastic(self):
@@ -1070,7 +1065,6 @@ class Description:
     @property
     def auxiliary_networks(self):
         return self._auxiliary_networks
-
 
     #----------- Setters ----------
     @base_lab.setter
@@ -1131,7 +1125,6 @@ class Description:
         validate.supported_value("default_os", value, OS_DATA.keys())
         self._default_os = value
 
-
     def _required(self, description_data, field):
         """
         Check if the field is in the description data.
@@ -1142,7 +1135,6 @@ class Description:
         """
         if not description_data.get(field):
             raise DescriptionException(f"Missing required option: {field} not defined.")
-
 
     def _get_scenario_path(self, base_lab):
         """Constructs a path to search for the scenario specification.
@@ -1168,7 +1160,6 @@ class Description:
             else:
                 raise DescriptionException(f"{base_lab} not found in {self.config.lab_repo_uri}.")
 
-
     def _compute_scenario_networks(self):
         """Compute the complete list of scenario networks.
         
@@ -1192,7 +1183,6 @@ class Description:
                 networks[scenario_network.name] = scenario_network
         return networks
 
-
     def _compute_scenario_guests(self):
         """Compute the scenario guest data."""
 
@@ -1203,9 +1193,9 @@ class Description:
             for base_name, base_guest in self.base_guests.items():
                 for copy in range(1, base_guest.copies+1):
                     is_in_services_network = (
-                        self.elastic.enable and self.elastic.monitor_type == "endpoint" and not base_guest.monitor
+                        self.elastic.enable and self.elastic.monitor_type == "endpoint" and base_guest.monitor
                     ) or (
-                        self.caldera.enable and (not base_guest.red_team_agent or not base_guest.blue_team_agent)
+                        self.caldera.enable and (base_guest.red_team_agent or base_guest.blue_team_agent)
                     )
                     guest = GuestDescription(self, base_guest, instance_num, copy, is_in_services_network)
                     guest.entry_point_index = entry_point_index
@@ -1217,9 +1207,18 @@ class Description:
                         entry_point_index += 1
                     if is_in_services_network:
                         services_network_index += 1
-
         return guests
-
+    
+    def _compute_services_guests(self):
+        """Compute the scenario services data."""
+        services = {}
+        if self.elastic.enable:
+            services[self.elastic.name] = self.elastic
+            if self.config.platform == "aws":
+                services[self._packetbeat.name] = self._packetbeat
+        if self.caldera.enable:
+            services[self.caldera.name] = self.caldera
+        return services
 
     def _get_guest_advanced_options_file(self, base_name):
         """
@@ -1241,4 +1240,3 @@ class Description:
         password = "".join(random.choice(characters) for _ in range(12))
         salt = "".join(random.choice(characters) for _ in range(16))
         return password, salt
-

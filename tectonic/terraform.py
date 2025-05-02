@@ -118,7 +118,6 @@ class Terraform(ABC):
         self._run_terraform_cmd(t, "init", [], reconfigure=python_terraform.IsFlagged, backend_config=self._generate_backend_config(terraform_dir))
         self._run_terraform_cmd(t, "destroy", variables, auto_approve=True, input=False, target=resources)
 
-    #@abstractmethod
     def _get_machine_resources_name(self, instances, guests, copies):
         """
         Returns the name of the aws_instance resource of the AWS Terraform module for the instances.
@@ -133,7 +132,6 @@ class Terraform(ABC):
         """
         pass
 
-    #@abstractmethod
     def _get_subnet_resources_name(self, instances):
         """
         Returns the name of the aws_subnet resource of the AWS Terraform module for the instances.
@@ -172,7 +170,6 @@ class Terraform(ABC):
         """
         pass
 
-    #@abstractmethod
     def _get_resources_to_recreate(self, instances, guests, copies):
         """
         Get resources name to recreate.
@@ -202,7 +199,7 @@ class Terraform(ABC):
         Deploy scenario instances.
 
         Parameters:
-            instances (list(int)): number of the instances to start.
+            instances (list(int)): number of the instances to recreate.
         """
         resources_to_create = None
         if instances is not None:
@@ -214,7 +211,7 @@ class Terraform(ABC):
         Destroy scenario instances.
 
         Parameters:
-            instances (list(int)): number of the instances to start.
+            instances (list(int)): number of the instances to recreate.
         """
         resources_to_destroy = None
         if instances is not None:
@@ -226,9 +223,9 @@ class Terraform(ABC):
         Recreate scenario instances.
 
         Parameters:
-            instances (list(int)): number of the instances to start.
-            guests (list(str)): name of the guests to start.
-            copies (list(int)): number of the copies to start.
+            instances (list(int)): number of the instances to recreate.
+            guests (list(str)): name of the guests to recreate.
+            copies (list(int)): number of the copies to recreate.
         """
         resources_to_recreate = self._get_resources_to_recreate(instances, guests, copies)
         self._apply(self.terraform_instances_module, self._get_terraform_variables(), resources_to_recreate)

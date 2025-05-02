@@ -43,20 +43,17 @@ class PackerDocker(Packer):
         """
         super().__init__(config, description, client)
     
-    def _get_service_machines(self, services):
+    def _get_service_machine_variables(self, service):
         """
         Return machines for creating services images.
 
         Parameters:
-            services (list(str)): names of the services for which to create images.
+            service (ServiceDescription): services for which to create images.
 
         Returns:
-            dict: machines dictionary.
+            dict: machines variables.
         """
-        machines = {}
-        for service in services:
-            machines[service] = {
-                "base_os": self.description.get_service_base_os(service),
-                "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / service / 'base_config.yml'),
-            }
-        return machines
+        result = {}
+        result["base_os"] = service.os  
+        result["ansible_playbook"] = str(tectonic_resources.files('tectonic') / 'services' / service.base_name / 'base_config.yml')
+        return result

@@ -2,6 +2,7 @@
 status=""
 while [[ ${status} != "HEALTHY" ]]
 do 
-    status=`curl -x POST -u "elastic:{{ elastic_superuser_password.stdout }}" https://{{ ansible_facts["fqdn"] }}:5601/api/fleet/health_check --noproxy "*" -k -s -H 'kbn-xsrf:ansible' -H 'Content-Type: application/json' -d '{"id":"{{ fleet_info['json']['item']['id'] }}"}' | jq '.status' | tr -d \"`
+    #status=`curl -x POST -u "elastic:{{ elastic_superuser_password.stdout }}" https://{{ ansible_facts["fqdn"] }}:5601/api/fleet/health_check --noproxy "*" -k -s -H 'kbn-xsrf:ansible' -H 'Content-Type: application/json' -d '{"id":"{{ fleet_info['json']['item']['id'] }}"}' | jq '.status' | tr -d \"`
+    status=`curl https://{{ ansible_facts["fqdn"] }}:8220/api/status -k --noproxy "*" -s | jq '.status' | tr -d \"`
     sleep 5 
 done

@@ -50,6 +50,7 @@ class TerraformService(Terraform):
         """
         super().__init__(config, description)
         self.client = client
+        self.terraform_services_module = tectonic_resources.files('tectonic') / 'services' / 'terraform' / f"services-{self.config.platform}"
 
     @abstractmethod
     def _get_resources_to_target_apply(self, instances):
@@ -132,10 +133,8 @@ class TerraformService(Terraform):
             ansible (Ansible): Tectonic Ansible object.
             instances (list(int)): instances number. Default: None.
         """
-        elastic_name = self.description.elastic.name
-        if self.client.get_machine_status(elastic_name) == "RUNNING":
-            elastic_ip = self.client.get_machine_private_ip(elastic_name)
-            result = self._get_service_info("elastic", ansible, self.ELASTIC_INFO_PLAYBOOK, {
+        if self.client.get_machine_status(self.description.elastic.name) == "RUNNING":
+            result = self._get_service_info(self.description.elastic, ansible, self.ELASTIC_INFO_PLAYBOOK, {
                 "action": "get_token_by_policy_name", "policy_name": self.config.elastic.endpoint_policy_name
             })
             endpoint_token = result[0]["token"]
@@ -143,14 +142,12 @@ class TerraformService(Terraform):
                 "institution": self.description.institution,
                 "lab_name": self.description.lab_name,
                 "token": endpoint_token,
-                "elastic_url": f"https://{elastic_ip}:8220",
+                "elastic_url": f"https://{self.description.elastic.service_ip}:8220",
             }
-            guests_to_monitor = [guest_name for guest_name, guest
-                                 in self.description.base_guests.items()
-                                 if guest.monitor]
+            guests_to_monitor = [guest_name for guest_name, guest in self.description.base_guests.items() if guest.monitor]
             machines = self.description.parse_machines(instances, guests_to_monitor)
-            inventory = ansible.build_inventory(machines, extra_vars)
-            ansible.run(inventory, self.ELASTIC_AGENT_INSTALL_PLAYBOOK, True)
+            inventory = ansible.build_inventory(machine_list=machines, extra_vars=extra_vars)
+            ansible.run(inventory=inventory, playbook=self.ELASTIC_AGENT_INSTALL_PLAYBOOK, quiet=True)
 
     def install_caldera_agent(self, ansible, instances=None):
         """
@@ -185,16 +182,6 @@ class TerraformService(Terraform):
                 inventory_blue = ansible.build_inventory(machines_blue, extra_vars)
                 ansible.run(inventory_blue, self.CALDERA_AGENT_INSTALL_PLAYBOOK, True)
     
-    @abstractmethod
-    def _get_services_guest_data(self):
-        """
-        Compute the services guest data as expected by the deployment terraform module.
-
-        Returns:
-            dict: services guest data.
-        """
-        pass
-
     def _build_packetbeat_inventory(self, ansible, variables):
         """
         Build inventory for Ansible when installing Packetbeat.
@@ -271,3 +258,39 @@ class TerraformService(Terraform):
         }
         inventory = self._build_packetbeat_inventory(ansible, variables)
         ansible.run(inventory, self.PACKETBEAT_PLAYBOOK, True)
+
+    def deploy(self, instances):
+        """
+        Deploy scenario services.
+
+        Parameters:
+            instances (list(int)): number of the instances to deploy.
+        """
+        resources_to_create = None
+        if instances is not None:
+            resources_to_create = self._get_resources_to_target_apply(instances)
+        self._apply(self.terraform_services_module, self._get_terraform_variables(), resources_to_create)
+
+    def destroy(self, instances):
+        """
+        Destroy scenario services.
+
+        Parameters:
+            instances (list(int)): number of the instances to destroy.
+        """
+        resources_to_destroy = None
+        if instances is not None:
+            resources_to_destroy = self._get_resources_to_target_destroy(instances)
+        self._destroy(self.terraform_services_module, self._get_terraform_variables(), resources_to_destroy)
+
+    def recreate(self, instances, guests, copies): 
+        """
+        Recreate scenario services.
+
+        Parameters:
+            instances (list(int)): number of the instances to recreate
+            guests (list(str)): name of the guests to recreate.
+            copies (list(int)): number of the copies to recreate.
+        """
+        resources_to_recreate = self._get_resources_to_recreate(instances, guests, copies)
+        self._apply(self.terraform_services_module, self._get_terraform_variables(), resources_to_recreate)

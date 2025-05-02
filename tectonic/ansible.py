@@ -19,7 +19,7 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-import pprint
+import math
 from pathlib import Path
 import ansible_runner
 import importlib.resources as tectonic_resources
@@ -34,6 +34,7 @@ class AnsibleException(Exception):
 
 class Ansible:
     """ Class for managing Ansible connections. """
+    ANSIBLE_SERVICE_PLAYBOOK = tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'
 
     def __init__(self, config, description, client):
         self.config = config
@@ -86,7 +87,7 @@ class Ansible:
                 networks[guest.instance][interface.network.name][guest.base_name] = interface.name
 
         for machine_name in machine_list:
-            machine = self.description.scenario_guests[machine_name]
+            machine = self.description.services_guests[machine_name] if machine_name in self.description.services_guests.keys() else self.description.scenario_guests[machine_name]
             ansible_username = username or machine.admin_username
             hostname = self.client.get_ssh_hostname(machine_name)
 
@@ -187,7 +188,7 @@ class Ansible:
                 playbook = default_playbook.resolve().as_posix()
             else:
                 if not quiet:
-                    print("No playbook to run")
+                    print("No playbook to run") #TODO: raise exception?
                 return
         else:
             playbook = Path(playbook).resolve().as_posix()
@@ -200,7 +201,6 @@ class Ansible:
                 username=username,
                 extra_vars=extra_vars
             )
-
         self.output = ""
         self.debug_outputs = []
         extravars = { "ansible_no_target_syslog" : not self.config.ansible.keep_logs }
@@ -236,3 +236,24 @@ class Ansible:
             exclude=exclude, username=username, inventory=inventory
         )
 
+    def configure_services(self):
+        services = [service.name for _, service in self.description.services_guests.items()]
+        extra_vars = {
+            "elastic" : {
+                "monitor_type": self.description.elastic.monitor_type,
+                "deploy_policy": self.description.elastic.deploy_default_policy,
+                "policy_name": self.config.elastic.packetbeat_policy_name if self.description.elastic.monitor_type == "traffic" else self.config.elastic.endpoint_policy_name,
+                "http_proxy" : self.config.proxy if self.config.proxy is not None else "",
+                "description_path": str(self.description.scenario_dir),
+                "ip": self.description.elastic.service_ip,
+                "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
+                "dns": self.config.docker.dns,
+            },
+            "caldera":{
+                "ip": self.description.caldera.service_ip,
+                "description_path": str(self.description.scenario_dir),
+            },
+        }
+        inventory = self.build_inventory(machine_list=services, extra_vars=extra_vars)
+        self.wait_for_connections(inventory=inventory)
+        self.run(inventory=inventory, playbook=self.ANSIBLE_SERVICE_PLAYBOOK, quiet=True)

@@ -529,7 +529,7 @@ def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
         services.append("caldera")
     if services:
         click.echo("Creating services images ...")
-        # ctx.obj["core"].create_services_images(services)
+        ctx.obj["core"].create_services_images(services)
 
     if machines:
         click.echo("Creating base images...")
@@ -784,8 +784,9 @@ def _info(ctx):
     if result.get("services_info"):
         headers = ["Name", "Status"]
         rows = []
-        for key, value in result.get("instances_info", []).items():
-            rows.append([key, value])
+        for service, service_value in result.get("services_info", []).items():
+            for key, value in service_value.items():
+                rows.append([f"{service} {key}", value])
         click.echo(utils.create_table(headers,rows))
         
     if result.get("student_access_password"):
