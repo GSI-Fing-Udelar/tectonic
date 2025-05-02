@@ -786,7 +786,11 @@ def _info(ctx):
         rows = []
         for service, service_value in result.get("services_info", []).items():
             for key, value in service_value.items():
-                rows.append([f"{service} {key}", value])
+                if key == "Credentials":
+                    for creds_key, creds_value in value.items():
+                        rows.append([f"{service.capitalize()} {key}", f"{creds_key} {creds_value}"])
+                else:
+                    rows.append([f"{service.capitalize()} {key}", value])
         click.echo(utils.create_table(headers,rows))
         
     if result.get("student_access_password"):

@@ -193,7 +193,7 @@ class Core:
         self.terraform.recreate(instances, guests, copies)
 
         # Wait for instances to bootup
-        self.ansible.wait_for_connections(instances, guests, copies, False, self.description.services)
+        self.ansible.wait_for_connections(instances, guests, copies, False, [service.base_name for _, service in self.description.services_guests.items()])
         
         # Run instances post clone configuration
         self.ansible.run(instances, guests, copies, quiet=True, only_instances=False)
@@ -219,16 +219,13 @@ class Core:
             copies (list(int)): number of the copies to start.
             start_services (bool): whether the services should be started.
         """
-        #Start instances
-        machines_to_start = self.description.parse_machines(instances, guests, copies, False,
-                                                            [service.base_name for service in self.description.services])
+        machines_to_start = self.description.parse_machines(instances, guests, copies, False, [service.base_name for _, service in self.description.services_guests.items()])
         for machine in machines_to_start:
             self.client.start_machine(machine)
 
-        #Start services
         if start_services:
-            for service in self.description.services:
-                self.client.start_machine(service.name)
+            for service_name in self.description.services_guests.keys():
+                self.client.start_machine(service_name)
             if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
                 self.terraform_service.manage_packetbeat(self.ansible, "started") # TODO: ver que pasa en AWS con start, stop, restart del servicio de packetbeat 
                                                                                 # ya que la máquina donde se instala también sufre esta acción. En libvirt y docker esto no pasa. 
@@ -244,15 +241,13 @@ class Core:
             stop_services (bool): whether the services should be stopped.
         """
         #Stop instances
-        machines_to_stop = self.description.parse_machines(instances, guests, copies, False,
-                                                           [service.base_name for service in self.description.services])
+        machines_to_stop = self.description.parse_machines(instances, guests, copies, False, [service.base_name for _, service in self.description.services_guests.items()])
         for machine in machines_to_stop:
             self.client.stop_machine(machine)
 
-        #Stop services
         if stop_services:
-            for service in self.description.services:
-                self.client.stop_machine(service.name)
+            for service_name in self.description.services_guests.keys():
+                self.client.stop_machine(service_name)
             if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
                 self.terraform_service.manage_packetbeat(self.ansible, "stopped")
 
@@ -266,16 +261,13 @@ class Core:
             copies (list(int)): number of the copies to restart.
             restart_services (bool): whether the services should be restarted.
         """
-        #Stop instances
-        machines_to_restart = self.description.parse_machines(instances, guests, copies, False,
-                                                              [service.base_name for service in self.description.services])
+        machines_to_restart = self.description.parse_machines(instances, guests, copies, False, [service.base_name for _, service in self.description.services_guests.items()])
         for machine in machines_to_restart:
             self.client.restart_machine(machine)
 
-        #Stop services
         if restart_services:
-            for service in self.description.services:
-                self.client.restart_machine(service.name)
+            for service_name in self.description.services_guests.keys():
+                self.client.restart_machine(service_name)
             if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
                 self.terraform_service.manage_packetbeat(self.ansible, "restarted")
 
@@ -298,12 +290,11 @@ class Core:
                     instances_info["Teacher Access IP"] = teacher_access_ip
 
         service_info = {}
-        for service_name, service in self.description.services_guests.items():
+        for _, service in self.description.services_guests.items():
             credentials = self.terraform_service.get_service_credentials(service, self.ansible)
-            ip = self.client.get_machine_private_ip(service.name) # En docker tiene que ser 127.0.0.1 ver como arreglar.
             service_info[service.base_name] = {
-                "ip": ip,
-                "credentials": credentials,
+                "URL": f"https://{service.service_ip}:{service.port}",
+                "Credentials": credentials,
             }
         return {
             "instances_info": instances_info,
@@ -324,14 +315,13 @@ class Core:
             dict: status of instances.
         """
         instances_status = {}
-        machines_to_list = self.description.parse_machines(instances, guests, copies, False,
-                                                           [service.base_name for service in self.description.services])
+        machines_to_list = self.description.parse_machines(instances, guests, copies, False, [service.base_name for _, service in self.description.services_guests.items()])
         for machine in machines_to_list:
             instances_status[machine] = self.client.get_machine_status(machine)
 
         services_status = {}
-        for service in self.description.services:
-            services_status[service.name] = self.client.get_machine_status(service.name)
+        for service_name in self.description.services_guests.keys():
+            services_status[service_name] = self.client.get_machine_status(service_name)
         if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
             packetbeat_status = self.terraform_service.manage_packetbeat(self.ansible,"status")
             if packetbeat_status is not None:
@@ -394,7 +384,10 @@ class Core:
         if len(machine_to_connect) != 1:
             raise CoreException("You must specify only one machine to connect.")
         machine_name = machine_to_connect[0]
-        username = username or self.description.scenario_guests[machine_name].admin_username
+        if machine_name in self.description.services_guests.keys():
+            username = username or self.description.services_guests[machine_name].admin_username
+        else:
+            username = username or self.description.scenario_guests[machine_name].admin_username
         self.client.console(machine_name, username)
 
     def configure_students_access(self, instances):

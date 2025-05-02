@@ -157,7 +157,7 @@ class Packer(ABC):
             "elastic_version": self.config.elastic.elastic_stack_version, 
             "elastic_latest_version": str(self.config.elastic.elastic_stack_version == "latest"), # TODO: Check this
             "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
-            "caldera_version": self.config.caldera.version,
+            "caldera_version": "master" if self.config.caldera.version == "latest" else self.config.caldera.version,
             "packetbeat_vlan_id": self.config.aws.packetbeat_vlan_id,
         }
         if self.config.proxy:

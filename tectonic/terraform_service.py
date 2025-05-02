@@ -157,30 +157,25 @@ class TerraformService(Terraform):
             ansible (Ansible): Tectonic Ansible object.
             instances (list(int)): instances number. Default: None
         """
-        caldera_name = self.description.caldera.name
-        if self.client.get_machine_status(caldera_name) == "RUNNING":
+        if self.client.get_machine_status(self.description.caldera.name) == "RUNNING":
             extra_vars = {
                 "institution": self.description.institution,
                 "lab_name": self.description.lab_name,
-                "caldera_ip": self.client.get_machine_private_ip(caldera_name),
+                "caldera_ip": self.description.caldera.service_ip,
                 "caldera_agent_type": "red",
             }
-            red_team_machines = [guest_name for guest_name, guest
-                                 in self.description._base_guests.items()
-                                 if guest.red_team_agent]
+            red_team_machines = [guest_name for guest_name, guest in self.description._base_guests.items() if guest.red_team_agent]
             if len(red_team_machines) > 0:
-                machines_red = self.description.parse_machines(instances, red_team_machines)
-                inventory_red = ansible.build_inventory(machines_red, extra_vars)
-                ansible.run(inventory_red, self.CALDERA_AGENT_INSTALL_PLAYBOOK, True)
+                machines_red = self.description.parse_machines(instances=instances, guests=red_team_machines)
+                inventory_red = ansible.build_inventory(machine_list=machines_red, extra_vars=extra_vars)
+                ansible.run(inventory=inventory_red, playbook=self.CALDERA_AGENT_INSTALL_PLAYBOOK, quiet=True)
 
             extra_vars["caldera_agent_type"] = "blue"
-            blue_team_machines = [guest_name for guest_name, guest
-                                 in self.description._base_guests.items()
-                                 if guest.blue_team_agent]
+            blue_team_machines = [guest_name for guest_name, guest in self.description._base_guests.items() if guest.blue_team_agent]
             if len(blue_team_machines) > 0:
-                machines_blue = self.description.parse_machines(instances, blue_team_machines)
-                inventory_blue = ansible.build_inventory(machines_blue, extra_vars)
-                ansible.run(inventory_blue, self.CALDERA_AGENT_INSTALL_PLAYBOOK, True)
+                machines_blue = self.description.parse_machines(instances=instances, guests=blue_team_machines)
+                inventory_blue = ansible.build_inventory(machine_list=machines_blue, extra_vars=extra_vars)
+                ansible.run(inventory=inventory_blue, playbook=self.CALDERA_AGENT_INSTALL_PLAYBOOK, quiet=True)
     
     def _build_packetbeat_inventory(self, ansible, variables):
         """

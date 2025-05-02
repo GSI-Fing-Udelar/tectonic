@@ -849,7 +849,7 @@ class Description:
                 infrastructure_guests_names.append("student_access")
             if self.config.aws.teacher_access == "host":
                 infrastructure_guests_names.append("teacher_access")
-        for service in self.services:
+        for _, service in self.services_guests.items():
             infrastructure_guests_names.append(service.base_name)
 
         guests_aux = list(self.base_guests.keys())
@@ -887,7 +887,7 @@ class Description:
                     (not exclude or "teacher_access" not in exclude)):
                     result.append(f"{self.institution}-{self.lab_name}-teacher_access")
 
-            for service in self.services:
+            for _, service in self.services_guests.items():
                 if ((not guests or service.base_name in guests) and
                     (not exclude or service.base_name not in exclude)):
                     result.append(service.name)
@@ -1057,10 +1057,6 @@ class Description:
     @property
     def caldera(self):
         return self._caldera
-
-    @property
-    def services(self):
-        return [service for service in [self._elastic, self._packetbeat, self._caldera] if service.enable]
 
     @property
     def auxiliary_networks(self):

@@ -70,20 +70,15 @@ class ClientDocker(Client):
         
     def get_machine_private_ip(self, machine_name):
         try:
-            lab_network = ip_network(self.config.network_cidr_block)
-            services_network = ip_network(self.config.services_network_cidr_block)
-            services_list = [s.name for s in self.description.services]
-
-            container = self.connection.containers.get(machine_name)
-            for network in container.attrs["NetworkSettings"]["Networks"]:
-                ip_addr = container.attrs["NetworkSettings"]["Networks"][network]["IPAddress"]
-                if machine_name in services_list:
-                    if ip_address(ip_addr) in services_network:
-                        return ip_addr #TODO: move this to description since services ips are fixed
-                else:
-                    if ip_address(ip_addr) in lab_network:
+            if machine_name in self.description.services_guests.keys():
+                return self.description.services_guests[machine_name].service_ip
+            else:
+                container = self.connection.containers.get(machine_name)
+                for network in container.attrs["NetworkSettings"]["Networks"]:
+                    ip_addr = container.attrs["NetworkSettings"]["Networks"][network]["IPAddress"]
+                    if ip_address(ip_addr) in ip_network(self.config.network_cidr_block):
                         return ip_addr
-            return None
+                return None
         except Exception as exception:
             raise ClientDockerException(f"{exception}")
         

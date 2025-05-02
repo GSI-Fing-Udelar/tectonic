@@ -100,38 +100,23 @@ class ClientLibvirt(Client):
         except Exception as exception:
             raise ClientLibvirtException(f"{exception}") from exception
         
-    def get_machine_private_ip(self, machine_name): #TODO: ver si se puede mejorar para no necesitar pasar el description
+    def get_machine_private_ip(self, machine_name):
         try:
             domain = self.conn.lookupByName(machine_name)
         except libvirt.libvirtError:
             return None
         try:
             self._wait_for_agent(domain)
-            lab_network = ip_network(self.config.network_cidr_block)
-            services_network = ip_network(self.config.services_network_cidr_block)
-            services_list = [s.name for s in self.description.services]
-            interfaces = domain.interfaceAddresses(
-                libvirt.VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT, 0
-            )
-            for interface_name, val in interfaces.items():
-                if interface_name != "lo" and val["addrs"]:
-                    for ipaddr in val["addrs"]:
-                        if machine_name in services_list:
-                            # TODO: The first time this fails and returns None as the interfaces other than localhost are empty. 
-                            # The rest of the times it works ok.
-                            if ip_address(ipaddr["addr"]) in services_network:
+            if machine_name in self.description.services_guests.keys():
+                return self.description.services_guests[machine_name].service_ip
+            else:
+                interfaces = domain.interfaceAddresses(libvirt.VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT, 0)
+                for interface_name, val in interfaces.items():
+                    if interface_name != "lo" and val["addrs"]:
+                        for ipaddr in val["addrs"]:
+                            if ip_address(ipaddr["addr"]) in ip_network(self.config.network_cidr_block):
                                 return ipaddr["addr"]
-                        else:
-                            if ip_address(ipaddr["addr"]) in lab_network:
-                                return ipaddr["addr"]
-                else:
-                    if not val["addrs"]:
-                        # Return fixed IP for service since the first time it is empty
-                        if machine_name == f"{self.description.institution}-{self.description.lab_name}-elastic":
-                            return "10.0.0.130"
-                        elif machine_name == f"{self.description.institution}-{self.description.lab_name}-caldera":
-                            return "10.0.0.132" #TODO: remove this an return fixed ips for services
-            return None
+                return None
         except Exception as exception:
             raise ClientLibvirtException(f"{exception}") from exception
         

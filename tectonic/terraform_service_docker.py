@@ -65,10 +65,6 @@ class TerraformServiceDocker(TerraformService):
         Return:
             list(str): names of resources.
         """
-        # resources = []
-        # for _, service in self.description.services_guests.items():
-        #     if service.enable:
-        #         resources.append('docker_container.machines["'f"{service.name}"'"]')
         return []
     
     def _get_terraform_variables(self):
