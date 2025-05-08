@@ -592,6 +592,8 @@ class ServiceDescription(MachineDescription):
         self.monitor = False
         self.instance = 1
         self.copy = 1
+        self.is_in_services_network = False
+        self.entry_point = False
 
     @property
     def base_name(self):
@@ -764,8 +766,8 @@ class Description:
 
         # Elastic is enabled if it is enabled in the description and
         # not disabled in the lab edition.
-        enable_elastic = self._elastic.enable and lab_edition_data.get("elastic", {}).get("enable", True)
-        self._elastic.load_elastic(lab_edition_data.get("elastic", {}))
+        enable_elastic = self._elastic.enable and lab_edition_data.get("elastic_settings", {}).get("enable", True)
+        self._elastic.load_elastic(lab_edition_data.get("elastic_settings", {}))
         self._elastic.enable = enable_elastic
         self._packetbeat = PacketbeatDescription(self)
         if enable_elastic and config.platform == "aws" and self._elastic.monitor_type == "traffic":
@@ -773,8 +775,8 @@ class Description:
 
         # Caldera is enabled if it is enabled in the description and
         # not disabled in the lab edition.
-        enable_caldera = self._caldera.enable and lab_edition_data.get("caldera", {}).get("enable", True)
-        self._caldera.load_caldera(lab_edition_data.get("caldera", {}))
+        enable_caldera = self._caldera.enable and lab_edition_data.get("caldera_settings", {}).get("enable", True)
+        self._caldera.load_caldera(lab_edition_data.get("caldera_settings", {}))
         self._caldera.enable = enable_caldera      
 
         # Load base guests and topology
