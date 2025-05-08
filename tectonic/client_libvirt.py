@@ -102,7 +102,7 @@ class ClientLibvirt(Client):
         
     def get_machine_private_ip(self, machine_name):
         try:
-            domain = self.conn.lookupByName(machine_name)
+            domain = self.connection.lookupByName(machine_name)
         except libvirt.libvirtError:
             return None
         try:
@@ -122,7 +122,7 @@ class ClientLibvirt(Client):
         
     def get_image_id(self, image_name):
         try:
-            pool = self.conn.storagePoolLookupByName(self.config.libvirt_pool_name)
+            pool = self.connection.storagePoolLookupByName(self.config.libvirt_pool_name)
         except libvirt.libvirtError:
             raise ClientLibvirtException(f"Failed to locate {self.config.libvirt_pool_name} storage pool.")
         try:
@@ -133,7 +133,7 @@ class ClientLibvirt(Client):
                  
     def is_image_in_use(self, image_name):
         try:
-            domains = self.conn.listAllDomains()
+            domains = self.connection.listAllDomains()
             for domain in domains:
                 xml_desc = domain.XMLDesc()
                 root = ET.fromstring(xml_desc)
@@ -159,7 +159,7 @@ class ClientLibvirt(Client):
         
     def delete_image(self, image_name):
         try:
-            pool = self.conn.storagePoolLookupByName(self.config.libvirt.storage_pool)
+            pool = self.connection.storagePoolLookupByName(self.config.libvirt.storage_pool)
         except libvirt.libvirtError:
             raise ClientLibvirtException(f"Failed to locate {self.config.libvirt.storage_pool} storage pool.")
         vol = None
@@ -172,7 +172,7 @@ class ClientLibvirt(Client):
         
     def start_machine(self, machine_name):
         try:
-            domain = self.conn.lookupByName(machine_name)
+            domain = self.connection.lookupByName(machine_name)
         except libvirt.libvirtError:
             raise ClientLibvirtException(f"Domain {machine_name} not found.")
         try:
@@ -184,7 +184,7 @@ class ClientLibvirt(Client):
         
     def stop_machine(self, machine_name):
         try:
-            domain = self.conn.lookupByName(machine_name)
+            domain = self.connection.lookupByName(machine_name)
         except libvirt.libvirtError:
             raise ClientLibvirtException(f"Domain {machine_name} not found.")
         try:
@@ -196,7 +196,7 @@ class ClientLibvirt(Client):
         
     def restart_machine(self, machine_name):
         try:
-            domain = self.conn.lookupByName(machine_name)
+            domain = self.connection.lookupByName(machine_name)
         except libvirt.libvirtError:
             raise ClientLibvirtException(f"Domain {machine_name} not found.")
         try:
