@@ -324,7 +324,7 @@ class Core:
                 result = self.terraform_service.get_service_info(self.description.elastic, self.ansible, playbook, {"action":"agents_status"})
                 agents_status = result[0]['agents_status']
                 for key in agents_status:
-                    rows.append([f"elastic-agents-{key}", agents_status[key]])
+                    services_status[f"elastic-agents-{key}"] = agents_status[key]
         elif self.description.caldera.enable:
             # TODO: move this somewhere else?
             playbook = tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'get_info.yml'
