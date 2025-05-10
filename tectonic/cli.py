@@ -548,7 +548,7 @@ def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
 def list_instances(ctx, instances, guests, copies):
     """Print information and state of the cyber range resources."""
     click.echo("Getting Cyber Range status...")
-    result = ctx.obj["core"].list(instances, guests, copies)
+    result = ctx.obj["core"].list_instances(instances, guests, copies)
 
     if result.get("instances_status"):
         headers = ["Name", "Status"]

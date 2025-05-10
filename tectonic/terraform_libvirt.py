@@ -154,20 +154,75 @@ class TerraformLibvirt(Terraform):
             "instance_number": self.description.instance_number,
             "ssh_public_key_file": self.config.ssh_public_key_file,
             "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps({name: network.to_dict() 
-                                        for name, network in self.description.scenario_networks.items()}),
-            "guest_data_json": json.dumps({name: guest.to_dict() 
-                                           for name, guest in self.description.scenario_guests.items()}),
-
+            "subnets_json": json.dumps({name: self._get_network_variables(network) for name, network in self.description.scenario_networks.items()}),
+            "guest_data_json": json.dumps({name: self._get_guest_variables(guest) for name, guest in self.description.scenario_guests.items()}),
             "default_os": self.description.default_os,
             "os_data_json": json.dumps(OS_DATA),
-            "configure_dns": self.description.configure_dns,
-            "libvirt_uri": self.description.libvirt_uri,
-            "libvirt_storage_pool": self.description.libvirt_storage_pool,
-            "libvirt_student_access": self.description.libvirt_student_access,
-            "libvirt_bridge": self.description.libvirt_bridge,
-            "libvirt_external_network": self.description.libvirt_external_network,
-            "libvirt_bridge_base_ip": self.description.libvirt_bridge_base_ip,
-            "services_network": self.description.services_network,
-            "services_network_base_ip": 9,
-            }
+            "configure_dns": self.config.configure_dns,
+            "libvirt_uri": self.config.libvirt.uri,
+            "libvirt_storage_pool": self.config.libvirt.storage_pool,
+            "libvirt_student_access": self.config.libvirt.student_access,
+            "libvirt_bridge": self.config.libvirt.bridge,
+            "libvirt_external_network": self.config.libvirt.external_network,
+            "libvirt_bridge_base_ip": self.config.libvirt.bridge_base_ip,
+            "services_network": self.config.services_network_cidr_block,
+            "services_network_base_ip": len(self.description.services_guests.keys())+1
+        }
+
+    def _get_guest_variables(self, guest):
+        """
+        Return guest variables for terraform.
+
+        Parameters:
+          guest (GuestDescription): guest to get variables.
+
+        Returns:
+          dict: variables.
+        """
+        result = {}
+        result["base_name"] = guest.base_name
+        result["name"] = guest.name
+        result["vcpu"] = guest.vcpu
+        result["memory"] = guest.memory
+        result["disk"] = guest.disk
+        result["hostname"] = guest.hostname
+        result["base_os"] = guest.os
+        result["is_in_services_network"] = guest.is_in_services_network
+        result["entry_point"] = guest.entry_point
+        result["entry_point_index"] = guest.entry_point_index
+        result["internet_access"] = guest.internet_access
+        result["interfaces"] = {name: self._get_network_interface_variables(interface) for name, interface in guest.interfaces.items()}
+        return result
+
+    def _get_network_interface_variables(self, interface):
+        """
+        Return netowkr interface variables for terraform.
+
+        Parameters:
+          interface (NetowkrInterface): interface to get variables.
+
+        Returns:
+          dict: variables.
+        """
+        result = {}
+        result["name"] = interface.name
+        result["network_name"] = interface.network.name
+        result["subnetwork_name"] = interface.network.name
+        result["index"] = interface.index
+        result["private_ip"] = interface.private_ip
+        return result
+
+    def _get_network_variables(self, network):
+        """
+        Return netowkr variables for terraform.
+
+        Parameters:
+          guest (NetworkDescription): netowkr to get variables.
+
+        Returns:
+          dict: variables.
+        """
+        result = {}
+        result["name"] = network.name
+        result["ip_network"] = network.ip_network
+        return result

@@ -91,7 +91,7 @@ class Terraform(ABC):
                 "retry_wait_min=5",
             ]
         
-    def _apply(self, terraform_dir, variables, resources=None):
+    def _apply(self, terraform_dir, variables, resources=None, recreate=False):
         """
         Execute terraform apply command.
 
@@ -102,8 +102,12 @@ class Terraform(ABC):
         """
         t = python_terraform.Terraform(working_dir=terraform_dir)
         self._run_terraform_cmd(t, "init", [], reconfigure=python_terraform.IsFlagged, backend_config=self._generate_backend_config(terraform_dir))
-        self._run_terraform_cmd(t, "plan", variables, input=False, target=resources)
-        self._run_terraform_cmd(t, "apply", variables, auto_approve=True, input=False, target=resources)
+        if recreate:
+            self._run_terraform_cmd(t, "plan", variables, input=False, machine=resources)
+            self._run_terraform_cmd(t, "apply", variables, auto_approve=True, input=False, machine=resources)
+        else:
+            self._run_terraform_cmd(t, "plan", variables, input=False, target=resources)
+            self._run_terraform_cmd(t, "apply", variables, auto_approve=True, input=False, target=resources)
 
     def _destroy(self, terraform_dir, variables, resources=None):
         """
@@ -228,4 +232,4 @@ class Terraform(ABC):
             copies (list(int)): number of the copies to recreate.
         """
         resources_to_recreate = self._get_resources_to_recreate(instances, guests, copies)
-        self._apply(self.terraform_instances_module, self._get_terraform_variables(), resources_to_recreate)
+        self._apply(self.terraform_instances_module, self._get_terraform_variables(), resources_to_recreate, True)

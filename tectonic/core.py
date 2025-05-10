@@ -189,23 +189,17 @@ class Core:
             guests (list(str)): name of the guests to start.
             copies (list(int)): number of the copies to start.
         """
-        # Recreate instances
         self.terraform.recreate(instances, guests, copies)
 
-        # Wait for instances to bootup
         self.ansible.wait_for_connections(instances, guests, copies, False, [service.base_name for _, service in self.description.services_guests.items()])
         
-        # Run instances post clone configuration
         self.ansible.run(instances, guests, copies, quiet=True, only_instances=False)
 
-        # Configure student access on instances
         self.configure_students_access(instances)
 
-        # Configure Elastic monitoring
         if self.description.elastic.enable and self.description.elastic.monitor_type == "endpoint":
             self.terraform_service.install_elastic_agent(self.ansible, instances)
 
-        # Configure Caldera agents
         if self.description.caldera.enable:
             self.terraform_service.install_caldera_agent(self.ansible, instances)
 
@@ -240,7 +234,6 @@ class Core:
             copies (list(int)): number of the copies to stop.
             stop_services (bool): whether the services should be stopped.
         """
-        #Stop instances
         machines_to_stop = self.description.parse_machines(instances, guests, copies, False, [service.base_name for _, service in self.description.services_guests.items()])
         for machine in machines_to_stop:
             self.client.stop_machine(machine)
@@ -302,7 +295,7 @@ class Core:
             "student_access_password": self._get_students_passwords(),
         }
 
-    def list(self, instances, guests, copies):
+    def list_instances(self, instances, guests, copies):
         """
         List scenario status.
 
@@ -408,7 +401,8 @@ class Core:
             copies=None,
             playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
             only_instances=only_instances,
-            extra_vars={"users": users, "prefix": self.description.student_prefix,
+            extra_vars={"users": users,
+                        "prefix": self.description.student_prefix,
                         "ssh_password_login": self.description.create_students_passwords},
             quiet=True,
         )

@@ -78,6 +78,7 @@ class NetworkDescription():
         except:
             raise DescriptionException(f"Invalid members {value}. Must be a list of guest names.")
         self._members = value
+
 class AuxiliaryNetwork(NetworkDescription):
 
     def __init__(self, description, network_name, ip_network, mode):
@@ -442,7 +443,7 @@ class NetworkInterface():
         """
         base = 0
         if description.config.platform == "libvirt":
-            base = 3
+            base = 2
             if guest.is_in_services_network:
                 base += 1
             if guest.entry_point:
@@ -583,6 +584,7 @@ class GuestDescription(BaseGuestDescription):
         result["is_in_services_network"] = self.is_in_services_network
         result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
         return result
+
 class ServiceDescription(MachineDescription):
     def __init__(self, description, base_name, os):
         super().__init__(description, base_name, os)

@@ -288,4 +288,4 @@ class TerraformService(Terraform):
             copies (list(int)): number of the copies to recreate.
         """
         resources_to_recreate = self._get_resources_to_recreate(instances, guests, copies)
-        self._apply(self.terraform_services_module, self._get_terraform_variables(), resources_to_recreate)
+        self._apply(self.terraform_services_module, self._get_terraform_variables(), resources_to_recreate, True)

@@ -238,22 +238,23 @@ class Ansible:
 
     def configure_services(self):
         services = [service.name for _, service in self.description.services_guests.items()]
-        extra_vars = {
-            "elastic" : {
-                "monitor_type": self.description.elastic.monitor_type,
-                "deploy_policy": self.description.elastic.deploy_default_policy,
-                "policy_name": self.config.elastic.packetbeat_policy_name if self.description.elastic.monitor_type == "traffic" else self.config.elastic.endpoint_policy_name,
-                "http_proxy" : self.config.proxy if self.config.proxy is not None else "",
-                "description_path": str(self.description.scenario_dir),
-                "ip": self.description.elastic.service_ip,
-                "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
-                "dns": self.config.docker.dns,
-            },
-            "caldera":{
-                "ip": self.description.caldera.service_ip,
-                "description_path": str(self.description.scenario_dir),
-            },
-        }
-        inventory = self.build_inventory(machine_list=services, extra_vars=extra_vars)
-        self.wait_for_connections(inventory=inventory)
-        self.run(inventory=inventory, playbook=self.ANSIBLE_SERVICE_PLAYBOOK, quiet=True)
+        if services:
+            extra_vars = {
+                "elastic" : {
+                    "monitor_type": self.description.elastic.monitor_type,
+                    "deploy_policy": self.description.elastic.deploy_default_policy,
+                    "policy_name": self.config.elastic.packetbeat_policy_name if self.description.elastic.monitor_type == "traffic" else self.config.elastic.endpoint_policy_name,
+                    "http_proxy" : self.config.proxy if self.config.proxy is not None else "",
+                    "description_path": str(self.description.scenario_dir),
+                    "ip": self.description.elastic.service_ip,
+                    "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
+                    "dns": self.config.docker.dns,
+                },
+                "caldera":{
+                    "ip": self.description.caldera.service_ip,
+                    "description_path": str(self.description.scenario_dir),
+                },
+            }
+            inventory = self.build_inventory(machine_list=services, extra_vars=extra_vars)
+            self.wait_for_connections(inventory=inventory)
+            self.run(inventory=inventory, playbook=self.ANSIBLE_SERVICE_PLAYBOOK, quiet=True)
