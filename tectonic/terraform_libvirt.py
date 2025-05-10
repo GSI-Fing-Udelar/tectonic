@@ -170,6 +170,7 @@ class TerraformLibvirt(Terraform):
         result["entry_point"] = guest.entry_point
         result["entry_point_index"] = guest.entry_point_index
         result["internet_access"] = guest.internet_access
+        result["services_network_index"] = guest.services_network_index
         return result
 
     def _get_network_interface_variables(self, interface):

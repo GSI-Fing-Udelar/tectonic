@@ -103,7 +103,7 @@ class TerraformService(Terraform):
             result[credential_split[0]] = credential_split[1]
         return result
         
-    def _get_service_info(self, service, ansible, playbook, ansible_vars):
+    def get_service_info(self, service, ansible, playbook, ansible_vars=None):
         """
         Get service info. Use Ansible to execute action against service and get specific info.
 
@@ -136,7 +136,7 @@ class TerraformService(Terraform):
             instances (list(int)): instances number. Default: None.
         """
         if self.client.get_machine_status(self.description.elastic.name) == "RUNNING":
-            result = self._get_service_info(self.description.elastic, ansible, self.ELASTIC_INFO_PLAYBOOK, {
+            result = self.get_service_info(self.description.elastic, ansible, self.ELASTIC_INFO_PLAYBOOK, {
                 "action": "get_token_by_policy_name", "policy_name": self.config.elastic.endpoint_policy_name
             })
             endpoint_token = result[0]["token"]
@@ -225,7 +225,7 @@ class TerraformService(Terraform):
         """
         elastic_name = self.description.elastic.name
         if self.get_instance_status(elastic_name) == "RUNNING":
-            result = self._get_service_info("elastic", ansible, self.ELASTIC_INFO_PLAYBOOK, {"action":"get_token_by_policy_name","policy_name":self.config.elastic.packetbeat_policy_name})
+            result = self.get_service_info("elastic", ansible, self.ELASTIC_INFO_PLAYBOOK, {"action":"get_token_by_policy_name","policy_name":self.config.elastic.packetbeat_policy_name})
             agent_token = result[0]["token"]
             elastic_ip = self.client.get_machine_private_ip(self.description.elastic.name)
             variables = {

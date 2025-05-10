@@ -20,6 +20,8 @@
 
 import os
 import json
+import time
+import datetime
 
 from tectonic.ansible import Ansible
 from tectonic.constants import OS_DATA
@@ -280,6 +282,7 @@ class Core:
         service_info = {}
         for _, service in self.description.services_guests.items():
             credentials = self.terraform_service.get_service_credentials(service, self.ansible)
+            ip = service.service_ip if self.config.platform != "docker" else "127.0.0.1"
             service_info[service.base_name] = {
                 "URL": f"https://{service.service_ip}:{service.port}",
                 "Credentials": credentials,
@@ -310,10 +313,38 @@ class Core:
         services_status = {}
         for service_name in self.description.services_guests.keys():
             services_status[service_name] = self.client.get_machine_status(service_name)
-        if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
-            packetbeat_status = self.terraform_service.manage_packetbeat(self.ansible,"status")
-            if packetbeat_status is not None:
-                services_status[f"{self.description.institution}-{self.description.lab_name}-packetbeat"] = packetbeat_status
+        if self.description.elastic.enable:
+            if self.description.elastic.monitor_type == "traffic":
+                packetbeat_status = self.terraform_service.manage_packetbeat(self.ansible, "status")
+                if packetbeat_status is not None:
+                    services_status[f"{self.description.institution}-{self.description.lab_name}-packetbeat"] = packetbeat_status
+            else:
+                # TODO: move this somewhere else?
+                playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml'
+                result = self.terraform_service.get_service_info(self.description.elastic, self.ansible, playbook, {"action":"agents_status"})
+                agents_status = result[0]['agents_status']
+                for key in agents_status:
+                    rows.append([f"elastic-agents-{key}", agents_status[key]])
+        elif self.description.caldera.enable:
+            # TODO: move this somewhere else?
+            playbook = tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'get_info.yml'
+            result = self.terraform_service.get_service_info(self.description.caldera, self.ansible, playbook, {"action":"agents_status"})
+            response = result[0]['agents_status']
+            agents_status = {"alive": 0, "dead": 0, "pending_kill":0}
+            if len(response) > 0:
+                for agent in response: #TODO: see what the response is like when there are a large number of agents. pagination?
+                    #Caldera uses this logic to define the state of the agent
+                    now = int(time.time() * 1000) #Milliseconds since epoch
+                    agent_last_seen = int((datetime.datetime.strptime(agent["last_seen"],"%Y-%m-%dT%H:%M:%SZ") - datetime.datetime(1970, 1, 1)).total_seconds() * 1000)
+                    difference = now - agent_last_seen
+                    if (difference <= 60000 and agent["sleep_min"] == 3 and agent["sleep_max"] == 3 and agent["watchdog"] == 1):
+                        agents_status["pending_kill"] = agents_status["pending_kill"] + 1
+                    elif (difference <= 60000 or difference <= (agent["sleep_max"] * 1000)):
+                        agents_status["alive"] = agents_status["alive"] + 1
+                    else:
+                        agents_status["dead"] = agents_status["dead"] + 1
+            for key in agents_status:
+                services_status[f"caldera-agents-{key}"] = agents_status[key]
         return {
             "instances_status" : instances_status,
             "services_status" : services_status
