@@ -100,7 +100,8 @@
   hosts: all:!student_access
   gather_facts: true
   vars:
-    username: "{{ '%s%02d' | format(prefix, instance) }}"
+    digit_count: "{{ instances | string | length }}"
+    username: "{{ '%s%0{}d'.format(digit_count) | format(prefix, instance) }}"
 
   tasks:
     - name: "Create the trainee user (optionally with password)"
