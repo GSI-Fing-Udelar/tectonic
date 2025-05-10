@@ -604,6 +604,10 @@ class ServiceDescription(MachineDescription):
     @property
     def name(self):
         return f"{self.institution}-{self.lab_name}-{self.base_name}"
+    
+    @property
+    def image_name(self):
+        return self.base_name
 
     @property
     def enable(self):

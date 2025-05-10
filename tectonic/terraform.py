@@ -254,7 +254,8 @@ class Terraform(ABC):
             "disk": guest.disk,
             "hostname": guest.hostname,
             "base_os": guest.os,
-            "interfaces": {name: self._get_network_interface_variables(interface) for name, interface in guest.interfaces.items()}
+            "interfaces": {name: self._get_network_interface_variables(interface) for name, interface in guest.interfaces.items()},
+            "is_in_services_network": guest.is_in_services_network,
         }
 
     def _get_network_interface_variables(self, interface):
@@ -269,7 +270,7 @@ class Terraform(ABC):
         """
         return {
             "name": interface.name,
-            "network_name": interface.network.name,
+            "subnetwork_name": interface.network.name,
             "private_ip": interface.private_ip
         }
 
@@ -291,12 +292,4 @@ class Terraform(ABC):
             "default_os": self.description.default_os,
             "os_data_json": json.dumps(OS_DATA),
             "configure_dns": self.config.configure_dns,
-            "libvirt_uri": self.config.libvirt.uri,
-            "libvirt_storage_pool": self.config.libvirt.storage_pool,
-            "libvirt_student_access": self.config.libvirt.student_access,
-            "libvirt_bridge": self.config.libvirt.bridge,
-            "libvirt_external_network": self.config.libvirt.external_network,
-            "libvirt_bridge_base_ip": self.config.libvirt.bridge_base_ip,
-            "services_network": self.config.services_network_cidr_block,
-            "services_network_base_ip": len(self.description.services_guests.keys())+1
         }

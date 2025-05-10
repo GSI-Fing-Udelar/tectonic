@@ -173,7 +173,7 @@ class Core:
             # Destroy images
             if destroy_images:
                 self.packer.destroy_image(self.description.base_guests.keys())
-                #self.packer.destroy_image(self.description.get_services_to_deploy())
+                self.packer.destroy_image([service.base_name for _, service in self.description.services_guests.items()])
     
     def recreate(self, instances, guests, copies):
         """

@@ -167,7 +167,6 @@ class TerraformLibvirt(Terraform):
           dict: variables.
         """
         result = super()._get_guest_variables(guest)
-        result["is_in_services_network"] = guest.is_in_services_network
         result["entry_point"] = guest.entry_point
         result["entry_point_index"] = guest.entry_point_index
         result["internet_access"] = guest.internet_access
@@ -184,6 +183,6 @@ class TerraformLibvirt(Terraform):
           dict: variables.
         """
         result = super()._get_network_interface_variables(interface)
-        result["subnetwork_name"] = interface.network.name
+        result["network_name"] = interface.network.name
         result["index"] = interface.index
         return result

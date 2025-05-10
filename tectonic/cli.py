@@ -405,7 +405,7 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     if images:
         _create_images(ctx, packetbeat_image, elastic_image, caldera_image, True)
 
-    ctx.obj["core"].deploy(instances, images, False) # TODO: Do the right thing for services
+    ctx.obj["core"].deploy(instances, images, False)
 
     _info(ctx)
 
@@ -440,7 +440,7 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     "--caldera/--no-caldera",
     default=False,
     show_default=True,
-    help="Whether to destroy the base image for Caldera.",
+    help="Whether to destroy the Caldera machine.",
 )
 @click.option(
     "--instances", "-i", help="Range of instances to destroy.", type=NUMBER_RANGE
@@ -454,15 +454,12 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
 def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, force):
     """Delete and destroy all resources of the cyber range. 
 
-    If instances are specified only destroys running guests for those
-    instances. Otherwise, destroys all running guests (if
-    machines is true), and each specified service.
+    If instances are specified only destroys running guests for those instances.
+    Otherwise, destroys all running guests (if machines is true), and each specified service.
     """
 
     if not force:
-        confirm_machines(
-            ctx, instances, guest_names=None, copies=None, action="Destroying"
-        )
+        confirm_machines(ctx, instances, guest_names=None, copies=None, action="Destroying")
 
     if (instances and not machines):
         raise TectonicException("If you specify a list of instances, machines must be true.")
@@ -478,7 +475,6 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, forc
         services.append("caldera")
 
     ctx.obj["core"].destroy(instances, machines, services, images)
-
 
 @tectonic.command()
 @click.pass_context

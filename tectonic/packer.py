@@ -85,7 +85,8 @@ class Packer(ABC):
         Parameters:
             services (list(str)): names of the services for which to create images. 
         """
-        if self.description._services_guests.keys():
+        enabled_services = [service.base_name for _, service in self.description.services_guests.items()]
+        if list(set(enabled_services).intersection(set(services))):
             self._invoke_packer(self.SERVICES_PACKER_MODULE, self._get_service_variables(services))
 
     def destroy_image(self, guests):
@@ -95,7 +96,8 @@ class Packer(ABC):
         Parameters:
             guests (list(str)): names of the guests for which to destroy images.
         """
-        machines = [guest for _, guest in self.description.base_guests.items() if not guests or guest.base_name in guests]
+        machines = []
+        machines = [guest for _, guest in (self.description.services_guests.items() | self.description.base_guests.items()) if not guests or guest.base_name in guests]
         for machine in machines:
             if self.client.is_image_in_use(machine.image_name):
                 raise PackerException(f"Unable to delete image {machine.base_name} because it is being used.")
@@ -143,7 +145,7 @@ class Packer(ABC):
         Returns:
             dict: variables of the Packer module.
         """
-        machines = [guest for _, guest in self.description._services_guests.items() if not services or guest.base_name in services]
+        machines = [guest for _, guest in self.description.services_guests.items() if not services or guest.base_name in services]
         args = {
             "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
             "ansible_ssh_common_args": self.config.ansible.ssh_common_args,
