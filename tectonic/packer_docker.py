@@ -42,18 +42,3 @@ class PackerDocker(Packer):
             client (Client): Tectonic client object
         """
         super().__init__(config, description, client)
-    
-    def _get_service_machine_variables(self, service):
-        """
-        Return machines for creating services images.
-
-        Parameters:
-            service (ServiceDescription): services for which to create images.
-
-        Returns:
-            dict: machines variables.
-        """
-        result = {}
-        result["base_os"] = service.os  
-        result["ansible_playbook"] = str(tectonic_resources.files('tectonic') / 'services' / service.base_name / 'base_config.yml')
-        return result

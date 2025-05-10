@@ -133,23 +133,18 @@ class Core:
             
             self.ansible.configure_services()
 
-        # Wait for instances to bootup
         self.ansible.wait_for_connections(instances=instances)
 
-        # Run instances post clone configuration
         self.ansible.run(instances, quiet=True)
 
-        # Configure student access on instances
         self.configure_students_access(instances)  
 
-        # Configure Elastic monitoring
         if self.description.elastic.enable:
             if self.description.elastic.monitor_type == "traffic":
                 self.terraform_service.deploy_packetbeat(self.ansible)
             elif self.description.elastic.monitor_type == "endpoint":
                 self.terraform_service.install_elastic_agent(self.ansible, instances)
 
-        # Configure Caldera agents
         if self.description.caldera.enable:
             self.terraform_service.install_caldera_agent(self.ansible, instances)
 

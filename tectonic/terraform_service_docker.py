@@ -18,10 +18,6 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-import json
-import ipaddress
-from tectonic.constants import OS_DATA
-
 from tectonic.terraform_service import TerraformService
 
 class TerraformServiceDockerException(Exception):
@@ -74,19 +70,11 @@ class TerraformServiceDocker(TerraformService):
         Return:
             dict: variables.
         """
-        machines = [guest for _, guest in self.description.services_guests.items()]
-        return {
-            "institution": self.description.institution,
-            "lab_name": self.description.lab_name,
-            "ssh_public_key_file": self.config.ssh_public_key_file,
-            "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps({name: network.to_dict() for name, network in self.description.auxiliary_networks.items()}),
-            "guest_data_json": json.dumps({guest.name: self._get_service_machine_variables(guest) for guest in machines}),
-            "os_data_json": json.dumps(OS_DATA),
-            "configure_dns": self.config.configure_dns,
-            "docker_uri": self.config.docker.uri
-        }
-    
+        result = super()._get_terraform_variables()
+        result["docker_uri"] = self.config.docker.uri
+        return result
+
+
     def _get_service_machine_variables(self, service):
         """
         Return machines variables deploy services.
@@ -97,14 +85,6 @@ class TerraformServiceDocker(TerraformService):
         Returns:
             dict: machines variables.
         """
-        result = {}
-        result["guest_name"] = service.name
-        result["base_name"] = service.base_name
-        result["hostname"] = service.base_name
-        result["base_os"] = service.os
-        result["interfaces"] = {name : interface.to_dict() for name, interface in service.interfaces.items()}
-        result["vcpu"] = service.vcpu
-        result["memory"] = service.memory
-        result["disk"] = service.disk
+        result = super()._get_service_machine_variables(service)
         result["port"] = service.port
         return result

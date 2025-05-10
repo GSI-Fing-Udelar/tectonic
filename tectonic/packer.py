@@ -85,7 +85,8 @@ class Packer(ABC):
         Parameters:
             services (list(str)): names of the services for which to create images. 
         """
-        self._invoke_packer(self.SERVICES_PACKER_MODULE, self._get_service_variables(services))
+        if self.description._services_guests.keys():
+            self._invoke_packer(self.SERVICES_PACKER_MODULE, self._get_service_variables(services))
 
     def destroy_image(self, guests):
         """
@@ -174,4 +175,7 @@ class Packer(ABC):
         Returns:
             dict: machines variables.
         """
-        pass
+        return {
+            "base_os": service.os,
+            "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / service.base_name / 'base_config.yml')
+        }

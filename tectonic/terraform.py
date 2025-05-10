@@ -19,9 +19,11 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import importlib.resources as tectonic_resources
+from tectonic.constants import OS_DATA
 
 import python_terraform
 import os
+import json
 from abc import ABC, abstractmethod
 
 class TerraformException(Exception):
@@ -103,8 +105,8 @@ class Terraform(ABC):
         t = python_terraform.Terraform(working_dir=terraform_dir)
         self._run_terraform_cmd(t, "init", [], reconfigure=python_terraform.IsFlagged, backend_config=self._generate_backend_config(terraform_dir))
         if recreate:
-            self._run_terraform_cmd(t, "plan", variables, input=False, machine=resources)
-            self._run_terraform_cmd(t, "apply", variables, auto_approve=True, input=False, machine=resources)
+            self._run_terraform_cmd(t, "plan", variables, input=False, replace=resources)
+            self._run_terraform_cmd(t, "apply", variables, auto_approve=True, input=False, replace=resources)
         else:
             self._run_terraform_cmd(t, "plan", variables, input=False, target=resources)
             self._run_terraform_cmd(t, "apply", variables, auto_approve=True, input=False, target=resources)
@@ -233,3 +235,68 @@ class Terraform(ABC):
         """
         resources_to_recreate = self._get_resources_to_recreate(instances, guests, copies)
         self._apply(self.terraform_instances_module, self._get_terraform_variables(), resources_to_recreate, True)
+
+    def _get_guest_variables(self, guest):
+        """
+        Return guest variables for terraform.
+
+        Parameters:
+          guest (GuestDescription): guest to get variables.
+
+        Returns:
+          dict: variables.
+        """
+        return {
+            "base_name": guest.base_name,
+            "name": guest.name,
+            "vcpu": guest.vcpu,
+            "memory": guest.memory,
+            "disk": guest.disk,
+            "hostname": guest.hostname,
+            "base_os": guest.os,
+            "interfaces": {name: self._get_network_interface_variables(interface) for name, interface in guest.interfaces.items()}
+        }
+
+    def _get_network_interface_variables(self, interface):
+        """
+        Return netowkr interface variables for terraform.
+
+        Parameters:
+          interface (NetworkInterface): interface to get variables.
+
+        Returns:
+          dict: variables.
+        """
+        return {
+            "name": interface.name,
+            "network_name": interface.network.name,
+            "private_ip": interface.private_ip
+        }
+
+    def _get_terraform_variables(self):
+        """
+        Get variables to use in Terraform.
+
+        Return:
+            dict: variables.
+        """
+        return {
+            "institution": self.description.institution,
+            "lab_name": self.description.lab_name,
+            "instance_number": self.description.instance_number,
+            "ssh_public_key_file": self.config.ssh_public_key_file,
+            "authorized_keys": self.description.authorized_keys,
+            "subnets_json": json.dumps({name: network.to_dict() for name, network in self.description.scenario_networks.items()}),
+            "guest_data_json": json.dumps({name: self._get_guest_variables(guest) for name, guest in self.description.scenario_guests.items()}),
+            "default_os": self.description.default_os,
+            "os_data_json": json.dumps(OS_DATA),
+            "configure_dns": self.config.configure_dns,
+            "libvirt_uri": self.config.libvirt.uri,
+            "libvirt_storage_pool": self.config.libvirt.storage_pool,
+            "libvirt_student_access": self.config.libvirt.student_access,
+            "libvirt_bridge": self.config.libvirt.bridge,
+            "libvirt_external_network": self.config.libvirt.external_network,
+            "libvirt_bridge_base_ip": self.config.libvirt.bridge_base_ip,
+            "services_network": self.config.services_network_cidr_block,
+            "services_network_base_ip": len(self.description.services_guests.keys())+1
+        }

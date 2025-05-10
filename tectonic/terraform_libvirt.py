@@ -20,9 +20,6 @@
 
 from tectonic.terraform import Terraform
 
-import json
-from tectonic.constants import OS_DATA
-
 class TerraformLibvirtException(Exception):
     pass
 
@@ -148,26 +145,16 @@ class TerraformLibvirt(Terraform):
         Return:
             dict: variables.
         """
-        return {
-            "institution": self.description.institution,
-            "lab_name": self.description.lab_name,
-            "instance_number": self.description.instance_number,
-            "ssh_public_key_file": self.config.ssh_public_key_file,
-            "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps({name: self._get_network_variables(network) for name, network in self.description.scenario_networks.items()}),
-            "guest_data_json": json.dumps({name: self._get_guest_variables(guest) for name, guest in self.description.scenario_guests.items()}),
-            "default_os": self.description.default_os,
-            "os_data_json": json.dumps(OS_DATA),
-            "configure_dns": self.config.configure_dns,
-            "libvirt_uri": self.config.libvirt.uri,
-            "libvirt_storage_pool": self.config.libvirt.storage_pool,
-            "libvirt_student_access": self.config.libvirt.student_access,
-            "libvirt_bridge": self.config.libvirt.bridge,
-            "libvirt_external_network": self.config.libvirt.external_network,
-            "libvirt_bridge_base_ip": self.config.libvirt.bridge_base_ip,
-            "services_network": self.config.services_network_cidr_block,
-            "services_network_base_ip": len(self.description.services_guests.keys())+1
-        }
+        result = super()._get_terraform_variables()
+        result["libvirt_uri"] = self.config.libvirt.uri
+        result["libvirt_storage_pool"] = self.config.libvirt.storage_pool
+        result["libvirt_student_access"] = self.config.libvirt.student_access
+        result["libvirt_bridge"] = self.config.libvirt.bridge
+        result["libvirt_external_network"] = self.config.libvirt.external_network
+        result["libvirt_bridge_base_ip"] = self.config.libvirt.bridge_base_ip
+        result["services_network"] = self.config.services_network_cidr_block
+        result["services_network_base_ip"] = len(self.description.services_guests.keys())+1
+        return result
 
     def _get_guest_variables(self, guest):
         """
@@ -179,19 +166,11 @@ class TerraformLibvirt(Terraform):
         Returns:
           dict: variables.
         """
-        result = {}
-        result["base_name"] = guest.base_name
-        result["name"] = guest.name
-        result["vcpu"] = guest.vcpu
-        result["memory"] = guest.memory
-        result["disk"] = guest.disk
-        result["hostname"] = guest.hostname
-        result["base_os"] = guest.os
+        result = super()._get_guest_variables(guest)
         result["is_in_services_network"] = guest.is_in_services_network
         result["entry_point"] = guest.entry_point
         result["entry_point_index"] = guest.entry_point_index
         result["internet_access"] = guest.internet_access
-        result["interfaces"] = {name: self._get_network_interface_variables(interface) for name, interface in guest.interfaces.items()}
         return result
 
     def _get_network_interface_variables(self, interface):
@@ -199,30 +178,12 @@ class TerraformLibvirt(Terraform):
         Return netowkr interface variables for terraform.
 
         Parameters:
-          interface (NetowkrInterface): interface to get variables.
+          interface (NetworkInterface): interface to get variables.
 
         Returns:
           dict: variables.
         """
-        result = {}
-        result["name"] = interface.name
-        result["network_name"] = interface.network.name
+        result = super()._get_network_interface_variables(interface)
         result["subnetwork_name"] = interface.network.name
         result["index"] = interface.index
-        result["private_ip"] = interface.private_ip
-        return result
-
-    def _get_network_variables(self, network):
-        """
-        Return netowkr variables for terraform.
-
-        Parameters:
-          guest (NetworkDescription): netowkr to get variables.
-
-        Returns:
-          dict: variables.
-        """
-        result = {}
-        result["name"] = network.name
-        result["ip_network"] = network.ip_network
         return result

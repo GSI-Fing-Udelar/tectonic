@@ -53,9 +53,7 @@ class PackerLibvirt(Packer):
         Returns:
             dict: machines variables.
         """
-        result = {}
-        result["base_os"] = service.os  
-        result["ansible_playbook"] = str(tectonic_resources.files('tectonic') / 'services' / service.base_name / 'base_config.yml')
+        result = super()._get_service_machine_variables(service)
         result["vcpu"] = service.vcpu
         result["memory"] = service.memory
         result["disk"] = service.disk

@@ -134,16 +134,6 @@ class TerraformDocker(Terraform):
         Return:
             dict: variables.
         """
-        return {
-            "institution": self.description.institution,
-            "lab_name": self.description.lab_name,
-            "instance_number": self.description.instance_number,
-            "ssh_public_key_file": self.config.ssh_public_key_file,
-            "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps({name: network.to_dict() for name, network in self.description.scenario_networks.items()}),
-            "guest_data_json": json.dumps({name: guest.to_dict() for name, guest in self.description.scenario_guests.items()}),
-            "default_os": self.description.default_os,
-            "os_data_json": json.dumps(OS_DATA),
-            "configure_dns": self.config.configure_dns,
-            "docker_uri": self.config.docker.uri,
-        }
+        result = super()._get_terraform_variables()
+        result["docker_uri"] = self.config.docker.uri
+        return result
