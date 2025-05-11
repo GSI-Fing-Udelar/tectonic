@@ -153,7 +153,7 @@ class TerraformLibvirt(Terraform):
         result["libvirt_external_network"] = self.config.libvirt.external_network
         result["libvirt_bridge_base_ip"] = self.config.libvirt.bridge_base_ip
         result["services_network"] = self.config.services_network_cidr_block
-        result["services_network_base_ip"] = len(self.description.services_guests.keys())+1
+        result["services_network_base_ip"] = len(self.description.services_guests.keys())+10 #TODO: use a different network?
         return result
 
     def _get_guest_variables(self, guest):
