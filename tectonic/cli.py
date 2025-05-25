@@ -355,13 +355,6 @@ def tectonic(
     ctx.obj["description"] = Description(config, instance_type, lab_edition_file)
     ctx.obj["core"] = Core(ctx.obj["config"], ctx.obj["description"])
 
-
-    # TODO: Do this somewhere else
-    # if elastic_stack_version == "latest":
-    #     ctx.obj["description"].set_elastic_stack_version(ctx.obj["deployment"].get_elastic_latest_version())
-    # if caldera_version == "latest":
-    #     ctx.obj["description"].set_caldera_version("master")
-
 @tectonic.command()
 @click.pass_context
 @click.option(
@@ -851,10 +844,13 @@ def show_parameters(ctx, instances, directory):
     """Generate parameters for instances"""
     click.echo("Getting parameters")
     parameters = ctx.obj["core"].get_parameters(instances, directory)
-    rows = []
-    headers = ["Instances", "Parameters"]
-    for instance, parameter in parameters.items():
-        rows.append([instance, parameter])
-    table = utils.create_table(headers, rows)
-    click.echo(table)
+    if directory:
+        click.echo(parameters)
+    else:
+        rows = []
+        headers = ["Instances", "Parameters"]
+        for instance, parameter in parameters.items():
+            rows.append([instance, parameter])
+        table = utils.create_table(headers, rows)
+        click.echo(table)
 

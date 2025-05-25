@@ -37,5 +37,7 @@ class TectonicConfigCaldera(object):
     @version.setter
     def version(self, value):
         validate.version_number("caldera version", value)
+        if value == "latest":
+            value = "master"
         self._version = value
 
