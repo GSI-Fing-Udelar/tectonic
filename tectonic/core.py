@@ -59,7 +59,7 @@ class Core:
         self.description = description
 
         if self.config.platform == "aws":
-            self.terraform = TerraformAWS(self,config, self.description)
+            self.terraform = TerraformAWS(self.config, self.description)
             self.client = ClientAWS(self.config, self.description)
             self.packer = PackerAWS(self.config, self.description, self.client)
             self.terraform_service = TerraformServiceAWS(self.config, self.description, self.client)
@@ -85,7 +85,7 @@ class Core:
         del self.ansible
         del self.description
 
-    def create_cr_images(self, guests=()):
+    def create_instances_images(self, guests=()):
         """
         Create base images.
 
@@ -93,7 +93,7 @@ class Core:
             guests (list(str)): names of the guests for which to create images. 
         """
         if guests is not None:
-            self.packer.destroy_image(guests)
+            self.packer.destroy_instance_image(guests)
             self.packer.create_instance_image(guests)
 
     def create_services_images(self, services=None):
@@ -104,7 +104,7 @@ class Core:
             services (list(str)): List of services to create.
         """
         if services is not None:
-            self.packer.destroy_image(services)
+            self.packer.destroy_service_image(services)
             self.packer.create_service_image(services)
     
     def deploy(self, instances, create_instances_images, create_services_images):
@@ -117,7 +117,7 @@ class Core:
             create_services_images: whether to create services images.
         """
         if create_instances_images:
-            self.create_cr_images()
+            self.create_instances_images()
         if create_services_images:
             self.create_services_images()
 
@@ -281,12 +281,12 @@ class Core:
 
         service_info = {}
         for _, service in self.description.services_guests.items():
-            credentials = self.terraform_service.get_service_credentials(service, self.ansible)
-            ip = service.service_ip if self.config.platform != "docker" else "127.0.0.1"
-            service_info[service.base_name] = {
-                "URL": f"https://{service.service_ip}:{service.port}",
-                "Credentials": credentials,
-            }
+            if service.base_name != "packetbeat":
+                credentials = self.terraform_service.get_service_credentials(service, self.ansible)
+                service_info[service.base_name] = {
+                    "URL": f"https://{service.service_ip}:{service.port}",
+                    "Credentials": credentials,
+                }
         return {
             "instances_info": instances_info,
             "services_info": service_info,

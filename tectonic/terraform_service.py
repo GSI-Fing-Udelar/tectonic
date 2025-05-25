@@ -187,18 +187,15 @@ class TerraformService(Terraform):
             ansible (Ansible): Tectonic ansible object.
             variables: variables for Ansible playbook.
         """ 
-        return ansible.build_inventory_localhost(
-            username=self.config.elastic.user_install_packetbeat,
-            extra_vars=variables
-        )
+        return ansible.build_inventory_localhost(username=self.config.elastic.user_install_packetbeat, extra_vars=variables)
     
     def manage_packetbeat(self, ansible, action):
         """
-        Get status of Packetbeat service.
+        Manage Packetbeat service.
 
         Parameters:
             ansible (Ansible): Tectonic Ansible object.
-            action (str): action to apply to Packetbeat.
+            action (str): action to apply to Packetbeat (status, started, stopped, restarted)
 
         Returns:
           str: status of packetbeat service if action was status or None otherwise.
@@ -224,10 +221,10 @@ class TerraformService(Terraform):
             ansible (Ansible): Tectonic ansible object.
         """
         elastic_name = self.description.elastic.name
-        if self.get_instance_status(elastic_name) == "RUNNING":
-            result = self.get_service_info("elastic", ansible, self.ELASTIC_INFO_PLAYBOOK, {"action":"get_token_by_policy_name","policy_name":self.config.elastic.packetbeat_policy_name})
+        if self.client.get_machine_status(elastic_name) == "RUNNING":
+            result = self.get_service_info(self.description.elastic, ansible, self.ELASTIC_INFO_PLAYBOOK, {"action":"get_token_by_policy_name","policy_name":self.config.elastic.packetbeat_policy_name})
             agent_token = result[0]["token"]
-            elastic_ip = self.client.get_machine_private_ip(self.description.elastic.name)
+            elastic_ip = self.description.elastic.service_ip
             variables = {
                 "action": "install",
                 "elastic_url": f"https://{elastic_ip}:8220",
@@ -239,7 +236,7 @@ class TerraformService(Terraform):
             }
             inventory = self._build_packetbeat_inventory(ansible, variables)
             ansible.wait_for_connections(inventory=inventory)
-            ansible.run(inventory, self.PACKETBEAT_PLAYBOOK, True)
+            ansible.run(inventory=inventory, playbook=self.PACKETBEAT_PLAYBOOK, quiet=True)
 
     def destroy_packetbeat(self, ansible):
         """
@@ -254,7 +251,7 @@ class TerraformService(Terraform):
             "lab_name": self.description.lab_name,
         }
         inventory = self._build_packetbeat_inventory(ansible, variables)
-        ansible.run(inventory, self.PACKETBEAT_PLAYBOOK, True)
+        ansible.run(inventory=inventory, playbook=self.PACKETBEAT_PLAYBOOK, quiet=True)
 
     def deploy(self, instances):
         """
@@ -278,7 +275,8 @@ class TerraformService(Terraform):
         resources_to_destroy = None
         if instances is not None:
             resources_to_destroy = self._get_resources_to_target_destroy(instances)
-        self._destroy(self.terraform_services_module, self._get_terraform_variables(), resources_to_destroy)
+        if resources_to_destroy != []:
+            self._destroy(self.terraform_services_module, self._get_terraform_variables(), resources_to_destroy)
 
     def recreate(self, instances, guests, copies): 
         """

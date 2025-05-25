@@ -23,6 +23,7 @@ from tectonic.ssh import interactive_shell
 from tectonic.constants import OS_DATA
 
 import boto3
+import json
 
 class ClientAWSException(Exception):
     pass
@@ -34,7 +35,7 @@ class ClientAWS(Client):
     Description: Implement Client for AWS.
     """
     INSTANCE_STATE_NAME_FILTER = {
-        "Name": "machine-state-name",
+        "Name": "instance-state-name",
         "Values": [
             "pending",
             "running",
@@ -79,7 +80,7 @@ class ClientAWS(Client):
             str: property og the machine.
         """
         try:
-            response = self.connection.describe_machines(
+            response = self.connection.describe_instances(
                 Filters=[
                     {"Name": "tag:Name", "Values": [machine_name]},
                     self.INSTANCE_STATE_NAME_FILTER,
@@ -112,7 +113,7 @@ class ClientAWS(Client):
         except Exception as exception:
             raise ClientAWSException(f"{exception}")  
 
-    def _delete_security_groups(self, description):
+    def delete_security_groups(self, description):
         """
         Delete security groups given a description.
 
@@ -130,7 +131,7 @@ class ClientAWS(Client):
         try:
             machine_id = self._get_machine_property(machine_name, "InstanceId")
             if machine_id is not None:
-                response = self.connection.describe_machine_status(InstanceIds=[machine_id], DryRun=False, IncludeAllInstances=True)
+                response = self.connection.describe_instance_status(InstanceIds=[machine_id], DryRun=False, IncludeAllInstances=True)
                 return self.STATE_MSG.get(response["InstanceStatuses"][0]["InstanceState"]["Name"], "NOT FOUND")
             else:
                 return "NOT FOUND"
@@ -161,25 +162,27 @@ class ClientAWS(Client):
                  
     def is_image_in_use(self, image_name):
         try:
-            image_id = self.get_image(image_name)
+            image_id = self.get_image_id(image_name)
             first_request = True
             next_token = ""
             while next_token is not None:
                 if first_request:
-                    response = self.connection.describe_machines(Filters=[self.INSTANCE_STATE_NAME_FILTER], DryRun=False, MaxResults=50)
+                    response = self.connection.describe_instances(Filters=[self.INSTANCE_STATE_NAME_FILTER], DryRun=False, MaxResults=50)
                 else:
-                    response = self.connection.describe_machines(Filters=[self.INSTANCE_STATE_NAME_FILTER], DryRun=False, MaxResults=50, NextToken=next_token)
+                    response = self.connection.describe_instances(Filters=[self.INSTANCE_STATE_NAME_FILTER], DryRun=False, MaxResults=50, NextToken=next_token)
                 next_token = response.get("NextToken", None)
                 first_request = False
-                if image_id in response["Reservations"]:
-                    return True
+                for reservation in response["Reservations"]:
+                    for instance in reservation["Instances"]:
+                        if image_id == instance.get("ImageId",None):
+                            return True
             return False
         except Exception as exception:
             raise ClientAWSException(f"{exception}")
         
     def delete_image(self, image_name):
         try:
-            image_id = self.get_image(image_name)
+            image_id = self.get_image_id(image_name)
             snapshot_id = self._get_image_snapshots(image_name)
             if image_id is not None:
                 self.connection.deregister_image(ImageId=image_id, DryRun=False)
@@ -190,28 +193,28 @@ class ClientAWS(Client):
         
     def start_machine(self, machine_name):
         try:
-            machine_id = self.get_machine_property(machine_name, "InstanceId")
+            machine_id = self._get_machine_property(machine_name, "InstanceId")
             if machine_id is None:
                 raise ClientAWSException(f"Instance {machine_name} not found.")
-            self.connection.start_machines(InstanceIds=[machine_id], DryRun=False)
+            self.connection.start_instances(InstanceIds=[machine_id], DryRun=False)
         except Exception as exception:
             raise ClientAWSException(f"{exception}")
         
     def stop_machine(self, machine_name):
         try:
-            machine_id = self.get_machine_property(machine_name, "InstanceId")
+            machine_id = self._get_machine_property(machine_name, "InstanceId")
             if machine_id is None:
                 raise ClientAWSException(f"Instance {machine_name} not found.")
-            self.connection.stop_machines(InstanceIds=[machine_id], DryRun=False)
+            self.connection.stop_instances(InstanceIds=[machine_id], DryRun=False)
         except Exception as exception:
             raise ClientAWSException(f"{exception}")
         
     def restart_machine(self, machine_name):
         try:
-            machine_id = self.get_machine_property(machine_name, "InstanceId")
+            machine_id = self._get_machine_property(machine_name, "InstanceId")
             if machine_id is None:
                 raise ClientAWSException(f"Instance {machine_name} not found.")
-            self.connection.reboot_machines(InstanceIds=[machine_id], DryRun=False)
+            self.connection.reboot_instances(InstanceIds=[machine_id], DryRun=False)
         except Exception as exception:
             raise ClientAWSException(f"{exception}")
         
@@ -226,7 +229,7 @@ class ClientAWS(Client):
             str: machine identifier.
         """
         try:
-            return self.get_machine_property(machine_name, "InstanceId")
+            return self._get_machine_property(machine_name, "InstanceId")
         except Exception as exception:
             raise ClientAWSException(f"{exception}")
         
@@ -238,12 +241,12 @@ class ClientAWS(Client):
             machine_name (str): name of the machine.
             username (str): username to use. Default: None
         """
-        if machine_name == self.description.get_teacher_access_name():
+        if machine_name == self._get_teacher_access_name():
             interactive_shell(self._get_teacher_access_ip(), self._get_teacher_access_username())
         else:
             hostname = self.get_ssh_hostname(machine_name)
             username = username or self.description.get_guest_username(self.description.get_base_name(machine_name))
-            if self.description.teacher_access == "host":
+            if self.config.aws.teacher_access == "host":
                 gateway = (self._get_teacher_access_ip(), self._get_teacher_access_username())
             else:
                 gateway = self.EIC_ENDPOINT_SSH_PROXY
@@ -258,13 +261,13 @@ class ClientAWS(Client):
         Return:
             str: ssh proxy command to use.
         """
-        if self.description.teacher_access == "endpoint":
+        if self.config.aws.teacher_access == "endpoint":
             proxy_command = self.EIC_ENDPOINT_SSH_PROXY
         else:
             access_ip = self._get_teacher_access_ip()
             username = self._get_teacher_access_username()
             connection_string = f"{username}@{access_ip}"
-            proxy_command = f"ssh {self.description.ansible_ssh_common_args} -W %h:%p {connection_string}"
+            proxy_command = f"ssh {self.config.ansible.ssh_common_args} -W %h:%p {connection_string}"
         return proxy_command
     
     def get_ssh_hostname(self, machine):
@@ -277,7 +280,7 @@ class ClientAWS(Client):
         Return:
             str: ssh hostname to use.
         """
-        if self.description.teacher_access == "endpoint":
+        if self.config.aws.teacher_access == "endpoint":
             return self._get_machine_property(machine, "InstanceId")
         else:
             return self.get_machine_private_ip(machine)
@@ -298,6 +301,17 @@ class ClientAWS(Client):
         Return:
             str: public IP for teacher access.
         """
-        if self.description.teacher_access == "host":
-            return self.get_machine_public_ip(self.description.get_teacher_access_name())
+        if self.config.aws.teacher_access == "host":
+            return self.get_machine_public_ip(self._get_teacher_access_name())
+        return None
+    
+    def _get_teacher_access_name(self):
+        """
+        Returns the name of the teacher access host.
+
+        Return:
+            str: teacher access host name.
+        """
+        if self.config.aws.teacher_access == "host":
+            return f"{self.description.institution}-{self.description.lab_name}-teacher_access"
         return None

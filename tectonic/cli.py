@@ -215,7 +215,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 )
 @click.option(
     "--configure_dns",
-    default=True,
+    default=False,
     show_default=True,
     help="Configure internal DNS for instances.",
 )
@@ -529,7 +529,7 @@ def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
 
     if machines:
         click.echo("Creating base images...")
-        ctx.obj["core"].create_cr_images(guests)
+        ctx.obj["core"].create_instances_images(guests)
 
 
 @tectonic.command(name="list")

@@ -243,7 +243,7 @@ class MachineDescription:
 
     @base_name.setter
     def base_name(self, value):
-        value = re.sub("[^a-zA-Z0-9]+", "", value).lower()
+        value = re.sub("[^a-zA-Z0-9_]+", "", value).lower()
         if value == "":
             raise DescriptionException(f"Invalid machine name {value}. Must have at least one alphanumeric symbol.")
         self._base_name = value
@@ -334,7 +334,7 @@ class BaseGuestDescription(MachineDescription):
     @monitor.setter
     def monitor(self, value):
         validate.boolean("monitor", value)
-        self._monitor = self._description.elastic.enable and self._description.elastic.monitor_type == "endpoint" and value
+        self._monitor = self._description.elastic.enable and value
 
     @red_team_agent.setter
     def red_team_agent(self, value):
@@ -373,7 +373,7 @@ class NetworkInterface():
     def __init__(self, description, guest, network, interface_num, private_ip=None):
         self.name = f"{guest.name}-{interface_num+1}"
         self.index = interface_num + self._get_interface_index_to_sum(description, guest)
-        self.guest_name = guest.name
+        self._guest_name = f"{guest.name}"
         self.network = network
         self.private_ip = self._get_guest_ip_address(guest, network) if private_ip is None else private_ip
         self.mask = ipaddress.ip_network(network.ip_network).prefixlen
@@ -410,9 +410,9 @@ class NetworkInterface():
     def index(self, value):
         self._index = value
 
-    @index.setter
-    def guest_name(self, value):
-        self._guest_name = value
+    # @index.setter
+    # def guest_name(self, value):
+    #     self._guest_name = value
 
     @network.setter
     def network(self, value):
@@ -448,6 +448,8 @@ class NetworkInterface():
                 base += 1
             if guest.entry_point:
                 base += 1
+        elif description.config.platform == "aws":
+            base = -1
         return base
 
     def _get_guest_ip_address(self, guest, network):
@@ -485,7 +487,6 @@ class GuestDescription(BaseGuestDescription):
             interface = NetworkInterface(description, self, network, interface_num)
             self._interfaces[interface.name] = interface
             interface_num += 1
-
         self.entry_point_index = 0
         self.services_network_index = 0
         self.advanced_options_file = None
@@ -539,7 +540,7 @@ class GuestDescription(BaseGuestDescription):
 
     @base_name.setter
     def base_name(self, value):
-        value = re.sub("[^a-zA-Z0-9]+", "", value).lower()
+        value = re.sub("[^a-zA-Z0-9_]+", "", value).lower()
         if value == "":
             raise DescriptionException(f"Invalid guest name {value}. Must have at least one alphanumeric symbol.")
         self._base_name = value
@@ -586,7 +587,7 @@ class GuestDescription(BaseGuestDescription):
         return result
 
 class ServiceDescription(MachineDescription):
-    def __init__(self, description, base_name, os):
+    def __init__(self, description, base_name, os, internet_access = False):
         super().__init__(description, base_name, os)
         self.base_name = base_name
         self.enable = False
@@ -596,6 +597,7 @@ class ServiceDescription(MachineDescription):
         self.copy = 1
         self.is_in_services_network = False
         self.entry_point = False
+        self.internet_access = internet_access
 
     @property
     def base_name(self):
@@ -612,6 +614,10 @@ class ServiceDescription(MachineDescription):
     @property
     def enable(self):
         return self._enable
+    
+    @property
+    def internet_access(self):
+        return self._internet_access
 
     @base_name.setter
     def base_name(self, value):
@@ -621,6 +627,11 @@ class ServiceDescription(MachineDescription):
     def enable(self, value):
         validate.boolean("enable", value)
         self._enable = value
+
+    @internet_access.setter
+    def internet_access(self, value):
+        validate.boolean("internet_access", value)
+        self._internet_access = value
 
     def load_service(self, data):
         """Loads the information from the yaml structure in data."""
@@ -632,11 +643,11 @@ class ServiceDescription(MachineDescription):
         return self._interfaces
     
     def load_interfaces(self, auxiliary_networks):
-        interface_num = 0
+        interface_num = 1
         for _, network in auxiliary_networks.items():
             if self._base_name in network.members:
                 ip_network = ipaddress.ip_network(network.ip_network)
-                private_ip = str(list(ip_network.hosts())[network.members.index(self._base_name)+2])
+                private_ip = str(list(ip_network.hosts())[network.members.index(self._base_name)+4])
                 interface = NetworkInterface(self._description, self, network, interface_num, private_ip)
                 self._interfaces[interface.name] = interface
                 interface_num += 1
@@ -651,7 +662,7 @@ class ElasticDescription(ServiceDescription):
     supported_monitor_types = ["traffic", "endpoint"]
 
     def __init__(self, description):
-        super().__init__(description, "elastic", "rocky8")
+        super().__init__(description, "elastic", "rocky8", True)
         self.memory = 8192
         self.vcpu = 4
         self.disk = 50
@@ -813,6 +824,7 @@ class Description:
 
         self._scenario_networks = self._compute_scenario_networks()
         self._scenario_guests = self._compute_scenario_guests()
+        self._extra_guests = self._compute_extra_guests()
         self._parameters_files = tectonic.utils.list_files_in_directory(Path(self._scenario_dir).joinpath("ansible","parameters"))
 
         # Load auxiliary networks
@@ -827,7 +839,8 @@ class Description:
         if self._elastic.enable or self._caldera.enable or self.internet_access_required:
             auxiliary_network_name = f"{self.institution}-{self.lab_name}-internet"
             self._auxiliary_networks[auxiliary_network_name] = AuxiliaryNetwork(self, "internet", self.config.internet_network_cidr_block, "nat")
-            self._auxiliary_networks[auxiliary_network_name].members = ["elastic"]
+            if self.config.platform != "aws":
+                self._auxiliary_networks[auxiliary_network_name].members = ["elastic"]
 
         #Load services interfaces
         self._elastic.load_interfaces(self._auxiliary_networks)
@@ -835,6 +848,8 @@ class Description:
         self._caldera.load_interfaces(self._auxiliary_networks)
 
         self._services_guests = self._compute_services_guests()
+
+        self._extra_guests = self._compute_extra_guests()
 
     def parse_machines(self, instances=[], guests=[], copies=[], only_instances=True, exclude=[]):
         """
@@ -852,11 +867,8 @@ class Description:
         """
         # Validate filters
         infrastructure_guests_names = []
-        if self.config.platform == "aws":
-            if self.student_access_required:
-                infrastructure_guests_names.append("student_access")
-            if self.config.aws.teacher_access == "host":
-                infrastructure_guests_names.append("teacher_access")
+        for _, extra in self.extra_guests.items():
+            infrastructure_guests_names.append(extra.base_name)
         for _, service in self.services_guests.items():
             infrastructure_guests_names.append(service.base_name)
 
@@ -886,19 +898,25 @@ class Description:
             result.append(guest.name)
 
         if not only_instances:
-            if self.config.platform == "aws":
-                if ((not guests or "student_access" in guests) and
-                    (not exclude or "student_access" not in exclude)):
-                    result.append(f"{self.institution}-{self.lab_name}-student_access")
-                if ((self.config.aws.teacher_access == "host") and
-                    (not guests or "teacher_access" in guests) and
-                    (not exclude or "teacher_access" not in exclude)):
-                    result.append(f"{self.institution}-{self.lab_name}-teacher_access")
+            for guest in infrastructure_guests_names:
+                if ((not guests or guest in guests) and
+                    (not exclude or guest not in exclude)):
+                    result.append(f"{self.institution}-{self.lab_name}-{guest}")
+            # if self.config.platform == "aws":
+            #     student_access = f"{self.institution}-{self.lab_name}-student_access"
+            #     if ((not guests or student_access in guests) and
+            #         (not exclude or student_access not in exclude)):
+            #         result.append(student_access)
+            #     teacher_access = f"{self.institution}-{self.lab_name}-teacher_access"
+            #     if ((self.config.aws.teacher_access == "host") and
+            #         (not guests or teacher_access in guests) and
+            #         (not exclude or teacher_access not in exclude)):
+            #         result.append(teacher_access)
 
-            for _, service in self.services_guests.items():
-                if ((not guests or service.base_name in guests) and
-                    (not exclude or service.base_name not in exclude)):
-                    result.append(service.name)
+            # for _, service in self.services_guests.items():
+            #     if ((not guests or service.name in guests) and
+            #         (not exclude or service.name not in exclude)):
+            #         result.append(service.name)
 
         if len(result) == 0:
             raise DescriptionException(
@@ -1057,6 +1075,10 @@ class Description:
     @property
     def services_guests(self):
         return self._services_guests
+    
+    @property
+    def extra_guests(self):
+        return self._extra_guests
 
     @property
     def elastic(self):
@@ -1065,6 +1087,10 @@ class Description:
     @property
     def caldera(self):
         return self._caldera
+    
+    @property
+    def packetbeat(self):
+        return self._packetbeat
 
     @property
     def auxiliary_networks(self):
@@ -1218,11 +1244,21 @@ class Description:
         services = {}
         if self.elastic.enable:
             services[self.elastic.name] = self.elastic
-            if self.config.platform == "aws":
+            if self.config.platform == "aws" and self.elastic.monitor_type == "traffic":
                 services[self._packetbeat.name] = self._packetbeat
         if self.caldera.enable:
             services[self.caldera.name] = self.caldera
         return services
+    
+    def _compute_extra_guests(self):
+        """Compute the scenario services data."""
+        extra = {}
+        if self.config.platform == "aws":
+            if self.student_access_required:
+               extra[f"{self.institution}-{self.lab_name}-student_access"] = GuestDescription(self, BaseGuestDescription(self, "student_access"), 1, 1, False)
+            if self.config.aws.teacher_access == "host":
+                extra[f"{self.institution}-{self.lab_name}-teacher_access"] = GuestDescription(self, BaseGuestDescription(self, "teacher_access"), 1, 1, False)
+        return extra
 
     def _get_guest_advanced_options_file(self, base_name):
         """

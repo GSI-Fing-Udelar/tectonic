@@ -60,7 +60,7 @@ class PackerAWS(Packer):
         Parameters:
             services (list(str)): names of the services for which to create images. 
         """
-        super().create_instance_image(services)
+        super().create_service_image(services)
         self.client.delete_security_groups("Temporary group for Packer")
       
     def _get_service_machine_variables(self, service):

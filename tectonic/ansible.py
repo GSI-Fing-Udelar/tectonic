@@ -87,7 +87,12 @@ class Ansible:
                 networks[guest.instance][interface.network.name][guest.base_name] = interface.name
 
         for machine_name in machine_list:
-            machine = self.description.services_guests[machine_name] if machine_name in self.description.services_guests.keys() else self.description.scenario_guests[machine_name]
+            if machine_name in self.description.services_guests.keys():
+                machine = self.description.services_guests[machine_name] 
+            elif machine_name in self.description.scenario_guests.keys():
+                machine = self.description.scenario_guests[machine_name]
+            elif machine_name in self.description.extra_guests.keys():
+                machine = self.description.extra_guests[machine_name]
             ansible_username = username or machine.admin_username
             hostname = self.client.get_ssh_hostname(machine_name)
 

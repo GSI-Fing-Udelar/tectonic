@@ -87,9 +87,9 @@ class Packer(ABC):
         """
         enabled_services = [service.base_name for _, service in self.description.services_guests.items()]
         if list(set(enabled_services).intersection(set(services))):
-            self._invoke_packer(self.SERVICES_PACKER_MODULE, self._get_service_variables(services))
+           self._invoke_packer(self.SERVICES_PACKER_MODULE, self._get_service_variables(services))
 
-    def destroy_image(self, guests):
+    def destroy_instance_image(self, guests):
         """
         Destroy base images.
 
@@ -97,7 +97,22 @@ class Packer(ABC):
             guests (list(str)): names of the guests for which to destroy images.
         """
         machines = []
-        machines = [guest for _, guest in (self.description.services_guests.items() | self.description.base_guests.items()) if not guests or guest.base_name in guests]
+        machines = [guest for _, guest in self.description.base_guests.items() if not guests or guest.base_name in guests]
+        for machine in machines:
+            if self.client.is_image_in_use(machine.image_name):
+                raise PackerException(f"Unable to delete image {machine.base_name} because it is being used.")
+        for machine in machines:
+            self.client.delete_image(machine.image_name)
+
+    def destroy_service_image(self, services):
+        """
+        Destroy base images.
+
+        Parameters:
+            services (list(str)): names of the services for which to destroy images.
+        """
+        machines = []
+        machines = [guest for _, guest in self.description.services_guests.items() if not services or guest.base_name in services]
         for machine in machines:
             if self.client.is_image_in_use(machine.image_name):
                 raise PackerException(f"Unable to delete image {machine.base_name} because it is being used.")

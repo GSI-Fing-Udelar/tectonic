@@ -48,7 +48,7 @@ class TectonicConfig(object):
         self.internet_network_cidr_block = "192.168.4.0/24"
         self.services_network_cidr_block = "192.168.5.0/24"
         self.ssh_public_key_file = "~/.ssh/id_rsa.pub"
-        self.configure_dns = True
+        self.configure_dns = False
         self.debug = False
         self.proxy = None
         self.gitlab_backend_url = None

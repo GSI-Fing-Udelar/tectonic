@@ -18,13 +18,8 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-import json
-import ipaddress
-
-
 from tectonic.terraform_service import TerraformService
 from tectonic.constants import OS_DATA
-import importlib.resources as tectonic_resources
 
 class TerraformServiceAWSException(Exception):
     pass
@@ -47,10 +42,9 @@ class TerraformServiceAWS(TerraformService):
           list(str): resources name of the aws_network_interface for the services.
         """
         resources = []
-        services_data = self._get_services_guest_data() 
-        for service in services_data:
-            for interface in services_data[service]["interfaces"]:
-                resources.append('aws_network_interface.interfaces["'f"{interface}"'"]')
+        for _, service in self.description.services_guests.items():
+            for _, interface in service.interfaces.items():
+                resources.append('aws_network_interface.interfaces["'f"{interface.name}"'"]')
         return resources
     
     def _get_machine_resources_name(self):
@@ -61,7 +55,7 @@ class TerraformServiceAWS(TerraformService):
           list(str): resources name of the aws_instances for the services.
         """
         resources = []
-        for service in self._get_services_guest_data():
+        for service in self.description.services_guests:
                 resources.append('aws_instance.machines["'f"{service}"'"]')
         return resources
     
@@ -73,7 +67,7 @@ class TerraformServiceAWS(TerraformService):
           list(str): resources name of the subnetworks security groups for the services.
         """
         resources = []
-        for network_name in self.decsription.auxiliary_networks:
+        for network_name in self.description.auxiliary_networks:
             resources.append('aws_security_group.subnet_sg["'f"{network_name}"'"]')
         return resources
     
@@ -87,12 +81,10 @@ class TerraformServiceAWS(TerraformService):
         resources = []
         for _, network in self.description.auxiliary_networks.items():
             resources.append('aws_route53_zone.zones["'f"{network.base_name}"'"]') # TODO - Check name
-            services_data = self._get_services_guest_data() 
-            for service in services_data:
-                interfaces_data = services_data[service]["interfaces"]
-                for interface in interfaces_data:
-                    resources.append('aws_route53_record.records["'f"{service.split('-')[2]}-{interfaces_data[interface]['network_name']}"'"]')
-                    resources.append('aws_route53_record.records_reverse["'f"{service.split('-')[2]}-{interfaces_data[interface]['network_name']}"'"]')
+            for _, service in self.description.services_guests.items():
+                for _, interface in service.interfaces.items():
+                    resources.append('aws_route53_record.records["'f"{service.name}-{interface.network.name}"'"]')
+                    resources.append('aws_route53_record.records_reverse["'f"{service.name}-{interface.network.name}"'"]')
         return resources
     
     def _get_session_resources_name(self, instances):
@@ -107,7 +99,7 @@ class TerraformServiceAWS(TerraformService):
         """
         resources = []
         # TODO: Check if this is equivalent to what was before
-        for guest in self.description.scenario_guests:
+        for _, guest in self.description.scenario_guests.items():
             if instances and guest.instance not in instances:
                 continue
             for _, interface in guest.interfaces.items():
@@ -180,105 +172,56 @@ class TerraformServiceAWS(TerraformService):
         """
         resources = []
         if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
-            resources = resources + self._get_session_resources_name(instances)
+            resources = self._get_session_resources_name(instances)
         return resources
-    
+ 
     def _get_terraform_variables(self):
         """
         Get variables to use in Terraform.
-
+        
         Return:
             dict: variables.
         """
-        networks = {name: network.to_dict()                    
-                    for name, network in self.description.auxiliary_networks}
-
-        return {
-            "institution": self.description.institution,
-            "lab_name": self.description.lab_name,
-            "aws_region": self.config.aws.region,
-            "network_cidr_block": self.config.network_cidr_block,
-            "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps(networks),
-            "guest_data_json": json.dumps(self._get_services_guest_data()),
-            "os_data_json": json.dumps(OS_DATA),
-            "configure_dns": self.config.configure_dns,
-            "monitor_type": self.description.elastic.monitor_type,
-            "packetbeat_vlan_id": self.config.aws.packetbeat_vlan_id,
-            "machines_to_monitor": [guest_name for guest_name, guest
-                                    in self.description.base_guests.items()
-                                    if guest.monitor],
-            "monitor": self.description.elastic.enable,
-        }
+        result = super()._get_terraform_variables()
+        result["aws_region"] = self.config.aws.region
+        result["network_cidr_block"] = self.config.network_cidr_block
+        result["configure_dns"] = self.config.configure_dns
+        result["monitor_type"] = self.description.elastic.monitor_type
+        result["packetbeat_vlan_id"] = self.config.aws.packetbeat_vlan_id
+        result["machines_to_monitor"] = [guest_name for guest_name, guest in self.description.base_guests.items() if guest.monitor]
+        result["monitor"] = self.description.elastic.enable
+        return result
     
-    def _get_services_guest_data(self):
+    def _get_network_interface_variables(self, interface):
         """
-        Compute the services guest data as expected by the deployment terraform module.
+        Return netowkr interface variables for terraform.
+
+        Parameters:
+          interface (NetworkInterface): interface to get variables.
 
         Returns:
-            dict: services guest data.
+          dict: variables.
         """
-        #TODO: move to description
-        guest_data = {}
-        if self.description.elastic.enable:
-            guest_data[self.description.elastic.name] = {
-                    "guest_name": self.description.elastic.name,
-                    "base_name": "elastic",
-                    "hostname": "elastic",
-                    "base_os": self.description.elastic.os,
-                    "interfaces": {
-                        f'{self.description.elastic.name}-1' : {
-                            "name": f'{self.description.elastic.name}-1',
-                            "guest_name": self.description.elastic.name,
-                            "network_name": "services",
-                            "subnetwork_name": f"{self.description.institution}-{self.description.lab_name}-services",
-                            "private_ip": str(ipaddress.IPv4Network(self.config.services_network_cidr_block)[2]),
-                            "mask": str(ipaddress.ip_network(self.config.services_network_cidr_block).prefixlen),
-                        },
-                        f'{self.description.elastic.name}-2' : {
-                            "name": f'{self.description.elastic.name}-2',
-                            "guest_name": self.description.elastic.name,
-                            "network_name": "internet",
-                            "subnetwork_name": f"{self.description.institution}-{self.description.lab_name}-internet",
-                            "private_ip": str(ipaddress.IPv4Network(self.config.internet_network_cidr_block)[2]),
-                            "mask": str(ipaddress.ip_network(self.config.internet_network_cidr_block).prefixlen),
-                        },
-                    },
-                    "memory": self.description.elastic.memory,
-                    "vcpu": self.description.elastic.vcpu,
-                    "disk": self.description.elastic.disk,
-                    "port": 5601,
-                }
-        if self.description.caldera.enable:
-            guest_data[self.description.caldera.name] = {
-                    "guest_name": self.description.caldera.name,
-                    "base_name": "caldera",
-                    "hostname": "caldera",
-                    "base_os": self.description.caldera.os,
-                    "interfaces": {
-                        f'{self.description.caldera.name}-1' : {
-                            "name": f'{self.description.caldera.name}-1',
-                            "guest_name": self.description.caldera.name,
-                            "network_name": "services",
-                            "subnetwork_name": f"{self.description.institution}-{self.description.lab_name}-services",
-                            "private_ip": str(ipaddress.IPv4Network(self.config.services_network_cidr_block)[4]),
-                            "mask": str(ipaddress.ip_network(self.config.services_network_cidr_block).prefixlen),
-                        },
-                        f'{self.description.caldera.name}-2' : {
-                            "name": f'{self.description.caldera.name}-2',
-                            "guest_name": self.description.caldera.name,
-                            "network_name": "internet",
-                            "subnetwork_name": f"{self.description.institution}-{self.description.lab_name}-internet",
-                            "private_ip": str(ipaddress.IPv4Network(self.config.internet_network_cidr_block)[4]),
-                            "mask": str(ipaddress.ip_network(self.config.internet_network_cidr_block).prefixlen),
-                        },
-                    },
-                    "memory": self.description.caldera.memory,
-                    "vcpu": self.description.caldera.vcpu,
-                    "disk": self.description.caldera.disk,
-                    "port": 8443,
-                }
-        return guest_data
+        result = super()._get_network_interface_variables(interface)
+        result["network_name"] = interface.network.name
+        result["guest_name"] = interface.guest_name
+        result["index"] = interface.index
+        return result
+    
+    def _get_service_machine_variables(self, service):
+        """
+        Return machines variables deploy services.
+
+        Parameters:
+            service (ServiceDescription): services to deploy.
+
+        Returns:
+            dict: machines variables.
+        """
+        result = super()._get_service_machine_variables(service)
+        result["instance_type"] = service.instance_type
+        result["internet_access"] = service.internet_access
+        return result
     
     def _build_packetbeat_inventory(self, ansible, variables):
         """
@@ -302,7 +245,3 @@ class TerraformServiceAWS(TerraformService):
             ansible (Ansible): Tectonic ansible object.
         """
         return
-        # It is not necessary to uninstall packetbeat as the machine containing it will be removed
-
-        #TODO: probar a ejecutar directamente el método padre para ver si funciona en AWS 
-        # en cuyo caso no sería necesario hacer esta implementación.
