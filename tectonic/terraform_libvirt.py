@@ -115,7 +115,7 @@ class TerraformLibvirt(Terraform):
         resources = []
         for machine in machines:
             resources.append('libvirt_domain.machines["' f"{machine}" '"]')
-        if self.description.configure_dns:
+        if self.config.configure_dns:
             resources = resources + self._get_dns_resources_name(instances)
         return resources
 

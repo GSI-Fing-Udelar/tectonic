@@ -45,10 +45,11 @@ class TerraformServiceLibvirt(TerraformService):
             list(str): names of resources.
         """
         resources = []
-        for service in self._get_services_guest_data():
-            resources.append('libvirt_volume.cloned_image["'f"{service}"'"]')
-            resources.append('libvirt_cloudinit_disk.commoninit["'f"{service}"'"]')
-            resources.append('libvirt_domain.machines["'f"{service}"'"]')
+        machines = [service for _, service in self.description.services_guests.items() if service.enable]
+        for service in machines:
+            resources.append('libvirt_volume.cloned_image["'f"{service.name}"'"]')
+            resources.append('libvirt_cloudinit_disk.commoninit["'f"{service.name}"'"]')
+            resources.append('libvirt_domain.machines["'f"{service.name}"'"]')
         for network in self.description.auxiliary_networks:
             resources.append('libvirt_network.subnets["'f"{network}"'"]')
         return resources

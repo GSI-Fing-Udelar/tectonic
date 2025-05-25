@@ -186,7 +186,7 @@ class TerraformService(Terraform):
         Parameters:
             ansible (Ansible): Tectonic ansible object.
             variables: variables for Ansible playbook.
-        """ 
+        """
         return ansible.build_inventory_localhost(username=self.config.elastic.user_install_packetbeat, extra_vars=variables)
     
     def manage_packetbeat(self, ansible, action):
