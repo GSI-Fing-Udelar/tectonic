@@ -94,9 +94,9 @@
       ```
       * This bridge should connect to an external network for student entry point access.
       * It is ok to have a dummy empty bridge for testing.
-    - Install xsltproc
+    - Install xsltproc and mkisofs
       ```bash
-      sudo apt-get install xsltproc
+      sudo apt-get install xsltproc mkisofs
       ```
 
 #### Linux Rocky
@@ -177,7 +177,7 @@
       * It is ok to have a dummy empty bridge for testing.
     - Install xsltproc
       ```bash
-      sudo dnf install -y libxslt
+      sudo dnf install -y libxslt genisoimage
       ```
 
 #### MacOS
@@ -249,8 +249,8 @@
     - Configurations are applied within the Linux installed on WSL
 
   - Libvirt:
-    Not compatible with Windows
+    - You can run libvirt on a Linux VM in WSL 2 if you have neested virtualization enabled. Configurations are applied within the Linux installed on WSL
 
 - On Linux WSL 2
   - Follow the Tectonic installation guides for Linux Ubuntu/RHEL until the step where the ssh key is generated
-  - If you want to use AWS then also apply the configurations detailed in the installation guide
+  - If you want to use AWS or Libvirt then also apply the configurations detailed in the installation guide
