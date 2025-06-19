@@ -11,16 +11,12 @@
 
 ### Instructions
 
-#### Linux Ubuntu
-- Install Python 3.10 (or newer) and pip
+#### Ubuntu Linux
+- Install Python 3.10 (or newer) and other dependencies:
   ```bash
-  sudo apt install -y python3 python3-pip
+  sudo apt install -y python3 python3-pip python3-venv python3-dev build-essential pkg-config libvirt-dev
   ```
 
-- Install packages needed to build Tectonic
-  ```bash
-  sudo apt install -y build-essential pkg-config libvirt-dev python3-dev
-  ```
 - Install IaC tools:
   - Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli) and [Packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli)
     ```bash
@@ -31,10 +27,13 @@
     sudo apt install -y terraform packer
     ```
     
-- Install Tectonic Python package:
+- Install Tectonic Python package in a python virtual environment:
   ```bash
+  python3 -m venv ~/.tectonic
+  source ~/.tectonic/bin/activate
   python3 -m pip install tectonic-cyberrange
   ```
+  * Each time you login, you should execute `source ~/.tectonic/bin/activate` to enter the tectonic virtual environment. You can execute `deactivate` to exit the environment and return to a normal shell.
 
 - Configure ssh private/public key
   - If you do not have an ssh public/private key pair configured in ~/.ssh/ directory, generate a new pair using the command `ssh-keygen` 
@@ -97,7 +96,7 @@
       ```
       then reboot.
 
-#### Linux Rocky
+#### Rocky Linux
 - Install Python 3.11 (or newer) and pip
   ```bash
   sudo dnf install -y python3 python3-pip
@@ -250,5 +249,5 @@
     Not compatible with Windows
 
 - On Linux WSL 2
-  - Follow the Tectonic installation guides for Linux Ubuntu/RHEL until the step where the ssh key is generated
+  - Follow the Tectonic installation guides for Ubuntu/RHEL Linux until the step where the ssh key is generated
   - If you want to use AWS then also apply the configurations detailed in the installation guide
