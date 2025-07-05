@@ -18,12 +18,10 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-# Enable this to use local files as backend
-terraform {
-  backend "local" {}
-}
+ terraform {
+   backend "local" {}
+ }
 
-# Enable this to use gitlab as backend
-# terraform {
-#   backend "http" {}
-# }
+#terraform {
+#  backend "http" {}
+#}

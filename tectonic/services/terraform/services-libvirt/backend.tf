@@ -25,5 +25,5 @@ terraform {
 
 # Enable this to use gitlab as backend
 # terraform {
-#   backend "http" {}
+#  backend "http" {}
 # }
