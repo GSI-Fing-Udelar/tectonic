@@ -799,7 +799,7 @@ class TrafficRule():
 
     @protocol.setter
     def protocol(self, value):
-        validate.supported_value("default_os", value, ["tcp", "udp", "icmp"])
+        validate.supported_value("default_os", value, ["tcp", "udp", "icmp", "-1"])
         self._protocol = value
 
     @network_cidr.setter
@@ -1443,4 +1443,7 @@ class Description:
                     traffic_rule = TrafficRule(f"rule-{interface.name}", instance, f"All traffic in subnetwork {interface.network.name}", "ingress")
                     traffic_rule.network_cidr = f"{interface.network.ip_network}"
                     traffic_rule.interface_name = interface.name
+                    traffic_rule.protocol = "-1"
+                    traffic_rule.from_port = 0
+                    traffic_rule.to_port = 0
                     interface._add_traffic_rule(traffic_rule)
