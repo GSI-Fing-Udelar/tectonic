@@ -1,0 +1,13 @@
+---
+base_lab: traffic_rules
+institution: gguerrero
+lab_edition_name: traffic_rules
+instance_number: 2
+teacher_pubkey_dir: ./teacher_pubkeys
+student_prefix: trainee
+student_pubkey_dir: ./student_pubkeys
+create_students_passwords: true
+random_seed: Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941
+
+caldera_settings:
+  enable: yes

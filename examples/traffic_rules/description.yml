@@ -1,0 +1,64 @@
+---
+institution: udelar
+lab_name: traffic_rules
+default_os: ubuntu22
+
+guest_settings:
+  machine1:
+    entry_point: yes
+    memory: 512
+    cpu: 1
+    disk: 10
+    red_team_agent: yes
+  machine2:
+    memory: 512
+    cpu: 1
+    disk: 10
+    internet_access: yes
+    red_team_agent: yes
+
+topology:
+  - name: net1
+    members:
+      - machine1
+  - name: net2
+    members:
+      - machine2
+  - name: net3
+    members:
+      - machine2
+
+traffic_rules: #Si no pongo esta sección se permite todo el tráfico en la subredes como ya está hoy
+  - name: rule1
+    description: Allow all traffic from machine1.net1 to machine2.net2 port 80
+    source: machine1.net1 #Especifico la máquina y la red
+    destination: machine2.net2 #Si la máquina está en más de una red puedo especificar la red
+    port_range: 80
+    protocol: tcp #Puede ser tcp, udp, icmp. Si no pongo nada es tcp
+  - name: rule2
+    description: Allow all traffic from machine1.net1 to machine2.net2 port 80
+    source: machine1.net1 #Especifico la máquina y la red
+    destination: machine2.net2 #Si la máquina está en más de una red puedo especificar la red
+    port_range: 82
+    protocol: tcp
+  - name: rule3
+    description: Allow all traffic from machine1.net1 to machine2.net3 port 8080-8082
+    source: machine1.net1 #Especifico la máquina y la red
+    destination: machine2.net3 #Si la máquina está en más de una red puedo especificar la red
+    port_range: 8080-8082
+    protocol: tcp
+  - name: rule4
+    description: Allow icmp traffic from machine2.net2 to machine1.net1
+    source: machine2.net2 
+    destination: machine1.net1
+    protocol: icmp
+  - name: rule5
+    description: Allow all tcp traffic from net2 to machine1.net1
+    source: net2 #Source puede ser toda una red o la interfaz de una máquina
+    destination: machine1.net1
+    protocol: tcp
+
+caldera_settings:
+  enable: yes
+
+

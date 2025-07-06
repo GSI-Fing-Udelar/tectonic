@@ -1,0 +1,50 @@
+- name: Install machine1
+  hosts: machine1
+  tasks:
+    - name: Update repos
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install tools
+      ansible.builtin.package:
+        state: present
+        name:
+          - netcat-traditional
+          - net-tools
+          - tcpdump
+          - nmap
+          - iputils-ping
+
+- name: Install machine2
+  hosts: machine2
+  tasks:
+    - name: Update repos
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install tools
+      ansible.builtin.package:
+        state: present
+        name:
+          - netcat-traditional
+          - net-tools
+          - tcpdump
+          - nmap
+          - iputils-ping
+
+- name: Install machine3
+  hosts: machine3
+  tasks:
+    - name: Update repos
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install tools
+      ansible.builtin.package:
+        state: present
+        name:
+          - netcat-traditional
+          - net-tools
+          - tcpdump
+          - nmap
+          - iputils-ping
