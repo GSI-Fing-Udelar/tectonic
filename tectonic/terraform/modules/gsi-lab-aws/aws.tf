@@ -212,10 +212,10 @@ resource "aws_security_group" "internet_access_sg" {
   }
 }
 
-resource "aws_security_group" "subnet_sg" {
-  description = "[Machines] Allow all traffic within the subnet. Drop everything else."
+resource "aws_security_group" "interface_traffic" {
+  for_each = local.network_interfaces
 
-  for_each = local.subnetworks
+  description = "Traffic to interface ${each.key}"
   vpc_id   = module.vpc.vpc_id
 
   ingress {
@@ -232,19 +232,27 @@ resource "aws_security_group" "subnet_sg" {
     protocol        = "tcp"
     security_groups = [aws_security_group.teacher_access_sg.id]
   }
-  ingress {
-    description = "Allow inbound traffic from all instance subnets."
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [lookup(each.value, "ip_network")]
+
+  dynamic "ingress" {
+    for_each = lookup(each.value, "traffic_rules")
+    content {
+      description = ingress.value.description
+      from_port   = ingress.value.from_port
+      to_port     = ingress.value.to_port
+      protocol    = ingress.value.protocol
+      cidr_blocks = [ingress.value.network_cidr]
+    }
   }
-  egress {
-    description = "Allow outbound traffic to all instance subnets."
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [lookup(each.value, "ip_network")]
+
+  dynamic "egress" {
+    for_each = [for subnetwork in local.subnetworks : subnetwork if subnetwork.instance == lookup(each.value, "instance")]
+    content {
+      description = "Allow all outbound traffic to all instance subnetworks."
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = [ egress.value.ip_network ]
+    }
   }
 
   tags = {
@@ -327,7 +335,7 @@ resource "aws_network_interface" "interfaces" {
 
   source_dest_check = false
 
-  security_groups = concat([aws_security_group.subnet_sg[each.value.subnetwork_name].id],
+  security_groups = concat([aws_security_group.interface_traffic[each.key].id],
     local.guest_data[each.value.guest_name].entry_point ? [aws_security_group.entry_point_sg.id] : [],
     local.guest_data[each.value.guest_name].base_os == "windows_srv_2022" && local.guest_data[each.value.guest_name].entry_point ? [aws_security_group.windows_entry_point_sg.id] : [],
     local.guest_data[each.value.guest_name].internet_access ? [aws_security_group.internet_access_sg[0].id] : [],
