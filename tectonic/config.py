@@ -55,6 +55,7 @@ class TectonicConfig(object):
         self.gitlab_backend_username = None
         self.gitlab_backend_access_token = None
         self.packer_executable_path = "packer"
+        self.routing = False
 
         self._ansible = TectonicConfigAnsible()
         self._aws = TectonicConfigAWS()
@@ -121,6 +122,9 @@ class TectonicConfig(object):
     def packer_executable_path(self):
         return self._packer_executable_path
 
+    @property
+    def routing(self):
+        return self._routing
 
     @property
     def ansible(self):
@@ -220,6 +224,10 @@ class TectonicConfig(object):
         # validate.path_to_file("packer_executable_path", value)
         self._packer_executable_path = value
 
+    @routing.setter
+    def routing(self, value):
+        validate.boolean("routing", value)
+        self._routing = value
 
     @classmethod
     def _assign_attribute(cls, config_obj, config_parser, key):

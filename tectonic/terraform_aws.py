@@ -19,6 +19,7 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 from tectonic.terraform import Terraform
+import json
 
 class TerraformAWSException(Exception):
     pass
@@ -302,11 +303,12 @@ class TerraformAWS(Terraform):
         result["entry_point"] = guest.entry_point
         result["instance_type"] = guest.instance_type
         result["internet_access"] = guest.internet_access
+        result["instance"] = guest.instance
         return result
 
     def _get_network_interface_variables(self, interface):
         """
-        Return netowkr interface variables for terraform.
+        Return network interface variables for terraform.
 
         Parameters:
           interface (NetworkInterface): interface to get variables.
@@ -318,4 +320,25 @@ class TerraformAWS(Terraform):
         result["network_name"] = interface.network.name
         result["guest_name"] = interface.guest_name
         result["index"] = interface.index
+        result["traffic_rules"] = [self._get_traffic_rules(rule) for rule in interface.traffic_rules]
+        result["instance"] = interface.network.instance
+        return result
+    
+    def _get_traffic_rules(self, traffic_rule):
+        """
+        Return rule of security group for terraform.
+
+        Parameters:
+          fw_rule (TrafficRule): traffic rule to get variables.
+
+        Returns:
+          dict: variables.
+        """
+        result = {}
+        result["name"] = traffic_rule.name
+        result["description"] = traffic_rule.description
+        result["network_cidr"] = traffic_rule.network_cidr
+        result["from_port"] = traffic_rule.from_port
+        result["to_port"] = traffic_rule.to_port
+        result["protocol"] = traffic_rule.protocol
         return result
