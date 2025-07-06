@@ -22,6 +22,7 @@ main `config` section and special sections for different platforms
 * `debug`: Show debug messages during execution (also shows stack
   trace on error). Default: `yes`.
 * `proxy`: Proxy URL. Default: "" (empty).
+* `routing`: Enable routing and the use of traffic filtering rules to specify more complex scenarios. Currently only available on AWS. Default: `no`.
 
 ### [ansible] section:
 * `ssh_common_args`: SSH arguments for ansible connetion. Proxy Jump configuration through bastion hosts is added automatically by Tectonic. Default: `-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 `.
