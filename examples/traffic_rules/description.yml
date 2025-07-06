@@ -14,7 +14,7 @@ guest_settings:
     memory: 512
     cpu: 1
     disk: 10
-    internet_access: yes
+    internet_access: no
     red_team_agent: yes
 
 topology:
@@ -59,6 +59,6 @@ traffic_rules: #Si no pongo esta sección se permite todo el tráfico en la subr
     protocol: tcp
 
 caldera_settings:
-  enable: yes
+  enable: no
 
 
