@@ -152,16 +152,22 @@ class TerraformAWS(Terraform):
           list(str): resources name of the aws_security_group for the instances.
         """
         resources = []
-        for instance in filter(
-            lambda i: i <= self.description.instance_number,
-            instances or range(1, self.description.instance_number + 1),
-        ):
-            for network in self.description.topology.keys():
-                resources.append(
-                    'aws_security_group.subnet_sg["'
-                    f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network}"
-                    '"]'
-                )
+        instances = instances or range(1, self.description.instance_number + 1)
+        for _, guest in self.description.scenario_guests.items():
+            if guest.instance in instances:
+                for _, interface in guest.interfaces.items():
+                    resources.append(
+                        'aws_security_group.interface_traffic["'
+                        f"{interface.name}"
+                        '"]'
+                    )
+            # for network in self.description.topology.keys():
+            #     resources.append(
+            #         'aws_security_group.interface_traffic["'
+            #         f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network}"
+            #         '"]'
+            #     )
+        print(resources)
         return resources
 
     def _get_subnet_resources_name(self, instances):
