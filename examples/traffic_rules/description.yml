@@ -34,7 +34,7 @@ traffic_rules: #Si no pongo esta sección se permite todo el tráfico en la subr
     source: machine1.net1 #Especifico la máquina y la red
     destination: machine2.net2 #Si la máquina está en más de una red puedo especificar la red
     port_range: 80
-    protocol: tcp #Puede ser tcp, udp, icmp. Si no pongo nada es tcp
+    protocol: tcp #Puede ser tcp, udp, icmp, all. Si no pongo nada es all
   - name: rule2
     description: Allow all traffic from machine1.net1 to machine2.net2 port 80
     source: machine1.net1 #Especifico la máquina y la red
@@ -53,10 +53,9 @@ traffic_rules: #Si no pongo esta sección se permite todo el tráfico en la subr
     destination: machine1.net1
     protocol: icmp
   - name: rule5
-    description: Allow all tcp traffic from net2 to machine1.net1
+    description: Allow all traffic from net2 to machine1.net1
     source: net2 #Source puede ser toda una red o la interfaz de una máquina
     destination: machine1.net1
-    protocol: tcp
 
 caldera_settings:
   enable: no

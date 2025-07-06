@@ -239,7 +239,7 @@ resource "aws_security_group" "interface_traffic" {
       description = ingress.value.description
       from_port   = ingress.value.from_port
       to_port     = ingress.value.to_port
-      protocol    = ingress.value.protocol
+      protocol    = ingress.value.protocol == "all" ? "-1" : ingress.value.protocol
       cidr_blocks = [ingress.value.network_cidr]
     }
   }
