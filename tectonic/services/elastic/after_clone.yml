@@ -522,8 +522,8 @@
     ansible.builtin.template:
       src: templates/check-fleet.j2
       dest: /tmp/check-fleet.sh
-  - name: Run check-fleet script
-    ansible.builtin.shell: sh /tmp/check-fleet.sh
+  # - name: Run check-fleet script
+  #   ansible.builtin.shell: sh /tmp/check-fleet.sh
 
 - name: Cleanup
   block:

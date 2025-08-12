@@ -102,19 +102,19 @@ class Deployment:
         tf_mod_name = os.path.basename(os.path.normpath(terraform_dir))
         address = f"{self.gitlab_backend_url}/{self.description.institution}-{self.description.lab_name}-{tf_mod_name}"
 
-        return [
-            f"path=terraform-states/{self.description.institution}-{self.description.lab_name}-{tf_mod_name}"
-        ]
         # return [
-        #     f"address={address}",
-        #     f"lock_address={address}/lock",
-        #     f"unlock_address={address}/lock",
-        #     f"username={self.gitlab_backend_username}",
-        #     f"password={self.gitlab_backend_access_token}",
-        #     "lock_method=POST",
-        #     "unlock_method=DELETE",
-        #     "retry_wait_min=5",
+        #     f"path=terraform-states/{self.description.institution}-{self.description.lab_name}-{tf_mod_name}"
         # ]
+        return [
+            f"address={address}",
+            f"lock_address={address}/lock",
+            f"unlock_address={address}/lock",
+            f"username={self.gitlab_backend_username}",
+            f"password={self.gitlab_backend_access_token}",
+            "lock_method=POST",
+            "unlock_method=DELETE",
+            "retry_wait_min=5",
+        ]
 
     def terraform_apply(self, terraform_dir, variables, resources=None):
         """
