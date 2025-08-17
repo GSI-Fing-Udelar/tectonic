@@ -42,7 +42,7 @@ certifi = "*"
 cffi = "*"
 charset-normalizer = "*"
 click = "*"
-cryptography= "44.0.1"
+cryptography= "44.0.3"
 decorator = "*"
 deprecated = "*"
 fabric = "*"
@@ -56,7 +56,7 @@ pynacl = "*"
 python-dateutil = "*"
 python-terraform = "*"
 pyyaml = "*"
-requests = "2.31.0" #https://github.com/ansible-collections/community.docker/issues/868
+requests = "2.32.4" #https://github.com/ansible-collections/community.docker/issues/868
 requests-toolbelt = "*"
 s3transfer = "*"
 six = "*"
@@ -75,16 +75,16 @@ docker = "*"
 pyopenssl = ">=24.3"
 
 [tool.poetry.dev-dependencies]
-pytest = "8.3.4"
-pytest-cov = "6.0.0"
-pytest-mock = "3.14.0"
+pytest = "8.4.1"
+pytest-cov = "6.2.1"
+pytest-mock = "3.14.1"
 pytest-env = "1.1.5"
 fabric = { version = "3.2.2", extras = ["pytest"] }
-pylint = "3.3.4"
+pylint = "3.3.8"
 black = "24.10.0"
 moto = { version = "4.2.14", extras = ["ec2"] }
-responses = "0.25.6"
-freezegun = "1.5.1"
+responses = "0.25.8"
+freezegun = "1.5.5"
 
 [tool.semantic_release]
 version_variable = "pyproject.toml:version"

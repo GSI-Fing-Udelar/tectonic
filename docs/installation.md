@@ -11,40 +11,29 @@
 
 ### Instructions
 
-#### Linux Ubuntu
-- Install Python 3.10 (or newer) and pip
+#### Ubuntu Linux
+- Install Python 3.10 (or newer) and other dependencies:
   ```bash
-  sudo apt-get install -y python3 python3-pip
+  sudo apt install -y python3 python3-pip python3-venv python3-dev build-essential pkg-config libvirt-dev
   ```
 
-- Install packages needed to build Tectonic
-  ```bash
-  sudo apt-get install -y build-essential pkg-config libvirt-dev python3-dev
-  ```
 - Install IaC tools:
-  - Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
+  - Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli) and [Packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli)
     ```bash
-    sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
+    sudo apt update && sudo apt install -y gnupg software-properties-common
     wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
     echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
     sudo apt update
-    sudo apt-get install -y terraform
+    sudo apt install -y terraform packer
     ```
-
-  - Install [Packer](https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli)
-    ```bash
-    sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
-    wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
-    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-    sudo apt update
-    sudo apt-get install -y packer
-    ```
-    Note: steps 1-4 should not be necessary since the Hashicorp repository should already be set up if you installed Terraform following the instructions. 
-
-- Install Tectonic Python package:
+    
+- Install Tectonic Python package in a python virtual environment:
   ```bash
+  python3 -m venv ~/.tectonic
+  source ~/.tectonic/bin/activate
   python3 -m pip install tectonic-cyberrange
   ```
+  * Each time you login, you should execute `source ~/.tectonic/bin/activate` to enter the tectonic virtual environment. You can execute `deactivate` to exit the environment and return to a normal shell.
 
 - Configure ssh private/public key
   - If you do not have an ssh public/private key pair configured in ~/.ssh/ directory, generate a new pair using the command `ssh-keygen` 
@@ -53,13 +42,14 @@
   - Docker:
     - Install docker following [instructions](https://docs.docker.com/engine/install/)
     ```bash
-    sudo apt-get install -y ca-certificates curl
+    sudo apt install -y ca-certificates curl
     sudo install -m 0755 -d /etc/apt/keyrings
     sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
     sudo chmod a+r /etc/apt/keyrings/docker.asc
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo apt-get update
-    sudo apt-get install -y docker-ce docker-ce-cli
+    sudo apt update
+    sudo apt install -y docker-ce docker-ce-cli
+    sudo usermod -a -G docker <current_user>
     ```
 
   - AWS:
@@ -78,19 +68,25 @@
       ```
 
   - Libvirt:
-    - Install libvirt following your distribution specific instructions.
+    - Install libvirt and all dependencies:
     ```bash
-    sudo apt-get install -y qemu-kvm libvirt-daemon-system
+    sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients xsltproc bridge-utils xorriso genisoimage
     ```
-    - Create a volume pool to use in the cyberrange. For example, a dir backed pool named "tectonic":
+    - Add current user to the libvirt group
       ```bash
+      sudo usermod -a -G libvirt <current_user>
+      ```
+    - Create the `libvirt_storage_pool` volume pool to use in the cyberrange. For example, a dir backed pool named "tectonic":
+      ```bash
+        sudo mkdir -p <directory>
+        sudo chmod 0775 <directory>
+        sudo chgrp libvirt <directory>
         virsh -c qemu:///system pool-create-as tectonic dir --target=<directory>
       ```
-      * Set the `libvirt_storage_pool` ini config file parameter to this pool name)
-    - Create a bridge named as the `libvirt_bridge` ini file parameter:
+    - Create a bridge named as the `libvirt_bridge` ini file parameter ("tectonic" by default):
       ```bash
-      nmcli con add type bridge ifname <libvirt_bridge>
-      nmcli con up bridge-<libvirt_bridge>
+      nmcli con add type bridge ifname tectonic
+      nmcli con up bridge-tectonic
       ```
       * This bridge should connect to an external network for student entry point access.
       * It is ok to have a dummy empty bridge for testing.
@@ -98,8 +94,13 @@
       ```bash
       sudo apt-get install xsltproc mkisofs
       ```
+    - It might be necessary to modify the AppArmor configuration. If you have "permission denied" problems, try disabling it:
+      ```bash
+      sudo systemctl disable --now apparmor
+      ```
+      then reboot.
 
-#### Linux Rocky
+#### Rocky Linux
 - Install Python 3.11 (or newer) and pip
   ```bash
   sudo dnf install -y python3 python3-pip
@@ -252,5 +253,10 @@
     - You can run libvirt on a Linux VM in WSL 2 if you have neested virtualization enabled. Configurations are applied within the Linux installed on WSL
 
 - On Linux WSL 2
+<<<<<<< HEAD
   - Follow the Tectonic installation guides for Linux Ubuntu/RHEL until the step where the ssh key is generated
   - If you want to use AWS or Libvirt then also apply the configurations detailed in the installation guide
+=======
+  - Follow the Tectonic installation guides for Ubuntu/RHEL Linux until the step where the ssh key is generated
+  - If you want to use AWS then also apply the configurations detailed in the installation guide
+>>>>>>> main
