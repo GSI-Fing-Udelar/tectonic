@@ -18,13 +18,13 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-from prettytable import PrettyTable, SINGLE_BORDER
+from prettytable import PrettyTable, TableStyle
 from os import listdir
 from os.path import isfile, join, isdir
 
 def create_table(headers, rows):
     table = PrettyTable()
-    table.set_style(SINGLE_BORDER)
+    table.set_style(TableStyle.SINGLE_BORDER)
     table.field_names = headers
     table.add_rows(rows)
     return table

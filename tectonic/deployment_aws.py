@@ -27,6 +27,7 @@ import math
 from tectonic.aws import Client
 from tectonic.constants import *
 from tectonic.deployment import Deployment
+from tectonic.deployment_mixins import CyberRangeDataMixin, ImageManagementMixin
 from tectonic.ssh import interactive_shell
 from tectonic.utils import create_table
 from tectonic.ansible import Ansible
@@ -39,7 +40,7 @@ class DeploymentAWSException(Exception):
     pass
 
 
-class AWSDeployment(Deployment):
+class AWSDeployment(Deployment, CyberRangeDataMixin, ImageManagementMixin):
     """Deployment class for AWS."""
 
     EIC_ENDPOINT_SSH_PROXY = "aws ec2-instance-connect open-tunnel --instance-id %h"
@@ -88,15 +89,8 @@ class AWSDeployment(Deployment):
         }
 
     def delete_cr_images(self, guests=None):
-        guests = guests or self.description.guest_settings.keys()
-        for guest_name in guests:
-            image_name = self.description.get_image_name(guest_name)
-            if self.client.is_image_in_use(image_name):
-                raise DeploymentAWSException(
-                    f"Unable to delete image {image_name} because it is being used."
-                )
-        for guest_name in guests:
-            self.client.delete_image(self.description.get_image_name(guest_name))
+        image_names = self._get_guest_image_names(guests)
+        self._delete_images_safely(image_names, DeploymentAWSException)
 
     def get_instance_status(self, machine):
         """Returns a dictionary with the instance status of machine ID."""
@@ -104,34 +98,7 @@ class AWSDeployment(Deployment):
 
     def get_cyberrange_data(self):
         """Get information about cyber range"""
-        headers = ["Name", "Value"]
-        rows = []
-        if self.description.is_student_access():
-            rows.append(["Student Access IP", self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-student_access")])
-        if self.description.teacher_access == "host":
-            rows.append(["Teacher Access IP", self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-teacher_access")])
-        if len(self.description.get_services_to_deploy()) > 0:
-            rows.append(["",""])
-            if self.description.deploy_elastic:
-                if self.get_instance_status(self.description.get_service_name("elastic")) == "RUNNING":
-                    elastic_ip = self.get_ssh_hostname(self.description.get_service_name("elastic"))
-                    elastic_credentials = self._get_service_password("elastic")
-                    rows.append(["Kibana URL", f"https://{elastic_ip}:5601"])
-                    rows.append(["Kibana user (username: password)", f"elastic: {elastic_credentials['elastic']}"])
-                    if self.description.deploy_caldera:
-                        rows.append(["",""])
-                else:
-                    return "Unable to get Elastic info right now. Please make sure de Elastic machine is running."
-            if self.description.deploy_caldera:
-                if self.get_instance_status(self.description.get_service_name("caldera")) == "RUNNING":
-                    caldera_ip = self.get_ssh_hostname(self.description.get_service_name("caldera"))
-                    caldera_credentials = self._get_service_password("caldera")
-                    rows.append(["Caldera URL", f"https://{caldera_ip}:8443"])
-                    rows.append(["Caldera user (username: password)", f"red: {caldera_credentials['red']}"])
-                    rows.append(["Caldera user (username: password)", f"blue: {caldera_credentials['blue']}"])
-                else:
-                    return "Unable to get Caldera info right now. Please make sure de Caldera machine is running."
-        return create_table(headers,rows)
+        return self._build_cyberrange_data_table()
 
     def connect_to_instance(self, instance_name, username):
         if instance_name == self.description.get_teacher_access_name():

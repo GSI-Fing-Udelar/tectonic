@@ -28,6 +28,7 @@ import math
 from tectonic.deployment import Deployment, DeploymentException
 from tectonic.docker_client import Client
 from tectonic.constants import OS_DATA
+from tectonic.deployment_mixins import CyberRangeDataMixin, ImageManagementMixin
 from tectonic.utils import create_table
 from tectonic.ansible import Ansible
 
@@ -38,7 +39,7 @@ import importlib.resources as tectonic_resources
 class DeploymentDockerException(DeploymentException):
     pass
 
-class DockerDeployment(Deployment):
+class DockerDeployment(Deployment, CyberRangeDataMixin, ImageManagementMixin):
 
     def __init__(
         self,
@@ -91,16 +92,11 @@ class DockerDeployment(Deployment):
         """
         Delete guests base image.
         """
-        guests = guests or self.description.guest_settings.keys()
-        for guest_name in guests:
-            try: 
-                image_name = self.description.get_image_name(guest_name)
-                if self.client.get_image(image_name) is not None: 
-                    if self.client.is_image_in_use(image_name):
-                        raise DeploymentDockerException(f"Unable to delete image {image_name} because it is being used.")
-                    self.client.delete_image(self.description.get_image_name(guest_name))
-            except Exception as exception:
-                raise DeploymentDockerException(f"{exception}")
+        try:
+            image_names = self._get_guest_image_names(guests)
+            self._delete_images_safely(image_names, DeploymentDockerException)
+        except Exception as exception:
+            raise DeploymentDockerException(f"{exception}")
             
     def delete_services_images(self, services):
         """
@@ -216,33 +212,7 @@ class DockerDeployment(Deployment):
     def get_cyberrange_data(self):
         """Get information about cyber range"""
         try:
-            if len(self.description.get_services_to_deploy()) > 0:
-                headers = ["Name", "Value"]
-                rows = []
-                if self.description.deploy_elastic:
-                    elastic_name = self.description.get_service_name("elastic")
-                    if self.get_instance_status(elastic_name) == "RUNNING":
-                        elastic_credentials = self._get_service_password("elastic")
-                        #elastic_ip = self.get_ssh_hostname(elastic_name)
-                        elastic_ip = "127.0.0.1"
-                        rows.append(["Kibana URL", f"https://{elastic_ip}:5601"])
-                        rows.append(["Kibana user (username: password)", f"elastic: {elastic_credentials['elastic']}"])
-                        if self.description.deploy_caldera:
-                            rows.append(["",""])
-                    else:
-                        return "Unable to get Elastic info right now. Please make sure de Elastic machine is running."
-                if self.description.deploy_caldera:
-                    caldera_name = self.description.get_service_name("caldera")
-                    if self.get_instance_status(caldera_name) == "RUNNING":
-                        caldera_credentials = self._get_service_password("caldera")
-                        #caldera_ip = self.get_ssh_hostname(caldera_name)
-                        caldera_ip = "127.0.0.1"
-                        rows.append(["Caldera URL", f"https://{caldera_ip}:8443"])
-                        rows.append(["Caldera user (username: password)", f"red: {caldera_credentials['red']}"])
-                        rows.append(["Caldera user (username: password)", f"blue: {caldera_credentials['blue']}"])
-                    else:
-                        return "Unable to get Caldera info right now. Please make sure de Caldera machine is running."
-                return create_table(headers,rows)
+            return self._build_cyberrange_data_table()
         except Exception as exception:
             raise DeploymentDockerException(f"{exception}")
         
