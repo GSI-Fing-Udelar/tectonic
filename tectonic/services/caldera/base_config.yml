@@ -55,28 +55,28 @@
         version: "{{ caldera_version }}"
         recursive: true
 
-    - name: Install Caldera OT plugins
-      block:
-        - name: Download Caldera OT plugins
-          ansible.builtin.git:
-            repo: https://github.com/mitre/caldera-ot.git
-            dest: /tmp/caldera_ot/
-            version: main
-            recursive: true
-        - name: Get Caldera OT plugins
-          ansible.builtin.find:
-            paths: /tmp/caldera_ot/
-            recurse: no
-            file_type: directory
-          register: caldera_ot_plugins
-        - name: Install Caldera OT plugins
-          ansible.builtin.command: "mv {{ item['path'] }} /opt/caldera/plugins/"
-          loop: "{{ caldera_ot_plugins['files'] }}"
-          when: item['path'] != "/tmp/caldera_ot/ot-one-pagers"
-        - name: Remove tmp files
-          ansible.builtin.file:
-            path: /tmp/caldera_ot/
-            state: absent
+    # - name: Install Caldera OT plugins
+    #   block:
+    #     - name: Download Caldera OT plugins
+    #       ansible.builtin.git:
+    #         repo: https://github.com/mitre/caldera-ot.git
+    #         dest: /tmp/caldera_ot/
+    #         version: main
+    #         recursive: true
+    #     - name: Get Caldera OT plugins
+    #       ansible.builtin.find:
+    #         paths: /tmp/caldera_ot/
+    #         recurse: no
+    #         file_type: directory
+    #       register: caldera_ot_plugins
+    #     - name: Install Caldera OT plugins
+    #       ansible.builtin.command: "mv {{ item['path'] }} /opt/caldera/plugins/"
+    #       loop: "{{ caldera_ot_plugins['files'] }}"
+    #       when: item['path'] != "/tmp/caldera_ot/ot-one-pagers"
+    #     - name: Remove tmp files
+    #       ansible.builtin.file:
+    #         path: /tmp/caldera_ot/
+    #         state: absent
 
     - name: Install Caldera requirements
       ansible.builtin.command: python3.9 -m pip install -r /opt/caldera/requirements.txt
