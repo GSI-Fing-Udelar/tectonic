@@ -20,19 +20,21 @@
 
 import pytest
 
+from pathlib import Path
+
 from tectonic.description import DescriptionException, Description
 from tectonic.config import TectonicConfig
 from tectonic.instance_type import InstanceType
 from tectonic.instance_type_aws import InstanceTypeAWS
 
 
-def test_description():
-    config = TectonicConfig.load("./tectonic.ini")
+def test_description(labs_path, tectonic_config):
+    config = TectonicConfig.load(tectonic_config)
     if config.platform == "aws":
         instance_type = InstanceTypeAWS()
     else:
         instance_type = InstanceType()
-    description = Description(config, instance_type, config.tectonic_dir+"/examples/password_cracking.yml")
+    description = Description(config, instance_type, Path(labs_path) / "test.yml")
 
 
 
@@ -201,6 +203,8 @@ def test_parse_machines(description):
     description.caldera.enable = False
     machine_list = description.parse_machines(only_instances=False)
     expected_machines = [
+        'udelar-lab01-elastic',
+        'udelar-lab01-caldera',
         'udelar-lab01-1-attacker',
         'udelar-lab01-1-victim-1',
         'udelar-lab01-1-victim-2',
@@ -211,7 +215,9 @@ def test_parse_machines(description):
         'udelar-lab01-2-server',
     ]
     if description.config.platform == "aws":
-        expected_machines += ['udelar-lab01-student_access']
+        expected_machines += ['udelar-lab01-student_access',
+                              'udelar-lab01-teacher_access'
+                              ]
     assert set(machine_list) == set(expected_machines)
 
     description.config.aws.teacher_access = "host"

@@ -51,11 +51,11 @@ class Core:
     ANSIBLE_SERVICE_PLAYBOOK = tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'
     ANSIBLE_TRAINEES_PLAYBOOK = tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'
 
-    def __init__(self, config, description):
+    def __init__(self, description):
         """
         Initialize the core object.
         """
-        self.config = config
+        self.config = description.config
         self.description = description
 
         if self.config.platform == "aws":

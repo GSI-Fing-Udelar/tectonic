@@ -353,7 +353,7 @@ def tectonic(
     else:
         instance_type = InstanceType()
     ctx.obj["description"] = Description(config, instance_type, lab_edition_file)
-    ctx.obj["core"] = Core(ctx.obj["config"], ctx.obj["description"])
+    ctx.obj["core"] = Core(ctx.obj["description"])
 
 @tectonic.command()
 @click.pass_context

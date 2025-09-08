@@ -26,11 +26,11 @@ from tectonic.core import *
 from tectonic.instance_type import InstanceType
 from tectonic.instance_type_aws import InstanceTypeAWS
 
-def test_core():
-    config = TectonicConfig.load("./tectonic.ini")
-    if config.platform == "aws":
-        instance_type = InstanceTypeAWS()
-    else:
-        instance_type = InstanceType()
-    description = Description(config, instance_type, "./examples/password_cracking.yml")
-    core = Core(config, description)
+from tectonic.client_docker import ClientDocker
+
+def test_core(monkeypatch, docker_client, description):
+    def patch_docker_client(self, config, description):
+        self.connection = docker_client
+        self.description = description
+    monkeypatch.setattr(ClientDocker, "__init__", patch_docker_client)
+    core = Core(description)
