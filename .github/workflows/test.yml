@@ -33,7 +33,7 @@ jobs:
 
       - name: Create ssh key
         run: |
-          ssh-keygen -t rsa -C test@example.com" -q -N ""
+          ssh-keygen -t rsa -C "test@example.com" -q -N "" -f ~/.ssh/id_rsa
 
       - name: Test with pytest
         run: |
