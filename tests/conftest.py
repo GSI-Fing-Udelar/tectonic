@@ -34,7 +34,7 @@ from tectonic.instance_type import InstanceType
 from tectonic.instance_type_aws import InstanceTypeAWS
 # from tectonic.libvirt_client import Client as LibvirtClient
 # from tectonic.aws import Client as AWSClient
-# from tectonic.docker_client import Client as DockerClient
+from tectonic.client_docker import ClientDocker
 
 from pathlib import Path
 from moto import mock_ec2, mock_secretsmanager
@@ -240,7 +240,7 @@ def test_data_path(base_tests_path):
     return Path(base_tests_path).joinpath("test_data/").absolute().as_posix()
 
 @pytest.fixture(scope="session", params=["aws","libvirt", "docker"])
-def tectonic_config(request, tmp_path_factory, test_data_path):
+def tectonic_config_data(request, tmp_path_factory, test_data_path):
     config_file = tmp_path_factory.mktemp('data') / f"{request.param}-config.ini"
     config_ini = test_config.replace(
         "TEST_DATA_PATH",
@@ -252,6 +252,12 @@ def tectonic_config(request, tmp_path_factory, test_data_path):
     config_file.write_text(config_ini)
     return config_file.resolve().as_posix()
 
+@pytest.fixture(scope="session")
+def tectonic_config(tectonic_config_data):
+    config = TectonicConfig.load(tectonic_config_data)
+
+    yield config
+    
 
 @pytest.fixture(scope="session")
 def labs_path(test_data_path):
@@ -259,12 +265,8 @@ def labs_path(test_data_path):
 
 @pytest.fixture(scope="session")
 def description(tectonic_config, labs_path):
-    config = TectonicConfig.load(tectonic_config)
-    if config.platform == "aws":
-        instance_type = InstanceTypeAWS()
-    else:
-        instance_type = InstanceType()
-    desc = Description(config, instance_type, Path(labs_path) / "test.yml")
+    desc = Description(tectonic_config, Path(labs_path) / "test.yml")
+
     yield desc
 
 @pytest.fixture()
@@ -337,8 +339,11 @@ def aws_client(description, ec2_client, aws_secrets):
     client = AWSClient(description=description, connection=ec2_client, secrets_manager=aws_secrets)
     yield client
 
-@pytest.fixture()
-def docker_client():
+# Automatically use in all tests a mocked instance of the standard
+# docker library DockerClient object inside the
+# tectonic.client_docker.ClientDocker class.
+@pytest.fixture(autouse=True)
+def mock_docker_client(monkeypatch):
     mock_client = MagicMock(docker.DockerClient)
     mock_container_1 = MagicMock()
     mock_container_1.name = "udelar-lab01-1-attacker"
@@ -477,23 +482,28 @@ def docker_client():
         "caldera": MagicMock(id="caldera", tags=["caldera"]),
     }.get(image_id, None)
 
-    yield mock_client
-
-@pytest.fixture()
-def docker_deployment(monkeypatch, description, docker_client):
-    # Fix description platform:
-    description_docker = copy.copy(description)
-    description_docker.platform = "docker"
-    
-    def patch_docker_client(self, description):
-        self.connection = docker_client
+    def patched_init(self, config, description):
+        self.connection = mock_client
+        self.config = config
         self.description = description
-    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
+    monkeypatch.setattr(ClientDocker, "__init__", patched_init)
 
-    d = DockerDeployment(
-        description=description_docker,
-        gitlab_backend_url="https://gitlab.com",
-        gitlab_backend_username="testuser",
-        gitlab_backend_access_token="testtoken",
-    )
-    yield d
+
+# @pytest.fixture()
+# def docker_deployment(monkeypatch, description, docker_client):
+#     # Fix description platform:
+#     description_docker = copy.copy(description)
+#     description_docker.platform = "docker"
+    
+#     def patch_docker_client(self, description):
+#         self.connection = docker_client
+#         self.description = description
+#     monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
+
+#     d = DockerDeployment(
+#         description=description_docker,
+#         gitlab_backend_url="https://gitlab.com",
+#         gitlab_backend_username="testuser",
+#         gitlab_backend_access_token="testtoken",
+#     )
+#     yield d

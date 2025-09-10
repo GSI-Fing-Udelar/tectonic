@@ -1,4 +1,4 @@
-
+#
 # Tectonic - An academic Cyber Range
 # Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
 # Uruguay
@@ -17,14 +17,24 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+---
+teacher_pubkey_dir: ./teacher_pubkeys
+instance_number: 2
 
-import pytest
+create_student_passwords: true
+random_seed: Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941
+student_prefix: student
+student_pubkey_dir: ./student_pubkeys
 
-from tectonic.description import DescriptionException, Description
-from tectonic.config import TectonicConfig
-from tectonic.core import *
-from tectonic.instance_type import InstanceType
-from tectonic.instance_type_aws import InstanceTypeAWS
+elastic_settings:
+  enable: yes
+  vcpu: 8
+  memory: 16384
+  disk: 110
 
-def test_core(description):
-    core = Core(description)
+caldera_settings:
+  enable: yes
+  vcpu: 2
+  memory: 2048
+  disk: 20

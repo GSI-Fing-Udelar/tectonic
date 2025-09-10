@@ -348,11 +348,7 @@ def tectonic(
         config.ansible.timeout = ansible_timeout
 
     ctx.obj["config"] = config
-    if config.platform == "aws":
-        instance_type = InstanceTypeAWS()
-    else:
-        instance_type = InstanceType()
-    ctx.obj["description"] = Description(config, instance_type, lab_edition_file)
+    ctx.obj["description"] = Description(config, lab_edition_file)
     ctx.obj["core"] = Core(ctx.obj["description"])
 
 @tectonic.command()

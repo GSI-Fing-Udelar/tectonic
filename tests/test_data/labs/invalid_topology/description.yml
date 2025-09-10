@@ -1,0 +1,24 @@
+---
+institution: udelar
+lab_name: lab01
+
+guest_settings:
+  attacker:
+  victim:
+  server:
+topology:
+  - name: internal
+    members:
+      - notfound
+      - victim
+      - server
+  - name: dmz
+    members:
+      - server
+
+elastic_settings:
+  enable: yes
+  monitor_type: "endpoint"
+
+caldera_settings:
+  enable: yes
