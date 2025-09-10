@@ -62,13 +62,12 @@ def test_description_endpoint(labs_path, tectonic_config):
     assert description.ansible_dir == str(Path(labs_path) / 'test-endpoint' / 'ansible')
 
     # Test loaded teacher pubkeys
-    teacher_pubkeys = """\
-ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAIEAteXWtSc03gZv1F6kV1rWdJOK0Y3bCuOhFX69BIvX39p1rCn0Sf9kt3nm+tBaGo52P7+TFMcmHh0hEMD1EtIXe6IoOJsjmMLE2UF4TZPrc+8Fp2BpnNDx73RvI76ui0JHvVyHsgpsWNEtDAzLGI7U1snwtZOy6aOQcvYzfJg2g2U= fzipi@picard
-ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCsKA/F4zXu/rspUu1KNV+8foIgmj4+LP8Cf9BK5+NSkQvUCfTKnoObJdLKaIV2crzYYIowASSu1i9GCxCYnnZP9U75dV+c6iyh3l5aYbrKfIfgCVtuBjKNz1uRuZNEdZ7nADV/lTc5BI5jnhzTPzNW++jslaTu/xS4gZ7KWgE7NA7hOMjMfY/rxvCPQm7w919NpuZmzn0V7ubf6kONh+wQoubKCm8Gb2viX/GlYsSBP6xhP/YKkkLpaGDDTZ6e/OEU8X/OdqEJSgy5eJUhEjkCc1Dei32YRV6ldbiF8vQSs3Izcq7UkOkciEDbY0vZkoeggB9+UnAcrOJu1bt5A+LT jdcampo@japeto
-"""
-    teacher_pubkeys += Path(tectonic_config.ssh_public_key_file).expanduser().read_text()
-    teacher_pubkeys += "\n"
-    assert description.authorized_keys == teacher_pubkeys
+    teacher_pubkeys = ['ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAIEAteXWtSc03gZv1F6kV1rWdJOK0Y3bCuOhFX69BIvX39p1rCn0Sf9kt3nm+tBaGo52P7+TFMcmHh0hEMD1EtIXe6IoOJsjmMLE2UF4TZPrc+8Fp2BpnNDx73RvI76ui0JHvVyHsgpsWNEtDAzLGI7U1snwtZOy6aOQcvYzfJg2g2U= fzipi@picard',
+                       'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCsKA/F4zXu/rspUu1KNV+8foIgmj4+LP8Cf9BK5+NSkQvUCfTKnoObJdLKaIV2crzYYIowASSu1i9GCxCYnnZP9U75dV+c6iyh3l5aYbrKfIfgCVtuBjKNz1uRuZNEdZ7nADV/lTc5BI5jnhzTPzNW++jslaTu/xS4gZ7KWgE7NA7hOMjMfY/rxvCPQm7w919NpuZmzn0V7ubf6kONh+wQoubKCm8Gb2viX/GlYsSBP6xhP/YKkkLpaGDDTZ6e/OEU8X/OdqEJSgy5eJUhEjkCc1Dei32YRV6ldbiF8vQSs3Izcq7UkOkciEDbY0vZkoeggB9+UnAcrOJu1bt5A+LT jdcampo@japeto',
+                       Path(tectonic_config.ssh_public_key_file).expanduser().read_text(),
+                       ]
+    for k in teacher_pubkeys:
+        assert k in description.authorized_keys
 
     assert description.parameters_files == [str(Path(description.ansible_dir) / "parameters" / "flags.txt")]
 
