@@ -358,7 +358,7 @@ class BaseGuestDescription(MachineDescription):
         self.load_machine(data)
         self.base_name = data.get("name", self.base_name)
         self.entry_point = data.get("entry_point", self.entry_point)
-        self.os = data.get("os", self.os)
+        self.os = data.get("base_os", self.os)
         self.internet_access = data.get("internet_access", self.internet_access)
         self.copies = data.get("copies", self.copies)
         self.monitor = data.get("monitor", self.monitor)
@@ -832,6 +832,7 @@ class Description:
 
         self._scenario_networks = self._compute_scenario_networks()
         self._scenario_guests = self._compute_scenario_guests()
+        self._services_guests = self._compute_services_guests()
         self._parameters_files = tectonic.utils.list_files_in_directory(Path(self._scenario_dir) / "ansible" / "parameters")
 
         # Load auxiliary networks
@@ -1060,6 +1061,10 @@ class Description:
     @property
     def scenario_guests(self):
         return self._scenario_guests
+
+    @property
+    def services_guests(self):
+        return self._services_guests
 
     @property
     def elastic(self):
