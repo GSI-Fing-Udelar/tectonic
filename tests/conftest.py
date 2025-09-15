@@ -97,6 +97,21 @@ def aws_credentials():
     os.environ["AWS_SESSION_TOKEN"] = "testing"
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
+@pytest.fixture(scope="session")
+def example_institutions():
+    return ["fing", "cyberlac", "udelar"]
+
+@pytest.fixture(scope="session")
+def example_lab_names():
+    return ["lab01", "lab02"]
+
+@pytest.fixture(scope="session")
+def aws_instance_name():
+    return "udelar-lab01-1-attacker"
+
+@pytest.fixture(scope="session")
+def example_image_id():
+    return "ami-03cf127a"
 
 @pytest.fixture(scope="session")
 def ec2_client(aws_credentials, aws_instance_name, example_image_id, example_lab_names,
@@ -187,17 +202,6 @@ def ec2_client(aws_credentials, aws_instance_name, example_image_id, example_lab
                         client.stop_instances(InstanceIds=[instance["InstanceId"]])
         yield client
 
-
-@pytest.fixture(scope="session")
-def example_institutions():
-    return ["fing", "cyberlac", "udelar"]
-
-
-@pytest.fixture(scope="session")
-def example_lab_names():
-    return ["lab01", "lab02"]
-
-
 @pytest.fixture(scope="session")
 def aws_secrets(example_institutions, example_lab_names):
     with mock_secretsmanager():
@@ -207,26 +211,6 @@ def aws_secrets(example_institutions, example_lab_names):
                 sm.create_secret(Name=f"elastic-credentials-{institution}-{lab_name}",
                                  SecretString='{"username": "foo", "password": "bar"}')
         yield sm
-
-
-@pytest.fixture(scope="session")
-def aws_instance_name():
-    return "udelar-lab01-1-attacker"
-
-
-@pytest.fixture(scope="session")
-def unexpected_instance_name():
-    return "udelar-lab99-something"
-
-
-@pytest.fixture(scope="session")
-def example_image_id():
-    return "ami-03cf127a"
-
-@pytest.fixture(scope="session")
-def terraform_dir():
-    return "tests/terraform"
-
 
 @pytest.fixture(scope="session")
 def base_tests_path():
@@ -281,56 +265,13 @@ def mock_aws_client(monkeypatch, aws_secrets, ec2_client, description):
     monkeypatch.setattr(ClientAWS, "__init__", patch_aws_client)
 
 @pytest.fixture(scope="session")
-def libvirt_deployment(description):
-    # Fix description platform:
-    description_libvirt = copy.copy(description)
-    description_libvirt.platform = "libvirt"
-
-    d = LibvirtDeployment(
-        description=description_libvirt,
-        gitlab_backend_url="https://gitlab.com",
-        gitlab_backend_username="testuser",
-        gitlab_backend_access_token="testtoken",
-    )
-    yield d
-
-
-@pytest.fixture(scope="session")
-def ansible_libvirt(libvirt_deployment):
-    a = Ansible(libvirt_deployment)
-    yield a
-
-@pytest.fixture()
-def ansible_aws(aws_deployment):
-    b = Ansible(aws_deployment)
-    yield b
-
-
-@pytest.fixture(scope="session",params=["traffic", "endpoint"])
-def lab_edition_file(request, tmp_path_factory, test_data_path):
-    config_file = tmp_path_factory.mktemp('data') / "lab_edition.yml"
-    config_file.write_text(f"""
----
-base_lab: test-{request.param}
-teacher_pubkey_dir: {test_data_path}/teacher_pubkeys
-instance_number: 1
-
-create_student_passwords: yes
-random_seed: Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941
-
-caldera_settings:
-    enable: no
-""")
-    return config_file.resolve().as_posix()
-
-@pytest.fixture(scope="session")
-def libvirt_client(description):
-    client = LibvirtClient(description)
+def client_libvirt(description):
+    client = ClientLibvirt(description)
     yield client
 
 @pytest.fixture(scope="session")
-def aws_client(description, ec2_client, aws_secrets):
-    client = AWSClient(description=description, connection=ec2_client, secrets_manager=aws_secrets)
+def client_aws(description, ec2_client, aws_secrets):
+    client = ClientAWS(description=description, connection=ec2_client, secrets_manager=aws_secrets)
     yield client
 
 # Automatically use in all tests a mocked instance of the standard
@@ -481,6 +422,25 @@ def mock_docker_client(monkeypatch):
         self.config = config
         self.description = description
     monkeypatch.setattr(ClientDocker, "__init__", patched_init)
+
+
+@pytest.fixture(scope="session")
+def client_docker(description):
+    client = ClientDocker(config=description.config, description=description)
+    yield client
+
+@pytest.fixture(scope="session")
+def backend_client(description, client_aws, client_libvirt, client_docker):
+    if description.config.platform == "aws":
+        yield client_aws
+    elif description.config.platform == "libvirt":
+        yield client_libvirt
+    elif description.config.platform == "docker":
+        yield client_docker
+    else:
+        raise Exception("Unsupported platform")
+
+
 
 
 # @pytest.fixture()

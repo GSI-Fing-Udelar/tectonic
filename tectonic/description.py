@@ -831,8 +831,6 @@ class Description:
             self._topology[network.base_name] = network
 
         self._scenario_networks = self._compute_scenario_networks()
-        self._scenario_guests = self._compute_scenario_guests()
-        self._services_guests = self._compute_services_guests()
         self._parameters_files = tectonic.utils.list_files_in_directory(Path(self._scenario_dir) / "ansible" / "parameters")
 
         # Load auxiliary networks
@@ -869,8 +867,8 @@ class Description:
         Returns:
             list(str): full name of machines.
         """
-        infrastructure_guests = self._compute_extra_guests()
-        infrastructure_guests.update(self._compute_services_guests())
+        infrastructure_guests = self.extra_guests
+        infrastructure_guests.update(self.services_guests)
 
         # Validate filters
         infrastructure_guests_names = []
@@ -1060,11 +1058,59 @@ class Description:
 
     @property
     def scenario_guests(self):
-        return self._scenario_guests
+        """Compute the scenario guest data."""
 
+        guests = {}
+        entry_point_index = 1
+        services_network_index = 1
+        for instance_num in range(1, self.instance_number + 1):
+            for base_name, base_guest in self.base_guests.items():
+                for copy in range(1, base_guest.copies+1):
+                    is_in_services_network = (
+                        self.elastic.enable and self.elastic.monitor_type == "endpoint" and base_guest.monitor
+                    ) or (
+                        self.caldera.enable and (base_guest.red_team_agent or base_guest.blue_team_agent)
+                    )
+                    guest = GuestDescription(self, base_guest, instance_num, copy, is_in_services_network)
+                    guest.entry_point_index = entry_point_index
+                    guest.services_network_index = services_network_index
+                    guest.advanced_options_file = self._get_guest_advanced_options_file(base_name)
+                    guests[guest.name] = guest
+
+                    if base_guest.entry_point:
+                        entry_point_index += 1
+                    if is_in_services_network:
+                        services_network_index += 1
+        return guests
+        
+        
     @property
     def services_guests(self):
-        return self._services_guests
+        """Compute the scenario services data."""
+
+        services = {}
+        if self.elastic.enable:
+            services[self.elastic.name] = self.elastic
+            if self.config.platform == "aws" and self.elastic.monitor_type == "traffic":
+                services[self._packetbeat.name] = self._packetbeat
+        if self.caldera.enable:
+            services[self.caldera.name] = self.caldera
+        return services
+
+    @property
+    def extra_guests(self):
+        """Compute the scenario extra data."""
+
+        extra = {}
+        if self.config.platform == "aws":
+            if self.student_access_required:
+                student_access = ServiceDescription(self, 'student_access', 'ubuntu22')
+                extra[student_access.name] = student_access
+            if self.config.aws.teacher_access == "host":
+                teacher_access = ServiceDescription(self, 'teacher_access', 'ubuntu22')
+                extra[teacher_access.name] = teacher_access
+        return extra
+
 
     @property
     def elastic(self):
@@ -1108,6 +1154,10 @@ class Description:
     def instance_number(self, value):
         validate.number("instance_number", value, min_value=0)
         self._instance_number = value
+
+    @scenario_dir.setter
+    def scenario_dir(self, value):
+        self._scenario_dir = value
 
     @teacher_pubkey_dir.setter
     def teacher_pubkey_dir(self, value):
@@ -1198,55 +1248,6 @@ class Description:
                 scenario_network = ScenarioNetwork(self, network, instance_num, str(instance_subnets[network.index]))
                 networks[scenario_network.name] = scenario_network
         return networks
-
-    def _compute_scenario_guests(self):
-        """Compute the scenario guest data."""
-
-        guests = {}
-        entry_point_index = 1
-        services_network_index = 1
-        for instance_num in range(1, self.instance_number + 1):
-            for base_name, base_guest in self.base_guests.items():
-                for copy in range(1, base_guest.copies+1):
-                    is_in_services_network = (
-                        self.elastic.enable and self.elastic.monitor_type == "endpoint" and base_guest.monitor
-                    ) or (
-                        self.caldera.enable and (base_guest.red_team_agent or base_guest.blue_team_agent)
-                    )
-                    guest = GuestDescription(self, base_guest, instance_num, copy, is_in_services_network)
-                    guest.entry_point_index = entry_point_index
-                    guest.services_network_index = services_network_index
-                    guest.advanced_options_file = self._get_guest_advanced_options_file(base_name)
-                    guests[guest.name] = guest
-
-                    if base_guest.entry_point:
-                        entry_point_index += 1
-                    if is_in_services_network:
-                        services_network_index += 1
-        return guests
-    
-    def _compute_services_guests(self):
-        """Compute the scenario services data."""
-        services = {}
-        if self.elastic.enable:
-            services[self.elastic.name] = self.elastic
-            if self.config.platform == "aws" and self.elastic.monitor_type == "traffic":
-                services[self._packetbeat.name] = self._packetbeat
-        if self.caldera.enable:
-            services[self.caldera.name] = self.caldera
-        return services
-    
-    def _compute_extra_guests(self):
-        """Compute the scenario extra data."""
-        extra = {}
-        if self.config.platform == "aws":
-            if self.student_access_required:
-                student_access = ServiceDescription(self, 'student_access', 'ubuntu22')
-                extra[student_access.name] = student_access
-            if self.config.aws.teacher_access == "host":
-                teacher_access = ServiceDescription(self, 'teacher_access', 'ubuntu22')
-                extra[teacher_access.name] = teacher_access
-        return extra
 
     def _get_guest_advanced_options_file(self, base_name):
         """

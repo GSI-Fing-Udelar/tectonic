@@ -1,5 +1,7 @@
 import pytest
 import re
+import copy
+
 
 from unittest.mock import patch, MagicMock, call, Mock
 import docker
@@ -230,6 +232,8 @@ def test_aws_console_host_and_endpoint(mock_shell, description):
     mock_shell.assert_called_once()
 
 def test_aws_get_ssh_proxy_command(description):
+    description = copy.deepcopy(description)
+
     if description.config.platform != "aws":
         pytest.skip("AWS test")
 
@@ -246,6 +250,8 @@ def test_aws_get_ssh_proxy_command(description):
     assert re.match(f"^ssh.*{user}@{teacher_ip}", s)
 
 def test_aws_get_ssh_hostname_endpoint_vs_host(description):
+    description = copy.deepcopy(description)
+
     if description.config.platform != "aws":
         pytest.skip("AWS test")
 
@@ -260,6 +266,8 @@ def test_aws_get_ssh_hostname_endpoint_vs_host(description):
     assert c.get_ssh_hostname("udelar-lab01-1-attacker") == private_ip
 
 def test_aws_teacher_access_methods(description):
+    description = copy.deepcopy(description)
+
     if description.config.platform != "aws":
         pytest.skip("AWS test")
 
