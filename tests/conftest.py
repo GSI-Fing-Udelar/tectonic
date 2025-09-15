@@ -33,7 +33,7 @@ from tectonic.description import Description
 from tectonic.instance_type import InstanceType
 from tectonic.instance_type_aws import InstanceTypeAWS
 # from tectonic.libvirt_client import Client as LibvirtClient
-# from tectonic.aws import Client as AWSClient
+from tectonic.client_aws import ClientAWS
 from tectonic.client_docker import ClientDocker
 
 from pathlib import Path
@@ -163,6 +163,7 @@ def ec2_client(aws_credentials, aws_instance_name, example_image_id, example_lab
                         image_name = "attacker"
                     tags_name = [{"Key": "Name", "Value": f"{institution}-{lab_name}-{image_name}"}]
                     image = client.create_image(
+                        
                         Name=f"{institution}-{lab_name}-{image_name}",
                         TagSpecifications=[{"ResourceType": "image", "Tags": tags_name}],
                         BlockDeviceMappings=[
@@ -269,22 +270,15 @@ def description(tectonic_config, labs_path):
 
     yield desc
 
-@pytest.fixture()
-def aws_deployment(monkeypatch, description, aws_secrets, ec2_client):
-    def patch_aws_client(self, region):
-        self.ec2_client = ec2_client
+@pytest.fixture(autouse=True)
+def mock_aws_client(monkeypatch, aws_secrets, ec2_client, description):
+    def patch_aws_client(self, config, description):
+        self.connection = ec2_client
         self.secretsmanager_client = aws_secrets
+        self.config = config
+        self.description = description
 
-    monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
-
-    d = AWSDeployment(
-        description=description,
-        gitlab_backend_url="https://gitlab.com",
-        gitlab_backend_username="testuser",
-        gitlab_backend_access_token="testtoken",
-        packer_executable_path="/usr/bin/packer",
-    )
-    yield d
+    monkeypatch.setattr(ClientAWS, "__init__", patch_aws_client)
 
 @pytest.fixture(scope="session")
 def libvirt_deployment(description):

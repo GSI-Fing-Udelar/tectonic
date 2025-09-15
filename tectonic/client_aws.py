@@ -113,19 +113,20 @@ class ClientAWS(Client):
         except Exception as exception:
             raise ClientAWSException(f"{exception}")  
 
-    def delete_security_groups(self, description):
+    def delete_security_groups(self, desc):
         """
         Delete security groups given a description.
 
         Parameters:
-            description (str): description of the security groups to delete.
+            desc (str): description of the security groups to delete.
         """
         try:
-            response = self.connection.describe_security_groups(Filters=[{"Name": "description", "Values": [description]}], DryRun=False)
+            response = self.connection.describe_security_groups(Filters=[{"Name": "description", "Values": [desc]}], DryRun=False)
+            print(response)
             for security_group in response["SecurityGroups"]:
                 self.connection.delete_security_group(GroupId=security_group["GroupId"], DryRun=False)   
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}")  
+        except Exception as e:
+            raise ClientAWSException('Error deleting security groups') from e
         
     def get_machine_status(self, machine_name):
         try:
