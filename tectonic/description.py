@@ -358,7 +358,7 @@ class BaseGuestDescription(MachineDescription):
         self.load_machine(data)
         self.base_name = data.get("name", self.base_name)
         self.entry_point = data.get("entry_point", self.entry_point)
-        self.os = data.get("os", self.os)
+        self.os = data.get("base_os", self.os)
         self.internet_access = data.get("internet_access", self.internet_access)
         self.copies = data.get("copies", self.copies)
         self.monitor = data.get("monitor", self.monitor)
@@ -1110,6 +1110,10 @@ class Description:
                 teacher_access = ServiceDescription(self, 'teacher_access', 'ubuntu22')
                 extra[teacher_access.name] = teacher_access
         return extra
+
+    @property
+    def services_guests(self):
+        return self._services_guests
 
     @property
     def elastic(self):
