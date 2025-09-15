@@ -1111,9 +1111,6 @@ class Description:
                 extra[teacher_access.name] = teacher_access
         return extra
 
-    @property
-    def services_guests(self):
-        return self._services_guests
 
     @property
     def elastic(self):
