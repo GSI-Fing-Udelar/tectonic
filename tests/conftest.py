@@ -35,6 +35,9 @@ from tectonic.instance_type_aws import InstanceTypeAWS
 from tectonic.client_libvirt import ClientLibvirt
 from tectonic.client_aws import ClientAWS
 from tectonic.client_docker import ClientDocker
+from tectonic.packer_libvirt import PackerLibvirt
+from tectonic.packer_aws import PackerAWS
+from tectonic.packer_docker import PackerDocker
 
 from pathlib import Path
 from moto import mock_ec2, mock_secretsmanager
@@ -445,7 +448,7 @@ def mock_libvirt_client(monkeypatch):
 
 
 @pytest.fixture()
-def client(description, mock_docker_client):
+def client(description):
     if description.config.platform == "docker":
         client = ClientDocker(description.config, description)
     elif description.config.platform == "aws":
@@ -457,3 +460,16 @@ def client(description, mock_docker_client):
     
     yield client
 
+
+@pytest.fixture()
+def packer(client):
+    if client.config.platform == "docker":
+        packer = PackerDocker(client.config, client.description, client)
+    elif client.config.platform == "aws":
+        packer = PackerAWS(client.config, client.description, client)
+    elif client.config.platform == "libvirt":
+        packer = PackerLibvirt(client.config, client.description, client)
+    else:
+        raise Exception(f"Invalid platform {client.config.platform}")
+    
+    yield packer
