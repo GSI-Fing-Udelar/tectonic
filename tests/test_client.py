@@ -1,288 +1,148 @@
 import pytest
 import re
 import copy
+from unittest.mock import patch, MagicMock, call
 
-
-from unittest.mock import patch, MagicMock, call, Mock
-import docker
-import boto3
 import libvirt
 import libvirt_qemu
 
-from tectonic.client import Client
-from tectonic.client_docker import ClientDocker, ClientDockerException
+from tectonic.client import Client, ClientException
 from tectonic.client_aws import ClientAWS, ClientAWSException
-from tectonic.client_libvirt import ClientLibvirt, ClientLibvirtException, libvirt_callback
+from tectonic.client_libvirt import ClientLibvirt, ClientLibvirtException
 
-def test_docker_init_success(description):
-    if description.config.platform != "docker":
-        pytest.skip("Docker test")
-
-    c = ClientDocker(description.config, description)
-    assert c.connection.images.get('udelar-lab01-attacker').id == 'udelar-lab01-attacker'
-
-# @patch("tectonic.client_docker.docker.DockerClient", side_effect=Exception("fail"))
-# def test_docker_init_fail(mock_client, description):
-#     if description.config.platform != "docker":
-#         pytest.skip("Docker test")
-
-#     with pytest.raises(ClientDockerException):
-#         ClientDocker(description.config, description)
-
-def test_docker_get_machine_status_found(description):
-    if description.config.platform != "docker":
-        pytest.skip("Docker test")
-
-    c = ClientDocker(description.config, description)
-    assert c.get_machine_status("udelar-lab01-1-attacker") == "RUNNING"
-
-def test_docker_get_machine_status_notfound(description):
-    if description.config.platform != "docker":
-        pytest.skip("Docker test")
-
-    c = ClientDocker(description.config, description)
-    c.connection.containers.get.side_effect = docker.errors.NotFound("x")
-    assert c.get_machine_status("x") == "NOT FOUND"
-
-def test_docker_get_machine_status_exception(description):
-    if description.config.platform != "docker":
-        pytest.skip("Docker test")
-
-    c = ClientDocker(description.config, description)
-    c.connection.containers.get.side_effect = Exception("boom")
-    with pytest.raises(ClientDockerException):
-        c.get_machine_status("x")
-
-def test_docker_get_machine_private_ip_from_services(description):
-    if description.config.platform != "docker":
-        pytest.skip("Docker test")
-
-    c = ClientDocker(description.config, description)
-    assert c.get_machine_private_ip("udelar-lab01-1-server") == "10.0.1.6"
-
-def test_docker_get_machine_private_ip_from_container(description):
-    if description.config.platform != "docker":
-        pytest.skip("Docker test")
-
-    c = ClientDocker(description.config, description)
-    assert c.get_machine_private_ip("udelar-lab01-elastic") == "10.0.0.133"
-
-def test_docker_get_image_id_found(description):
-    if description.config.platform != "docker":
-        pytest.skip("Docker test")
-
-    c = ClientDocker(description.config, description)
-    assert c.get_image_id("udelar-lab01-victim") == "udelar-lab01-victim"
-
-def test_docker_get_image_id_notfound(description):
-    if description.config.platform != "docker":
-        pytest.skip("Docker test")
-
-    c = ClientDocker(description.config, description)
-    c.connection.images.get.side_effect = docker.errors.ImageNotFound("x")
-    assert c.get_image_id("x") is None
-
-def test_docker_is_image_in_use_true_false(description):
-    if description.config.platform != "docker":
-        pytest.skip("Docker test")
-
-    c = ClientDocker(description.config, description)
-    cont1 = MagicMock()
-    cont1.image.tags = ["imgx:latest"]
-    cont2 = MagicMock()
-    cont2.image.tags = []
-    c.connection.containers.list.return_value = [cont1, cont2]
-    assert c.is_image_in_use("imgx") is True
-    c.connection.containers.list.return_value = [cont2]
-    assert c.is_image_in_use("imgx") is False
-
-@patch("tectonic.client_docker.subprocess.run")
-def test_docker_console(mock_run, description):
-    if description.config.platform != "docker":
-        pytest.skip("Docker test")
-
-    c = ClientDocker(description.config, description)
-    cont = MagicMock()
-    cont.id = "cid"
-    c.connection.containers.get.return_value = cont
-    c.console("udelar-lab01-2-attacker", "user")
-    mock_run.assert_called_once()
-
-def test_docker_start_stop_restart_delete_image(description):
-    if description.config.platform != "docker":
-        pytest.skip("Docker test")
-
-    c = ClientDocker(description.config, description)
-    c.start_machine("udelar-lab01-2-server")
-    c.stop_machine("udelar-lab01-2-server")
-    c.restart_machine("udelar-lab01-2-server")
-    c.delete_image("udelar-lab01-server")
-    c.connection.images.remove.assert_called_once()
+def test_get_machine_status(client):
+    assert client.get_machine_status("udelar-lab01-1-attacker") == "RUNNING"
+    assert client.get_machine_status("x") == "NOT FOUND"
 
 
+def test_get_machine_private_ip(client):
+    attacker_ip = client.get_machine_private_ip("udelar-lab01-1-attacker")
+    assert re.match(r"^10\.0\.\d+\.\d+$", attacker_ip)
+    elastic_ip = client.get_machine_private_ip("udelar-lab01-elastic")
+    assert re.match(r"^10\.0\.\d+\.\d+$", elastic_ip)
+
+    assert client.get_machine_private_ip("x") == None
 
 
-# -------------------------------
-# Tests for ClientAWS
-# -------------------------------
+def test_get_machine_public_ip(client):
+    if client.config.platform == "aws":
+        elastic_ip = client.get_machine_public_ip("udelar-lab01-elastic")
+        assert re.match(r"^\d+\.\d+\.\d+\.\d+$", elastic_ip)
 
-def test_aws_init_success(description):
-    if description.config.platform != "aws":
-        pytest.skip("AWS test")
+    assert client.get_machine_public_ip("x") == None
 
-    c = ClientAWS(description.config, description)
+def test_is_image_in_use(client):
+    assert client.is_image_in_use("udelar-lab01-attacker") is True
+    assert client.is_image_in_use("test2") is False
+    assert client.is_image_in_use("x") is False
 
-# @patch("tectonic.client_aws.boto3.client", side_effect=Exception("boom"))
-# def test_aws_init_fail(mock_client, description):
-#     with pytest.raises(ClientAWSException):
-#         ClientAWS(DummyConfig(), DummyDescription())
+def test_delete_image(client):
+    if client.config.platform == "aws":
+        with patch.object(client.connection, "deregister_image") as mock_image:
+            with patch.object(client.connection, "delete_snapshot") as mock_snapshot:
+                client.delete_image("test2")
+                mock_image.assert_called_once()
+                mock_snapshot.assert_called_once()
+    elif client.config.platform == "libvirt":
+        with patch("tectonic.client_libvirt.libvirt.virStorageVol.delete") as mock_libvirt:
+            client.delete_image("test2")
+            mock_libvirt.assert_called_once()
+    elif client.config.platform == "docker":
+        client.delete_image("test2")
+        client.connection.images.remove.assert_called_once()
+
+    # Image is in use
+    with pytest.raises(ClientException):
+        client.delete_image("udelar-lab01-attacker")
+
+    # Image not found
+    client.delete_image("x")    # Does nothing
 
 
-def test_aws_delete_security_groups(mocker, description):
-    if description.config.platform != "aws":
-        pytest.skip("AWS test")
+def test_modify_machine_state(client):
+    assert client.get_machine_status("udelar-lab01-1-attacker") == "RUNNING"
+    client.stop_machine("udelar-lab01-1-attacker")
+    assert client.get_machine_status("udelar-lab01-1-attacker") == "STOPPED"
+    client.start_machine("udelar-lab01-1-attacker")
+    assert client.get_machine_status("udelar-lab01-1-attacker") == "RUNNING"
+    client.restart_machine("udelar-lab01-1-attacker")
+    assert client.get_machine_status("udelar-lab01-1-attacker") == "RUNNING"
 
-    c = ClientAWS(description.config, description)
-
-    c.connection.delete_security_group = MagicMock()
-    c.delete_security_groups("Public Security Group")
-    c.connection.delete_security_group.assert_called_once()
-
-def test_aws_get_machine_status_found_and_notfound(description):
-    if description.config.platform != "aws":
-        pytest.skip("AWS test")
-
-    c = ClientAWS(description.config, description)
-    assert c.get_machine_status("udelar-lab01-1-attacker") == "STOPPED"
-    assert c.get_machine_status("x") == "NOT FOUND"
-
-def test_aws_get_machine_private_ip_public_ip(description):
-    if description.config.platform != "aws":
-        pytest.skip("AWS test")
-
-    c = ClientAWS(description.config, description)
-    private_ip = c.get_machine_private_ip("udelar-lab01-elastic")
-    public_ip = c.get_machine_public_ip("udelar-lab01-elastic")
-    assert re.match(r"^10\.0\.\d+\.\d+$", private_ip)
-    assert re.match(r"^\d+\.\d+\.\d+\.\d+", public_ip)
-
-def test_aws_get_image_id_and_none(description):
-    if description.config.platform != "aws":
-        pytest.skip("AWS test")
-
-    c = ClientAWS(description.config, description)
-
-    assert re.match(r"^ami-.+$", c.get_image_id("udelar-lab01-attacker"))
-    assert c.get_image_id("x") is None
-
-def test_aws_is_image_in_use_true_false(description):
-    if description.config.platform != "aws":
-        pytest.skip("AWS test")
-
-    c = ClientAWS(description.config, description)
-
-    # TODO - Check how to set up mocked ec2_client so that this returns true
-    # assert c.is_image_in_use("udelar-lab01-1-attacker") is True
-    assert c.is_image_in_use("x") is False
-
-def test_aws_delete_image_with_snapshot_and_id(description):
-    if description.config.platform != "aws":
-        pytest.skip("AWS test")
-
-    c = ClientAWS(description.config, description)
-    c.connection.deregister_image = MagicMock()
-    c.connection.delete_snapshot = MagicMock()
-
-    c.delete_image("udelar-lab01-attacker")
-    c.connection.deregister_image.assert_called_once()
-    c.connection.delete_snapshot.assert_called_once()
-
-def test_aws_start_stop_restart_machine_found_and_notfound(description):
-    if description.config.platform != "aws":
-        pytest.skip("AWS test")
-
-    c = ClientAWS(description.config, description)
-
-    assert c.get_machine_status("udelar-lab01-1-attacker") == "STOPPED"
-    c.start_machine("udelar-lab01-1-attacker")
-    assert c.get_machine_status("udelar-lab01-1-attacker") == "RUNNING"
-    c.stop_machine("udelar-lab01-1-attacker")
-    assert c.get_machine_status("udelar-lab01-1-attacker") == "STOPPED"
-    c.restart_machine("udelar-lab01-1-attacker")
-    assert c.get_machine_status("udelar-lab01-1-attacker") == "RUNNING"
-    with pytest.raises(ClientAWSException):
-        c.start_machine("x")
-
-def test_aws_get_machine_id(description):
-    if description.config.platform != "aws":
-        pytest.skip("AWS test")
-
-    c = ClientAWS(description.config, description)
-
-    assert re.match(r"^i-.+$", c.get_machine_id("udelar-lab01-1-attacker"))
+    with pytest.raises(ClientException):
+        client.start_machine("x")
 
 @patch("tectonic.client_aws.interactive_shell")
-def test_aws_console_host_and_endpoint(mock_shell, description):
-    if description.config.platform != "aws":
-        pytest.skip("AWS test")
+@patch("tectonic.client_libvirt.interactive_shell")
+@patch("tectonic.client_docker.subprocess.run")
+def test_console(mock_docker, mock_libvirt, mock_aws, client):
+    client.console("udelar-lab01-1-attacker", "user")
+    if client.config.platform == "aws":
+        mock_aws.assert_called_once()
+    elif client.config.platform == "libvirt":
+        mock_libvirt.assert_called_once()
+    elif client.config.platform == "docker":
+        mock_docker.assert_called_once()
 
-    c = ClientAWS(description.config, description)
+def test_get_ssh_proxy_command(client):
+    if client.config.platform == "aws":
+        client.config.aws.teacher_access = "endpoint"
+        assert "aws ec2-instance-connect" in client.get_ssh_proxy_command()
+        client.config.aws.teacher_access = "host"
+        teacher_ip = client._get_teacher_access_ip()
+        user = client._get_teacher_access_username()
+        assert re.match(f"^ssh.*{user}@{teacher_ip}", client.get_ssh_proxy_command())
+    else:
+        assert client.get_ssh_proxy_command() is None
 
-    c.console("udelar-lab01-1-attacker", "user")
-    mock_shell.assert_called_once()
+def test_get_ssh_hostname(client):
+    if client.config.platform == "aws":
+        client.config.aws.teacher_access = "endpoint"
+        instance_id = client._get_machine_id("udelar-lab01-1-attacker")
+        assert client.get_ssh_hostname("udelar-lab01-1-attacker") == instance_id
 
-def test_aws_get_ssh_proxy_command(description):
-    description = copy.deepcopy(description)
+        client.config.aws.teacher_access = "host"
 
-    if description.config.platform != "aws":
-        pytest.skip("AWS test")
+    # AWS with host teacher, or libvirt or docker should return the machine private IP
+    private_ip = client.get_machine_private_ip("udelar-lab01-1-attacker")
+    assert client.get_ssh_hostname("udelar-lab01-1-attacker") == private_ip
 
-    c = ClientAWS(description.config, description)
 
-    c.config.aws.teacher_access = "endpoint"
-    assert "aws ec2-instance-connect" in c.get_ssh_proxy_command()
 
-    c.config.aws.teacher_access = "host"
-    teacher_ip = c._get_teacher_access_ip()
-    user = c._get_teacher_access_username()
+# -------------------------------
+# Tests for ClientAWS internals
+# -------------------------------
 
-    s = c.get_ssh_proxy_command()
-    assert re.match(f"^ssh.*{user}@{teacher_ip}", s)
+@patch("tectonic.client_aws.boto3.client", side_effect=Exception("boom"))
+def test_aws_init_fail(mock_client, description):
+    if description.config.platform == "aws":
+        with pytest.raises(ClientAWSException, match="boom"):
+            ClientAWS(description.config, description)
 
-def test_aws_get_ssh_hostname_endpoint_vs_host(description):
-    description = copy.deepcopy(description)
+def test_aws_init_success(description):
+    if description.config.platform == "aws":
+        ClientAWS(description.config, description)
 
-    if description.config.platform != "aws":
-        pytest.skip("AWS test")
 
-    c = ClientAWS(description.config, description)
+# -------------------------------
+# Tests for ClientLibvirt internals
+# -------------------------------
 
-    c.config.aws.teacher_access = "endpoint"
-    instance_id = c.get_machine_id("udelar-lab01-1-attacker")
-    assert c.get_ssh_hostname("udelar-lab01-1-attacker") == instance_id
+@patch("tectonic.client_libvirt.libvirt.open", side_effect=Exception("boom"))
+def test_libvirt_init_fail(mock_open, description):
+    if description.config.platform == "libvirt":
+        with pytest.raises(ClientLibvirtException, match="boom"):
+            ClientLibvirt(description.config, description)
 
-    c.config.aws.teacher_access = "host"
-    private_ip = c.get_machine_private_ip("udelar-lab01-1-attacker")
-    assert c.get_ssh_hostname("udelar-lab01-1-attacker") == private_ip
+def test_libvirt_init_success(description):
+    if description.config.platform == "libvirt":
+        ClientLibvirt(description.config, description)
 
-def test_aws_teacher_access_methods(description):
-    description = copy.deepcopy(description)
 
-    if description.config.platform != "aws":
-        pytest.skip("AWS test")
+def test_libvirt_wait_for_agent(monkeypatch, client):
+    if client.config.platform == "libvirt":
+        def raise_error(domain, command, timeout, flags):
+            raise libvirt.libvirtError("boom")
 
-    c = ClientAWS(description.config, description)
-
-    c.description.default_os = "ubuntu22"
-    from tectonic.constants import OS_DATA
-    assert c._get_teacher_access_username() == OS_DATA["ubuntu22"]["username"]
-    c.config.aws.teacher_access = "host"
-
-    teacher_ip = c._get_teacher_access_ip()
-    assert "udelar-lab01-teacher_access" in c._get_teacher_access_name()
-
-    c.config.aws.teacher_access = "endpoint"
-    assert c._get_teacher_access_ip() is None
-    assert c._get_teacher_access_name() is None
-
-    
+        monkeypatch.setattr(libvirt_qemu, "qemuAgentCommand", raise_error)
+        with pytest.raises(ClientLibvirtException, match="Cannot connect to QEMU agent."):
+            client._wait_for_agent(MagicMock(libvirt.virDomain), sleep=1, max_tries=2)

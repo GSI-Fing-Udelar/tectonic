@@ -20,6 +20,9 @@
 
 from abc import ABC, abstractmethod
 
+class ClientException(Exception):
+    pass
+
 class Client(ABC):
     """
     Client class.
@@ -89,19 +92,6 @@ class Client(ABC):
         """
         return None
 
-    @abstractmethod
-    def get_image_id(self, image_name):
-        """
-        Return internal image identifier.
-
-        Parameters:
-            image_name (str): name of the image.
-
-        Returns:
-            str: the identifier of the image if it was found or None otherwise.
-        """
-        pass
-    
     @abstractmethod
     def is_image_in_use(self, image_name):
         """

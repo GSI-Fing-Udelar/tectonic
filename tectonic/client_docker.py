@@ -18,13 +18,13 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-from tectonic.client import Client
+from tectonic.client import Client, ClientException
 
 import docker
 import subprocess
 from ipaddress import ip_network, ip_address
 
-class ClientDockerException(Exception):
+class ClientDockerException(ClientException):
     pass
 
 class ClientDocker(Client):
@@ -62,11 +62,13 @@ class ClientDocker(Client):
     def get_machine_status(self, machine_name):
         try:
             container = self.connection.containers.get(machine_name)
-            return self.STATE_MSG.get(container.status, "NOT FOUND")
+            if container:
+                return self.STATE_MSG.get(container.status, "NOT FOUND")
+            return "NOT FOUND"
         except docker.errors.NotFound:
             return "NOT FOUND"
-        except Exception as exception:
-            raise ClientDockerException(f"{exception}")
+        except Exception as e:
+            raise ClientDockerException(f"Error getting machine status: {e}") from e
         
     def get_machine_private_ip(self, machine_name):
         try:
@@ -74,34 +76,40 @@ class ClientDocker(Client):
                 return self.description.services_guests[machine_name].service_ip
             else:
                 container = self.connection.containers.get(machine_name)
-                for network in container.attrs["NetworkSettings"]["Networks"]:
-                    ip_addr = container.attrs["NetworkSettings"]["Networks"][network]["IPAddress"]
-                    if ip_address(ip_addr) in ip_network(self.config.network_cidr_block):
-                        return ip_addr
+                if container:
+                    for network in container.attrs["NetworkSettings"]["Networks"]:
+                        ip_addr = container.attrs["NetworkSettings"]["Networks"][network]["IPAddress"]
+                        if ip_address(ip_addr) in ip_network(self.config.network_cidr_block):
+                            return ip_addr
                 return None
-        except Exception as exception:
-            raise ClientDockerException(f"{exception}")
+        except Exception as e:
+            raise ClientDockerException(str(e)) from e
         
-    def get_image_id(self, image_name):
+    def _get_image_id(self, image_name):
         try:
-            return self.connection.images.get(image_name).id
+            image = self.connection.images.get(image_name)
+            if image:
+                return image.id
+            return None
         except docker.errors.ImageNotFound as exception:
             return None
-        except Exception as exception:
-            raise ClientDockerException(f"{exception}")
+        except Exception as e:
+            raise ClientDockerException(f"Error getting image id: {e}") from e
                  
     def is_image_in_use(self, image_name):
         try:
             for container in self.connection.containers.list():
-                if f"{image_name}:latest" in container.image.tags:
+                if container.image and f"{image_name}:latest" in container.image.tags:
                     return True
             return False
-        except Exception as exception:
-            raise ClientDockerException(f"{exception}")
+        except Exception as e:
+            raise ClientDockerException(f"Error determining if image is in use: {e}") from e
         
     def delete_image(self, image_name):
         try:
-            if self.get_image_id(image_name):
+            if self.is_image_in_use(image_name):
+                raise ClientDockerException(f"Error deleting image {image_name}: in use")
+            if self._get_image_id(image_name):
                 self.connection.images.remove(image_name)
         except Exception as exception:
             raise ClientDockerException(f"{exception}")

@@ -18,14 +18,14 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-from tectonic.client import Client
+from tectonic.client import Client, ClientException
 from tectonic.ssh import interactive_shell
 from tectonic.constants import OS_DATA
 
 import boto3
 import json
 
-class ClientAWSException(Exception):
+class ClientAWSException(ClientException):
     pass
 
 class ClientAWS(Client):
@@ -65,8 +65,8 @@ class ClientAWS(Client):
         super().__init__(config, description)
         try:
             self.connection = boto3.client("ec2", config.aws.region)
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}")
+        except Exception as e:
+            raise ClientAWSException(f"Error creating aws client: {e}") from e
 
     def _get_machine_property(self, machine_name, property):
         """
@@ -91,8 +91,8 @@ class ClientAWS(Client):
                 return response["Reservations"][0]["Instances"][0].get(property)
             else:
                 return None
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}") 
+        except Exception as e:
+            raise ClientAWSException(f"Error getting machine property: {e}") from e
 
     def _get_image_snapshots(self, image_name):
         """
@@ -110,8 +110,9 @@ class ClientAWS(Client):
                 return response["Images"][0]["BlockDeviceMappings"][0]["Ebs"]["SnapshotId"]
             else:
                 return None
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}")  
+        except Exception as e:
+            raise ClientAWSException(f"Error getting machine snapshots: {e}") from e
+
 
     def delete_security_groups(self, desc):
         """
@@ -122,7 +123,6 @@ class ClientAWS(Client):
         """
         try:
             response = self.connection.describe_security_groups(Filters=[{"Name": "description", "Values": [desc]}], DryRun=False)
-            print(response)
             for security_group in response["SecurityGroups"]:
                 self.connection.delete_security_group(GroupId=security_group["GroupId"], DryRun=False)   
         except Exception as e:
@@ -136,34 +136,35 @@ class ClientAWS(Client):
                 return self.STATE_MSG.get(response["InstanceStatuses"][0]["InstanceState"]["Name"], "NOT FOUND")
             else:
                 return "NOT FOUND"
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}")
+        except Exception as e:
+            raise ClientAWSException(f"Error getting machine status: {e}") from e
         
     def get_machine_private_ip(self, machine_name):
         try:
             return self._get_machine_property(machine_name, "PrivateIpAddress")
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}")
+        except Exception as e:
+            raise ClientAWSException(f"Error getting machine private IP: {e}") from e
         
     def get_machine_public_ip(self, name):
         try:
             return self._get_machine_property(name, "PublicIpAddress")
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}")
+        except Exception as e:
+            raise ClientAWSException(f"Error getting machine public IP: {e}") from e
         
-    def get_image_id(self, image_name):
+    def _get_image_id(self, image_name):
         try:
             response = self.connection.describe_images(Filters=[{"Name": "tag:Name", "Values": [image_name]}], DryRun=False)
             if len(response["Images"]) == 1:
                 return response["Images"][0]["ImageId"]
             else:
                 return None
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}")
+        except Exception as e:
+            raise ClientAWSException(f"Error getting image id: {e}") from e
                  
     def is_image_in_use(self, image_name):
         try:
-            image_id = self.get_image_id(image_name)
+            image_id = self._get_image_id(image_name)
+
             first_request = True
             next_token = ""
             while next_token is not None:
@@ -178,19 +179,21 @@ class ClientAWS(Client):
                         if image_id == instance.get("ImageId",None):
                             return True
             return False
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}")
+        except Exception as e:
+            raise ClientAWSException(f"Error determining if image is in use: {e}") from e
         
     def delete_image(self, image_name):
         try:
-            image_id = self.get_image_id(image_name)
+            if self.is_image_in_use(image_name):
+                raise ClientAWSException(f"Error deleting image {image_name}: in use")
+            image_id = self._get_image_id(image_name)
             snapshot_id = self._get_image_snapshots(image_name)
-            if image_id is not None:
+            if image_id:
                 self.connection.deregister_image(ImageId=image_id, DryRun=False)
-            if snapshot_id is not None:
+            if snapshot_id:
                 self.connection.delete_snapshot(SnapshotId=snapshot_id, DryRun=False)
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}")
+        except Exception as e:
+            raise ClientAWSException(f"Error deleting image: {e}") from e
         
     def start_machine(self, machine_name):
         try:
@@ -198,8 +201,8 @@ class ClientAWS(Client):
             if machine_id is None:
                 raise ClientAWSException(f"Instance {machine_name} not found.")
             self.connection.start_instances(InstanceIds=[machine_id], DryRun=False)
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}")
+        except Exception as e:
+            raise ClientAWSException(f"Error starting machine : {e}") from e
         
     def stop_machine(self, machine_name):
         try:
@@ -207,8 +210,8 @@ class ClientAWS(Client):
             if machine_id is None:
                 raise ClientAWSException(f"Instance {machine_name} not found.")
             self.connection.stop_instances(InstanceIds=[machine_id], DryRun=False)
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}")
+        except Exception as e:
+            raise ClientAWSException(f"Error stopping machine : {e}") from e
         
     def restart_machine(self, machine_name):
         try:
@@ -216,10 +219,10 @@ class ClientAWS(Client):
             if machine_id is None:
                 raise ClientAWSException(f"Instance {machine_name} not found.")
             self.connection.reboot_instances(InstanceIds=[machine_id], DryRun=False)
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}")
+        except Exception as e:
+            raise ClientAWSException(f"Error restarting machine : {e}") from e
         
-    def get_machine_id(self, machine_name):
+    def _get_machine_id(self, machine_name):
         """
         Return machine identifier.
 
@@ -231,8 +234,8 @@ class ClientAWS(Client):
         """
         try:
             return self._get_machine_property(machine_name, "InstanceId")
-        except Exception as exception:
-            raise ClientAWSException(f"{exception}")
+        except Exception as e:
+            raise ClientAWSException(f"Error getting machine id : {e}") from e
         
     def console(self, machine_name, username):
         """

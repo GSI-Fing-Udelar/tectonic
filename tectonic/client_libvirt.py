@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-from tectonic.client import Client
+from tectonic.client import Client, ClientException
 from tectonic.ssh import interactive_shell
 
 import libvirt
@@ -27,7 +27,7 @@ import time
 from ipaddress import ip_network, ip_address
 import xml.etree.ElementTree as ET
 
-class ClientLibvirtException(Exception):
+class ClientLibvirtException(ClientException):
     pass
 
 # Avoid console output.
@@ -102,7 +102,9 @@ class ClientLibvirt(Client):
         
     def get_machine_private_ip(self, machine_name):
         try:
+            print(f"Getting...")
             domain = self.connection.lookupByName(machine_name)
+            print(f"got domain: {domain}")
         except libvirt.libvirtError:
             return None
         try:
@@ -119,17 +121,6 @@ class ClientLibvirt(Client):
                 return None
         except Exception as exception:
             raise ClientLibvirtException(f"{exception}") from exception
-        
-    def get_image_id(self, image_name):
-        try:
-            pool = self.connection.storagePoolLookupByName(self.config.libvirt_pool_name)
-        except libvirt.libvirtError:
-            raise ClientLibvirtException(f"Failed to locate {self.config.libvirt_pool_name} storage pool.")
-        try:
-            vol = pool.storageVolLookupByName(image_name)
-            return vol.getName()
-        except libvirt.libvirtError:
-            return None
                  
     def is_image_in_use(self, image_name):
         try:
@@ -153,21 +144,26 @@ class ClientLibvirt(Client):
                             image_used = image_path.split("/")[-1]
                             if image_used == image_name:
                                 return True
-                return False
+            return False
         except Exception as exception:
             raise ClientLibvirtException(f"{exception}")
         
     def delete_image(self, image_name):
         try:
+            if self.is_image_in_use(image_name):
+                raise ClientLibvirtException(f"Error deleting image {image_name}: in use")
             pool = self.connection.storagePoolLookupByName(self.config.libvirt.storage_pool)
+            print(f"pool: {pool}")
         except libvirt.libvirtError:
             raise ClientLibvirtException(f"Failed to locate {self.config.libvirt.storage_pool} storage pool.")
         vol = None
         try:
             vol = pool.storageVolLookupByName(image_name)
+            print(f"vol: {vol}")
         except libvirt.libvirtError:
             pass
         if vol:
+            print(f"deleting")
             vol.delete()
         
     def start_machine(self, machine_name):
