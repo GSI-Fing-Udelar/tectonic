@@ -135,8 +135,10 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 
     if not guest_names:
         machines_msg = "all machines"
+        spec_guests = False
     else:
         machines = []
+        spec_guests = True
 
         # Remove duplicates
         guest_names = list(OrderedDict.fromkeys(guest_names))
@@ -153,7 +155,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
         if not guest_names:
             print_instances = False
 
-        guests = [guest for _, guest in ctx.obj["description"].base_guests.items() if not guest_names or guest.base_name in guest_names]
+        guests = [guest for _, guest in ctx.obj["description"].base_guests.items() if not spec_guests or guest.base_name in guest_names]
         for guest in guests:
             if guest.copies == 1:
                 if not copies or 1 in copies:

@@ -38,6 +38,7 @@ from tectonic.client_docker import ClientDocker
 from tectonic.packer_libvirt import PackerLibvirt
 from tectonic.packer_aws import PackerAWS
 from tectonic.packer_docker import PackerDocker
+from tectonic.core import Core
 
 from pathlib import Path
 from moto import mock_ec2, mock_secretsmanager
@@ -230,7 +231,7 @@ def test_data_path(base_tests_path):
     return Path(base_tests_path).joinpath("test_data/").absolute().as_posix()
 
 @pytest.fixture(scope="session", params=["aws","libvirt", "docker"])
-def tectonic_config_data(request, tmp_path_factory, test_data_path):
+def tectonic_config_path(request, tmp_path_factory, test_data_path):
     config_file = tmp_path_factory.mktemp('data') / f"{request.param}-config.ini"
     config_ini = test_config.replace(
         "TEST_DATA_PATH",
@@ -243,8 +244,8 @@ def tectonic_config_data(request, tmp_path_factory, test_data_path):
     return config_file.resolve().as_posix()
 
 @pytest.fixture(scope="session")
-def tectonic_config(tectonic_config_data):
-    config = TectonicConfig.load(tectonic_config_data)
+def tectonic_config(tectonic_config_path):
+    config = TectonicConfig.load(tectonic_config_path)
 
     yield config
     
@@ -473,3 +474,9 @@ def packer(client):
         raise Exception(f"Invalid platform {client.config.platform}")
     
     yield packer
+
+@pytest.fixture()
+def core(description):
+    core = Core(description)
+
+    yield core
