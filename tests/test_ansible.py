@@ -1,6 +1,5 @@
 import pytest
 import types
-import copy
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from tectonic.ansible import Ansible, AnsibleException
@@ -13,7 +12,7 @@ def fake_client():
     return client
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def ansible_client(tectonic_config, description, fake_client):
     return Ansible(tectonic_config, description, fake_client)
 
@@ -48,8 +47,6 @@ def test_build_inventory_linux(ansible_client):
 
 
 def test_build_inventory_windows(ansible_client):
-    ansible_client = copy.deepcopy(ansible_client)
-
     ansible_client.description.base_guests["attacker"].os = "windows_srv_2022"
     inv = ansible_client.build_inventory(["udelar-lab01-1-attacker"])
     host = inv["attacker"]["hosts"]["udelar-lab01-1-attacker"]
@@ -99,8 +96,6 @@ def test_configure_services(mock_wait, mock_run, ansible_client):
 
 
 def test_configure_services_empty(ansible_client):
-    ansible_client = copy.deepcopy(ansible_client)
-
     # no services => nothing happens
     ansible_client.description.elastic.enable = False
     ansible_client.description.caldera.enable = False

@@ -105,34 +105,66 @@ def test_confirm_machines(monkeypatch, description, runner, mock_ctx, capsys, te
 
 
 # ---- Commands ----
+commands = [
+    { "command": "deploy",
+      "core_function": "deploy",
+     },
+    { "command": "destroy",
+      "core_function": "destroy",
+     },
+    { "command": "start",
+      "core_function": "start",
+     },
+    { "command": "shutdown",
+      "core_function": "stop",
+     },
+    { "command": "reboot",
+      "core_function": "restart",
+     },
+    { "command": "run-ansible",
+      "core_function": "run_automation",
+     },
+    { "command": "student-access",
+      "core_function": "configure_students_access",
+     },
+    { "command": "recreate",
+      "core_function": "recreate",
+     },
+]
 
+@pytest.mark.parametrize('command', commands)
 @patch("tectonic.cli.Core")
-def test_tectonic_group_initialization(mock_core, runner, base_cli_args, mock_ctx):
-    result = run_cli(runner, base_cli_args, ["info"], obj=mock_ctx)
-
+def test_commands_and_confirmation(mock_core, command, runner, base_cli_args, mock_ctx):
+    result = run_cli(runner, base_cli_args, [command["command"], "-f"], obj=mock_ctx)
     assert result.exit_code == 0
-    mock_core.assert_called()
+    getattr(mock_ctx["core"], command["core_function"]).assert_called_once()
+
+    mock_ctx["core"].reset_mock()
+
+    with patch("tectonic.cli.click.confirm", return_value=True):
+        result = run_cli(runner, base_cli_args, [command["command"]], obj=mock_ctx)
+        assert result.exit_code == 0
+
 
 @patch("tectonic.cli.Core")
-def test_deploy(mock_core, runner, base_cli_args, mock_ctx):
+def test_deploy_images(mock_core, runner, base_cli_args,  mock_ctx):
     result = run_cli(runner, base_cli_args, ["deploy", "-f"], obj=mock_ctx)
     assert result.exit_code == 0
-    mock_ctx["core"].deploy.assert_called_once()
     mock_ctx["core"].create_instances_images.assert_not_called()
-    
+
     mock_ctx["core"].reset_mock()
 
     result = run_cli(runner, base_cli_args, ["deploy", "-f", "--images"], obj=mock_ctx)
     assert result.exit_code == 0
     mock_ctx["core"].create_instances_images.assert_called_once()
     mock_ctx["core"].deploy.assert_called_once()
+    
+    
+
 
 
 @patch("tectonic.cli.Core")
-def test_destroy(mock_core, runner, base_cli_args,  mock_ctx):
-    run_cli(runner, base_cli_args, ["destroy", "-f"], obj=mock_ctx)
-    mock_ctx["core"].destroy.assert_called_once()
-
+def test_destroy_invalid(mock_core, runner, base_cli_args,  mock_ctx):
     # Invalid invokations
     result = run_cli(runner, base_cli_args, ["destroy", "-f", "-i", "1", "--no-machines"], obj=mock_ctx)
     assert result.exit_code != 0
@@ -154,43 +186,10 @@ def test_list_instance(mock_core, runner, base_cli_args, mock_ctx):
         assert "TABLE" in result.output
 
 @patch("tectonic.cli.Core")
-def test_start_stop_reboot(mock_core, base_cli_args, runner, mock_ctx):
-    result = run_cli(runner, base_cli_args, ["start", "-f"], obj=mock_ctx)
-    assert result.exit_code == 0
-    mock_ctx["core"].start.assert_called_once()
-    result = run_cli(runner, base_cli_args, ["shutdown", "-f"], obj=mock_ctx)
-    assert result.exit_code == 0
-    mock_ctx["core"].stop.assert_called_once()
-    result = run_cli(runner, base_cli_args, ["reboot", "-f"], obj=mock_ctx)
-    assert result.exit_code == 0
-    mock_ctx["core"].restart.assert_called_once()
-
-@patch("tectonic.cli.Core")
 def test_console(mock_core, base_cli_args, runner, mock_ctx):
     result = run_cli(runner, base_cli_args, ["console"], obj=mock_ctx)
     assert result.exit_code == 0
     mock_ctx["core"].console.assert_called_once()
-
-@patch("tectonic.cli.Core")
-def test_run_ansible(mock_core, base_cli_args, runner, mock_ctx):
-    result = run_cli(runner, base_cli_args, ["run-ansible", "-f"], obj=mock_ctx)
-    assert result.exit_code == 0
-    mock_ctx["core"].run_automation.assert_called_once()
-
-
-@patch("tectonic.cli.Core")
-def test_student_access(mock_core, base_cli_args, runner, mock_ctx):
-    with patch("tectonic.cli.utils.create_table", return_value="TABLE"):
-        result = run_cli(runner, base_cli_args, ["student-access", "-f"], obj=mock_ctx)
-        assert result.exit_code == 0
-        assert "TABLE" in result.output
-    mock_ctx["core"].configure_students_access.assert_called_once()
-
-@patch("tectonic.cli.Core")
-def test_recreate(mock_core, base_cli_args, runner, mock_ctx):
-    result = run_cli(runner, base_cli_args, ["recreate", "-f"], obj=mock_ctx)
-    assert result.exit_code == 0
-    mock_ctx["core"].recreate.assert_called_once()
 
 @patch("tectonic.cli.Core")
 def test_show_parameters(mock_core, base_cli_args, runner, mock_ctx):
@@ -207,10 +206,4 @@ def test_info(mock_core, base_cli_args, runner, mock_ctx):
         assert result.exit_code == 0
         assert "TABLE" in result.output
     mock_ctx["core"].info.assert_called_once()
-
-# def test_info_and__info(runner, mock_ctx):
-#     with patch("tectonic.cli.utils.create_table", return_value="TABLE"):
-#         result = run_cli(runner, ["info"], obj=mock_ctx)
-#         assert "TABLE" in result.output
-
 

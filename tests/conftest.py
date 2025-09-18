@@ -243,7 +243,7 @@ def tectonic_config_path(request, tmp_path_factory, test_data_path):
     config_file.write_text(config_ini)
     return config_file.resolve().as_posix()
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def tectonic_config(tectonic_config_path):
     config = TectonicConfig.load(tectonic_config_path)
 
@@ -254,7 +254,7 @@ def tectonic_config(tectonic_config_path):
 def labs_path(test_data_path):
     return (Path(test_data_path) / "labs").absolute().as_posix()
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def description(tectonic_config, labs_path):
     desc = Description(tectonic_config, Path(labs_path) / "test.yml")
 
