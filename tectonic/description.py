@@ -1046,7 +1046,7 @@ class Description:
 
     @property
     def internet_access_required(self):
-        any(guest.internet_access for _, guest in self._base_guests.items())
+        return any(guest.internet_access for _, guest in self._base_guests.items())
 
     @property
     def parameters_files(self):

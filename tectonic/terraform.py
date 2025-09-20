@@ -81,13 +81,13 @@ class Terraform(ABC):
                 f"path=terraform-states/{self.description.institution}-{self.description.lab_name}-{terraform_module_name}"
             ]
         elif self.BACKEND_TYPE == "GITLAB":
-            address = f"{self.config.gitlab_url}/{self.description.institution}-{self.description.lab_name}-{terraform_module_name}"
+            address = f"{self.config.gitlab_backend_url}/{self.description.institution}-{self.description.lab_name}-{terraform_module_name}"
             return [
                 f"address={address}",
                 f"lock_address={address}/lock",
                 f"unlock_address={address}/lock",
-                f"username={self.config.gitlab_username}",
-                f"password={self.config.gitlab_access_token}",
+                f"username={self.config.gitlab_backend_username}",
+                f"password={self.config.gitlab_backend_access_token}",
                 "lock_method=POST",
                 "unlock_method=DELETE",
                 "retry_wait_min=5",

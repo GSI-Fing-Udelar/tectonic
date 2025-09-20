@@ -77,13 +77,13 @@ class Core:
             raise CoreException("Unknown platform.")
         self.ansible = Ansible(self.config, self.description, self.client)
         
-    def __del__(self):
-        del self.terraform_service
-        del self.packer
-        del self.client
-        del self.terraform
-        del self.ansible
-        del self.description
+    # def __del__(self):
+    #     del self.terraform_service
+    #     del self.packer
+    #     del self.client
+    #     del self.terraform
+    #     del self.ansible
+    #     del self.description
 
     def create_instances_images(self, guests=()):
         """
@@ -325,7 +325,7 @@ class Core:
                 agents_status = result[0]['agents_status']
                 for key in agents_status:
                     services_status[f"elastic-agents-{key}"] = agents_status[key]
-        elif self.description.caldera.enable:
+        if self.description.caldera.enable:
             # TODO: move this somewhere else?
             playbook = tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'get_info.yml'
             result = self.terraform_service.get_service_info(self.description.caldera, self.ansible, playbook, {"action":"agents_status"})
@@ -337,6 +337,7 @@ class Core:
                     now = int(time.time() * 1000) #Milliseconds since epoch
                     agent_last_seen = int((datetime.datetime.strptime(agent["last_seen"],"%Y-%m-%dT%H:%M:%SZ") - datetime.datetime(1970, 1, 1)).total_seconds() * 1000)
                     difference = now - agent_last_seen
+                    print(f"difference: {difference}")
                     if (difference <= 60000 and agent["sleep_min"] == 3 and agent["sleep_max"] == 3 and agent["watchdog"] == 1):
                         agents_status["pending_kill"] = agents_status["pending_kill"] + 1
                     elif (difference <= 60000 or difference <= (agent["sleep_max"] * 1000)):

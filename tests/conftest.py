@@ -38,6 +38,13 @@ from tectonic.client_docker import ClientDocker
 from tectonic.packer_libvirt import PackerLibvirt
 from tectonic.packer_aws import PackerAWS
 from tectonic.packer_docker import PackerDocker
+from tectonic.terraform_libvirt import TerraformLibvirt
+from tectonic.terraform_aws import TerraformAWS
+from tectonic.terraform_docker import TerraformDocker
+from tectonic.terraform_service_libvirt import TerraformServiceLibvirt
+from tectonic.terraform_service_aws import TerraformServiceAWS
+from tectonic.terraform_service_docker import TerraformServiceDocker
+from tectonic.core import Core
 
 from pathlib import Path
 from moto import mock_ec2, mock_secretsmanager
@@ -230,7 +237,7 @@ def test_data_path(base_tests_path):
     return Path(base_tests_path).joinpath("test_data/").absolute().as_posix()
 
 @pytest.fixture(scope="session", params=["aws","libvirt", "docker"])
-def tectonic_config_data(request, tmp_path_factory, test_data_path):
+def tectonic_config_path(request, tmp_path_factory, test_data_path):
     config_file = tmp_path_factory.mktemp('data') / f"{request.param}-config.ini"
     config_ini = test_config.replace(
         "TEST_DATA_PATH",
@@ -242,9 +249,9 @@ def tectonic_config_data(request, tmp_path_factory, test_data_path):
     config_file.write_text(config_ini)
     return config_file.resolve().as_posix()
 
-@pytest.fixture(scope="session")
-def tectonic_config(tectonic_config_data):
-    config = TectonicConfig.load(tectonic_config_data)
+@pytest.fixture()
+def tectonic_config(tectonic_config_path):
+    config = TectonicConfig.load(tectonic_config_path)
 
     yield config
     
@@ -253,7 +260,7 @@ def tectonic_config(tectonic_config_data):
 def labs_path(test_data_path):
     return (Path(test_data_path) / "labs").absolute().as_posix()
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def description(tectonic_config, labs_path):
     desc = Description(tectonic_config, Path(labs_path) / "test.yml")
 
@@ -473,3 +480,40 @@ def packer(client):
         raise Exception(f"Invalid platform {client.config.platform}")
     
     yield packer
+
+@pytest.fixture()
+def terraform(description):
+    if description.config.platform == "docker":
+        terraform = TerraformDocker(description.config, description)
+    elif description.config.platform == "aws":
+        terraform = TerraformAWS(description.config, description)
+    elif description.config.platform == "libvirt":
+        terraform = TerraformLibvirt(description.config, description)
+    else:
+        raise Exception(f"Invalid platform {description.config.platform}")
+    
+    yield terraform
+
+@pytest.fixture()
+def service(client):
+    if client.config.platform == "docker":
+        service = TerraformServiceDocker(client.config, client.description, client)
+    elif client.config.platform == "aws":
+        service = TerraformServiceAWS(client.config, client.description, client)
+    elif client.config.platform == "libvirt":
+        service = TerraformServiceLibvirt(client.config, client.description, client)
+    else:
+        raise Exception(f"Invalid platform {client.config.platform}")
+    
+    yield service
+
+
+@pytest.fixture()
+def ansible(client):
+    return Ansible(client.config, client.description, client)
+
+@pytest.fixture()
+def core(description):
+    core = Core(description)
+
+    yield core
