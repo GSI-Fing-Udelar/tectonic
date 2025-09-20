@@ -388,7 +388,7 @@ class Core:
             playbook (str): path to Ansible playbook.
         """
         self.description.parse_machines(instances, guests, copies, False)
-        self.ansible.run(instances, guests, copies, False, username, playbook)
+        self.ansible.run(instances=instances, guests=guests, copies=copies, only_instances=False, username=username, playbook=playbook)
     
     def console(self, instance, guest, copy, username=None):
         """
