@@ -283,6 +283,7 @@ class MachineDescription:
         self.memory = data.get("memory", self.memory)
         self.vcpu = data.get("vcpu", self.vcpu)
         self.disk = data.get("disk", self.disk)
+        self.gpu = data.get("gpu", self.gpu)
 
     def toJSON(self):
         "{}"
