@@ -183,6 +183,7 @@
       - modbus
       - profinet
       - iec61850
+      - gems
       port: 8888
       reports_dir: /tmp
       auth.login.handler.module: default
@@ -236,15 +237,17 @@
     enabled: true
 
 - name: Set Gateway IP
-  block:
-    - name: Set gateway_ip for Docker
-      ansible.builtin.set_fact:
-        gateway_ip: "{{ (elastic.ip | split('.'))[0] }}.{{ (elastic.ip | split('.'))[1] }}.{{ (elastic.ip | split('.'))[2] }}.1"
-      when: platform == "docker"
-    - name: Set gateway_ip for Libvirt
-      ansible.builtin.set_fact:
-        gateway_ip: "{{ (elastic.ip | split('.'))[0] }}.{{ (elastic.ip | split('.'))[1] }}.{{ (elastic.ip | split('.'))[2] }}.129"
-      when: platform == "libvirt"
+  ansible.builtin.set_fact:
+    gateway_ip: "{{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.129"
+  # block:
+    # - name: Set gateway_ip for Docker
+    #   ansible.builtin.set_fact:
+    #     gateway_ip: "{{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.1"
+    #   when: platform == "docker"
+    # - name: Set gateway_ip for Libvirt
+    #   ansible.builtin.set_fact:
+    #     gateway_ip: "{{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.129"
+    #   when: platform == "libvirt"
 
 - name: Configure firewalld
   block:

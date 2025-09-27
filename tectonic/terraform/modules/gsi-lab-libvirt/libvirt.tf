@@ -67,7 +67,7 @@ resource "libvirt_network" "subnets" {
   for_each = local.subnetworks
 
   name = "${each.key}"
-  addresses = [each.value]
+  addresses = [lookup(each.value, "ip_network")]
   mode = "none"
   autostart = true
 }

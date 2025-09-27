@@ -31,6 +31,10 @@ jobs:
           sudo apt-get -qq update
           sudo apt-get install -qq -y libvirt0 libvirt-dev
 
+      - name: Create ssh key
+        run: |
+          ssh-keygen -t rsa -C "test@example.com" -q -N "" -f ~/.ssh/id_rsa
+
       - name: Test with pytest
         run: |
           poetry lock

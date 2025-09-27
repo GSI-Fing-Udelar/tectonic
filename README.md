@@ -100,6 +100,15 @@ Please check the [description documentation](https://github.com/GSI-Fing-Udelar/
 more details. The [examples](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/examples/) directory contains some
 example scenarios.
 
+## Terraform state syncronization
+Terraform states are stored locally by default. It is possible to
+store them in a Gitlab repo (see `gitlab_backend_url` option in the
+[ini file configuration](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/docs/ini_config.md)). It is necessary to have
+Maintainer privileges on this repo and a GitLab access token. There
+are two types of access token: personal or project-based. If the
+latter is used, it must be associated with the project where the
+states are stored.
+
 ## Running Tectonic
 
 To deploy a scenario run:
@@ -114,18 +123,11 @@ To destroy a scenario use the `destroy` command.
 See `tectonic --help` for a full list of options, and `tectonic
 <command> -h` for help on individual commands.
 
-### Terraform state syncronization
-Terraform states are stored locally by default. It is possible to
-store them in a Gitlab repo (see `gitlab_backend_url` option in the
-[ini file configuration](https://github.com/GSI-Fing-Udelar/tectonic/blob/main/docs/ini_config.md)). It is necessary to have
-Maintainer privileges on this repo and a GitLab access token. There
-are two types of access token: personal or project-based. If the
-latter is used, it must be associated with the project where the
-states are stored.
-
 ## Disclaimer About Platforms
 
 Tectonic provides support for scenario deployments using Docker as the base platform. However, it is important to note that using Docker as base platform in production environments is not recommended since Tectonic deploys containers in privileged mode. This means that when a user has root access within a container, they can also gain root access to the host system, which can create significant security issues. Therefore, caution is crucial when using Docker as a base platform, especially in scenarios involving attacks. It is advisable to utilize Docker primarily for the generation and testing of new scenarios. For production environments, we recommend to utilize Libvirt or AWS as base platform, both of which are fully supported by Tectonic.
+
+The Elastic and Caldera services on the Docker platform for Windows and macOS are not supported.
 
 ## Authors
 

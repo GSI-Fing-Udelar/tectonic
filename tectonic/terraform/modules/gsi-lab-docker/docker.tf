@@ -26,7 +26,7 @@ resource "docker_network" "subnets" {
   driver = "bridge"
   internal = false #true
   ipam_config {
-    subnet = each.value
+    subnet = lookup(each.value, "ip_network")
   }
 
 }

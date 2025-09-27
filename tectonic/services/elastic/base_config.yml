@@ -67,7 +67,7 @@
           - logstash
           - elastic-agent
         state: present
-      when: elastic_latest_version == "yes"
+      when: elastic_latest_version == "True"
 
     - name: Install Elastic specific version
       ansible.builtin.package:
@@ -77,7 +77,7 @@
           - "logstash-{{ elastic_version }}"
           - "elastic-agent-{{ elastic_version }}"
         state: present
-      when: elastic_latest_version == "no"
+      when: elastic_latest_version == "False"
 
     - name : Start firewalld
       ansible.builtin.service:

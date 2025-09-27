@@ -94,6 +94,16 @@
               - name: "Get port number"
                 ansible.builtin.set_fact:
                   port_number: "{{ port.stdout }}"
+            - name: "Start elastic-agent service"
+              ansible.builtin.systemd_service:
+                name: "elastic-agent-{{ institution }}-{{ lab_name }}"
+                state: started
+                enabled: yes
+                daemon_reload: yes
+            - name: "Create temporary elastic agent directory"
+              ansible.builtin.file:
+                path: /tmp/elastic-agent
+                state: directory
             - name: "Adjust elastic-agent configuration"
               ansible.builtin.blockinfile:
                 path: /opt/elastic-agent-{{ institution }}-{{ lab_name }}/Elastic/Agent/elastic-agent.yml
@@ -104,13 +114,11 @@
                     http:
                       enabled: false
                   agent.grpc:
-                    port: "{{ port_number }}" 
+                    port: "{{ port_number }}"
             - name: "Start elastic-agent service"
               ansible.builtin.systemd_service:
                 name: "elastic-agent-{{ institution }}-{{ lab_name }}"
-                state: started
-                enabled: yes
-                daemon_reload: yes
+                state: restarted
           when: result.stat.isdir is undefined
       when: action == "install"
 

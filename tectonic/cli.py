@@ -19,60 +19,30 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-# -*- coding: utf-8 -*-
-
-# Tectonic - An academic Cyber Range
-# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
-# Uruguay
-#
-# This file is part of Tectonic.
-#
-# Tectonic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tectonic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-
 
 """Tectonic: An academic Cyber Range."""
 
-import os
-import pprint
 import re
 import logging
-from configparser import ConfigParser
 import traceback
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from collections import OrderedDict
 
 import click
 
-from tectonic.deployment_aws import AWSDeployment
-from tectonic.deployment_libvirt import LibvirtDeployment
-from tectonic.deployment_docker import DockerDeployment
+import tectonic.utils as utils
+from tectonic.config import TectonicConfig
 from tectonic.description import Description
-from tectonic.ansible import Ansible
 from tectonic.instance_type import InstanceType
 from tectonic.instance_type_aws import InstanceTypeAWS
-from tectonic.utils import create_table
-
-
+from tectonic.core import Core
 
 def log(msg):
     click.echo(msg)
 
-
 def debug(msg):
     if DEBUG:
         click.echo(msg)
-
 
 # The instances can be specified as a list, a range, or a combination of both:
 #    --instances=1,3,8
@@ -111,23 +81,6 @@ class NumberRangeParamType(click.ParamType):
 
 class TectonicException(Exception):
     pass
-
-
-def load_config(ctx, param, config_file):
-    if config_file is None:
-        return {}
-    cfg = ConfigParser()
-    cfg.read(config_file)
-    options = {}
-
-    # flatten the config file
-    for section in ["config", "aws", "libvirt", "docker", "elastic", "caldera"]:
-        try:
-            options = options | dict(cfg[section])
-        except KeyError:
-            pass
-
-    ctx.default_map = options
 
 
 NUMBER_RANGE = NumberRangeParamType()
@@ -182,8 +135,10 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 
     if not guest_names:
         machines_msg = "all machines"
+        spec_guests = False
     else:
         machines = []
+        spec_guests = True
 
         # Remove duplicates
         guest_names = list(OrderedDict.fromkeys(guest_names))
@@ -200,26 +155,27 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
         if not guest_names:
             print_instances = False
 
-        for guest_name in guest_names:
-            if ctx.obj["description"].get_guest_copies(guest_name) == 1:
+        guests = [guest for _, guest in ctx.obj["description"].base_guests.items() if not spec_guests or guest.base_name in guest_names]
+        for guest in guests:
+            if guest.copies == 1:
                 if not copies or 1 in copies:
-                    machines += [f"the {guest_name}"]
+                    machines += [f"the {guest.base_name}"]
             else:
                 if not copies:
-                    machines += [f"all copies of the {guest_name}"]
+                    machines += [f"all copies of the {guest.base_name}"]
                 else:
                     guest_copies = list(
                         filter(
                             lambda c: c
-                            <= ctx.obj["description"].get_guest_copies(guest_name),
+                            <= guest.copies,
                             copies,
                         )
                     )
                     if len(guest_copies) == 1:
-                        machines += [f"copy {guest_copies[0]} of the {guest_name}"]
+                        machines += [f"copy {guest_copies[0]} of the {guest.base_name}"]
                     else:
                         machines += [
-                            f"copies {range_to_str(guest_copies)} of the {guest_name}"
+                            f"copies {range_to_str(guest_copies)} of the {guest.base_name}"
                         ]
         if len(machines) > 1:
             machines_msg = ", ".join(machines[:-1]) + " and " + machines[-1]
@@ -237,44 +193,19 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.option(
-    "-c",
     "--config",
+    "-c",
     type=click.Path(exists=True, dir_okay=False),
-    # TODO: Try to find the file in the correct locations.
-    callback=load_config,
-    is_eager=True,
-    expose_value=False,
-    help="Read option defaults from specified INI file.",
-    show_default=True,
+    help="Read tectonic configuration from specified INI file.",
+    required=True,
 )
 @click.option(
     "--debug/--no-debug", default=False, help="Show debug messages during execution."
 )
 @click.option(
-    "--platform",
-    type=click.Choice(["aws", "libvirt", "docker"], case_sensitive=False),
-    default="aws",
-    help="Deploy the cyber range to this platform.",
-)
-@click.option(
     "--lab_repo_uri",
     "-u",
-    required=True,
     help="URI to a lab repository. Labs to deploy will be searched in this repo.",
-)
-@click.option(
-    "--aws_region",
-    "-r",
-    default="us-east-1",
-    show_default=True,
-    help="AWS region to use for deployment.",
-)
-@click.option(
-    "--aws_default_instance_type",
-    "-t",
-    default="t2.micro",
-    show_default=True,
-    help="Default EC2 instance type. Can be overwritten in CR guest configuration.",
 )
 @click.option(
     "--ssh_public_key_file",
@@ -285,66 +216,27 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     help="SSH pubkey to be used to connect to machines for configuration.",
 )
 @click.option(
-    "--ansible_ssh_common_args",
-    "-s",
-    default="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 ",
-    help="SSH extra connection options for connection to the CR machines.",
-)  # TODO: check default value
-@click.option(
-    "--packetbeat_vlan_id",
-    "-v",
-    default="1",
-    help="VLAN ID used in traffic mirrorring.",
-)
-@click.option(
-    "--packetbeat_policy_name",
-    "-n",
-    default="Packetbeat",
-    help="Packetbeat policy name.",
-)
-@click.option(
-    "--network_cidr_block",
-    "-b",
-    default="10.0.0.0/16",
-    help="CIDR block for the whole lab network.",
-)
-@click.option(
     "--configure_dns",
-    default=True,
+    default=False,
     show_default=True,
     help="Configure internal DNS for instances.",
 )
 @click.option(
-    "--teacher_access",
-    type=click.Choice(["host", "endpoint"], case_sensitive=False),
-    default="host",
-    help="Type of teacher access to configure.",
-)
-@click.option(
-    "--elastic_stack_version",
-    default="8.14.3",
-    help="Elastc version",
-)
-@click.option(
     "--gitlab_backend_url",
-    required=False,
     help="Gitlab terraform state url",
 )
 @click.option(
     "--gitlab_backend_username",
     envvar="GITLAB_USERNAME",
-    required=False,
     help="Gitlab Username",
 )
 @click.option(
     "--gitlab_backend_access_token",
     envvar="GITLAB_ACCESS_TOKEN",
-    required=False,
     help="Gitlab Access Token",
 )
 @click.option(
     "--packer_executable_path",
-    required=False,
     help="Packer executable path",
     default="packer",
 )
@@ -355,57 +247,8 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     help="URI to connect to server, if using libvirt",
 )
 @click.option(
-    "--libvirt_storage_pool",
-    default="default",
-    help="Name of the libvirt storage pool where images will be created.",
-)
-@click.option(
-    "--libvirt_student_access",
-    type=click.Choice(["port_forwarding", "bridge"], case_sensitive=False),
-    default="port_forwarding",
-    help="How student access should be configured: port forwarding in the libvirt server (port_forwarding) or adding "
-         "NICs to the entry points in a bridged network (bridge).",
-)
-@click.option(
-    "--libvirt_bridge",
-    help="Name of the libvirt server bridge to use for student access.",
-)
-@click.option(
-    "--libvirt_external_network",
-    default="192.168.0.0/25",
-    help="CIDR block of the external bridged network, if appropriate. Static IP addresses are assigned sequentially "
-         "to lab entry points.",
-)
-@click.option(
-    "--libvirt_bridge_base_ip",
-    default=10,
-    help="Starting IP from which to sequentially assign the entry points IPs. With default values, the first entry "
-         "point would get 192.168.44.11, and so on.",
-)
-@click.option(
     "--proxy",
-    required=False,
     help="Guest machines proxy configuration URI for libvirt.",
-)
-@click.option(
-    "--endpoint_policy_name",
-    default="Endpoint",
-    help="Agent policy name.",
-)
-@click.option(
-    "--user_install_packetbeat",
-    default="tectonic",
-    help="User used to install Packetbeat",
-)
-@click.option(
-    "--internet_network_cidr_block",
-    default="192.168.4.0/24",
-    help="CIDR internet network",
-)
-@click.option(
-    "--services_network_cidr_block",
-    default="192.168.5.0/24",
-    help="CIDR services network",
 )
 @click.option(
     "--keep_ansible_logs/--no-keep_ansible_logs",
@@ -417,11 +260,6 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     default="unix:///var/run/docker.sock",
     show_default=True,
     help="URI to connect to server, if using docker",
-)
-@click.option(
-    "--caldera_version",
-    default="latest",
-    help="Caldera version.",
 )
 @click.option(
     "--docker_dns",
@@ -449,127 +287,71 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 @click.argument("lab_edition_file", type=click.Path(exists=True, dir_okay=False))
 @click.pass_context
 def tectonic(
-    ctx,
-    platform,
-    lab_repo_uri,
-    aws_region,
-    aws_default_instance_type,
-    ssh_public_key_file,
-    ansible_ssh_common_args,
-    debug,
-    packetbeat_vlan_id,
-    packetbeat_policy_name,
-    network_cidr_block,
-    configure_dns,
-    teacher_access,
-    elastic_stack_version,
-    gitlab_backend_url,
-    gitlab_backend_username,
-    gitlab_backend_access_token,
-    packer_executable_path,
-    libvirt_uri,
-    libvirt_storage_pool,
-    libvirt_student_access,
-    libvirt_bridge,
-    libvirt_external_network,
-    libvirt_bridge_base_ip,
-    proxy,
-    lab_edition_file,
-    endpoint_policy_name,
-    user_install_packetbeat,
-    internet_network_cidr_block,
-    services_network_cidr_block,
-    keep_ansible_logs,
-    docker_uri,
-    caldera_version,
-    docker_dns,
-    ansible_forks,
-    ansible_pipelining,
-    ansible_timeout
-):
+        ctx,
+        config,
+        debug,
+        lab_repo_uri,
+        ssh_public_key_file,
+        configure_dns,
+        gitlab_backend_url,
+        gitlab_backend_username,
+        gitlab_backend_access_token,
+        packer_executable_path,
+        libvirt_uri,
+        proxy,
+        keep_ansible_logs,
+        docker_uri,
+        docker_dns,
+        ansible_forks,
+        ansible_pipelining,
+        ansible_timeout,
+        lab_edition_file):
     """Deploy or manage a cyber range according to LAB_EDITION_FILE."""
-    logfile = PurePosixPath(lab_edition_file).parent.joinpath("tectonic.log")
+    logfile = Path(lab_edition_file).parent / "tectonic.log"
     loglevel = logging.DEBUG if debug else logging.INFO
     logging.basicConfig(filename=logfile, encoding="utf-8", level=loglevel)
 
     ctx.ensure_object(dict)
 
-    instance_type = None
-    if platform == "aws":
-        instance_type = InstanceTypeAWS(aws_default_instance_type)
-    else:
-        instance_type = InstanceType()
+    config = TectonicConfig.load(config)
+    if debug:
+        config.debug = debug
+    if lab_repo_uri:
+        config.lab_repo_uri = lab_repo_uri
+    if ssh_public_key_file:
+        config.ssh_public_key_file = ssh_public_key_file
+    if configure_dns:
+        config.configure_dns = configure_dns
+    if gitlab_backend_url:
+        config.gitlab_backend_url = gitlab_backend_url
+    if gitlab_backend_username:
+        config.gitlab_backend_username = gitlab_backend_username
+    if gitlab_backend_access_token:
+        config.gitlab_backend_access_token = gitlab_backend_access_token
+    if packer_executable_path:
+        config.packer_executable_path = packer_executable_path
+    if packer_executable_path:
+        config.packer_executable_path = packer_executable_path
+    if libvirt_uri:
+        config.libvirt.uri = libvirt_uri
+    if proxy:
+        config.proxy = proxy
+    if keep_ansible_logs:
+        config.ansible.keep_logs = keep_ansible_logs
+    if docker_uri:
+        config.docker.uri = docker_uri
+    if docker_dns:
+        config.docker.dns = docker_dns
+    if ansible_forks:
+        config.ansible.forks = ansible_forks
+    if ansible_pipelining:
+        config.ansible.pipelining = ansible_pipelining
+    if ansible_timeout:
+        config.ansible.timeout = ansible_timeout
 
-    ctx.obj["description"] = Description(
-        lab_edition_file,
-        platform,
-        lab_repo_uri,
-        teacher_access,
-        configure_dns,
-        ssh_public_key_file,
-        ansible_ssh_common_args,
-        aws_region,
-        aws_default_instance_type,
-        network_cidr_block,
-        packetbeat_policy_name,
-        packetbeat_vlan_id,
-        elastic_stack_version,
-        libvirt_uri,
-        libvirt_storage_pool,
-        libvirt_student_access,
-        libvirt_bridge,
-        libvirt_external_network,
-        libvirt_bridge_base_ip,
-        proxy,
-        instance_type,
-        endpoint_policy_name,
-        user_install_packetbeat,
-        internet_network_cidr_block,
-        services_network_cidr_block,
-        keep_ansible_logs,
-        docker_uri,
-        caldera_version,
-        docker_dns,
-        ansible_forks,
-        ansible_pipelining,
-        ansible_timeout
-    )
-
-    if platform == "aws":
-        ctx.obj["deployment"] = AWSDeployment(
-            ctx.obj["description"],
-            gitlab_backend_url=gitlab_backend_url,
-            gitlab_backend_username=gitlab_backend_username,
-            gitlab_backend_access_token=gitlab_backend_access_token,
-            packer_executable_path=packer_executable_path,
-        )
-    elif platform == "libvirt":
-        ctx.obj["deployment"] = LibvirtDeployment(
-            ctx.obj["description"],
-            gitlab_backend_url=gitlab_backend_url,
-            gitlab_backend_username=gitlab_backend_username,
-            gitlab_backend_access_token=gitlab_backend_access_token,
-            packer_executable_path=packer_executable_path,
-        )
-    elif platform == "docker":
-        ctx.obj["deployment"] = DockerDeployment(
-            ctx.obj["description"],
-            gitlab_backend_url=gitlab_backend_url,
-            gitlab_backend_username=gitlab_backend_username,
-            gitlab_backend_access_token=gitlab_backend_access_token,
-            packer_executable_path=packer_executable_path,
-        )
-    else:
-        raise Exception(f"Unsupported platform {platform}.")
-
-    ctx.obj["ansible"] = Ansible(ctx.obj["deployment"])
-
-    if elastic_stack_version == "latest":
-        ctx.obj["description"].set_elastic_stack_version(ctx.obj["deployment"].get_elastic_latest_version())
-
-    if caldera_version == "latest":
-        ctx.obj["description"].set_caldera_version("master")
-
+    ctx.obj["config"] = config
+    ctx.obj["description"] = Description(config, lab_edition_file)
+    ctx.obj["core"] = Core(ctx.obj["description"])
 
 @tectonic.command()
 @click.pass_context
@@ -614,7 +396,7 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     if images:
         _create_images(ctx, packetbeat_image, elastic_image, caldera_image, True)
 
-    ctx.obj["deployment"].deploy_infraestructure(instances)
+    ctx.obj["core"].deploy(instances, images, False)
 
     _info(ctx)
 
@@ -622,31 +404,37 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
 @tectonic.command()
 @click.pass_context
 @click.option(
+    "--machines/--no-machines",
+    default=True,
+    show_default=True,
+    help="Whether to destroy running guests in the lab.",
+)
+@click.option(
     "--images/--no-images",
     default=False,
     show_default=True,
-    help="Whether to destroy the base images of each guest in the lab.",
+    help="Whether to destroy the base images of guests and services in the lab.",
 )
 @click.option(
-    "--packetbeat_image/--no-packetbeat_image",
+    "--packetbeat/--no-packetbeat",
     default=False,
     show_default=True,
-    help="Whether to destroy the base image for packetbeat.",
+    help="Whether to destroy the packetbeat service machine.",
 )
 @click.option(
-    "--elastic_image/--no-elastic_image",
+    "--elastic/--no-elastic",
     default=False,
     show_default=True,
-    help="Whether to destroy the base image for ELK.",
+    help="Whether to destroy the ELK service machine.",
 )
 @click.option(
-    "--caldera_image/--no-caldera_image",
+    "--caldera/--no-caldera",
     default=False,
     show_default=True,
-    help="Whether to destroy the base image for Caldera.",
+    help="Whether to destroy the Caldera machine.",
 )
 @click.option(
-    "--instances", "-i", help="Range of instances to list.", type=NUMBER_RANGE
+    "--instances", "-i", help="Range of instances to destroy.", type=NUMBER_RANGE
 )
 @click.option(
     "--force",
@@ -654,29 +442,30 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     help="Force the destruction of instances without a confirmation prompt.",
     is_flag=True,
 )
-def destroy(ctx, images, instances, packetbeat_image, elastic_image, caldera_image, force):
-    """Delete and destroy all resources of the cyber range."""
+def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, force):
+    """Delete and destroy all resources of the cyber range. 
+
+    If instances are specified only destroys running guests for those instances.
+    Otherwise, destroys all running guests (if machines is true), and each specified service.
+    """
 
     if not force:
-        confirm_machines(
-            ctx, instances, guest_names=None, copies=None, action="Destroying"
-        )
+        confirm_machines(ctx, instances, guest_names=None, copies=None, action="Destroying")
 
-    ctx.obj["deployment"].destroy_infraestructure(instances)
+    if (instances and not machines):
+        raise TectonicException("If you specify a list of instances, machines must be true.")
+    if (instances and (images or caldera or elastic or packetbeat)):
+        raise TectonicException("You cannot specify a list of instances and image or service destruction at the same time.")
 
-    if instances is None:
-        if images:
-            click.echo("Destroying base images...")
-            ctx.obj["deployment"].delete_cr_images()
+    services = []
+    if packetbeat:
+        services.append("packetbeat")
+    if elastic:
+        services.append("elastic")
+    if caldera:
+        services.append("caldera")
 
-        if (packetbeat_image and ctx.obj["description"].platform == "aws")  or elastic_image or caldera_image:
-            click.echo("Destroying services base image...")
-            services = {
-                "packetbeat": packetbeat_image and ctx.obj["description"].platform == "aws",
-                "elastic": elastic_image,
-                "caldera": caldera_image
-            }
-            ctx.obj["deployment"].delete_services_images(services)
+    ctx.obj["core"].destroy(instances, machines, services, images)
 
 @tectonic.command()
 @click.pass_context
@@ -713,25 +502,25 @@ def destroy(ctx, images, instances, packetbeat_image, elastic_image, caldera_ima
 )
 def create_images(ctx, packetbeat, elastic, caldera, machines, guests):
     """Create lab base images."""
-    ctx.obj["description"].parse_machines(
-        instances=None, guests=guests, copies=None, only_instances=True
-    )
+    ctx.obj["description"].parse_machines(instances=None, guests=guests, copies=None, only_instances=True)
     _create_images(ctx, packetbeat, elastic, caldera, machines, guests)
 
 
 def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
-    if (packetbeat and ctx.obj["description"].platform == "aws") or elastic or caldera:
-        services = {
-            "packetbeat": packetbeat and ctx.obj["description"].platform == "aws",
-            "elastic": elastic,
-            "caldera": caldera
-        }
+    services = []
+    if elastic and ctx.obj["description"].elastic.enable:
+        services.append("elastic")
+    if packetbeat and ctx.obj["description"].packetbeat.enable:
+        services.append("packetbeat")
+    if caldera and ctx.obj["description"].caldera.enable:
+        services.append("caldera")
+    if services:
         click.echo("Creating services images ...")
-        ctx.obj["deployment"].create_services_images(services)
+        ctx.obj["core"].create_services_images(services)
 
     if machines:
         click.echo("Creating base images...")
-        ctx.obj["deployment"].create_cr_images(guests)
+        ctx.obj["core"].create_instances_images(guests)
 
 
 @tectonic.command(name="list")
@@ -746,11 +535,21 @@ def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
 def list_instances(ctx, instances, guests, copies):
     """Print information and state of the cyber range resources."""
     click.echo("Getting Cyber Range status...")
-    result = ctx.obj["deployment"].list_instances(instances, guests, copies)
-    click.echo(result)
-    click.echo("Getting Services status...")
-    result = ctx.obj["deployment"].get_services_status()
-    click.echo(result)
+    result = ctx.obj["core"].list_instances(instances, guests, copies)
+
+    if result.get("instances_status"):
+        headers = ["Name", "Status"]
+        rows = []
+        for machine, status in result.get("instances_status", []).items():
+            rows.append([machine, status])
+        click.echo(utils.create_table(headers,rows))
+
+    if result.get("services_status"):
+        headers = ["Name", "Status"]
+        rows = []
+        for machine, status in result.get("services_status", []).items():
+            rows.append([machine, status])
+        click.echo(utils.create_table(headers,rows))
 
 @tectonic.command()
 @click.pass_context
@@ -777,7 +576,7 @@ def start(ctx, instances, guests, copies, force, services):
     """Start (boot up) machines in the cyber range."""
     if not force:
         confirm_machines(ctx, instances, guests, copies, "Start")
-    ctx.obj["deployment"].start(instances, guests, copies, services)
+    ctx.obj["core"].start(instances, guests, copies, services)
 
 
 @tectonic.command()
@@ -811,7 +610,7 @@ def shutdown(ctx, instances, guests, copies, force, services):
     """Shutdown machines in the cyber range."""
     if not force:
         confirm_machines(ctx, instances, guests, copies, "Shut down")
-    ctx.obj["deployment"].shutdown(instances, guests, copies, services)
+    ctx.obj["core"].stop(instances, guests, copies, services)
 
 @tectonic.command()
 @click.pass_context
@@ -838,7 +637,7 @@ def reboot(ctx, instances, guests, copies, force, services):
     """Reboot machines in the cyber range."""
     if not force:
         confirm_machines(ctx, instances, guests, copies, "Reboot")
-    ctx.obj["deployment"].reboot(instances, guests, copies, services)
+    ctx.obj["core"].restart(instances, guests, copies, services)
 
 
 @tectonic.command()
@@ -858,15 +657,7 @@ def reboot(ctx, instances, guests, copies, force, services):
 )
 def console(ctx, instance, guest, copy, username):
     """Connect to a machine in the cyber range and get a console."""
-    machines_to_connect = ctx.obj["description"].parse_machines(
-        instance or [], guest, copy, False
-    )
-    if len(machines_to_connect) > 1:
-        raise TectonicException("You must specify only one machine to connect.")
-
-    machine_to_connect = machines_to_connect[0]
-    click.echo(f"Connecting to machine {machine_to_connect}...")
-    ctx.obj["deployment"].connect_to_instance(machine_to_connect, username)
+    ctx.obj["core"].console(instance, guest, copy, username)
 
 
 @tectonic.command()
@@ -915,9 +706,7 @@ def run_ansible(ctx, instances, guests, copies, username, playbook, force):
     )
     if not force:
         confirm_machines(ctx, instances, guests, copies, "Applying ansible playbook to")
-    ctx.obj["ansible"].run(
-        instances=instances, guests=guests, copies=copies, only_instances=False, username=username, playbook=playbook
-    )
+    ctx.obj["core"].run_automation(instances, guests, copies, username, playbook)
 
 
 @tectonic.command()
@@ -937,20 +726,15 @@ def student_access(ctx, instances, force):
     host, if appropriate). Credentials can be public SSH keys and/or
     autogenerated passwords.
     """
-
-    entry_points = [ base_name for base_name, guest in ctx.obj["description"].guest_settings.items()
-                     if guest and guest.get("entry_point") ]
-
-    if ctx.obj["description"].platform == "aws":
-        entry_points += ["student_access"]
-
-    if not force:
-        confirm_machines(ctx, instances, entry_points, None, "Creating credentials on")
-
     click.echo("Configuring student access...")
-    ctx.obj["deployment"].student_access(instances)
+    users = ctx.obj["core"].configure_students_access(instances)
 
-    _print_student_passwords(ctx)
+    rows = []
+    headers = ["Username", "Password"]
+    for username, users in users.items():
+        rows.append([username, users['password']])
+    table = utils.create_table(headers, rows)
+    click.echo(table)
 
 @tectonic.command()
 @click.pass_context
@@ -960,23 +744,32 @@ def info(ctx):
 
 def _info(ctx):
     click.echo("Getting Cyber Range information...")
-    result = ctx.obj["deployment"].get_cyberrange_data()
-    click.echo(result)
-    _print_student_passwords(ctx)
-    
-def _print_student_passwords(ctx):
-    """Print the generated student passwords, if create_student_passwords is True.
-    """
-    if ctx.obj["description"].create_student_passwords:
-        users = ctx.obj["deployment"].get_student_access_users()
-        click.echo("\nStudent users:")
-        rows = []
-        headers = ["Username", "Password"]
-        for username, user in users.items():
-            rows.append([username, user['password']])
-        table = create_table(headers, rows)
-        click.echo(table)
+    result = ctx.obj["core"].info()
 
+    if result.get("instances_info"):
+        headers = ["Name", "Status"]
+        rows = []
+        for key, value in result.get("instances_info", []).items():
+            rows.append([key, value])
+        click.echo(utils.create_table(headers,rows))
+
+    if result.get("services_info"):
+        headers = ["Name", "Status"]
+        rows = []
+        for service, service_value in result.get("services_info", []).items():
+            for key, value in service_value.items():
+                if key == "Credentials":
+                    for creds_key, creds_value in value.items():
+                        rows.append([f"{service.capitalize()} {key}", f"{creds_key} {creds_value}"])
+                else:
+                    rows.append([f"{service.capitalize()} {key}", value])
+        click.echo(utils.create_table(headers,rows))
+    if result.get("student_access_password"):
+        headers = ["Username", "Password"]
+        rows = []
+        for key, value in result.get("student_access_password", {}).items():
+            rows.append([key, value])
+        click.echo(utils.create_table(headers,rows))
 
 @tectonic.command()
 @click.pass_context
@@ -1006,7 +799,7 @@ def recreate(ctx, instances, guests, copies, force):
     """Recreate instances."""
     if not force:
         confirm_machines(ctx, instances, guests, copies, "Recreate")
-    ctx.obj["deployment"].recreate(instances, guests, copies)
+    ctx.obj["core"].recreate(instances, guests, copies)
 
 if __name__ == "__main__":
     obj = {}
@@ -1032,4 +825,14 @@ if __name__ == "__main__":
 def show_parameters(ctx, instances, directory):
     """Generate parameters for instances"""
     click.echo("Getting parameters")
-    ctx.obj["deployment"].get_parameters(instances, directory)
+    parameters = ctx.obj["core"].get_parameters(instances, directory)
+    if directory:
+        click.echo(parameters)
+    else:
+        rows = []
+        headers = ["Instances", "Parameters"]
+        for instance, parameter in parameters.items():
+            rows.append([instance, parameter])
+        table = utils.create_table(headers, rows)
+        click.echo(table)
+

@@ -50,10 +50,10 @@ variable "aws_region" {
   description = "The region to use for the aws provider"
 }
 
-variable "aws_default_instance_type" {
+variable "access_host_instance_type" {
   type        = string
   default     = "t2.micro"
-  description = "The AWS instance type to use in scenario machines. Can be overwritten in the guest settings."
+  description = "The AWS instance type to use in teacher and student access machines."
 }
 
 variable "network_cidr_block" {
