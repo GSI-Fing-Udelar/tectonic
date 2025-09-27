@@ -34,6 +34,9 @@ from tectonic.constants import OS_DATA
 import tectonic.utils
 import tectonic.validate as validate
 import importlib.resources as tectonic_resources
+from tectonic.instance_type import InstanceType
+from tectonic.instance_type_aws import InstanceTypeAWS
+
 
 class DescriptionException(Exception):
     pass
@@ -277,9 +280,12 @@ class MachineDescription:
 
     def load_machine(self, data):
         """Loads the information from the yaml structure in data."""
+        if not data:
+            return
         self.memory = data.get("memory", self.memory)
         self.vcpu = data.get("vcpu", self.vcpu)
         self.disk = data.get("disk", self.disk)
+        self.gpu = data.get("gpu", self.gpu)
 
     def toJSON(self):
         "{}"
@@ -350,10 +356,12 @@ class BaseGuestDescription(MachineDescription):
 
     def load_base_guest(self, data):
         """Loads the information from the yaml structure in data."""
+        if not data:
+            return
         self.load_machine(data)
         self.base_name = data.get("name", self.base_name)
         self.entry_point = data.get("entry_point", self.entry_point)
-        self.os = data.get("os", self.os)
+        self.os = data.get("base_os", self.os)
         self.internet_access = data.get("internet_access", self.internet_access)
         self.copies = data.get("copies", self.copies)
         self.monitor = data.get("monitor", self.monitor)
@@ -820,7 +828,7 @@ class TrafficRule():
 
 class Description:
 
-    def __init__(self, config, instance_type, lab_edition_path):
+    def __init__(self, config, lab_edition_path):
         """Create a Description object.
 
         The description object is created from a lab edition file that
@@ -836,7 +844,10 @@ class Description:
         """
 
         self._config = config
-        self._instance_type = instance_type
+        if config.platform == "aws":
+            self._instance_type = InstanceTypeAWS()
+        else:
+            self._instance_type = InstanceType()
 
         # Read lab edition file
         try:
@@ -849,11 +860,9 @@ class Description:
             
         # Read description file
         self._required(lab_edition_data, "base_lab")
-        if not lab_edition_data.get("base_lab"):
-            raise DescriptionException("Missing required option: base_lab.")
-        self._scenario_dir = self._get_scenario_path(lab_edition_data["base_lab"])
+        self._scenario_dir = str(self._get_scenario_path(lab_edition_data["base_lab"]))
         try:
-            description_path = Path(self._scenario_dir).joinpath("description.yml")
+            description_path = Path(self._scenario_dir) / "description.yml"
             stream = open(description_path, "r")
             description_data = yaml.safe_load(stream)
         except Exception as e:
@@ -895,7 +904,7 @@ class Description:
         # not disabled in the lab edition.
         enable_caldera = self._caldera.enable and lab_edition_data.get("caldera_settings", {}).get("enable", True)
         self._caldera.load_caldera(lab_edition_data.get("caldera_settings", {}))
-        self._caldera.enable = enable_caldera      
+        self._caldera.enable = enable_caldera
 
         # Load base guests and topology
         self._required(description_data, "guest_settings")
@@ -910,23 +919,78 @@ class Description:
         network_index = 0
         for network_data in description_data["topology"]:
             base_name = network_data["name"]
+            for member in network_data["members"]:
+                if not member in self._base_guests:
+                    raise DescriptionException(f"Undefined member {member} in network {base_name}.")
             # Repeat members for each copy
             members = [member for member in network_data["members"]
                        for copy in range(self._base_guests[member].copies)
-                       ] #TODO: el copy no se está usando?
+                       ]
             network = NetworkDescription(self, base_name)
             network.index = network_index
             network_index += 1
-            for member in members:
-                if not member in self._base_guests:
-                    raise DescriptionException(f"Undefined member {member} in network {base_name}.")
             network.members = members
             self._topology[network.base_name] = network
 
         self._scenario_networks = self._compute_scenario_networks()
-        self._scenario_guests = self._compute_scenario_guests()
-        self._extra_guests = self._compute_extra_guests()
-        self._parameters_files = tectonic.utils.list_files_in_directory(Path(self._scenario_dir).joinpath("ansible","parameters"))
+        self._parameters_files = tectonic.utils.list_files_in_directory(Path(self._scenario_dir) / "ansible" / "parameters")
+
+        #Load FW rules
+        self._traffic_rules = {}
+        if self.config.routing: #If routing disable don't load custom traffic rules
+            if "traffic_rules" in description_data.keys():
+                for rule_data in description_data["traffic_rules"]:
+                    for instance in range(1,self.instance_number+1):
+                        traffic_rule = TrafficRule(rule_data["name"], instance, rule_data["description"], "ingress")
+                        if "protocol" in rule_data.keys():
+                            protocol = rule_data["protocol"]
+                        else:
+                            protocol = "all"
+                        traffic_rule.protocol = protocol
+                        if protocol == "icmp":
+                                traffic_rule.from_port = "-1"
+                                traffic_rule.to_port = "-1"
+                        elif protocol == "all":
+                                traffic_rule.from_port = "0"
+                                traffic_rule.to_port = "0"
+                        else:
+                            if "port_range" in rule_data.keys():
+                                port_split = str(rule_data["port_range"]).split("-")
+                                from_port = port_split[0]
+                                if len(port_split) == 2:
+                                    to_port = port_split[1]
+                                else:
+                                    to_port = from_port
+                                traffic_rule.from_port = from_port
+                                traffic_rule.to_port = to_port
+
+                        source_split = str(rule_data["source"]).split(".")
+                        if len(source_split) == 2:
+                            machine_name = source_split[0]
+                            network_name = source_split[1]
+                            for _, guest in self.scenario_guests.items():
+                                if machine_name == guest.base_name and instance == guest.instance:
+                                    for _, interface in guest.interfaces.items():
+                                        if network_name == interface.network.base_name:
+                                            traffic_rule.network_cidr = f"{interface.private_ip}/32"
+                        else:
+                            network_name = source_split[0]
+                            for _, network in self.scenario_networks.items():
+                                if network_name == network.base_name and instance == network.instance:
+                                    traffic_rule.network_cidr = network.ip_network
+                        
+                        machine_name = rule_data["destination"].split(".")[0]
+                        network_name = rule_data["destination"].split(".")[1]
+                        for _, guest in self.scenario_guests.items():
+                            if machine_name == guest.base_name and instance == guest.instance:
+                                for _, interface in guest.interfaces.items():
+                                    if network_name == interface.network.base_name:
+                                        traffic_rule.interface_name = interface.name
+                                        interface._add_traffic_rule(traffic_rule)
+            else:
+                self._load_default_traffic_rules()
+        else:
+            self._load_default_traffic_rules()
 
         #Load FW rules
         self._traffic_rules = {}
@@ -1005,10 +1069,6 @@ class Description:
         self._packetbeat.load_interfaces(self._auxiliary_networks)
         self._caldera.load_interfaces(self._auxiliary_networks)
 
-        self._services_guests = self._compute_services_guests()
-
-        self._extra_guests = self._compute_extra_guests()
-
     def parse_machines(self, instances=[], guests=[], copies=[], only_instances=True, exclude=[]):
         """
         Return machines names based on instance number, guest name and number of copy.
@@ -1023,12 +1083,13 @@ class Description:
         Returns:
             list(str): full name of machines.
         """
+        infrastructure_guests = self.extra_guests
+        infrastructure_guests.update(self.services_guests)
+
         # Validate filters
         infrastructure_guests_names = []
-        for _, extra in self.extra_guests.items():
-            infrastructure_guests_names.append(extra.base_name)
-        for _, service in self.services_guests.items():
-            infrastructure_guests_names.append(service.base_name)
+        for _, guest in infrastructure_guests.items():
+            infrastructure_guests_names.append(guest.base_name)
 
         guests_aux = list(self.base_guests.keys())
         if not only_instances:
@@ -1056,25 +1117,12 @@ class Description:
             result.append(guest.name)
 
         if not only_instances:
-            for guest in infrastructure_guests_names:
-                if ((not guests or guest in guests) and
-                    (not exclude or guest not in exclude)):
-                    result.append(f"{self.institution}-{self.lab_name}-{guest}")
-            # if self.config.platform == "aws":
-            #     student_access = f"{self.institution}-{self.lab_name}-student_access"
-            #     if ((not guests or student_access in guests) and
-            #         (not exclude or student_access not in exclude)):
-            #         result.append(student_access)
-            #     teacher_access = f"{self.institution}-{self.lab_name}-teacher_access"
-            #     if ((self.config.aws.teacher_access == "host") and
-            #         (not guests or teacher_access in guests) and
-            #         (not exclude or teacher_access not in exclude)):
-            #         result.append(teacher_access)
-
-            # for _, service in self.services_guests.items():
-            #     if ((not guests or service.name in guests) and
-            #         (not exclude or service.name not in exclude)):
-            #         result.append(service.name)
+            for _, infra_guest in infrastructure_guests.items():
+                if guests and infra_guest.base_name not in guests:
+                    continue
+                if exclude and infra_guest.base_name in exclude:
+                    continue
+                result.append(infra_guest.name)
 
         if len(result) == 0:
             raise DescriptionException(
@@ -1141,7 +1189,7 @@ class Description:
 
     @property
     def ansible_dir(self):
-        return Path(self._scenario_dir) / 'ansible'
+        return str(Path(self._scenario_dir) / 'ansible')
 
     @property
     def base_lab(self):
@@ -1172,13 +1220,11 @@ class Description:
         """
         keys = ""
         keys += tectonic.utils.read_files_in_dir(self.teacher_pubkey_dir)
-        if self.config.ssh_public_key_file is not None:
-            p = Path(self.config.ssh_public_key_file).expanduser()
-            if p.is_file():
-                key = p.read_text()
-                if key[-1] != "\n":
-                    key += "\n"
-                keys += key
+
+        key = Path(self.config.ssh_public_key_file).expanduser().read_text()
+        key += "\n"
+        keys += key
+
         return keys
 
     @property
@@ -1216,7 +1262,7 @@ class Description:
 
     @property
     def internet_access_required(self):
-        any(guest.internet_access for _, guest in self._base_guests.items())
+        return any(guest.internet_access for _, guest in self._base_guests.items())
 
     @property
     def parameters_files(self):
@@ -1228,15 +1274,59 @@ class Description:
 
     @property
     def scenario_guests(self):
-        return self._scenario_guests
-    
+        """Compute the scenario guest data."""
+
+        guests = {}
+        entry_point_index = 1
+        services_network_index = 1
+        for instance_num in range(1, self.instance_number + 1):
+            for base_name, base_guest in self.base_guests.items():
+                for copy in range(1, base_guest.copies+1):
+                    is_in_services_network = (
+                        self.elastic.enable and self.elastic.monitor_type == "endpoint" and base_guest.monitor
+                    ) or (
+                        self.caldera.enable and (base_guest.red_team_agent or base_guest.blue_team_agent)
+                    )
+                    guest = GuestDescription(self, base_guest, instance_num, copy, is_in_services_network)
+                    guest.entry_point_index = entry_point_index
+                    guest.services_network_index = services_network_index
+                    guest.advanced_options_file = self._get_guest_advanced_options_file(base_name)
+                    guests[guest.name] = guest
+
+                    if base_guest.entry_point:
+                        entry_point_index += 1
+                    if is_in_services_network:
+                        services_network_index += 1
+        return guests
+        
+        
     @property
     def services_guests(self):
-        return self._services_guests
-    
+        """Compute the scenario services data."""
+
+        services = {}
+        if self.elastic.enable:
+            services[self.elastic.name] = self.elastic
+            if self.config.platform == "aws" and self.elastic.monitor_type == "traffic":
+                services[self._packetbeat.name] = self._packetbeat
+        if self.caldera.enable:
+            services[self.caldera.name] = self.caldera
+        return services
+
     @property
     def extra_guests(self):
-        return self._extra_guests
+        """Compute the scenario extra data."""
+
+        extra = {}
+        if self.config.platform == "aws":
+            if self.student_access_required:
+                student_access = ServiceDescription(self, 'student_access', 'ubuntu22')
+                extra[student_access.name] = student_access
+            if self.config.aws.teacher_access == "host":
+                teacher_access = ServiceDescription(self, 'teacher_access', 'ubuntu22')
+                extra[teacher_access.name] = teacher_access
+        return extra
+
 
     @property
     def elastic(self):
@@ -1280,6 +1370,10 @@ class Description:
     def instance_number(self, value):
         validate.number("instance_number", value, min_value=0)
         self._instance_number = value
+
+    @scenario_dir.setter
+    def scenario_dir(self, value):
+        self._scenario_dir = value
 
     @teacher_pubkey_dir.setter
     def teacher_pubkey_dir(self, value):
@@ -1371,53 +1465,6 @@ class Description:
                 networks[scenario_network.name] = scenario_network
         return networks
 
-    def _compute_scenario_guests(self):
-        """Compute the scenario guest data."""
-
-        guests = {}
-        entry_point_index = 1
-        services_network_index = 1
-        for instance_num in range(1, self.instance_number + 1):
-            for base_name, base_guest in self.base_guests.items():
-                for copy in range(1, base_guest.copies+1):
-                    is_in_services_network = (
-                        self.elastic.enable and self.elastic.monitor_type == "endpoint" and base_guest.monitor
-                    ) or (
-                        self.caldera.enable and (base_guest.red_team_agent or base_guest.blue_team_agent)
-                    )
-                    guest = GuestDescription(self, base_guest, instance_num, copy, is_in_services_network)
-                    guest.entry_point_index = entry_point_index
-                    guest.services_network_index = services_network_index
-                    guest.advanced_options_file = self._get_guest_advanced_options_file(base_name)
-                    guests[guest.name] = guest
-
-                    if base_guest.entry_point:
-                        entry_point_index += 1
-                    if is_in_services_network:
-                        services_network_index += 1
-        return guests
-    
-    def _compute_services_guests(self):
-        """Compute the scenario services data."""
-        services = {}
-        if self.elastic.enable:
-            services[self.elastic.name] = self.elastic
-            if self.config.platform == "aws" and self.elastic.monitor_type == "traffic":
-                services[self._packetbeat.name] = self._packetbeat
-        if self.caldera.enable:
-            services[self.caldera.name] = self.caldera
-        return services
-    
-    def _compute_extra_guests(self):
-        """Compute the scenario services data."""
-        extra = {}
-        if self.config.platform == "aws":
-            if self.student_access_required:
-               extra[f"{self.institution}-{self.lab_name}-student_access"] = GuestDescription(self, BaseGuestDescription(self, "student_access"), 1, 1, False)
-            if self.config.aws.teacher_access == "host":
-                extra[f"{self.institution}-{self.lab_name}-teacher_access"] = GuestDescription(self, BaseGuestDescription(self, "teacher_access"), 1, 1, False)
-        return extra
-
     def _get_guest_advanced_options_file(self, base_name):
         """
         Return path to advanced options for the guest if exists or /dev/null otherwise.
@@ -1426,8 +1473,8 @@ class Description:
             base_name (str): Machine base name
         """
         if self.config.platform == "libvirt":
-            advanced_options_path = Path(self._scenario_dir).joinpath("advanced", self.config.platform)
-            advanced_options_file = Path(advanced_options_path).joinpath(f'{base_name}.xsl')
+            advanced_options_path = Path(self._scenario_dir) / "advanced" / self.config.platform
+            advanced_options_file = Path(advanced_options_path) / f'{base_name}.xsl'
             if advanced_options_file.is_file():
                 return advanced_options_file.resolve().as_posix()
         return "/dev/null"

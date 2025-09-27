@@ -24,6 +24,9 @@ from pathlib import Path
 import ansible_runner
 import importlib.resources as tectonic_resources
 
+from tectonic.config import TectonicConfig
+from tectonic.description import MachineDescription, Description, DescriptionException
+from tectonic.client import Client
 
 logger = logging.getLogger(__name__)
 
@@ -87,12 +90,15 @@ class Ansible:
                 networks[guest.instance][interface.network.name][guest.base_name] = interface.name
 
         for machine_name in machine_list:
-            if machine_name in self.description.services_guests.keys():
-                machine = self.description.services_guests[machine_name] 
-            elif machine_name in self.description.scenario_guests.keys():
+            if machine_name in self.description.services_guests:
+                machine = self.description.services_guests[machine_name]
+            elif machine_name in self.description.scenario_guests:
                 machine = self.description.scenario_guests[machine_name]
-            elif machine_name in self.description.extra_guests.keys():
+            elif machine_name in self.description.extra_guests:
                 machine = self.description.extra_guests[machine_name]
+            else:
+                raise AnsibleException(f"Machine name {machine_name} not found.")
+
             ansible_username = username or machine.admin_username
             hostname = self.client.get_ssh_hostname(machine_name)
 
@@ -197,6 +203,8 @@ class Ansible:
                 return
         else:
             playbook = Path(playbook).resolve().as_posix()
+            if not Path(playbook).is_file():
+                raise AnsibleException(f"Playbook {playbook} not found.")
         if not inventory:
             machine_list = self.description.parse_machines(
                 instances, guests, copies, only_instances, exclude

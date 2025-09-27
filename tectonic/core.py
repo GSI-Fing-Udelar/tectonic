@@ -51,11 +51,11 @@ class Core:
     ANSIBLE_SERVICE_PLAYBOOK = tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'
     ANSIBLE_TRAINEES_PLAYBOOK = tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'
 
-    def __init__(self, config, description):
+    def __init__(self, description):
         """
         Initialize the core object.
         """
-        self.config = config
+        self.config = description.config
         self.description = description
 
         if self.config.platform == "aws":
@@ -77,13 +77,13 @@ class Core:
             raise CoreException("Unknown platform.")
         self.ansible = Ansible(self.config, self.description, self.client)
         
-    def __del__(self):
-        del self.terraform_service
-        del self.packer
-        del self.client
-        del self.terraform
-        del self.ansible
-        del self.description
+    # def __del__(self):
+    #     del self.terraform_service
+    #     del self.packer
+    #     del self.client
+    #     del self.terraform
+    #     del self.ansible
+    #     del self.description
 
     def create_instances_images(self, guests=()):
         """
@@ -139,7 +139,7 @@ class Core:
 
         self.ansible.run(instances, quiet=True)
 
-        self.configure_students_access(instances)  
+        self.configure_students_access(instances)
 
         if self.description.elastic.enable:
             if self.description.elastic.monitor_type == "traffic":
@@ -175,7 +175,7 @@ class Core:
             # Destroy images
             if destroy_images:
                 self.packer.destroy_instance_image(self.description.base_guests.keys())
-                self.packer.destroy_service_image([service.base_name for _, service in self.description.services_guests.items()])
+                self.packer.destroy_service_image(services)
     
     def recreate(self, instances, guests, copies):
         """
@@ -325,7 +325,7 @@ class Core:
                 agents_status = result[0]['agents_status']
                 for key in agents_status:
                     services_status[f"elastic-agents-{key}"] = agents_status[key]
-        elif self.description.caldera.enable:
+        if self.description.caldera.enable:
             # TODO: move this somewhere else?
             playbook = tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'get_info.yml'
             result = self.terraform_service.get_service_info(self.description.caldera, self.ansible, playbook, {"action":"agents_status"})
@@ -387,7 +387,7 @@ class Core:
             playbook (str): path to Ansible playbook.
         """
         self.description.parse_machines(instances, guests, copies, False)
-        self.ansible.run(instances, guests, copies, False, username, playbook)
+        self.ansible.run(instances=instances, guests=guests, copies=copies, only_instances=False, username=username, playbook=playbook)
     
     def console(self, instance, guest, copy, username=None):
         """

@@ -25,19 +25,31 @@ class TectonicConfigCaldera(object):
 
     def __init__(self):
         self._version = "latest"
+        self._ot_enabled = False
 
 
     #----------- Getters ----------
     @property
     def version(self):
         return self._version
+    
+    @property
+    def ot_enabled(self):
+        return self._ot_enabled
 
 
     #----------- Setters ----------
     @version.setter
     def version(self, value):
-        validate.version_number("caldera version", value)
+        # Allow either master or latest
+        if value != 'master':
+            validate.version_number("caldera version", value)
         if value == "latest":
             value = "master"
         self._version = value
+
+    @ot_enabled.setter
+    def ot_enabled(self, value):
+        validate.boolean("caldera ot enabled", value)
+        self._ot_enabled = value
 

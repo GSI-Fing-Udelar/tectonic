@@ -68,6 +68,7 @@ main `config` section and special sections for different platforms
 
 ### [caldera] section:
 * `version`: Caldera version to use. Use `latest` for latest version or assign a specific version. Default: `latest`.
+* `ot_enabled`: Enable OT plugins for Caldera. Default: `no`.
 
 You can find an example configuration file with the default values
 [here](./tectonic/tectonic.ini).

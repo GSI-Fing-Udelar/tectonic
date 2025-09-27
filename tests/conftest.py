@@ -32,13 +32,24 @@ from tectonic.ansible import Ansible
 from tectonic.description import Description
 from tectonic.instance_type import InstanceType
 from tectonic.instance_type_aws import InstanceTypeAWS
-# from tectonic.libvirt_client import Client as LibvirtClient
-# from tectonic.aws import Client as AWSClient
-# from tectonic.docker_client import Client as DockerClient
+from tectonic.client_libvirt import ClientLibvirt
+from tectonic.client_aws import ClientAWS
+from tectonic.client_docker import ClientDocker
+from tectonic.packer_libvirt import PackerLibvirt
+from tectonic.packer_aws import PackerAWS
+from tectonic.packer_docker import PackerDocker
+from tectonic.terraform_libvirt import TerraformLibvirt
+from tectonic.terraform_aws import TerraformAWS
+from tectonic.terraform_docker import TerraformDocker
+from tectonic.terraform_service_libvirt import TerraformServiceLibvirt
+from tectonic.terraform_service_aws import TerraformServiceAWS
+from tectonic.terraform_service_docker import TerraformServiceDocker
+from tectonic.core import Core
 
 from pathlib import Path
 from moto import mock_ec2, mock_secretsmanager
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+import libvirt_qemu
 
 
 test_config = """
@@ -97,9 +108,20 @@ def aws_credentials():
     os.environ["AWS_SESSION_TOKEN"] = "testing"
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
+@pytest.fixture(scope="session")
+def example_institutions():
+    return ["fing", "cyberlac", "udelar"]
 
 @pytest.fixture(scope="session")
-def ec2_client(aws_credentials, aws_instance_name, example_image_id, example_lab_names,
+def example_lab_names():
+    return ["lab01", "lab02"]
+
+@pytest.fixture(scope="session")
+def aws_instance_name():
+    return "udelar-lab01-1-attacker"
+
+@pytest.fixture(scope="session")
+def ec2_client(aws_credentials, aws_instance_name, example_lab_names,
                example_institutions):
     with mock_ec2():
         client = boto3.client("ec2", region_name="us-east-1")
@@ -142,14 +164,53 @@ def ec2_client(aws_credentials, aws_instance_name, example_image_id, example_lab
             GroupName="public_sg",
             Description="Public Security Group",
             VpcId=public_vpc_id
-        )['GroupId']
+        )['GroupId']      
+
+        def create_image(client, image_name):
+            image = client.register_image(
+                Name=image_name,
+                BlockDeviceMappings=[
+                    {
+                        'DeviceName': '/dev/sdh',
+                        'Ebs': {
+                            'VolumeSize': 100,
+                        },
+                    },
+                    {
+                        'DeviceName': '/dev/sdc',
+                        'VirtualName': 'ephemeral1',
+                    },
+                ],
+                Description=f'{image_name} test image',
+            )
+            assert image["ImageId"] is not None
+
+            client.create_tags(
+                Resources=[image["ImageId"]],
+                Tags=[{"Key": "Name", "Value": image_name}]
+            )
+            
+            return image
+
+        create_image(client, "test2") # Unused test image
+
         for institution in example_institutions:
             for lab_name in example_lab_names:
                 for instance_name in ["1-attacker", "student_access", "teacher_access", "elastic", "caldera", "packetbeat"]:
                     aws_instance_name = f"{institution}-{lab_name}-{instance_name}"
+                    volume = client.create_volume(AvailabilityZone="us-east-1", Size=8)
+                    snapshot = client.create_snapshot(VolumeId=volume["VolumeId"], Description=f"{aws_instance_name} snapshot")
+
+                    if instance_name == "1-attacker":
+                        image_name = f"{institution}-{lab_name}-attacker"
+                    else:
+                        image_name = f"{institution}-{lab_name}-{instance_name}"
+                    image = create_image(client, image_name)
+
+
                     tags_name = [{"Key": "Name", "Value": aws_instance_name}]
                     instance = client.run_instances(
-                        ImageId=example_image_id,
+                        ImageId=image["ImageId"],
                         MinCount=1, MaxCount=1,
                         TagSpecifications=[{"ResourceType": "instance", "Tags": tags_name}],
                         NetworkInterfaces=[
@@ -158,74 +219,10 @@ def ec2_client(aws_credentials, aws_instance_name, example_image_id, example_lab
                         ])["Instances"][0]
                     assert instance["State"]["Name"] == "pending"
 
-                    image_name = instance_name
-                    if instance_name == "1-attacker":
-                        image_name = "attacker"
-                    tags_name = [{"Key": "Name", "Value": f"{institution}-{lab_name}-{image_name}"}]
-                    image = client.create_image(
-                        Name=f"{institution}-{lab_name}-{image_name}",
-                        TagSpecifications=[{"ResourceType": "image", "Tags": tags_name}],
-                        BlockDeviceMappings=[
-                            {
-                                'DeviceName': '/dev/sdh',
-                                'Ebs': {
-                                    'VolumeSize': 100,
-                                },
-                            },
-                            {
-                                'DeviceName': '/dev/sdc',
-                                'VirtualName': 'ephemeral1',
-                            },
-                        ],
-                        InstanceId=instance["InstanceId"],
-                        Description=f'{aws_instance_name} test image',
-                        NoReboot=True
-                    )
-                    assert image["ImageId"] is not None
-                    if instance_name not in ["student_access", "teacher_access", "elastic", "packetbeat", "caldera"]:
-                        client.stop_instances(InstanceIds=[instance["InstanceId"]])
+
+                    # if instance_name not in ["student_access", "teacher_access", "elastic", "packetbeat", "caldera"]:
+                    #     client.stop_instances(InstanceIds=[instance["InstanceId"]])
         yield client
-
-
-@pytest.fixture(scope="session")
-def example_institutions():
-    return ["fing", "cyberlac", "udelar"]
-
-
-@pytest.fixture(scope="session")
-def example_lab_names():
-    return ["lab01", "lab02"]
-
-
-@pytest.fixture(scope="session")
-def aws_secrets(example_institutions, example_lab_names):
-    with mock_secretsmanager():
-        sm = boto3.client("secretsmanager", region_name="us-east-1")
-        for institution in example_institutions:
-            for lab_name in example_lab_names:
-                sm.create_secret(Name=f"elastic-credentials-{institution}-{lab_name}",
-                                 SecretString='{"username": "foo", "password": "bar"}')
-        yield sm
-
-
-@pytest.fixture(scope="session")
-def aws_instance_name():
-    return "udelar-lab01-1-attacker"
-
-
-@pytest.fixture(scope="session")
-def unexpected_instance_name():
-    return "udelar-lab99-something"
-
-
-@pytest.fixture(scope="session")
-def example_image_id():
-    return "ami-03cf127a"
-
-@pytest.fixture(scope="session")
-def terraform_dir():
-    return "tests/terraform"
-
 
 @pytest.fixture(scope="session")
 def base_tests_path():
@@ -240,7 +237,7 @@ def test_data_path(base_tests_path):
     return Path(base_tests_path).joinpath("test_data/").absolute().as_posix()
 
 @pytest.fixture(scope="session", params=["aws","libvirt", "docker"])
-def tectonic_config(request, tmp_path_factory, test_data_path):
+def tectonic_config_path(request, tmp_path_factory, test_data_path):
     config_file = tmp_path_factory.mktemp('data') / f"{request.param}-config.ini"
     config_ini = test_config.replace(
         "TEST_DATA_PATH",
@@ -252,97 +249,43 @@ def tectonic_config(request, tmp_path_factory, test_data_path):
     config_file.write_text(config_ini)
     return config_file.resolve().as_posix()
 
+@pytest.fixture()
+def tectonic_config(tectonic_config_path):
+    config = TectonicConfig.load(tectonic_config_path)
+
+    yield config
+    
 
 @pytest.fixture(scope="session")
 def labs_path(test_data_path):
     return (Path(test_data_path) / "labs").absolute().as_posix()
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def description(tectonic_config, labs_path):
-    config = TectonicConfig.load(tectonic_config)
-    if config.platform == "aws":
-        instance_type = InstanceTypeAWS()
-    else:
-        instance_type = InstanceType()
-    desc = Description(config, instance_type, Path(labs_path) / "test.yml")
+    desc = Description(tectonic_config, Path(labs_path) / "test.yml")
+
     yield desc
 
-@pytest.fixture()
-def aws_deployment(monkeypatch, description, aws_secrets, ec2_client):
-    def patch_aws_client(self, region):
-        self.ec2_client = ec2_client
-        self.secretsmanager_client = aws_secrets
+@pytest.fixture(autouse=True)
+def mock_aws_client(monkeypatch, ec2_client, description):
+    monkeypatch.setattr(boto3, "client", lambda client, region: ec2_client)
 
-    monkeypatch.setattr(AWSClient, "__init__", patch_aws_client)
+# Automatically use in all tests a mocked instance of the standard
+# docker library DockerClient object inside the
+# tectonic.client_docker.ClientDocker class.
+@pytest.fixture(autouse=True)
+def mock_docker_client(monkeypatch):
+    def stop_container(container):
+        container.status = "paused"
+    def start_container(container):
+        container.status = "running"
 
-    d = AWSDeployment(
-        description=description,
-        gitlab_backend_url="https://gitlab.com",
-        gitlab_backend_username="testuser",
-        gitlab_backend_access_token="testtoken",
-        packer_executable_path="/usr/bin/packer",
-    )
-    yield d
-
-@pytest.fixture(scope="session")
-def libvirt_deployment(description):
-    # Fix description platform:
-    description_libvirt = copy.copy(description)
-    description_libvirt.platform = "libvirt"
-
-    d = LibvirtDeployment(
-        description=description_libvirt,
-        gitlab_backend_url="https://gitlab.com",
-        gitlab_backend_username="testuser",
-        gitlab_backend_access_token="testtoken",
-    )
-    yield d
-
-
-@pytest.fixture(scope="session")
-def ansible_libvirt(libvirt_deployment):
-    a = Ansible(libvirt_deployment)
-    yield a
-
-@pytest.fixture()
-def ansible_aws(aws_deployment):
-    b = Ansible(aws_deployment)
-    yield b
-
-
-@pytest.fixture(scope="session",params=["traffic", "endpoint"])
-def lab_edition_file(request, tmp_path_factory, test_data_path):
-    config_file = tmp_path_factory.mktemp('data') / "lab_edition.yml"
-    config_file.write_text(f"""
----
-base_lab: test-{request.param}
-teacher_pubkey_dir: {test_data_path}/teacher_pubkeys
-instance_number: 1
-
-create_student_passwords: yes
-random_seed: Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941
-
-caldera_settings:
-    enable: no
-""")
-    return config_file.resolve().as_posix()
-
-@pytest.fixture(scope="session")
-def libvirt_client(description):
-    client = LibvirtClient(description)
-    yield client
-
-@pytest.fixture(scope="session")
-def aws_client(description, ec2_client, aws_secrets):
-    client = AWSClient(description=description, connection=ec2_client, secrets_manager=aws_secrets)
-    yield client
-
-@pytest.fixture()
-def docker_client():
     mock_client = MagicMock(docker.DockerClient)
     mock_container_1 = MagicMock()
     mock_container_1.name = "udelar-lab01-1-attacker"
     mock_container_1.status = "running"
+    mock_container_1.image = MagicMock()
+    mock_container_1.image.tags = ['udelar-lab01-attacker:latest']
     mock_container_1.attrs = {
         "NetworkSettings": {
             "Networks": {
@@ -350,9 +293,12 @@ def docker_client():
             }
         }
     }
+    mock_container_1.stop.side_effect = lambda: stop_container(mock_container_1)
+    mock_container_1.start.side_effect = lambda: start_container(mock_container_1)
+    mock_container_1.restart.side_effect = lambda: start_container(mock_container_1)
     mock_container_2 = MagicMock()
     mock_container_2.name = "udelar-lab01-1-victim-1"
-    mock_container_2.status = "stopped"
+    mock_container_2.status = "paused"
     mock_container_2.attrs = {
         "NetworkSettings": {
             "Networks": {
@@ -363,7 +309,7 @@ def docker_client():
     }
     mock_container_3 = MagicMock()
     mock_container_3.name = "udelar-lab01-1-victim-2"
-    mock_container_3.status = "stopped"
+    mock_container_3.status = "paused"
     mock_container_3.attrs = {
         "NetworkSettings": {
             "Networks": {
@@ -403,7 +349,7 @@ def docker_client():
     }
     mock_container_7 = MagicMock()
     mock_container_7.name = "udelar-lab01-1-victim-1"
-    mock_container_7.status = "stopped"
+    mock_container_7.status = "paused"
     mock_container_7.attrs = {
         "NetworkSettings": {
             "Networks": {
@@ -414,7 +360,7 @@ def docker_client():
     }
     mock_container_8 = MagicMock()
     mock_container_8.name = "udelar-lab01-1-victim-2"
-    mock_container_8.status = "stopped"
+    mock_container_8.status = "paused"
     mock_container_8.attrs = {
         "NetworkSettings": {
             "Networks": {
@@ -436,7 +382,7 @@ def docker_client():
     }
     mock_container_10 = MagicMock()
     mock_container_10.name = "udelar-lab01-1-server"
-    mock_container_10.status = "stopped"
+    mock_container_10.status = "paused"
     mock_container_10.attrs = {
         "NetworkSettings": {
             "Networks": {
@@ -446,7 +392,7 @@ def docker_client():
     }
     mock_container_11 = MagicMock()
     mock_container_11.name = "udelar-lab01-2-server"
-    mock_container_11.status = "stopped"
+    mock_container_11.status = "paused"
     mock_container_11.attrs = {
         "NetworkSettings": {
             "Networks": {
@@ -468,6 +414,20 @@ def docker_client():
         "udelar-lab01-2-server": mock_container_11,
     }.get(name, None)
 
+    mock_client.containers.list.return_value = [
+        mock_container_1,
+        mock_container_2,
+        mock_container_3,
+        mock_container_4,
+        mock_container_5,
+        mock_container_6,
+        mock_container_7,
+        mock_container_8,
+        mock_container_9,
+        mock_container_10,
+        mock_container_11,
+    ]
+
     mock_client.images.get.side_effect = lambda image_id: {
         "udelar-lab01-attacker": MagicMock(id="udelar-lab01-attacker", tags=["udelar-lab01-attacker"]),
         "udelar-lab01-victim": MagicMock(id="udelar-lab01-victim", tags=["udelar-lab01-victim"]),
@@ -475,25 +435,85 @@ def docker_client():
         "udelar-lab01-elastic": MagicMock(id="udelar-lab01-elastic", tags=["udelar-lab01-elastic"]),
         "elastic": MagicMock(id="elastic", tags=["elastic"]),
         "caldera": MagicMock(id="caldera", tags=["caldera"]),
+        "test2": MagicMock(id="test2", tags=["test2"]),
     }.get(image_id, None)
 
-    yield mock_client
+    def patch_init(base_url):
+        return mock_client
+
+    def patched_init(self, config, description):
+        self.connection = mock_client
+        self.config = config
+        self.description = description
+    monkeypatch.setattr(ClientDocker, "__init__", patched_init)
+
+@pytest.fixture(autouse=True)
+def mock_libvirt_client(monkeypatch):
+    def patched_command(domain, command, timeout, flags):
+        pass
+    monkeypatch.setattr(libvirt_qemu, "qemuAgentCommand", patched_command)
+
 
 @pytest.fixture()
-def docker_deployment(monkeypatch, description, docker_client):
-    # Fix description platform:
-    description_docker = copy.copy(description)
-    description_docker.platform = "docker"
+def client(description):
+    if description.config.platform == "docker":
+        client = ClientDocker(description.config, description)
+    elif description.config.platform == "aws":
+        client = ClientAWS(description.config, description)
+    elif description.config.platform == "libvirt":
+        client = ClientLibvirt(description.config, description)
+    else:
+        raise Exception(f"Invalid platform {description.config.platform}")
     
-    def patch_docker_client(self, description):
-        self.connection = docker_client
-        self.description = description
-    monkeypatch.setattr(DockerClient, "__init__", patch_docker_client)
+    yield client
 
-    d = DockerDeployment(
-        description=description_docker,
-        gitlab_backend_url="https://gitlab.com",
-        gitlab_backend_username="testuser",
-        gitlab_backend_access_token="testtoken",
-    )
-    yield d
+
+@pytest.fixture()
+def packer(client):
+    if client.config.platform == "docker":
+        packer = PackerDocker(client.config, client.description, client)
+    elif client.config.platform == "aws":
+        packer = PackerAWS(client.config, client.description, client)
+    elif client.config.platform == "libvirt":
+        packer = PackerLibvirt(client.config, client.description, client)
+    else:
+        raise Exception(f"Invalid platform {client.config.platform}")
+    
+    yield packer
+
+@pytest.fixture()
+def terraform(description):
+    if description.config.platform == "docker":
+        terraform = TerraformDocker(description.config, description)
+    elif description.config.platform == "aws":
+        terraform = TerraformAWS(description.config, description)
+    elif description.config.platform == "libvirt":
+        terraform = TerraformLibvirt(description.config, description)
+    else:
+        raise Exception(f"Invalid platform {description.config.platform}")
+    
+    yield terraform
+
+@pytest.fixture()
+def service(client):
+    if client.config.platform == "docker":
+        service = TerraformServiceDocker(client.config, client.description, client)
+    elif client.config.platform == "aws":
+        service = TerraformServiceAWS(client.config, client.description, client)
+    elif client.config.platform == "libvirt":
+        service = TerraformServiceLibvirt(client.config, client.description, client)
+    else:
+        raise Exception(f"Invalid platform {client.config.platform}")
+    
+    yield service
+
+
+@pytest.fixture()
+def ansible(client):
+    return Ansible(client.config, client.description, client)
+
+@pytest.fixture()
+def core(description):
+    core = Core(description)
+
+    yield core

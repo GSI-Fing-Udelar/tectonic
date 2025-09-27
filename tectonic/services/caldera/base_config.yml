@@ -61,7 +61,7 @@
           ansible.builtin.git:
             repo: https://github.com/mitre/caldera-ot.git
             dest: /tmp/caldera_ot/
-            version: main
+            version: main #Force to use main because no tags genrated on the repo
             recursive: true
         - name: Get Caldera OT plugins
           ansible.builtin.find:
@@ -77,6 +77,7 @@
           ansible.builtin.file:
             path: /tmp/caldera_ot/
             state: absent
+      when: caldera_ot_enabled == "True"
 
     - name: Install Caldera requirements
       ansible.builtin.command: python3.9 -m pip install -r /opt/caldera/requirements.txt

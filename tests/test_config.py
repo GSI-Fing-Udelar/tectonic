@@ -19,8 +19,10 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import pytest
+import re
 from pathlib import Path
 from configparser import ConfigParser
+
 
 from tectonic.config import TectonicConfig
 from tectonic.utils import absolute_path
@@ -28,12 +30,12 @@ from tectonic.utils import absolute_path
 lab_repo_uri = "./examples"
 
 valid_options = [
-    { 
+    {
     },
-    { 
+    {
         "proxy": None,
     },
-    { 
+    {
         "platform": "docker",
         "network_cidr_block": "10.0.0.0/16",
         "internet_network_cidr_block": "10.0.0.0/25",
@@ -42,27 +44,31 @@ valid_options = [
         "configure_dns": False,
         "debug": True,
         "proxy": "http://proxy.example.com:3128",
+        "packer_executable_path": "/usr/bin/packer",
     },
 ]
 
 invalid_options = [
-    { 
+    {
         "platform": "invalid",
     },
-    { 
+    {
         "network_cidr_block": "invalid",
     },
-    { 
+    {
         "internet_network_cidr_block": "invalid",
     },
-    { 
+    {
         "services_network_cidr_block": "invalid",
     },
     {
         "ssh_public_key_file": "invalid",
     },
-    { 
+    {
         "proxy": "invalid",
+    },
+    {
+        "gitlab_backend_url": "invalid",
     },
 ]
 
@@ -70,7 +76,7 @@ invalid_options = [
 valid_aws_options = [
     {
     },
-    { 
+    {
         "region": "eu-nowhere-1",
         "teacher_access": "endpoint",
         "access_host_instance_type": "t2.small",
@@ -82,7 +88,7 @@ valid_aws_options = [
 valid_libvirt_options = [
     {
     },
-    { 
+    {
         "uri": "qemu+ssh://root@127.0.0.1/system", 
         "storage_pool": "tectonic",
         "student_access": "bridge",
@@ -195,3 +201,20 @@ def test_tectonic_unrecognized_option(test_data_path):
     filename = Path(test_data_path).joinpath("config", "tectonic2.ini")
     with pytest.raises(ValueError) as exception:
         config = TectonicConfig.load(filename)
+
+def test_config_caldera_latest(test_data_path):
+    filename = Path(test_data_path).joinpath("config", "tectonic1.ini")
+    config = TectonicConfig.load(filename)
+    config.caldera.version = 'latest'
+    assert config.caldera.version == 'master'
+
+    config.caldera.version = 'master'
+    assert config.caldera.version == 'master'
+
+def test_config_elastic_latest(test_data_path):
+    filename = Path(test_data_path).joinpath("config", "tectonic1.ini")
+    config = TectonicConfig.load(filename)
+    config.elastic.elastic_stack_version = 'latest'
+
+    assert re.match(r"\d+.\d+.\d+", config.elastic.elastic_stack_version)
+    

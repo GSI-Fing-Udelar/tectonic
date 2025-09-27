@@ -66,6 +66,7 @@ class Packer(ABC):
         if return_code != 0:
             raise PackerException(f"Packer init returned an error:\n{stdout.decode()}")
         return_code, stdout, _ = p.build(str(packer_module), var=variables)
+        # return_code, stdout, _ = p.build(str(packer_module), var=variables, on_error="abort")
         if return_code != 0:
             raise PackerException(f"Packer build returned an error:\n{stdout.decode()}")
         
@@ -112,7 +113,7 @@ class Packer(ABC):
             services (list(str)): names of the services for which to destroy images.
         """
         machines = []
-        machines = [guest for _, guest in self.description.services_guests.items() if not services or guest.base_name in services]
+        machines = [guest for _, guest in self.description.services_guests.items() if services is None or guest.base_name in services]
         for machine in machines:
             if self.client.is_image_in_use(machine.image_name):
                 raise PackerException(f"Unable to delete image {machine.base_name} because it is being used.")
@@ -160,7 +161,7 @@ class Packer(ABC):
         Returns:
             dict: variables of the Packer module.
         """
-        machines = [guest for _, guest in self.description.services_guests.items() if not services or guest.base_name in services]
+        machines = [guest for _, guest in self.description.services_guests.items() if services is None or guest.base_name in services]
         args = {
             "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
             "ansible_ssh_common_args": self.config.ansible.ssh_common_args,
@@ -177,6 +178,7 @@ class Packer(ABC):
             "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
             "caldera_version": self.config.caldera.version,
             "packetbeat_vlan_id": self.config.aws.packetbeat_vlan_id,
+            "caldera_ot_enabled": str(self.config.caldera.ot_enabled),
         }
         if self.config.proxy:
             args["proxy"] = self.config.proxy

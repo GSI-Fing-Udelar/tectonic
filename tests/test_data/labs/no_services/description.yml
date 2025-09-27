@@ -19,23 +19,37 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 #
 ---
-base_lab: test-endpoint
-teacher_pubkey_dir: ./teacher_pubkeys
-instance_number: 2
+institution: udelar
+lab_name: lab01
 
-create_students_passwords: true
-random_seed: Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941
-student_prefix: student
-student_pubkey_dir: ./student_pubkeys
+guest_settings:
+  attacker:
+    entry_point: yes
+    vcpu: 2
+    red_team_agent: yes
+  victim:
+    memory: 1024
+    copies: 2
+    entry_point: yes
+    monitor: yes
+    base_os: windows_srv_2022
+    blue_team_agent: yes
+  server:
+    monitor: yes
+    blue_team_agent: yes
+topology:
+  - name: internal
+    members:
+      - attacker
+      - victim
+      - server
+  - name: dmz
+    members:
+      - server
 
 elastic_settings:
   enable: yes
-  vcpu: 8
-  memory: 16384
-  disk: 110
+  monitor_type: "endpoint"
 
 caldera_settings:
   enable: yes
-  vcpu: 2
-  memory: 2048
-  disk: 20

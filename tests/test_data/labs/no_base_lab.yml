@@ -19,11 +19,10 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 #
 ---
-base_lab: test-endpoint
 teacher_pubkey_dir: ./teacher_pubkeys
 instance_number: 2
 
-create_students_passwords: true
+create_student_passwords: true
 random_seed: Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941
 student_prefix: student
 student_pubkey_dir: ./student_pubkeys
