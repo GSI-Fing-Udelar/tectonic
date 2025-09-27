@@ -163,29 +163,6 @@
         - ssh_password_login
         - ansible_facts['os_family'] != "Windows"
 
-    - name: "Disable SSH login with password"
-      block:
-        - name: "Find SSH config files"
-          ansible.builtin.find:
-            paths: /etc/ssh/sshd_config.d
-            file_type: file
-          register: ssh_config
-        - name: "Adjust SSH configuration files"
-          ansible.builtin.lineinfile:
-            path: "{{ item.path }}"
-            regex: "^\\s*PasswordAuthentication"
-            line: "PasswordAuthentication no"
-          with_items:
-            - "{{ ssh_config['files'] }}"
-            - { path: '/etc/ssh/sshd_config' }
-        - name: "Restart SSH service"
-          ansible.builtin.service:
-            name: sshd
-            state: restarted
-      when: 
-        - not ssh_password_login
-        - ansible_facts['os_family'] != "Windows"
-
     # Configurations for windows guests
     - name: "Create the trainee user (optionally with password). For Windows."
       ansible.windows.win_user:
