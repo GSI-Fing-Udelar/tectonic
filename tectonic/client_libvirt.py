@@ -102,9 +102,7 @@ class ClientLibvirt(Client):
         
     def get_machine_private_ip(self, machine_name):
         try:
-            print(f"Getting...")
             domain = self.connection.lookupByName(machine_name)
-            print(f"got domain: {domain}")
         except libvirt.libvirtError:
             return None
         try:
@@ -153,17 +151,14 @@ class ClientLibvirt(Client):
             if self.is_image_in_use(image_name):
                 raise ClientLibvirtException(f"Error deleting image {image_name}: in use")
             pool = self.connection.storagePoolLookupByName(self.config.libvirt.storage_pool)
-            print(f"pool: {pool}")
         except libvirt.libvirtError:
             raise ClientLibvirtException(f"Failed to locate {self.config.libvirt.storage_pool} storage pool.")
         vol = None
         try:
             vol = pool.storageVolLookupByName(image_name)
-            print(f"vol: {vol}")
         except libvirt.libvirtError:
             pass
         if vol:
-            print(f"deleting")
             vol.delete()
         
     def start_machine(self, machine_name):

@@ -66,6 +66,7 @@ class Packer(ABC):
         if return_code != 0:
             raise PackerException(f"Packer init returned an error:\n{stdout.decode()}")
         return_code, stdout, _ = p.build(str(packer_module), var=variables)
+        # return_code, stdout, _ = p.build(str(packer_module), var=variables, on_error="abort")
         if return_code != 0:
             raise PackerException(f"Packer build returned an error:\n{stdout.decode()}")
         
