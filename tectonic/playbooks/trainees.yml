@@ -66,10 +66,12 @@
           with_items:
             - "{{ ssh_config['files'] }}"
             - { path: '/etc/ssh/sshd_config' }
+          register: sshd_conf
         - name: "Restart SSH service"
           ansible.builtin.service:
             name: sshd
             state: restarted
+          when: sshd_conf.changed
       when: 
         - ssh_password_login
     
@@ -88,10 +90,12 @@
           with_items:
             - "{{ ssh_config['files'] }}"
             - { path: '/etc/ssh/sshd_config' }
+          register: sshd_conf
         - name: "Restart SSH service"
           ansible.builtin.service:
             name: sshd
             state: restarted
+          when: sshd_conf.changed
       when: 
         - not ssh_password_login
         - ansible_facts['os_family'] != "Windows"
@@ -155,10 +159,12 @@
           with_items:
             - "{{ ssh_config['files'] }}"
             - { path: '/etc/ssh/sshd_config' }
+          register: sshd_conf
         - name: "Restart SSH service"
           ansible.builtin.service:
             name: sshd
             state: restarted
+          when: sshd_conf.changed
       when: 
         - ssh_password_login
         - ansible_facts['os_family'] != "Windows"
