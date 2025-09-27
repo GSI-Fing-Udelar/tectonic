@@ -139,7 +139,7 @@ class Core:
 
         self.ansible.run(instances, quiet=True)
 
-        self.configure_students_access(instances)  
+        self.configure_students_access(instances)
 
         if self.description.elastic.enable:
             if self.description.elastic.monitor_type == "traffic":
@@ -175,7 +175,7 @@ class Core:
             # Destroy images
             if destroy_images:
                 self.packer.destroy_instance_image(self.description.base_guests.keys())
-                self.packer.destroy_service_image([service.base_name for _, service in self.description.services_guests.items()])
+                self.packer.destroy_service_image(services)
     
     def recreate(self, instances, guests, copies):
         """
@@ -337,7 +337,6 @@ class Core:
                     now = int(time.time() * 1000) #Milliseconds since epoch
                     agent_last_seen = int((datetime.datetime.strptime(agent["last_seen"],"%Y-%m-%dT%H:%M:%SZ") - datetime.datetime(1970, 1, 1)).total_seconds() * 1000)
                     difference = now - agent_last_seen
-                    print(f"difference: {difference}")
                     if (difference <= 60000 and agent["sleep_min"] == 3 and agent["sleep_max"] == 3 and agent["watchdog"] == 1):
                         agents_status["pending_kill"] = agents_status["pending_kill"] + 1
                     elif (difference <= 60000 or difference <= (agent["sleep_max"] * 1000)):
