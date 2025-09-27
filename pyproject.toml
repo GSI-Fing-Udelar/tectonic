@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tectonic-cyberrange"
-version = "1.0.1"
+version = "2.0.0"
 authors = ["GSI-Fing-Udelar"]
 description = "A Python package for the Tectonic Cyber Range project."
 readme = "README.md"
@@ -56,7 +56,7 @@ pynacl = "*"
 python-dateutil = "*"
 python-terraform = "*"
 pyyaml = "*"
-requests = "2.32.4"
+requests = "2.32.5"
 requests-toolbelt = "*"
 s3transfer = "*"
 six = "*"
@@ -75,9 +75,9 @@ docker = "*"
 pyopenssl = ">=24.3"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "8.4.1"
-pytest-cov = "6.2.1"
-pytest-mock = "3.14.1"
+pytest = "8.4.2"
+pytest-cov = "6.3.0"
+pytest-mock = "3.15.0"
 pytest-env = "1.1.5"
 fabric = { version = "3.2.2", extras = ["pytest"] }
 pylint = "3.3.8"

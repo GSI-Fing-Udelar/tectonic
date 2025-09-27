@@ -183,6 +183,7 @@
       - modbus
       - profinet
       - iec61850
+      - gems
       port: 8888
       reports_dir: /tmp
       auth.login.handler.module: default

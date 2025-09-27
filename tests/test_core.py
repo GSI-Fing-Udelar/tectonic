@@ -126,6 +126,7 @@ def test_deploy(core):
 
 def test_destroy(core):
     core.terraform.destroy = MagicMock()
+    core.ansible.run = MagicMock()
     core.terraform_service.destroy = MagicMock()
     core.packer.destroy_instance_image = MagicMock()
     core.packer.destroy_service_image = MagicMock()
@@ -133,6 +134,7 @@ def test_destroy(core):
     core.description.elastic.monitor_type = "traffic"
     core.description._base_guests = {"guest": MagicMock(base_name="g", entry_point=True)}
     core.description.caldera.enable = True
+
 
     core.destroy(None, True, ["svc"], True)
 
