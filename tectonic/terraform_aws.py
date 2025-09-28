@@ -167,7 +167,6 @@ class TerraformAWS(Terraform):
             #         f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network}"
             #         '"]'
             #     )
-        print(resources)
         return resources
 
     def _get_subnet_resources_name(self, instances):
