@@ -342,7 +342,7 @@ class TerraformAWS(Terraform):
         result = {}
         result["name"] = traffic_rule.name
         result["description"] = traffic_rule.description
-        result["network_cidr"] = traffic_rule.network_cidr
+        result["network_cidr"] = traffic_rule.source_cidr
         result["from_port"] = traffic_rule.from_port
         result["to_port"] = traffic_rule.to_port
         result["protocol"] = traffic_rule.protocol

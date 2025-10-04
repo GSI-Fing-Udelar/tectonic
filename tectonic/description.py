@@ -388,9 +388,6 @@ class NetworkInterface():
         self.private_ip = self._get_guest_ip_address(guest, network) if private_ip is None else private_ip
         self.mask = ipaddress.ip_network(network.ip_network).prefixlen
         self._traffic_rules = []
-        for rule in description._traffic_rules:
-            if rule.interface_name == self.name:
-                self._traffic_rules.append(rule)
     
     @property
     def name(self):
@@ -444,10 +441,6 @@ class NetworkInterface():
     def mask(self, value):
         self._mask = value
 
-    @traffic_rules.setter
-    def traffic_rules(self, value):
-        self._traffic_rules.append(value)
-
     def to_dict(self):
         """Convert a NetworkInterface object to the dictionary expected by terraform."""
         result = {}
@@ -481,6 +474,9 @@ class NetworkInterface():
         hostnum = network.members.index(guest.base_name) + (guest.copy - 1) + 3
         ip_network = ipaddress.ip_network(network.ip_network)
         return str(list(ip_network.hosts())[hostnum])
+    
+    def _add_traffic_rule(self, rule):
+        self._traffic_rules.append(rule)
 
 class GuestDescription(BaseGuestDescription):
     def __init__(self, description, base_guest, instance_num, copy, is_in_services_network=False):
@@ -739,54 +735,107 @@ class PacketbeatDescription(ServiceDescription):
         """Loads the information from the yaml structure in data."""
         self.load_service(data)
 
-class TrafficRule():
-    def __init__(self, base_name, instance, description, direction, protocol, port_range):
-        self.base_name = base_name
-        self.instance = instance
+class BaseTrafficRule():
+    def __init__(self, name, description, source, destination, protocol, port_range):
+        self.name = name
         self.description = description
-        self.direction = direction
+        self.source = source
+        self.destination = destination
         self.protocol = protocol
-        port_split = str(port_range).split("-")
-        self.from_port = port_split[0]
-        if len(port_split) == 2:
-            self.to_port = port_split[1]
-        else:
-            self.to_port = self.from_port
-        if protocol == "icmp":
-            self.from_port = "-1"
-            self.to_port = "-1"
-        elif protocol == "all":
-            self.from_port = "0"
-            self.to_port = "0"
+        self.port_range = port_range
 
-    @property
-    def base_name(self):
-        return self._base_name
-    
     @property
     def name(self):
-        return f"{self._interface_name}-{self._base_name}"
-
-    @property
-    def instance(self):
-        return self._instance
+        return self._name
 
     @property
     def description(self):
         return self._description
     
     @property
-    def direction(self):
-        return self._direction
+    def source(self):
+        return self._source
+    
+    @property
+    def destination(self):
+        return self._destination
     
     @property
     def protocol(self):
         return self._protocol
+    
+    @property
+    def port_range(self):
+        return self._port_range
+         
+    @name.setter
+    def name(self, value):
+        self._name = value
+
+    @description.setter
+    def description(self, value):
+        self._description = value
+
+    @source.setter
+    def source(self, value):
+        self._source = value
+
+    @destination.setter
+    def destination(self, value):
+        self._destination = value
+
+    @protocol.setter
+    def protocol(self, value):
+        validate.supported_value("protocol", value, ["tcp", "udp", "icmp", "all"])
+        self._protocol = value
+
+    @port_range.setter
+    def port_range(self, value):
+        self._port_range = value
+
+class TrafficRule():
+    def __init__(self, rule_data, source_cidr, copy):
+        self.base_traffic_rule = rule_data 
+        self.source_cidr = source_cidr
+        self.copy = copy
+
+        port_split = str(rule_data.port_range).split("-")
+        self.from_port = port_split[0]
+        if len(port_split) == 2:
+            self._to_port = port_split[1]
+        else:
+            self._to_port = self._from_port
+        if rule_data.protocol == "icmp":
+            self._from_port = "-1"
+            self._to_port = "-1"
+        elif rule_data.protocol == "all":
+            self._from_port = "0"
+            self._to_port = "0"
 
     @property
-    def network_cidr(self):
-        return self._network_cidr
+    def name(self):
+        return f"{self.interface_attached}-{self.base_traffic_rule.name}-{self.copy}"
     
+    @property
+    def description(self):
+        return self._base_traffic_rule.description
+    
+    @property
+    def protocol(self):
+        return self._base_traffic_rule.protocol
+
+    @property
+    def base_traffic_rule(self):
+        return self._base_traffic_rule
+    
+    @property
+    def copy(self):
+        return self._copy
+    
+    @property
+    def interface_attached(self):
+        return self._interface_attached
+
     @property
     def from_port(self):
         return self._from_port
@@ -796,33 +845,24 @@ class TrafficRule():
         return self._to_port
     
     @property
-    def interface_name(self):
-        return self._interface_name
-     
-    @base_name.setter
-    def base_name(self, value):
-        self._base_name = value
+    def source_cidr(self):
+        return self._source_cidr
 
-    @instance.setter
-    def instance(self, value):
-        self._instance = value
+    @base_traffic_rule.setter
+    def base_traffic_rule(self, value):
+        self._base_traffic_rule = value
 
-    @description.setter
-    def description(self, value):
-        self._description = value
+    @copy.setter
+    def copy(self, value):
+        self._copy = value
 
-    @direction.setter
-    def direction(self, value):
-        self._direction = value
+    @interface_attached.setter
+    def interface_attached(self, value):
+        self._interface_attached = value
 
-    @protocol.setter
-    def protocol(self, value):
-        validate.supported_value("default_os", value, ["tcp", "udp", "icmp", "all"])
-        self._protocol = value
-
-    @network_cidr.setter
-    def network_cidr(self, value):
-        self._network_cidr = value
+    @source_cidr.setter
+    def source_cidr(self, value):
+        self._source_cidr = value
 
     @from_port.setter
     def from_port(self, value):
@@ -831,10 +871,6 @@ class TrafficRule():
     @to_port.setter
     def to_port(self, value):
         self._to_port = value
-
-    @interface_name.setter
-    def interface_name(self, value):
-        self._interface_name = value
 
 class Description:
 
@@ -945,39 +981,6 @@ class Description:
         self._scenario_networks = self._compute_scenario_networks()
         self._parameters_files = tectonic.utils.list_files_in_directory(Path(self._scenario_dir) / "ansible" / "parameters")
 
-        #Load traffic rules
-        self._traffic_rules = []
-        if self.config.routing and "traffic_rules" in description_data.keys():
-            for rule_data in description_data["traffic_rules"]:
-                for instance in range(1,self.instance_number+1):
-                    traffic_rule = TrafficRule(rule_data["name"], instance, rule_data["description"], "ingress", rule_data.get("protocol", "all"), rule_data.get("port_range", "0-65535"))
-                    
-                    source_split = str(rule_data["source"]).split(".")
-                    if len(source_split) == 2:
-                        machine_name = source_split[0]
-                        network_name = source_split[1]
-                        for _, guest in self.scenario_guests.items():
-                            if machine_name == guest.base_name and instance == guest.instance:
-                                for _, interface in guest.interfaces.items():
-                                    if network_name == interface.network.base_name:
-                                        traffic_rule.network_cidr = f"{interface.private_ip}/32"
-                    else:
-                        network_name = source_split[0]
-                        for _, network in self.scenario_networks.items():
-                            if network_name == network.base_name and instance == network.instance:
-                                traffic_rule.network_cidr = network.ip_network
-                    
-                    machine_name = rule_data["destination"].split(".")[0]
-                    network_name = rule_data["destination"].split(".")[1]
-                    for _, guest in self.scenario_guests.items():
-                        if machine_name == guest.base_name and instance == guest.instance:
-                            for _, interface in guest.interfaces.items():
-                                if network_name == interface.network.base_name:
-                                    traffic_rule.interface_name = interface.name
-                                    self._traffic_rules.append(traffic_rule)
-        else:
-            self._load_default_traffic_rules()
-
         # Load auxiliary networks
         self._auxiliary_networks = {}
         if self._elastic.enable or self._caldera.enable:
@@ -997,6 +1000,14 @@ class Description:
         self._elastic.load_interfaces(self._auxiliary_networks)
         self._packetbeat.load_interfaces(self._auxiliary_networks)
         self._caldera.load_interfaces(self._auxiliary_networks)
+
+        self._base_traffic_rules = {}
+        rule_index = 0
+        if self.config.routing and description_data.get("traffic_rules", None) != None:
+            for rule in description_data.get("traffic_rules"):
+                rule_name = f"rule-{rule_index}"
+                self._base_traffic_rules[rule_name] = BaseTrafficRule(rule_name, rule["description"], rule["source"], rule["destination"], rule.get("protocol", "all"), rule.get("port_range", "0-65535"), )
+                rule_index = rule_index + 1
 
     def parse_machines(self, instances=[], guests=[], copies=[], only_instances=True, exclude=[]):
         """
@@ -1226,6 +1237,47 @@ class Description:
                         entry_point_index += 1
                     if is_in_services_network:
                         services_network_index += 1
+
+        #Load traffic rules
+        if self.config.routing and self._base_traffic_rules != {}:
+            for _, rule_data in self._base_traffic_rules.items():
+                for instance in range(1,self.instance_number+1):
+                    rules_to_add = []
+                    source_split = str(rule_data.source).split(".")
+                    if len(source_split) == 2:
+                        machine_name = source_split[0]
+                        network_name = source_split[1]
+                        for _, guest in guests.items():
+                            if machine_name == guest.base_name and instance == guest.instance:
+                                for _, interface in guest.interfaces.items():
+                                    if network_name == interface.network.base_name:
+                                        rules_to_add.append(TrafficRule(rule_data, f"{interface.private_ip}/32", guest.copy))
+                    else:
+                        network_name = source_split[0]
+                        for _, network in self.scenario_networks.items():
+                            if network_name == network.base_name and instance == network.instance:
+                                rules_to_add.append(TrafficRule(rule_data, network.ip_network, 1))
+                    
+                    machine_name = rule_data.destination.split(".")[0]
+                    network_name = rule_data.destination.split(".")[1]
+                    for _, guest in guests.items():
+                        if machine_name == guest.base_name and instance == guest.instance:
+                            for _, interface in guest.interfaces.items():
+                                if network_name == interface.network.base_name:
+                                    for rule in rules_to_add:
+                                        rule.interface_attached = interface.name
+                                        interface._add_traffic_rule(rule)
+
+        else: #Default rules (all trafic in each subnetwork)
+            for instance in range(1,self.instance_number+1):
+                for _, guest in guests.items():
+                    rule_index = 0
+                    for _, interface in guest.interfaces.items():
+                        rule_data = BaseTrafficRule(f"rule-{rule_index}", f"Allow all traffic in subnetwork {interface.network.name}", interface.network.name, f"{guest.name}.{interface.network.name}", "all", "0-65535")
+                        rule = TrafficRule(rule_data, interface.network.ip_network, guest.copy)
+                        rule.interface_attached = interface.name
+                        interface._add_traffic_rule(rule)
+                        rule_index = rule_index +1
         return guests
         
         
@@ -1414,15 +1466,3 @@ class Description:
         password = "".join(random.choice(characters) for _ in range(12))
         salt = "".join(random.choice(characters) for _ in range(16))
         return password, salt
-    
-    def _load_default_traffic_rules(self):
-        for instance in range(1,self.instance_number+1):
-            for _, guest in self.scenario_guests.items():
-                for _, interface in guest.interfaces.items():
-                    traffic_rule = TrafficRule(f"rule-{interface.name}", instance, f"All traffic in subnetwork {interface.network.name}", "ingress")
-                    traffic_rule.network_cidr = f"{interface.network.ip_network}"
-                    traffic_rule.interface_name = interface.name
-                    traffic_rule.protocol = "all"
-                    traffic_rule.from_port = 0
-                    traffic_rule.to_port = 0
-                    interface._add_traffic_rule(traffic_rule)
