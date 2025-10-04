@@ -759,13 +759,14 @@ class Description:
             
         # Read description file
         self._required(lab_edition_data, "base_lab")
-        self._scenario_dir = str(self._get_scenario_path(lab_edition_data["base_lab"]))
+        base_lab = lab_edition_data["base_lab"]
+        self._scenario_dir = str(self._get_scenario_path(base_lab))
         try:
             description_path = Path(self._scenario_dir) / "description.yml"
             stream = open(description_path, "r")
             description_data = yaml.safe_load(stream)
         except Exception as e:
-            raise DescriptionException(f"Error loading {lab_edition_data["base_lab"]} description file.") from e
+            raise DescriptionException(f"Error loading {base_lab} description file.") from e
 
         # Load description data
         self._required(description_data, "institution")
