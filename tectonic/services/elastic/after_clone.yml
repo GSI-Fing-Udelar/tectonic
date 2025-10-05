@@ -388,7 +388,7 @@
       user: "elastic"
       password: "{{ elastic_superuser_password.stdout }}"
       method: "POST"
-      body: "{ \"policy_id\": \"{{ elastic_result_policy['json']['item']['id'] }}\", \"package\" : { \"name\": \"fleet_server\" , \"version\": \"1.5.0\"}, \"name\": \"fleet_server-1\", \"description\": \"\" , \"namespace\": \"default\", \"inputs\": {\"fleet_server-fleet-server\": { \"enabled\": true, \"vars\": { \"custom\": \"\" }, \"streams\": {} } } }"
+      body: "{ \"policy_id\": \"{{ elastic_result_policy['json']['item']['id'] }}\", \"package\" : { \"name\": \"fleet_server\" , \"version\": \"1.6.0\"}, \"name\": \"fleet_server-1\", \"description\": \"\" , \"namespace\": \"default\", \"inputs\": {\"fleet_server-fleet-server\": { \"enabled\": true, \"vars\": { \"custom\": \"\" }, \"streams\": {} } } }"
       force_basic_auth: true
       status_code: 200
       body_format: "json"
@@ -422,12 +422,9 @@
     ansible.builtin.set_fact:
       result_policy: "{{ result }}"
   - name: Fleet - Install agent
-    ansible.builtin.shell: "elastic-agent enroll --url=https://{{ elastic.ip }}:8220 --fleet-server-es=https://{{ elastic.ip }}:9200 --fleet-server-service-token={{ elastic_result_service_token['json']['value'] }} --fleet-server-policy={{ elastic_result_policy['json']['item']['id'] }} --certificate-authorities=/opt/ca/ca.crt --fleet-server-es-ca=/opt/ca/ca.crt --fleet-server-cert=/opt/{{ ansible_facts['fqdn'] }}/{{ ansible_facts['fqdn'] }}.crt --fleet-server-cert-key=/opt/{{ ansible_facts['fqdn'] }}/{{ ansible_facts['fqdn'] }}.key --fleet-server-port=8220 --proxy-disabled --force"
-  - name: Fleet - Enable service
-    ansible.builtin.service:
-      name: elastic-agent
-      enabled: yes
-      state: started
+    ansible.builtin.shell: "./elastic-agent install --url=https://{{ elastic.ip }}:8220 --fleet-server-es=https://{{ elastic.ip }}:9200 --fleet-server-service-token={{ elastic_result_service_token['json']['value'] }} --fleet-server-policy={{ elastic_result_policy['json']['item']['id'] }} --certificate-authorities=/opt/ca/ca.crt --fleet-server-es-ca=/opt/ca/ca.crt --fleet-server-cert=/opt/{{ ansible_facts['fqdn'] }}/{{ ansible_facts['fqdn'] }}.crt --fleet-server-cert-key=/opt/{{ ansible_facts['fqdn'] }}/{{ ansible_facts['fqdn'] }}.key --fleet-server-port=8220 --proxy-disabled --force --install-servers"
+    args:
+      chdir: /opt/elastic-agent/
 
 - name: Deploy Packetbeat default policy
   block:
@@ -489,7 +486,7 @@
       user: "elastic"
       password: "{{ elastic_superuser_password.stdout }}"
       method: "POST"
-      body: "{ \"name\": \"{{ elastic.policy_name }}\", \"description\": \"\", \"namespace\": \"default\", \"policy_id\": \"{{ elastic_result_policy['json']['item']['id'] }}\", \"enabled\": true, \"inputs\": [ { \"enabled\": true, \"streams\": [], \"type\": \"ENDPOINT_INTEGRATION_CONFIG\", \"config\": { \"_config\": { \"value\": { \"type\": \"endpoint\", \"endpointConfig\": { \"preset\": \"DataCollection\" } } } } } ], \"package\": { \"name\": \"endpoint\", \"title\": \"Elastic Defend\", \"version\": \"8.18.1\" } }"
+      body: "{ \"name\": \"{{ elastic.policy_name }}\", \"description\": \"\", \"namespace\": \"default\", \"policy_id\": \"{{ elastic_result_policy['json']['item']['id'] }}\", \"enabled\": true, \"inputs\": [ { \"enabled\": true, \"streams\": [], \"type\": \"ENDPOINT_INTEGRATION_CONFIG\", \"config\": { \"_config\": { \"value\": { \"type\": \"endpoint\", \"endpointConfig\": { \"preset\": \"DataCollection\" } } } } } ], \"package\": { \"name\": \"endpoint\", \"title\": \"Elastic Defend\", \"version\": \"9.1.0\" } }"
       force_basic_auth: true
       status_code: 200
       body_format: "json"
@@ -502,7 +499,7 @@
       user: "elastic"
       password: "{{ elastic_superuser_password.stdout }}"
       method: "POST"
-      body: "{ \"policy_id\": \"{{ elastic_result_policy['json']['item']['id'] }}\", \"package\": { \"name\": \"auditd_manager\", \"version\": \"1.16.3\" }, \"name\": \"auditd_manager-1\", \"description\": \"\", \"namespace\": \"\", \"inputs\": { \"auditd-audit/auditd\": { \"enabled\": true, \"streams\": { \"auditd_manager.auditd\": { \"enabled\": true, \"vars\": { \"socket_type\": \"\", \"immutable\": false, \"resolve_ids\": true, \"failure_mode\": \"silent\", \"preserve_original_event\": false, \"backlog_limit\": 8192, \"rate_limit\": 0, \"include_warnings\": false, \"backpressure_strategy\": \"auto\", \"tags\": [ \"auditd_manager-auditd\" ] } } } } } }"
+      body: "{ \"policy_id\": \"{{ elastic_result_policy['json']['item']['id'] }}\", \"package\": { \"name\": \"auditd_manager\", \"version\": \"1.19.0\" }, \"name\": \"auditd_manager-1\", \"description\": \"\", \"namespace\": \"\", \"inputs\": { \"auditd-audit/auditd\": { \"enabled\": true, \"streams\": { \"auditd_manager.auditd\": { \"enabled\": true, \"vars\": { \"socket_type\": \"\", \"immutable\": false, \"resolve_ids\": true, \"failure_mode\": \"silent\", \"preserve_original_event\": false, \"backlog_limit\": 8192, \"rate_limit\": 0, \"include_warnings\": false, \"backpressure_strategy\": \"auto\", \"tags\": [ \"auditd_manager-auditd\" ] } } } } } }"
       force_basic_auth: true
       status_code: 200
       body_format: "json"

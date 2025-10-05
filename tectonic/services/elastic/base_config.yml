@@ -24,7 +24,7 @@
   become: true
   vars:
     elastic_repo_key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
-    elastic_repo_url: https://artifacts.elastic.co/packages/8.x/yum
+    elastic_repo_url: https://artifacts.elastic.co/packages/9.x/yum
     
   tasks:
     - name: Set hostname
@@ -38,6 +38,7 @@
         state: present
       with_items:
         - unzip
+        - tar
         - wget
         - jq
         - firewalld
@@ -51,7 +52,7 @@
         - name: Import Elastic repo
           ansible.builtin.yum_repository:
             name: elasticsearch
-            description: Elasticsearch repository for 8.x packages
+            description: Elasticsearch repository for 9.x packages
             baseurl: "{{ elastic_repo_url }}"
             gpgkey: "{{ elastic_repo_key }}"
             enabled: true
@@ -65,7 +66,6 @@
           - elasticsearch
           - kibana
           - logstash
-          - elastic-agent
         state: present
       when: elastic_latest_version == "True"
 
@@ -75,9 +75,31 @@
           - "elasticsearch-{{ elastic_version }}" 
           - "kibana-{{ elastic_version }}"
           - "logstash-{{ elastic_version }}"
-          - "elastic-agent-{{ elastic_version }}"
         state: present
       when: elastic_latest_version == "False"
+
+    - name: Gather architecture
+      block:
+        - name: Set architecture | x86_64
+          ansible.builtin.set_fact:
+            architecture: "x86_64"
+          when: ansible_facts['architecture'] == "x86_64"
+        - name: Set architecture | arm64 or aarch64
+          ansible.builtin.set_fact:
+            architecture: "arm64"
+          when: ansible_facts['architecture'] == "arm64" or ansible_facts['architecture'] == "aarch64"
+
+    - name: Gather packages facts
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Download Elastic Agent
+      ansible.builtin.unarchive:
+        src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ ansible_facts.packages['elasticsearch'][0].version }}-linux-{{ architecture }}.tar.gz"
+        dest: /opt
+        remote_src: yes
+    - name: Rename Elastic agent directory
+      ansible.builtin.command: "mv /opt/elastic-agent-{{ ansible_facts.packages['elasticsearch'][0].version }}-linux-{{ architecture }}/ /opt/elastic-agent/"
 
     - name : Start firewalld
       ansible.builtin.service:
