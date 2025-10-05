@@ -2,7 +2,7 @@
 base_lab: traffic_rules
 institution: gguerrero
 lab_edition_name: traffic_rules
-instance_number: 2
+instance_number: 1
 teacher_pubkey_dir: ./teacher_pubkeys
 student_prefix: trainee
 student_pubkey_dir: ./student_pubkeys

@@ -26,6 +26,7 @@ import libvirt_qemu
 import time
 from ipaddress import ip_network, ip_address
 import xml.etree.ElementTree as ET
+import uuid
 
 class ClientLibvirtException(ClientException):
     pass
@@ -211,4 +212,49 @@ class ClientLibvirt(Client):
         if not hostname:
             raise ClientLibvirtException(f"Instance {machine_name} not found.")
         interactive_shell(hostname, username)
+
+    def _generate_uuid(self, name):
+        return 
+
+    def _add_rule_to_nwfilter(self, parent, protocol, cidr, from_port, to_port, priority, direction, action, state):
+        rule_elem = ET.SubElement(parent, "rule")
+        rule_elem.set("direction", direction)
+        rule_elem.set("priority", str(priority))
+        rule_elem.set("action", action)
+        traffic_elem = ET.SubElement(rule_elem, protocol)
+        traffic_elem.set("state", state)
+        if protocol in ["tcp", "udp"]:
+            traffic_elem.set("dstportstart", from_port)
+            traffic_elem.set("dstportend", to_port)
+        if direction == "in":
+            traffic_elem.set("srcipaddr", cidr.split("/")[0])
+            traffic_elem.set("srcipmask", cidr.split("/")[1])
+        elif direction == "out":
+            traffic_elem.set("dstipaddr", cidr.split("/")[0])
+            traffic_elem.set("dstipmask", cidr.split("/")[1])
+
+    def create_nwfilter(self, nwfilter_name, rules):
+        try:
+            root = ET.Element('filter', name=nwfilter_name, chain='root')
+            ET.SubElement(root, 'uuid').text = str(uuid.uuid5(uuid.NAMESPACE_URL, nwfilter_name))
+            priority = 500
+            # Inblund rules
+            for rule in rules:
+                self._add_rule_to_nwfilter(root, rule.protocol, rule.source_cidr, rule.from_port, rule.to_port, priority, "in", "accept", "NEW")
+                priority = priority - 1
+            # Outbound rule: allow all outbound traffic and deny all other traffic
+            self._add_rule_to_nwfilter(root, "all", self.config.network_cidr_block, None, None, 3, "out", "accept", "NEW")
+            self._add_rule_to_nwfilter(root, "all", self.config.network_cidr_block, None, None , 2, "inout", "accept", "RELATED,ESTABLISHED")
+            #self._add_rule_to_nwfilter(root, "all", None, None, None, 1, "inout", "drop", "NEW") #TODO: arreglar esto. Si lo habilito qemuagent no anda
+            self.connection.nwfilterDefineXML(ET.tostring(root, encoding='unicode'))
+        except Exception as exception:
+            raise ClientLibvirtException(f"{exception}") from exception
+
+    def destroy_nwfilter(self, nwfilter_name):
+        try:
+            nwfilter = self.connection.nwfilterLookupByName(nwfilter_name)
+            nwfilter.undefine()
+        except Exception as exception:
+            if "Network filter not found" not in str(exception):
+                raise ClientLibvirtException(f"{exception}") from exception
         

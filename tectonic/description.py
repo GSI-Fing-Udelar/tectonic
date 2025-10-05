@@ -1278,6 +1278,16 @@ class Description:
                         rule.interface_attached = interface.name
                         interface._add_traffic_rule(rule)
                         rule_index = rule_index +1
+
+        if self.config.platform == "libvirt":
+            for _, guest in guests.items():
+                rule_index = 0
+                for _, interface in guest.interfaces.items():
+                    rule_data = BaseTrafficRule(f"rule-ssh-{rule_index}", f"Allow ssh access from host", interface.network.name, f"{guest.name}.{interface.network.name}-ssh", "tcp", "22")
+                    ip = str(list((ipaddress.ip_network(interface.network.ip_network)).hosts())[0]) #First IP in each network
+                    rule = TrafficRule(rule_data, f"{ip}/32", guest.copy)
+                    interface._add_traffic_rule(rule)
+                    rule_index = rule_index +1
         return guests
         
         

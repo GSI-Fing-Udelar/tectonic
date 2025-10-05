@@ -126,6 +126,11 @@ class Core:
 
             self.ansible.configure_services()
 
+            if self.config.platform == "libvirt":
+                for _, guest in self.description.scenario_guests.items():
+                    for _, interface in guest.interfaces.items():
+                        self.client.create_nwfilter(f"{guest.name}-{interface.network.name}", interface.traffic_rules)
+
             self.terraform.deploy(instances)
 
         elif self.config.platform in ["aws"]:
@@ -162,6 +167,12 @@ class Core:
         """
         if self.config.platform in ["docker", "libvirt"]:
             self.terraform.destroy(instances)
+
+            if self.config.platform == "libvirt":
+                for _, guest in self.description.scenario_guests.items():
+                    for _, interface in guest.interfaces.items():
+                        self.client.destroy_nwfilter(f"{guest.name}-{interface.network.name}")
+
             self.terraform_service.destroy(instances)
         elif self.config.platform in ["aws"]:
             self.terraform_service.destroy(instances)

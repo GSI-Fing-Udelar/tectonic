@@ -132,6 +132,7 @@ resource "libvirt_domain" "machines" {
   autostart = true
 
   xml {
-    xslt = file(lookup(each.value, "advanced_options_file", "/dev/null"))
+    #xslt = file(lookup(each.value, "advanced_options_file", "/dev/null"))
+    xslt = file("${path.root}/xslt/nw_filters.xslt")
   }
 }
