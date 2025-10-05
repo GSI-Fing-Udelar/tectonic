@@ -36,7 +36,9 @@
       ansible.builtin.package:
         name:
           - git
-          - python3.9
+          - python3.12
+          - python3.12-pip
+          - python3.12-cryptography
           - nodejs
           - haproxy
           - gcc
@@ -46,7 +48,7 @@
         state: present
 
     - name: Update pip
-      ansible.builtin.command: python3.9 -m pip install --upgrade pip
+      ansible.builtin.command: python3.12 -m pip install --upgrade pip
 
     - name: Download Caldera
       ansible.builtin.git:
@@ -80,7 +82,7 @@
       when: caldera_ot_enabled == "True"
 
     - name: Install Caldera requirements
-      ansible.builtin.command: python3.9 -m pip install -r /opt/caldera/requirements.txt
+      ansible.builtin.command: python3.12 -m pip install -r /opt/caldera/requirements.txt
 
     - name: Check ig Magma plugin exists
       ansible.builtin.stat:

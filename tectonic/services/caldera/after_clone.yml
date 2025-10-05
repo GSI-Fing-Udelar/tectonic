@@ -77,7 +77,7 @@
           {{ key['stdout'] }}
           {{ cert['stdout'] }}
   vars:
-    ansible_python_interpreter: /usr/bin/python3.9
+    ansible_python_interpreter: /usr/bin/python3.12
 
 - name: Configure haproxy
   block:
@@ -208,7 +208,7 @@
     dest: /opt/caldera/script.sh
     content: |
       #!/bin/bash
-      nohup python3.9 server.py &
+      nohup python3.12 server.py &
 
 - name: Create Caldera service 
   ansible.builtin.copy: 
