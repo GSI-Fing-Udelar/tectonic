@@ -286,6 +286,7 @@ class TerraformAWS(Terraform):
         result["teacher_access"] = self.config.aws.teacher_access
         result["services_internet_access"] = self.description.elastic.enable
         result["monitor_type"] = self.description.elastic.monitor_type
+        result["access_host_instance_type"] = self.config.aws.access_host_instance_type
         return result
     
     def _get_guest_variables(self, guest):
