@@ -178,6 +178,10 @@ source "libvirt" "machine" {
     }
     bus        = "sata"
   }
+  graphics {
+    type = "sdl"
+  }
+  cpu_mode = "host-passthrough"
   shutdown_mode = "acpi"
   shutdown_timeout = "30s"
 }
