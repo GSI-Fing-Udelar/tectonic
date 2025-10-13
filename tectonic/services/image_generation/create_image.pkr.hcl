@@ -180,7 +180,12 @@ source "libvirt" "machine" {
     }
     bus        = "sata"
   }
+  graphics {
+    type = "sdl"
+  }
+  cpu_mode = "host-passthrough"
   shutdown_mode = "acpi"
+  shutdown_timeout = "30s"
 }
 
 source "docker" "machine" {
@@ -246,7 +251,7 @@ build {
           checksum = local.os_data[source.value["base_os"]]["cloud_image_checksum"]
         }
         capacity = "${source.value["disk"]}G"
-        bus        = "sata"
+        bus        = "virtio"
         format     = "qcow2"
       }
     }
