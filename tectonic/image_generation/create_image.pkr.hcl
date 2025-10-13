@@ -258,7 +258,7 @@ build {
           checksum = local.os_data[source.value["base_os"]]["cloud_image_checksum"]
         }
         capacity = "${source.value["disk"]}G"
-        bus        = "sata"
+        bus        = "virtio"
         format     = "qcow2"
       }
     }
