@@ -273,7 +273,7 @@ build {
 
   provisioner "shell" {
     inline = concat(
-      var.proxy != null ? ["sudo sed -i '/^proxy=/d' /etc/dnf/dnf.conf && echo 'proxy=http://<Proxy-Server-IP-Address>:<Proxy-Port>' | sudo tee -a /etc/dnf/dnf.conf",
+      var.proxy != null ? ["sudo sed -i '/^proxy=/d' /etc/dnf/dnf.conf && echo 'proxy=${var.proxy}' | sudo tee -a /etc/dnf/dnf.conf",
       ] : [],
       ["sudo dnf install -y python3.12 python3.12-pip"],
     )
