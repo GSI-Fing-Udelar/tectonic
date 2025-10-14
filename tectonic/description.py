@@ -670,7 +670,7 @@ class ElasticDescription(ServiceDescription):
     supported_monitor_types = ["traffic", "endpoint"]
 
     def __init__(self, description):
-        super().__init__(description, "elastic", "rocky8", True)
+        super().__init__(description, "elastic", "rocky9", True)
         self.memory = 8192
         self.vcpu = 4
         self.disk = 50
@@ -704,7 +704,7 @@ class ElasticDescription(ServiceDescription):
         
 class CalderaDescription(ServiceDescription):
     def __init__(self, description):
-        super().__init__(description, "caldera", "rocky8")
+        super().__init__(description, "caldera", "rocky9")
         self.memory = 2048
         self.vcpu = 2
         self.disk = 20

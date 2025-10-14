@@ -83,6 +83,9 @@ locals {
   build_type = local.platform_to_buildtype[var.platform]
   machine_builds = [ for m, _ in local.machines : "${local.build_type}.${m}" ]
 
+  python_installed_machines = var.platform != "docker" ? [ for name, m in local.machines :
+    "${local.build_type}.${name}" if m["base_os"] != "rocky8"
+  ] : local.machine_builds
 }
 
 
@@ -180,7 +183,12 @@ source "libvirt" "machine" {
     }
     bus        = "sata"
   }
+  graphics {
+    type = "sdl"
+  }
+  cpu_mode = "host-passthrough"
   shutdown_mode = "acpi"
+  shutdown_timeout = "30s"
 }
 
 source "docker" "machine" {
@@ -246,7 +254,7 @@ build {
           checksum = local.os_data[source.value["base_os"]]["cloud_image_checksum"]
         }
         capacity = "${source.value["disk"]}G"
-        bus        = "sata"
+        bus        = "virtio"
         format     = "qcow2"
       }
     }
@@ -261,6 +269,16 @@ build {
       exec_user = local.os_data[source.value["base_os"]]["username"]
       run_command = ["-d", "-i", "-t", "--name", "${source.key}", "--entrypoint=${local.os_data[source.value["base_os"]]["entrypoint"]}", "--", "{{.Image}}"]
     }
+  }
+
+  provisioner "shell" {
+    inline = concat(
+      var.proxy != null ? ["sudo sed -i '/^proxy=/d' /etc/dnf/dnf.conf && echo 'proxy=${var.proxy}' | sudo tee -a /etc/dnf/dnf.conf",
+      ] : [],
+      ["sudo dnf install -y python3.12 python3.12-pip"],
+    )
+
+    except = local.python_installed_machines
   }
 
   provisioner "ansible" {

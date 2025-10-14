@@ -112,6 +112,9 @@ locals {
   win_machines = [ for name, m in local.machines :
     "${local.build_type}.${name}" if m["base_os"] == "windows_srv_2022"
   ]
+  python_installed_machines = var.platform != "docker" ? [ for name, m in local.machines :
+    "${local.build_type}.${name}" if m["base_os"] != "rocky8"
+  ] : local.machine_builds
 
   not_endpoint_monitoring_machines = [ for name, m in local.machines : "${local.build_type}.${name}" if !m["endpoint_monitoring"] ]
 }
@@ -178,6 +181,10 @@ source "libvirt" "machine" {
     }
     bus        = "sata"
   }
+  graphics {
+    type = "sdl"
+  }
+  cpu_mode = "host-passthrough"
   shutdown_mode = "acpi"
   shutdown_timeout = "30s"
 }
@@ -254,7 +261,7 @@ build {
           checksum = local.os_data[source.value["base_os"]]["cloud_image_checksum"]
         }
         capacity = "${source.value["disk"]}G"
-        bus        = "sata"
+        bus        = "virtio"
         format     = "qcow2"
       }
     }
@@ -270,6 +277,16 @@ build {
       run_command = ["-d", "-i", "-t", "--name", "${var.institution}-${var.lab_name}-${source.key}", "--entrypoint=${local.os_data[source.value["base_os"]]["entrypoint"]}", "--", "{{.Image}}"]
     }
   }
+
+  provisioner "shell" {
+    inline = concat(
+      var.proxy != null ? ["sudo sed -i '/^proxy=/d' /etc/dnf/dnf.conf && echo 'proxy=${var.proxy}' | sudo tee -a /etc/dnf/dnf.conf",
+      ] : [],
+      ["sudo dnf install -y python3.12 python3.12-pip"],
+    )
+    except = local.python_installed_machines
+  }
+
 
   provisioner "ansible" {
     playbook_file = "${abspath(path.root)}/libvirt_conf.yml"

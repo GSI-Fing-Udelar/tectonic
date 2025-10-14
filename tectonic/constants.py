@@ -45,6 +45,16 @@ OS_DATA = {
         "docker_base_image": "gsitectonic/rocky8",
         "entrypoint": "/usr/sbin/init",
     },
+    "rocky9": {
+        "ami_filter": "Rocky-9-EC2-Base-9.*x86_64",
+        "owner": "792107900819",
+        "username": "rocky",
+        "cloud_image_url": "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
+        #"cloud_image_url": "file:///data/isos/Rocky-9-GenericCloud.latest.x86_64.qcow2",
+        "cloud_image_checksum": "2c72815bb83cadccbede4704780e9b52033722db8a45c3fb02130aa380690a3d",
+        "docker_base_image": "gsitectonic/rocky9",
+        "entrypoint": "/usr/sbin/init",
+    },
     "kali": {
         "ami_filter": "kali-last-snapshot-amd64*",
         "owner": "679593333241",  # TODO: Marketplace owner id
@@ -61,65 +71,4 @@ OS_DATA = {
         "owner": "amazon",
         "username": "administrator",
     },
-}
-
-SERVICES_SIZE = {
-    "elastic" : {
-        "libvirt" : {
-            "test" : {
-                "vcpu":2,
-                "memory":4096, #MB
-                "disk":10, #GB
-            },
-            "small" : {
-                "vcpu":4,
-                "memory":8192,
-                "disk":60,
-            },
-            "medium": {
-                "vcpu":8,
-                "memory":16384,
-                "disk":110,
-            },
-            "big":{
-                "vcpu":12,
-                "memory":24576,
-                "disk":160,
-            }
-        },
-        "aws" : {
-            "small": "t2.small",
-            "medium": "t2.medium",
-            "big": "t2.big",
-        }
-    },
-    "caldera" : {
-        "libvirt" : {
-            "test" : {
-                "vcpu":1,
-                "memory":2048, #MB
-                "disk":10, #GB
-            },
-            "small" : {
-                "vcpu":2,
-                "memory":2048,
-                "disk":20,
-            },
-            "medium": {
-                "vcpu":3,
-                "memory":4096,
-                "disk":20,
-            },
-            "big":{
-                "vcpu":4,
-                "memory":8192,
-                "disk":50,
-            }
-        },
-        "aws" : {
-            "small": "t2.small",
-            "medium": "t2.medium",
-            "big": "t2.big",
-        }
-    }
 }

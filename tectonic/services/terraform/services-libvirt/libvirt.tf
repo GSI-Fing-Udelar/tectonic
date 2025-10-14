@@ -58,6 +58,9 @@ resource "libvirt_domain" "machines" {
   name      = "${each.key}"
   memory    = lookup(each.value, "memory", "1024")
   vcpu      = lookup(each.value, "vcpu", "1")
+  cpu {
+    mode = "host-passthrough"
+  }
   cloudinit = libvirt_cloudinit_disk.commoninit[each.key].id
 
   dynamic "network_interface" {
