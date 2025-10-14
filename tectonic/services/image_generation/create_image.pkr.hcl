@@ -83,6 +83,9 @@ locals {
   build_type = local.platform_to_buildtype[var.platform]
   machine_builds = [ for m, _ in local.machines : "${local.build_type}.${m}" ]
 
+  rocky8_machines = [ for name, m in local.machines :
+    "${local.build_type}.${name}" if m["base_os"] == "rocky8"
+  ]
 }
 
 
@@ -266,6 +269,13 @@ build {
       exec_user = local.os_data[source.value["base_os"]]["username"]
       run_command = ["-d", "-i", "-t", "--name", "${source.key}", "--entrypoint=${local.os_data[source.value["base_os"]]["entrypoint"]}", "--", "{{.Image}}"]
     }
+  }
+
+  provisioner "shell" {
+    inline = [ 
+      "sudo dnf install -y python3.12 python3.12-pip",
+    ]
+    only = var.platform != "docker" ? local.rocky8_machines : []
   }
 
   provisioner "ansible" {
