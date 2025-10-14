@@ -112,9 +112,9 @@ locals {
   win_machines = [ for name, m in local.machines :
     "${local.build_type}.${name}" if m["base_os"] == "windows_srv_2022"
   ]
-  rocky8_machines = [ for name, m in local.machines :
-    "${local.build_type}.${name}" if m["base_os"] == "rocky8"
-  ]
+  python_installed_machines = var.platform != "docker" ? [ for name, m in local.machines :
+    "${local.build_type}.${name}" if m["base_os"] != "rocky8"
+  ] : local.machine_builds
 
   not_endpoint_monitoring_machines = [ for name, m in local.machines : "${local.build_type}.${name}" if !m["endpoint_monitoring"] ]
 }
@@ -279,10 +279,12 @@ build {
   }
 
   provisioner "shell" {
-    inline = [ 
-      "sudo dnf install -y python3.12 python3.12-pip",
-    ]
-    only = var.platform != "docker" ? local.rocky8_machines : []
+    inline = concat(
+      var.proxy != null ? ["sudo sed -i '/^proxy=/d' /etc/dnf/dnf.conf && echo 'proxy=http://<Proxy-Server-IP-Address>:<Proxy-Port>' | sudo tee -a /etc/dnf/dnf.conf",
+      ] : [],
+      ["sudo dnf install -y python3.12 python3.12-pip"],
+    )
+    except = local.python_installed_machines
   }
 
 
