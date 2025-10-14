@@ -112,6 +112,9 @@ locals {
   win_machines = [ for name, m in local.machines :
     "${local.build_type}.${name}" if m["base_os"] == "windows_srv_2022"
   ]
+  rocky8_machines = [ for name, m in local.machines :
+    "${local.build_type}.${name}" if m["base_os"] == "rocky8"
+  ]
 
   not_endpoint_monitoring_machines = [ for name, m in local.machines : "${local.build_type}.${name}" if !m["endpoint_monitoring"] ]
 }
@@ -274,6 +277,14 @@ build {
       run_command = ["-d", "-i", "-t", "--name", "${var.institution}-${var.lab_name}-${source.key}", "--entrypoint=${local.os_data[source.value["base_os"]]["entrypoint"]}", "--", "{{.Image}}"]
     }
   }
+
+  provisioner "shell" {
+    inline = [ 
+      "sudo dnf install -y python3.12 python3.12-pip",
+    ]
+    only = var.platform != "docker" ? local.rocky8_machines : []
+  }
+
 
   provisioner "ansible" {
     playbook_file = "${abspath(path.root)}/libvirt_conf.yml"
