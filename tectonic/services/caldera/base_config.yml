@@ -19,10 +19,12 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 #
 ---
-- name: "Install Caldera"
+- name: "Install Caldera (Rocky 9)"
   hosts: caldera
   become: true
-  
+  vars_files:
+    - vars/variables.yml
+    
   tasks:
     - name: Set hostname
       ansible.builtin.hostname:
@@ -59,25 +61,26 @@
 
     - name: Install Caldera OT plugins
       block:
-        - name: Download Caldera OT plugins
+        - name: "Download Caldera OT plugins: {{ item.name }}"
           ansible.builtin.git:
-            repo: https://github.com/mitre/caldera-ot.git
-            dest: /tmp/caldera_ot/
-            version: main #Force to use main because no tags genrated on the repo
-            recursive: true
-        - name: Get Caldera OT plugins
-          ansible.builtin.find:
-            paths: /tmp/caldera_ot/
-            recurse: no
-            file_type: directory
-          register: caldera_ot_plugins
-        - name: Install Caldera OT plugins
-          ansible.builtin.command: "mv {{ item['path'] }} /opt/caldera/plugins/"
-          loop: "{{ caldera_ot_plugins['files'] }}"
-          when: item['path'] != "/tmp/caldera_ot/ot-one-pagers"
+            repo: "https://github.com/mitre/{{ item.name }}.git"
+            dest: "/tmp/ot_plugins/{{ item.name }}/"
+            version: "v{{ item.version }}"
+          loop: "{{ ot_plugins }}"
+        - name: "Download iec61850 payloads"
+          ansible.builtin.get_url:
+            url: "https://github.com/mitre/iec61850-payloads/releases/download/v1.0.0/{{ item }}"
+            dest: /tmp/ot_plugins/iec61850/payloads
+          with_items:
+            - iec61850_actions
+            - iec61850_actions.exe
+            - iec61850_actions_darwin
+        - name: "Install Caldera OT plugins: {{ item.name }}"
+          ansible.builtin.command: "mv /tmp/ot_plugins/{{ item.name }} /opt/caldera/plugins/"
+          loop: "{{ ot_plugins}}"
         - name: Remove tmp files
           ansible.builtin.file:
-            path: /tmp/caldera_ot/
+            path: /tmp/ot_plugins/caldera_ot/
             state: absent
       when: caldera_ot_enabled == "True"
 

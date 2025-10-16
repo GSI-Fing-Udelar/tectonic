@@ -131,77 +131,14 @@
     blue_api_key: "{{ lookup('community.general.random_string', length=43, special=false) }}"
 
 - name: Copy Caldera configuration
-  ansible.builtin.copy:
-    dest: /opt/caldera/conf/local.yml
-    content: |
-      ability_refresh: 60
-      api_key_blue: {{ blue_api_key }}
-      api_key_red: {{ red_api_key }}
-      app.contact.dns.domain: {{ansible_facts['fqdn']}}
-      app.contact.dns.socket: {{ caldera.ip }}:8853
-      app.contact.gist: {{ lookup('community.general.random_string', length=43, special=false) }}
-      app.contact.html: /weather
-      app.contact.http: https://{{ caldera.ip }}:443
-      app.contact.slack.api_key: SLACK_TOKEN
-      app.contact.slack.bot_id: SLACK_BOT_ID
-      app.contact.slack.channel_id: SLACK_CHANNEL_ID
-      app.contact.tunnel.ssh.host_key_file: REPLACE_WITH_KEY_FILE_PATH
-      app.contact.tunnel.ssh.host_key_passphrase: REPLACE_WITH_KEY_FILE_PASSPHRASE
-      app.contact.tunnel.ssh.socket: {{ caldera.ip }}:8022
-      app.contact.tunnel.ssh.user_name: sandcat
-      app.contact.tunnel.ssh.user_password: s4ndc4t!
-      app.contact.ftp.host: {{ caldera.ip }}
-      app.contact.ftp.port: 2222
-      app.contact.ftp.pword: caldera
-      app.contact.ftp.server.dir: ftp_dir
-      app.contact.ftp.user: caldera_user
-      app.contact.tcp: {{ caldera.ip }}:7010
-      app.contact.udp: {{ caldera.ip }}:7011
-      app.contact.websocket: {{ caldera.ip }}:7012
-      objects.planners.default: atomic
-      crypt_salt: {{ lookup('community.general.random_string', length=43, special=false) }}
-      encryption_key: {{ lookup('community.general.random_string', length=43, special=false) }}
-      exfil_dir: /tmp/caldera
-      reachable_host_traits:
-      - remote.host.fqdn
-      - remote.host.ip
-      host: 127.0.0.1
-      plugins:
-      - access
-      - atomic
-      - compass
-      - debrief
-      - fieldmanual
-      - manx
-      - response
-      - sandcat
-      - stockpile
-      - training
-      - ssl
-      - bacnet
-      - dnp3
-      - modbus
-      - profinet
-      - iec61850
-      - gems
-      port: 8888
-      reports_dir: /tmp
-      auth.login.handler.module: default
-      requirements:
-        go:
-          command: go version
-          type: installed_program
-          version: 1.19
-        python:
-          attr: version
-          module: sys
-          type: python_module
-          version: 3.8.0
-      users:
-        blue:
-          blue: {{ blue_password }}
-        red:
-          red: {{ red_password }}
+  block:
+    - name: Copy Caldera configuration | Load variables
+      ansible.builtin.include_vars:
+        file: vars/variables.yml
+    - name: Copy Caldera configuration | Copy config
+      ansible.builtin.template:
+        src: templates/config.j2
+        dest: /opt/caldera/conf/local.yml
 
 - name: Create Caldera launch script
   ansible.builtin.copy:
@@ -239,15 +176,6 @@
 - name: Set Gateway IP
   ansible.builtin.set_fact:
     gateway_ip: "{{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.129"
-  # block:
-    # - name: Set gateway_ip for Docker
-    #   ansible.builtin.set_fact:
-    #     gateway_ip: "{{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.1"
-    #   when: platform == "docker"
-    # - name: Set gateway_ip for Libvirt
-    #   ansible.builtin.set_fact:
-    #     gateway_ip: "{{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.129"
-    #   when: platform == "libvirt"
 
 - name: Configure firewalld
   block:

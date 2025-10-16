@@ -266,6 +266,7 @@ class Ansible:
                 "caldera":{
                     "ip": self.description.caldera.service_ip,
                     "description_path": str(self.description.scenario_dir),
+                    "ot_enabled": str(self.config.caldera.ot_enabled)
                 },
             }
             inventory = self.build_inventory(machine_list=services, extra_vars=extra_vars)
