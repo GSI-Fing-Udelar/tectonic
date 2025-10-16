@@ -61,7 +61,7 @@
 
     - name: Install Caldera OT plugins
       block:
-        - name: "Download Caldera OT plugins: {{ item.name }}"
+        - name: "Download Caldera OT plugins"
           ansible.builtin.git:
             repo: "https://github.com/mitre/{{ item.name }}.git"
             dest: "/tmp/ot_plugins/{{ item.name }}/"
@@ -77,7 +77,7 @@
             - iec61850_actions_darwin
         - name: "Install Caldera OT plugins: {{ item.name }}"
           ansible.builtin.command: "mv /tmp/ot_plugins/{{ item.name }} /opt/caldera/plugins/"
-          loop: "{{ ot_plugins}}"
+          loop: "{{ ot_plugins }}"
         - name: Remove tmp files
           ansible.builtin.file:
             path: /tmp/ot_plugins/caldera_ot/
