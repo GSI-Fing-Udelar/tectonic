@@ -305,15 +305,19 @@ class Core:
         Return:
             dict: status of instances.
         """
-        instances_status = {}
+        instances_info = {}
         machines_to_list = self.description.parse_machines(instances, guests, copies, False, [service.base_name for _, service in self.description.services_guests.items()])
         for machine in machines_to_list:
-            instances_status[machine] = self.client.get_machine_status(machine)
+            status = self.client.get_machine_status(machine)
+            ip = "-"
+            if status == "RUNNING":
+                ip = self.client.get_machine_private_ip(machine)
+            instances_info[machine] = [ip, status]
 
         services_status = {}
         for service_name in self.description.services_guests.keys():
             services_status[service_name] = self.client.get_machine_status(service_name)
-        if self.description.elastic.enable:
+        if self.description.elastic.enable and services_status[self.description.elastic.name] == "RUNNING":
             if self.description.elastic.monitor_type == "traffic":
                 packetbeat_status = self.terraform_service.manage_packetbeat(self.ansible, "status")
                 if packetbeat_status is not None:
@@ -325,7 +329,7 @@ class Core:
                 agents_status = result[0]['agents_status']
                 for key in agents_status:
                     services_status[f"elastic-agents-{key}"] = agents_status[key]
-        if self.description.caldera.enable:
+        if self.description.caldera.enable and services_status[self.description.caldera.name] == "RUNNING":
             # TODO: move this somewhere else?
             playbook = tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'get_info.yml'
             result = self.terraform_service.get_service_info(self.description.caldera, self.ansible, playbook, {"action":"agents_status"})
@@ -346,7 +350,7 @@ class Core:
             for key in agents_status:
                 services_status[f"caldera-agents-{key}"] = agents_status[key]
         return {
-            "instances_status" : instances_status,
+            "instances_info" : instances_info,
             "services_status" : services_status
         }
 
