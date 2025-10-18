@@ -30,7 +30,7 @@ The scenario description is a YAML file with three main sections:
   are described. Each guest entry has these options (all are
   optional):
   + `entry_point`: Whether the trainees can access the machine through
-    SSH or RDP. Default: `no`.
+    SSH or RDP. Default: `no`. See [remote_access](./remote_access.md) for more details.
   + `memory`: Amount of RAM of the machine, in MB. Default: `1024`.
   + `vcpu`: Number of virtual CPUs of the machine. Default: `1`.
   + `disk`: Amount of disk of the machine, in GB. Default: `10`.
@@ -52,7 +52,7 @@ The scenario description is a YAML file with three main sections:
 
 * A `topology` section with the network definition. This should be a
   list of networks with a `name` and a list of `members` which must be
-  one of the defined guests in the previous section.
+  one of the defined guests in the previous section. See [network_topology](./network_topology.md) for more details.
 
 + A `elastic_settings` section to describe the configuration of the Elastic Security service. The following properties must be defined:
   + `enable`: Wheter to deploy this service. Default: `no`.

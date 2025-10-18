@@ -537,11 +537,11 @@ def list_instances(ctx, instances, guests, copies):
     click.echo("Getting Cyber Range status...")
     result = ctx.obj["core"].list_instances(instances, guests, copies)
 
-    if result.get("instances_status"):
-        headers = ["Name", "Status"]
+    if result.get("instances_info"):
+        headers = ["Name", "IP", "Status"]
         rows = []
-        for machine, status in result.get("instances_status", []).items():
-            rows.append([machine, status])
+        for machine, info in result.get("instances_info", []).items():
+            rows.append([machine, info[0], info[1]])
         click.echo(utils.create_table(headers,rows))
 
     if result.get("services_status"):
@@ -747,14 +747,14 @@ def _info(ctx):
     result = ctx.obj["core"].info()
 
     if result.get("instances_info"):
-        headers = ["Name", "Status"]
+        headers = ["Description", "Info"]
         rows = []
         for key, value in result.get("instances_info", []).items():
             rows.append([key, value])
         click.echo(utils.create_table(headers,rows))
 
     if result.get("services_info"):
-        headers = ["Name", "Status"]
+        headers = ["Description", "Info"]
         rows = []
         for service, service_value in result.get("services_info", []).items():
             for key, value in service_value.items():
