@@ -1,0 +1,8 @@
+- name: Configure guacamole users
+  ansible.builtin.template:
+    src: templates/user-mapping.j2
+    dest: /etc/guacamole/user-mapping.xml
+- name: Restart tomcat
+  ansible.builtin.systemd_service:
+    name: tomcat9
+    state: restarted
