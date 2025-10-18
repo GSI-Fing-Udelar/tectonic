@@ -123,6 +123,10 @@ To destroy a scenario use the `destroy` command.
 See `tectonic --help` for a full list of options, and `tectonic
 <command> -h` for help on individual commands.
 
+## Access the Cyber Range
+
+Access is via SSH and will depend on the type of platform used. See the [remote access](./docs/remote_access.md) documentation for more details.
+
 ## Disclaimer About Platforms
 
 Tectonic provides support for scenario deployments using Docker as the base platform. However, it is important to note that using Docker as base platform in production environments is not recommended since Tectonic deploys containers in privileged mode. This means that when a user has root access within a container, they can also gain root access to the host system, which can create significant security issues. Therefore, caution is crucial when using Docker as a base platform, especially in scenarios involving attacks. It is advisable to utilize Docker primarily for the generation and testing of new scenarios. For production environments, we recommend to utilize Libvirt or AWS as base platform, both of which are fully supported by Tectonic.
