@@ -18,7 +18,7 @@ $$
 
 where $x = log_2(N)$
 
-Each subnetwork will allow a maximum of `2^{(8-x)}-4` hosts. This is
+Each subnetwork will allow a maximum of $2^{(8-x)}-4$ hosts. This is
 because the first three and the last IP in a subnet are reserved.
 
 For example: 
