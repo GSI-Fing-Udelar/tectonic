@@ -1,0 +1,35 @@
+<user-mapping>
+    {% for item in users | dict2items  %}
+    <authorize username="{{ item.key }}" password="{{ item.value.password }}">
+        <connection name="Workstation (SSH)">
+            <protocol>ssh</protocol>
+            <param name="hostname">10.0.{{ (item.key | regex_search('trainee([0-9]+)$','\\1'))[0] | int }}.4</param>
+            <param name="port">22</param>
+            <param name="username">{{ item.key }}</param>
+            <param name="password">{{ item.value.password }}</param>
+            <param name="enable-sftp">true</param>
+        </connection>
+        <connection name="Workstation (RDP)">
+            <protocol>rdp</protocol>
+            <param name="hostname">10.0.{{ (item.key | regex_search('trainee([0-9]+)$','\\1'))[0] | int }}.4</param>
+            <param name="port">3389</param>
+            <param name="username">{{ item.key }}</param>
+            <param name="password">{{ item.value.password }}</param>
+            <param name="ignore-cert">true</param>
+            <param name="enable-sftp">true</param>
+            <param name="sftp-hostname">10.0.{{ (item.key | regex_search('trainee([0-9]+)$','\\1'))[0] | int }}.4</param>
+            <param name="sftp-port">22</param>
+            <param name="sftp-username">{{ item.key }}</param>
+            <param name="sftp-password">{{ item.value.password }}</param>
+        </connection>
+        <connection name="WAF (SSH)">
+            <protocol>ssh</protocol>
+            <param name="hostname">10.0.{{ (item.key | regex_search('trainee([0-9]+)$','\\1'))[0] | int }}.5</param>
+            <param name="port">22</param>
+            <param name="username">{{ item.key }}</param>
+            <param name="password">{{ item.value.password }}</param>
+            <param name="enable-sftp">true</param>
+        </connection>
+    </authorize>
+    {% endfor %}
+</user-mapping>
