@@ -206,7 +206,7 @@ def test_list_instances_with_elastic(core, monitor_type):
     core.terraform_service.get_service_info =  MagicMock(return_value=[{'agents_status': agents_status}])
 
     status = core.list_instances([1], ["attacker"], [1])
-    assert "instances_status" in status
+    assert "instances_info" in status
     assert "services_status" in status
 
 def test_list_instances_with_caldera(core):
@@ -220,7 +220,7 @@ def test_list_instances_with_caldera(core):
     core.terraform_service.get_service_info =  MagicMock(return_value=[{'agents_status': agents_status}])
 
     status = core.list_instances([1], ["attacker"], [1])
-    assert "instances_status" in status
+    assert "instances_info" in status
     assert "services_status" in status
     
 
