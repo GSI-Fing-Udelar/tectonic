@@ -1,13 +1,17 @@
 - name: "Test (for ubuntu 22.04)"
   hosts: guacamole
+  hosts: guacamole
   become: true
   gather_facts: true
+
   vars:
     guacamole_version: 1.6.0
+
   tasks:
     - name: "Update repos"
       ansible.builtin.apt:
         update_cache: yes
+
     - name: Install packages
       ansible.builtin.package:
         name: 
@@ -37,11 +41,13 @@
           - tomcat9-common
           - tomcat9-user
         state: present
+
     - name: Download guacamole
       ansible.builtin.unarchive:
         src: "https://downloads.apache.org/guacamole/{{ guacamole_version }}/source/guacamole-server-{{ guacamole_version }}.tar.gz"
         dest: /root/
         remote_src: yes
+
     - name: Build guacamole
       block:
         - name: Build guacamole | Configure
@@ -60,6 +66,7 @@
           ansible.builtin.command: ldconfig
           args:
             chdir: /root/guacamole-server-{{ guacamole_version }}
+
     - name: Create Guacamole user
       block:
         - name: Create Guacamole user | Create user
@@ -67,6 +74,7 @@
             name: guacd
             shell: /sbin/nologin
             home: /var/lib/guacd
+
         - name: Create Guacamole user | Create user home
           ansible.builtin.file:
             path: /var/lib/guacd
@@ -74,11 +82,13 @@
             mode: '0755'
             owner: guacd
             group: guacd 
+
         - name: Create Guacamole user | Adjust service file
           ansible.builtin.lineinfile:
             path: /etc/systemd/system/guacd.service
             regexp: '^User='
             line: User=guacd
+
     - name: Download guacamole webapp
       ansible.builtin.get_url:
         url: "https://downloads.apache.org/guacamole/{{ guacamole_version }}/binary/guacamole-{{ guacamole_version }}.war"
@@ -90,6 +100,7 @@
             path: /etc/guacamole
             state: directory
             mode: '0755'
+
         - name: Configure guacamole | Create guacamole properties file
           ansible.builtin.copy:
             dest: /etc/guacamole/guacamole.properties
@@ -98,6 +109,7 @@
                 guacd-port: 4822
                 auth-provider: net.sourceforge.guacamole.net.basic.BasicFileAuthenticationProvider
                 basic-user-mapping: /etc/guacamole/user-mapping.xml
+
         - name: Configure guacamole | Create guacd config file
           ansible.builtin.copy:
             dest: /etc/guacamole/guacd.conf
@@ -105,6 +117,7 @@
               [server]
               bind_host = 127.0.0.1
               bind_port = 4822
+
     - name: Configure guacamole brute force protection
       block:
         - name: Configure guacamole brute force protection | Create extensions directory
@@ -112,11 +125,13 @@
             path: /etc/guacamole/extensions
             state: directory
             mode: '0755'
+
         - name: Configure guacamole brute force protection | Download extension
           ansible.builtin.unarchive:
             src: "https://apache.org/dyn/closer.lua/guacamole/{{ guacamole_version }}/binary/guacamole-auth-ban-{{ guacamole_version }}.tar.gz?action=download"
             dest: /root
             remote_src: yes
+
         - name: Configure guacamole brute force protection | Copy extension
           ansible.builtin.copy:
             src: "/root/guacamole-auth-ban-{{ guacamole_version }}/guacamole-auth-ban-{{ guacamole_version }}.jar"
