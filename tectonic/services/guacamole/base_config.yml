@@ -1,6 +1,5 @@
 - name: "Test (for ubuntu 22.04)"
   hosts: guacamole
-  hosts: guacamole
   become: true
   gather_facts: true
 
