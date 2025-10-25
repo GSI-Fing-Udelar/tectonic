@@ -179,6 +179,7 @@ class Packer(ABC):
             "caldera_version": self.config.caldera.version,
             "packetbeat_vlan_id": self.config.aws.packetbeat_vlan_id,
             "caldera_ot_enabled": str(self.config.caldera.ot_enabled),
+            "guacamole_version": self.config.guacamole.version,
         }
         if self.config.proxy:
             args["proxy"] = self.config.proxy

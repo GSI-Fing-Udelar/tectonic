@@ -1,4 +1,4 @@
-#
+
 # Tectonic - An academic Cyber Range
 # Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
 # Uruguay
@@ -18,18 +18,25 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-- name: Finish playbook execution if Guacample already installed
-  block:
-    - name: Check if credentials file exists
-      ansible.builtin.stat:
-        path: /root/credentials
-      register: credentials
-    - name: End execution if credentials file exists
-      ansible.builtin.meta: end_play
-      when: credentials.stat.exists
+import tectonic.validate as validate
 
-- name: Write password to file
-  ansible.builtin.copy:
-    dest: /root/credentials
-    content: |
-      trainer {{ lookup('community.general.random_string', length=20, special=false) }}
+class TectonicConfigGuacamole(object):
+    """Class to store Tectonic guacamole configuration."""
+
+    def __init__(self):
+        self._version = "1.6.0"
+
+    #----------- Getters ----------
+    @property
+    def version(self):
+        return self._version
+    
+    #----------- Setters ----------
+    @version.setter
+    def version(self, value):
+        # Allow either latest or specific version
+        if value != 'latest':
+            validate.version_number("caldera version", value)
+        if value == "latest":
+            value = "1.6.0"
+        self._version = value

@@ -86,5 +86,6 @@ class TerraformServiceDocker(TerraformService):
             dict: machines variables.
         """
         result = super()._get_service_machine_variables(service)
-        result["port"] = service.port
+        result["internal_port"] = service.internal_port
+        result["external_port"] = service.external_port
         return result

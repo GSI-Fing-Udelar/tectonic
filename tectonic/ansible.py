@@ -268,6 +268,10 @@ class Ansible:
                     "description_path": str(self.description.scenario_dir),
                     "ot_enabled": str(self.config.caldera.ot_enabled)
                 },
+                "guacamole":{
+                    "ip": self.description.guacamole.service_ip,
+                    "description_path": str(self.description.scenario_dir),
+                }
             }
             inventory = self.build_inventory(machine_list=services, extra_vars=extra_vars)
             self.wait_for_connections(inventory=inventory)

@@ -46,8 +46,8 @@ resource "docker_container" "machines" {
   hostname = each.value.hostname
 
   ports {
-    internal = lookup(each.value, "port")
-    external = lookup(each.value, "port")
+    internal = lookup(each.value, "internal_port")
+    external = lookup(each.value, "external_port")
     ip = "127.0.0.1"
     protocol = "tcp"
   }

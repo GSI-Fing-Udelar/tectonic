@@ -383,18 +383,24 @@ def tectonic(
     help="Whether to create the base image for Caldera.",
 )
 @click.option(
+    "--guacamole_image/--no-guacamole_image",
+    default=False,
+    show_default=True,
+    help="Whether to create the base image for Guacamole.",
+)
+@click.option(
     "--force",
     "-f",
     help="Force the deployment of instances without a confirmation prompt.",
     is_flag=True,
 )
-def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_image, force):
+def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_image, guacamole_image, force):
     """Deploy the cyber range."""
     if not force:
         confirm_machines(ctx, instances, guest_names=None, copies=None, action="Deploying")
 
     if images:
-        _create_images(ctx, packetbeat_image, elastic_image, caldera_image, True)
+        _create_images(ctx, packetbeat_image, elastic_image, caldera_image, guacamole_image, True)
 
     ctx.obj["core"].deploy(instances, images, False)
 
@@ -479,7 +485,7 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, forc
     "--elastic/--no-elastic",
     default=True,
     show_default=True,
-    help="Whether to create the base image for Elastic on-prem.",
+    help="Whether to create the base image for Elastic.",
 )
 @click.option(
     "--machines/--no-machines",
@@ -491,7 +497,13 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, forc
     "--caldera/--no-caldera",
     default=True,
     show_default=True,
-    help="Whether to create the base image for Caldera on-prem.",
+    help="Whether to create the base image for Caldera.",
+)
+@click.option(
+    "--guacamole/--no-guacamole",
+    default=True,
+    show_default=True,
+    help="Whether to create the base image for Guacample.",
 )
 @click.option(
     "--guests",
@@ -500,13 +512,13 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, forc
     type=click.STRING,
     help="Name of guests to list.",
 )
-def create_images(ctx, packetbeat, elastic, caldera, machines, guests):
+def create_images(ctx, packetbeat, elastic, caldera, guacamole, machines, guests):
     """Create lab base images."""
     ctx.obj["description"].parse_machines(instances=None, guests=guests, copies=None, only_instances=True)
-    _create_images(ctx, packetbeat, elastic, caldera, machines, guests)
+    _create_images(ctx, packetbeat, elastic, caldera, guacamole, machines, guests)
 
 
-def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
+def _create_images(ctx, packetbeat, elastic, caldera, guacamole, machines, guests=None):
     services = []
     if elastic and ctx.obj["description"].elastic.enable:
         services.append("elastic")
@@ -514,6 +526,8 @@ def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
         services.append("packetbeat")
     if caldera and ctx.obj["description"].caldera.enable:
         services.append("caldera")
+    if guacamole and ctx.obj["description"].guacamole.enable:
+        services.append("guacamole")
     if services:
         click.echo("Creating services images ...")
         ctx.obj["core"].create_services_images(services)

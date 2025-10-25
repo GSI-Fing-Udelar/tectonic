@@ -101,7 +101,7 @@
         - ansible_facts['os_family'] != "Windows"
 
 - name: "Create student users on the rest of the machines."
-  hosts: all:!student_access
+  hosts: all:!student_access:!guacamole
   gather_facts: true
   vars:
     digit_count: "{{ instances | string | length }}"
@@ -191,3 +191,32 @@
       when: 
         - users[username].authorized_keys is defined
         - ansible_facts['os_family'] == "Windows"
+
+- name: "Configue Guacamole access"
+  hosts: guacamole
+  gather_facts: true
+  vars:
+    digit_count: "{{ instances | string | length }}"
+    username: "{{ '%s%0{}d'.format(digit_count) | format(prefix, instance) }}"
+  
+  tasks:
+    - name: Get trainer password
+      block:
+        - name: Get trainer password | Read credentials file
+          ansible.builtin.slurp:
+            src: /root/credentials
+          register: credentials_raw
+        - name: Get trainer password | Get password
+          ansible.builtin.set_fact:
+            trainer_password: "{{ credentials_raw.content | b64decode | regex_search('^trainer\\s+(\\S+)', '\\1') }}"
+    
+    - name: Create user mapping
+      ansible.builtin.template:
+        src: templates/guacamole-user-mapping.j2
+        dest: /etc/guacamole/user-mapping.xml
+
+    - name: Restart Tomcat
+      ansible.builtin.service:
+        name: tomcat9
+        state: restarted
+

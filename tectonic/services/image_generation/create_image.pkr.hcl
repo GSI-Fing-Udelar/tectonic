@@ -151,6 +151,12 @@ variable "remove_ansible_logs" {
 }
 
 
+#Guacamole variables
+variable "guacamole_version" {
+  type = string
+  description = "Guacamole version to install."
+}
+
 source "amazon-ebs" "machine" {
   region        = var.aws_region
 
@@ -319,6 +325,7 @@ build {
       ["--extra-vars", "caldera_ot_enabled=${var.caldera_ot_enabled}"],
       ["--extra-vars", "packetbeat_vlan_id=${var.packetbeat_vlan_id}"],
       ["--extra-vars", "elasticsearch_memory=${var.elasticsearch_memory}"],
+      ["--extra-vars", "guacamole_version=${var.guacamole_version}"],
     )
   }
 

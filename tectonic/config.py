@@ -19,7 +19,6 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from pathlib import Path
 from configparser import ConfigParser
 import tectonic.validate as validate
 from tectonic.utils import absolute_path
@@ -30,6 +29,7 @@ from tectonic.config_libvirt import TectonicConfigLibvirt
 from tectonic.config_docker import TectonicConfigDocker
 from tectonic.config_elastic import TectonicConfigElastic
 from tectonic.config_caldera import TectonicConfigCaldera
+from tectonic.config_guacamole import TectonicConfigGuacamole
 
 class TectonicConfig(object):
     """Class to store Tectonic configuration."""
@@ -62,6 +62,7 @@ class TectonicConfig(object):
         self._docker = TectonicConfigDocker()
         self._elastic = TectonicConfigElastic()
         self._caldera = TectonicConfigCaldera()
+        self._guacamole = TectonicConfigGuacamole()
 
 
     #----------- Getters ----------
@@ -121,7 +122,6 @@ class TectonicConfig(object):
     def packer_executable_path(self):
         return self._packer_executable_path
 
-
     @property
     def ansible(self):
         return self._ansible
@@ -145,7 +145,10 @@ class TectonicConfig(object):
     @property
     def caldera(self):
         return self._caldera
-
+    
+    @property
+    def guacamole(self):
+        return self._guacamole
 
     #----------- Setters ----------
     @platform.setter
@@ -258,5 +261,7 @@ class TectonicConfig(object):
             TectonicConfig._assign_attribute(config.elastic, parser['elastic'], key)
         for key in parser['caldera'].keys():
             TectonicConfig._assign_attribute(config.caldera, parser['caldera'], key)
+        for key in parser['guacamole'].keys():
+            TectonicConfig._assign_attribute(config.guacamole, parser['guacamole'], key)
 
         return config

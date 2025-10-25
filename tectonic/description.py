@@ -33,7 +33,6 @@ import json
 from tectonic.constants import OS_DATA
 import tectonic.utils
 import tectonic.validate as validate
-import importlib.resources as tectonic_resources
 from tectonic.instance_type import InstanceType
 from tectonic.instance_type_aws import InstanceTypeAWS
 
@@ -234,6 +233,13 @@ class MachineDescription:
                                                                        self.gpu,
                                                                        self.monitor,
                                                                        self._description.elastic.monitor_type)
+    
+    @property
+    def access_protocols(self): #TODO: Maybe this should be specific in the scenario description.
+        if self.os in ["ubuntu22", "kali", "rocky8", "rocky9"]:
+            return {"ssh":{"port":22}}
+        elif self.os in ["windows_srv_2022"]:
+            return {"ssh":{"port":22}, "rdp":{"port":3389,"ftp_port":22}}
 
     #----------- Setters ----------
     @institution.setter
@@ -454,7 +460,7 @@ class NetworkInterface():
             base = 2
             if guest.is_in_services_network:
                 base += 1
-            if guest.entry_point:
+            if guest.entry_point and not description.guacamole.enable:
                 base += 1
         elif description.config.platform == "aws":
             base = -1
@@ -676,7 +682,8 @@ class ElasticDescription(ServiceDescription):
         self.disk = 50
         self.monitor_type = self.supported_monitor_types[0]
         self.deploy_default_policy = True
-        self.port = 5601
+        self.internal_port = 5601
+        self.external_port = self.internal_port
 
     @property
     def monitor_type(self):
@@ -708,7 +715,8 @@ class CalderaDescription(ServiceDescription):
         self.memory = 2048
         self.vcpu = 2
         self.disk = 20
-        self.port = 8443
+        self.internal_port = 8443
+        self.external_port = self.internal_port
         
     def load_caldera(self, data):
         """Loads the information from the yaml structure in data."""
@@ -720,10 +728,15 @@ class PacketbeatDescription(ServiceDescription):
         self.memory = 512
         self.vcpu = 1
         self.disk = 10
-        
-    def load_packetbeat(self, data):
-        """Loads the information from the yaml structure in data."""
-        self.load_service(data)
+
+class GuacamoleDescription(ServiceDescription):
+    def __init__(self, description):
+        super().__init__(description, "guacamole", "ubuntu22")
+        self.memory = 1024
+        self.vcpu = 2
+        self.disk = 20
+        self.internal_port = 8443
+        self.external_port = 10443
 
 class Description:
 
@@ -790,6 +803,15 @@ class Description:
         self.create_students_passwords = lab_edition_data.get("create_students_passwords", False)
         self._required(lab_edition_data, "random_seed")
         self.random_seed = lab_edition_data["random_seed"]
+        self.student_access_type = lab_edition_data.get("student_access_type", "ssh")
+        validate.supported_value("student_access_type", self.student_access_type, ["ssh", "guacamole"])
+        if self.student_access_type == "guacamole":
+            self.student_pubkey_dir = None
+            self.create_students_passwords = True
+
+        # Guacamole is enable if student access type is guacamole
+        self._guacamole = GuacamoleDescription(self)
+        self._guacamole.enable = self.student_access_type == "guacamole"
 
         # Elastic is enabled if it is enabled in the description and
         # not disabled in the lab edition.
@@ -837,13 +859,14 @@ class Description:
 
         # Load auxiliary networks
         self._auxiliary_networks = {}
-        if self._elastic.enable or self._caldera.enable:
+        if self._elastic.enable or self._caldera.enable or self._guacamole.enable:
             auxiliary_network_name = f"{self.institution}-{self.lab_name}-services"
             self._auxiliary_networks[auxiliary_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
             if self.config.platform == "aws" and self._elastic.monitor_type == "traffic":
-                self._auxiliary_networks[auxiliary_network_name].members = ["elastic", "packetbeat", "caldera"]
+                self._auxiliary_networks[auxiliary_network_name].members = ["elastic", "packetbeat", "caldera", "guacamole"]
             else:
-                self._auxiliary_networks[auxiliary_network_name].members = ["elastic", "caldera"]
+                self._auxiliary_networks[auxiliary_network_name].members = ["elastic", "caldera", "guacamole"]
+
         if self._elastic.enable or self._caldera.enable or self.internet_access_required:
             auxiliary_network_name = f"{self.institution}-{self.lab_name}-internet"
             self._auxiliary_networks[auxiliary_network_name] = AuxiliaryNetwork(self, "internet", self.config.internet_network_cidr_block, "nat")
@@ -854,6 +877,7 @@ class Description:
         self._elastic.load_interfaces(self._auxiliary_networks)
         self._packetbeat.load_interfaces(self._auxiliary_networks)
         self._caldera.load_interfaces(self._auxiliary_networks)
+        self._guacamole.load_interfaces(self.auxiliary_networks)
 
     def parse_machines(self, instances=[], guests=[], copies=[], only_instances=True, exclude=[]):
         """
@@ -943,6 +967,7 @@ class Description:
         for i in range(1,self.instance_number+1):
             username = f"{self.student_prefix}{i:0{digits}d}"
             users[username] = {}
+            users[username]["instance"] = i
             if self.create_students_passwords:
                 (password, salt) = self._generate_password()
                 users[username]["password"] = password
@@ -1072,6 +1097,8 @@ class Description:
                         self.elastic.enable and self.elastic.monitor_type == "endpoint" and base_guest.monitor
                     ) or (
                         self.caldera.enable and (base_guest.red_team_agent or base_guest.blue_team_agent)
+                    ) or (
+                        self.guacamole.enable and base_guest.entry_point
                     )
                     guest = GuestDescription(self, base_guest, instance_num, copy, is_in_services_network)
                     guest.entry_point_index = entry_point_index
@@ -1097,6 +1124,8 @@ class Description:
                 services[self._packetbeat.name] = self._packetbeat
         if self.caldera.enable:
             services[self.caldera.name] = self.caldera
+        if self.guacamole.enable:
+            services[self.guacamole.name] = self.guacamole
         return services
 
     @property
@@ -1125,6 +1154,10 @@ class Description:
     @property
     def packetbeat(self):
         return self._packetbeat
+    
+    @property
+    def guacamole(self):
+        return self._guacamole
 
     @property
     def auxiliary_networks(self):
