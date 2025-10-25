@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tectonic-cyberrange"
-version = "2.0.0"
+version = "2.0.1"
 authors = ["GSI-Fing-Udelar"]
 description = "A Python package for the Tectonic Cyber Range project."
 readme = "README.md"
