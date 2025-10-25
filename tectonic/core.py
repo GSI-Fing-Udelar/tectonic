@@ -446,7 +446,7 @@ class Core:
                         "access_protocols": guest.access_protocols,
                         "ip": self.client.get_machine_private_ip(guest.name) if self.config.platform == "aws" else self.client.get_machine_ip_in_services_network(guest.name)
                     }
-            self.ansible.run(
+            self.ansible.run( #TODO: change user-mapping for database and assign guacadmin connections?
                 instances=None,
                 guests=["guacamole"],
                 copies=None,

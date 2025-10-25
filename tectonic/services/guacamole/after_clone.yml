@@ -28,8 +28,15 @@
       ansible.builtin.meta: end_play
       when: credentials.stat.exists
 
+- name: Set guacadmin password
+  ansible.builtin.set_fact:
+    guacadmin_password: "{{ lookup('community.general.random_string', length=20, special=false) }}"
+
+- name: Update password in database
+  ansible.builtin.command: "mysql -D guacamole_db -e \"SET @new_salt:=UNHEX('FE24ADC5E11E2B25288D1704ABE67A79E342ECC26064CE69C5B3177795A82264'); SET @new_hash:=UNHEX(SHA2(CONCAT('{{ guacadmin_password }}',HEX(@new_salt)),256)); UPDATE guacamole_user SET password_salt=@new_salt,password_hash=@new_hash,password_date=NOW() WHERE user_id='1';\""
+
 - name: Write password to file
   ansible.builtin.copy:
     dest: /root/credentials
     content: |
-      trainer {{ lookup('community.general.random_string', length=20, special=false) }}
+      guacadmin {{ guacadmin_password }}
