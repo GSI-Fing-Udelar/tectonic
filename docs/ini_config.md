@@ -60,14 +60,17 @@ main `config` section and special sections for different platforms
 * `dns`: DNS server to use in internet network. leave empty to use Docker defaults. Default: `8.8.8.8`.
 
 ### [elastic] section:
-* `elastic_stack_version`: Elastic Stack version to use. Use `latest` for latest version (on 8.X.X) or assign a specific version. Default: `8.18.0`. All tests were performed on version 8.18.0 so we recommend using it. However, it may also work for new Elastic versions.
+* `elastic_stack_version`: Elastic Stack version to use. Use `latest` for latest version (on 9.X.X) or assign a specific version. Default: `9.1.0`. All tests were performed on version 9.1.0 so we recommend using it. However, it may also work for new Elastic versions.
 * `packetbeat_policy_name`: Packetbeat policy agent name. Do not use this name for custom agent policies. Default: `Packetbeat`.
 * `endpoint_policy_name`: Endpoint policy agent name. Do not use this name for custom agent policies. Default: `Endpoint`.
 * `user_install_packetbeat`: When using Docker or Libvirt and traffic type as monitoring, Packetbeat must be deployed on the host. This variable modifies the user used by Ansible for this task. Keep in mind that this user needs to be able to escalate privileges to root without a password. To do this you can configure the sudoers file. Default: `tectonic`. 
 
 ### [caldera] section:
-* `version`: Caldera version to use. Use `latest` for latest version or assign a specific version. Default: `latest`.
+* `version`: Caldera version to use. Use `latest` for latest version or assign a specific version. Default: `5.3.0`. All tests were performed on version 5.4.0 so we recommend using it. However, it may also work for new Caldera versions.
 * `ot_enabled`: Enable OT plugins for Caldera. Default: `no`.
+
+### [guacamole] section:
+* `version`: Caldera version to use. Use `latest` for latest version (currently 1.6.0) or assign a specific version. Default: `1.6.0`. All tests were performed on version 1.6.0 so we recommend using it. However, it may also work for new Guacamole versions.
 
 You can find an example configuration file with the default values
 [here](./tectonic/tectonic.ini).

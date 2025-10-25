@@ -199,6 +199,8 @@ The lab edition is a YAML file with the following options:
   + `student_prefix`: The prefix to use in the usernames for the
     students. An instance number is appended at the end. Optional,
     default: `trainee`.
+  + `student_access_type`: Describes how students access the cyber range. It can take the values ​​`ssh` or `guacamole`.
+     Optional, default: `ssh`. If it is `ssh`, authentication can be via public/private key (you must configure the `student_pubkey_dir` option) or with a password (you must configure the `create_students_passwords` option). If it is `guacamole`, authentication can be with a password only (in this case, the `student_pubkey_dir` option is ignored and the `create_students_passwords` option is set to `true`).
   + `student_pubkey_dir`: A directory containing a subdirectory for
     each student, with SSH public keys. Optional, defaults to not
     setting any public key in the users authorized_keys file.
@@ -206,8 +208,8 @@ The lab edition is a YAML file with the following options:
     password for the students. These passwords are printed on
     deployment and student-access execution. Optional, defaults to
     `false`.
-  + `Random_seed`: Seed used for the random generation of parameters that are used to configure and parameterize the instances.
-  + An `elastic_settings` section with the same options as the
+  + `random_seed`: Seed used for the random generation of parameters that are used to configure and parameterize the instances.
+  + A `elastic_settings` section with the same options as the
     scenario description. Options here take precedence on the scenario
     description. For the service to be effectively enabled, it must be
     enabled here and in the scenario description. Ultimately, the
