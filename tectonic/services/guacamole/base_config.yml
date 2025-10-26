@@ -245,7 +245,7 @@
                               pathname="conf/tomcat-users.xml" />
                   </GlobalNamingResources>
                   <Service name="Catalina">
-                    <Connector port="8443" protocol="org.apache.coyote.http11.Http11NioProtocol"
+                    <Connector port="10443" protocol="org.apache.coyote.http11.Http11NioProtocol"
                               maxThreads="150" SSLEnabled="true">
                         <SSLHostConfig>
                             <Certificate certificateKeystoreFile="conf/localhost-rsa.jks" keystorePass="changeit"

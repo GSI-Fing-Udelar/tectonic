@@ -284,7 +284,7 @@ class Core:
             if service.base_name != "packetbeat":
                 credentials = self.terraform_service.get_service_credentials(service, self.ansible)
                 service_info[service.base_name] = {
-                    "URL": f"https://{service.service_ip}:{service.external_port}",
+                    "URL": f"https://{service.service_ip}:{service.port}",
                     "Credentials": credentials,
                 }
         return {

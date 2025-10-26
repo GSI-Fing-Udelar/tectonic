@@ -682,8 +682,7 @@ class ElasticDescription(ServiceDescription):
         self.disk = 50
         self.monitor_type = self.supported_monitor_types[0]
         self.deploy_default_policy = True
-        self.internal_port = 5601
-        self.external_port = self.internal_port
+        self.port = 5601
 
     @property
     def monitor_type(self):
@@ -715,8 +714,7 @@ class CalderaDescription(ServiceDescription):
         self.memory = 2048
         self.vcpu = 2
         self.disk = 20
-        self.internal_port = 8443
-        self.external_port = self.internal_port
+        self.port = 10443
         
     def load_caldera(self, data):
         """Loads the information from the yaml structure in data."""
@@ -735,8 +733,7 @@ class GuacamoleDescription(ServiceDescription):
         self.memory = 1024
         self.vcpu = 2
         self.disk = 20
-        self.internal_port = 8443
-        self.external_port = 10443
+        self.port = 10443
 
 class Description:
 

@@ -54,7 +54,7 @@
         chain: INPUT
         protocol: tcp
         source: "{{ gateway_ip }}"
-        destination_port: 8443
+        destination_port: 10443
         jump: ACCEPT
     - name: Configure firewall | Allow related or established connections
       ansible.builtin.iptables:
