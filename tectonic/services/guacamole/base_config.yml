@@ -60,6 +60,7 @@
           - tomcat9-user
           - mysql-server
           - python3-pymysql
+          - iptables-persistent
         state: present
 
     - name: Download guacamole
@@ -126,6 +127,9 @@
                 guacd-port: 4822
                 auth-provider: net.sourceforge.guacamole.net.basic.BasicFileAuthenticationProvider
                 basic-user-mapping: /etc/guacamole/user-mapping.xml
+            mode: '0640'
+            owner: root
+            group: tomcat
         - name: Configure guacamole | Create guacd config file
           ansible.builtin.copy:
             dest: /etc/guacamole/guacd.conf
@@ -278,6 +282,40 @@
       with_items:
         - tomcat9
         - guacd
+    
+    - name: Delete unused packages
+      ansible.builtin.package:
+        name: 
+          - libcairo2-dev
+          - libjpeg-turbo8-dev
+          - libpng-dev
+          - libtool-bin
+          - uuid-dev
+          - libossp-uuid-dev
+          - libavcodec-dev
+          - libavformat-dev
+          - libavutil-dev
+          - libswscale-dev
+          - freerdp2-dev
+          - libpango1.0-dev
+          - libssh2-1-dev
+          - libtelnet-dev
+          - libvncserver-dev
+          - libwebsockets-dev
+          - libpulse-dev
+          - libssl-dev
+          - libvorbis-dev
+          - libwebp-dev
+          - make
+        state: absent
 
     - name: Delete unused files
-      ansible.builtin.command: "rm -rf /root/guacamole-*; rm -rf /root/mysql-connector-*"
+      ansible.builtin.file:
+        path: "/root/{{ item }}"
+        state: absent
+      with_items:
+        - "guacamole-auth-ban-{{ guacamole_version }}"
+        - "guacamole-auth-jdbc-{{ guacamole_version }}"
+        - "guacamole-server-{{ guacamole_version }}"
+        - "mysql-connector-j-{{ mysql_driver_version }}"
+        - "mysql-connector-j-{{ mysql_driver_version }}.tar.gz"

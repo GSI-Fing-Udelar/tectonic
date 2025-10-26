@@ -28,6 +28,60 @@
       ansible.builtin.meta: end_play
       when: credentials.stat.exists
 
+- name: Configure firewall (iptables)
+  block:
+    - name: Set Gateway IP
+      ansible.builtin.set_fact:
+        gateway_ip: "{{ (guacamole.ip | split('.'))[0] }}.{{ (guacamole.ip | split('.'))[1] }}.{{ (guacamole.ip | split('.'))[2] }}.129"
+    - name: Configure firewall | Flush rules
+      ansible.builtin.iptables:
+        table: filter
+        chain: "{{ item }}"
+        flush: yes
+      loop:
+        - INPUT
+        - FORWARD
+        - OUTPUT
+    - name: Configure firewall | Allow ssh from server
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        source: "{{ gateway_ip }}"
+        destination_port: 22
+        jump: ACCEPT
+    - name: Configure firewall | Allow access to guacamole from server
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        source: "{{ gateway_ip }}"
+        destination_port: 8443
+        jump: ACCEPT
+    - name: Configure firewall | Allow related or established connections
+      ansible.builtin.iptables:
+        chain: INPUT
+        ctstate: ESTABLISHED,RELATED
+        jump: ACCEPT
+    - name: Configure firewall | Allow loopback traffic
+      ansible.builtin.iptables:
+        chain: INPUT
+        in_interface: lo
+        jump: ACCEPT
+    - name: Configure firewall | Drop all input traffic
+      ansible.builtin.iptables:
+        chain: INPUT
+        policy: DROP
+    - name: Configure firewall | Drop al forward traffic
+      ansible.builtin.iptables:
+        chain: FORWARD
+        policy: DROP
+    - name: Configure firewall | Accept all output traffic
+      ansible.builtin.iptables:
+        chain: OUTPUT
+        policy: ACCEPT
+    - name: Configure firewall | Save rules
+      ansible.builtin.command: service netfilter-persistent save
+  when: platform == "libvirt" or platform == "docker"
+
 - name: Set guacadmin password
   ansible.builtin.set_fact:
     guacadmin_password: "{{ lookup('community.general.random_string', length=20, special=false) }}"
@@ -40,3 +94,4 @@
     dest: /root/credentials
     content: |
       guacadmin {{ guacadmin_password }}
+    mode: '0640'
