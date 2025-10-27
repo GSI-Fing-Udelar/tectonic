@@ -24,24 +24,35 @@ main `config` section and special sections for different platforms
 * `proxy`: Proxy URL. Default: "" (empty).
 
 ### [ansible] section:
-* `ssh_common_args`: SSH arguments for ansible connetion. Proxy Jump configuration through bastion hosts is added automatically by Tectonic. Default: `-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 `.
+* `ssh_common_args`: SSH arguments for ansible connetion. Proxy Jump
+  configuration through bastion hosts is added automatically by
+  Tectonic. Default: `-o UserKnownHostsFile=/dev/null -o
+  StrictHostKeyChecking=no -o ControlMaster=auto -o
+  ControlPersist=3600 `.
 * `keep_logs`: Keep Ansible logs on guests. Default: `no`.
-* `forks`: Number of parallel connection for Ansible. If you deploy many instances, increase this number so that the configurations applied with Ansible are faster. Default: `5`
-* `pipelining`: Whether pipelining is enabled in order to reduce the number of SSH connections. Default: `no`.
+* `forks`: Number of parallel connection for Ansible. If you deploy
+  many instances, increase this number so that the configurations
+  applied with Ansible are faster. Default: `5`
+* `pipelining`: Whether pipelining is enabled in order to reduce the
+  number of SSH connections. Default: `no`.
 * `timeout`: Ansible connection timeout. Default: `10`.
 
 ### [libvirt] section:
 * `uri`: URI to connect to libvirt server. Default:
   `qemu:///system`.
-* `storage_pool`: Name of (pre-existing) storage pool where
-  images will be created. Default: `default`.
-* `student_access`: Currently this value must be `bridge`. NICs will be added to the entry points in a bridged network. Default: `bridge`.
-* `bridge`: Name of the libvirt server bridge to use for
-  student access. Required if `libvirt_student_access` is `bridge`. Default: `tectonic`.
-* `external_network`: CIDR block of the external bridged
-  network, if appropriate. Static IP addresses are assigned
-  sequentially to lab entry points. Default: `192.168.0.0/25`.
-* `bridge_base_ip`: Base number from which to assign static IP address in bridged networks. Default: `10`.
+* `storage_pool`: Name of (pre-existing) storage pool where images
+  will be created. Default: `default`.
+* `student_access`: Currently this value must be `bridge`. NICs will
+  be added to the entry points in a bridged network. Default:
+  `bridge`.
+* `bridge`: Name of the libvirt server bridge to use for student
+  access. Required if `libvirt_student_access` is `bridge`. Default:
+  `tectonic`.
+* `external_network`: CIDR block of the external bridged network, if
+  appropriate. Static IP addresses are assigned sequentially to lab
+  entry points. Default: `192.168.0.0/25`.
+* `bridge_base_ip`: Base number from which to assign static IP address
+  in bridged networks. Default: `10`.
 
 ### [aws] section:
 * `region`: The region to deploy instances in AWS. Default:
@@ -60,17 +71,34 @@ main `config` section and special sections for different platforms
 * `dns`: DNS server to use in internet network. leave empty to use Docker defaults. Default: `8.8.8.8`.
 
 ### [elastic] section:
-* `elastic_stack_version`: Elastic Stack version to use. Use `latest` for latest version (on 9.X.X) or assign a specific version. Default: `9.1.0`. All tests were performed on version 9.1.0 so we recommend using it. However, it may also work for new Elastic versions.
-* `packetbeat_policy_name`: Packetbeat policy agent name. Do not use this name for custom agent policies. Default: `Packetbeat`.
-* `endpoint_policy_name`: Endpoint policy agent name. Do not use this name for custom agent policies. Default: `Endpoint`.
-* `user_install_packetbeat`: When using Docker or Libvirt and traffic type as monitoring, Packetbeat must be deployed on the host. This variable modifies the user used by Ansible for this task. Keep in mind that this user needs to be able to escalate privileges to root without a password. To do this you can configure the sudoers file. Default: `tectonic`. 
+* `elastic_stack_version`: Elastic Stack version to use. Use `latest`
+  for latest version (on 9.X.X) or assign a specific version. Default:
+  `9.1.0`. All tests were performed on version 9.1.0 so we recommend
+  using it. However, it may also work for new Elastic versions.
+* `packetbeat_policy_name`: Packetbeat policy agent name. Do not use
+  this name for custom agent policies. Default: `Packetbeat`.
+* `endpoint_policy_name`: Endpoint policy agent name. Do not use this
+  name for custom agent policies. Default: `Endpoint`.
+* `user_install_packetbeat`: When using Docker or Libvirt and traffic
+  type as monitoring, Packetbeat must be deployed on the host. This
+  variable modifies the user used by Ansible for this task. Keep in
+  mind that this user needs to be able to escalate privileges to root
+  without a password. To do this you can configure the sudoers file.
+  Default: `tectonic`.
 
 ### [caldera] section:
-* `version`: Caldera version to use. Use `latest` for latest version or assign a specific version. Default: `5.3.0`. All tests were performed on version 5.4.0 so we recommend using it. However, it may also work for new Caldera versions.
+* `version`: Caldera version to use. Use `latest` for latest version
+  or assign a specific version. Default: `5.3.0`. All tests were
+  performed on version 5.4.0 so we recommend using it. However, it may
+  also work for new Caldera versions.
 * `ot_enabled`: Enable OT plugins for Caldera. Default: `no`.
 
 ### [guacamole] section:
-* `version`: Caldera version to use. Use `latest` for latest version (currently 1.6.0) or assign a specific version. Default: `1.6.0`. All tests were performed on version 1.6.0 so we recommend using it. However, it may also work for new Guacamole versions.
+* `version`: Guacamole version to use. Use `latest` for latest version
+  or assign a specific version. Default: `1.6.0`. All tests were
+  performed on version 1.6.0 so we recommend using it. However, it may
+  also work for new Guacamole versions.
+
 
 You can find an example configuration file with the default values
 [here](./tectonic/tectonic.ini).

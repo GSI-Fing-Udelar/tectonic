@@ -199,8 +199,15 @@ The lab edition is a YAML file with the following options:
   + `student_prefix`: The prefix to use in the usernames for the
     students. An instance number is appended at the end. Optional,
     default: `trainee`.
-  + `student_access_type`: Describes how students access the cyber range. It can take the values ​​`ssh` or `guacamole`.
-     Optional, default: `ssh`. If it is `ssh`, authentication can be via public/private key (you must configure the `student_pubkey_dir` option) or with a password (you must configure the `create_students_passwords` option). If it is `guacamole`, authentication can be with a password only (in this case, the `student_pubkey_dir` option is ignored and the `create_students_passwords` option is set to `true`).
+  + `student_access_type`: Describes how students access the cyber
+     range. It can take the values ​​`ssh` or `guacamole`. If it is
+     `ssh`, authentication can be via public/private key (you must
+     configure the `student_pubkey_dir` option) or with a password
+     (you must configure the `create_students_passwords` option). If
+     it is `guacamole`, authentication can be with a password only (in
+     this case, the `student_pubkey_dir` option is ignored and the
+     `create_students_passwords` option is set to `true`). Optional,
+     default: `ssh`.
   + `student_pubkey_dir`: A directory containing a subdirectory for
     each student, with SSH public keys. Optional, defaults to not
     setting any public key in the users authorized_keys file.
