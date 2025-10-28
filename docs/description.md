@@ -72,6 +72,12 @@ The scenario description is a YAML file with three main sections:
   + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
   + `disk`: Amount of disk of the machine, in GB. Default: `20`.
 
++ A `guacamole_settings` section to describe the configuration of the Guacamole service. The following properties must be defined:
+  + `enable`: Wheter to deploy this service. Default: `no`.
+  + `memory`: Amount of RAM of the machine, in MB. Default: `2048`.
+  + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
+  + `disk`: Amount of disk of the machine, in GB. Default: `20`.
+
 A complete example description file with all available options
 follows:
 
@@ -123,6 +129,13 @@ elastic_settings:
   deploy_default_policy: yes
 
 caldera_settings:
+  # Default values:
+  enable: no
+  memory: 2048
+  vpcu: 2
+  disk: 20
+
+guacamole_settings:
   # Default values:
   enable: no
   memory: 2048
@@ -199,22 +212,14 @@ The lab edition is a YAML file with the following options:
   + `student_prefix`: The prefix to use in the usernames for the
     students. An instance number is appended at the end. Optional,
     default: `trainee`.
-  + `student_access_type`: Describes how students access the cyber
-     range. It can take the values ​​`ssh` or `guacamole`. If it is
-     `ssh`, authentication can be via public/private key (you must
-     configure the `student_pubkey_dir` option) or with a password
-     (you must configure the `create_students_passwords` option). If
-     it is `guacamole`, authentication can be with a password only (in
-     this case, the `student_pubkey_dir` option is ignored and the
-     `create_students_passwords` option is set to `true`). Optional,
-     default: `ssh`.
   + `student_pubkey_dir`: A directory containing a subdirectory for
     each student, with SSH public keys. Optional, defaults to not
     setting any public key in the users authorized_keys file.
   + `create_students_passwords`: Whether to create a pseudo-random
     password for the students. These passwords are printed on
     deployment and student-access execution. Optional, defaults to
-    `false`.
+    `false`. If the guacamole service is enabled then this options
+    takes the value `true`.
   + `random_seed`: Seed used for the random generation of parameters that are used to configure and parameterize the instances.
   + A `elastic_settings` section with the same options as the
     scenario description. Options here take precedence on the scenario
@@ -223,6 +228,12 @@ The lab edition is a YAML file with the following options:
     `enable` option here is useful if you want to disable the service
     in case the scenario uses it.
   + A `caldera_settings` section with the same options as the scenario
+    description. Options here take precedence on the scenario
+    description. For the service to be effectively enabled, it must be
+    enabled here and in the scenario description. Ultimately, the
+    `enable` option here is useful if you want to disable the service
+    in case the scenario uses it.
+  + A `guacamole_settings` section with the same options as the scenario
     description. Options here take precedence on the scenario
     description. For the service to be effectively enabled, it must be
     enabled here and in the scenario description. Ultimately, the

@@ -433,7 +433,7 @@ class Core:
             only_instances=only_instances,
             extra_vars={"users": users,
                         "prefix": self.description.student_prefix,
-                        "ssh_password_login": self.description.create_students_passwords},
+                        "ssh_password_login": self.description.create_students_passwords or self.description.guacamole.enable},
             quiet=True,
         )
         if self.description.guacamole.enable:
@@ -468,7 +468,9 @@ class Core:
         Return:
             dic: the password for each user.
         """
-        if not self.description.create_students_passwords:
+        if self.description.create_students_passwords or self.description.guacamole.enable:
+            credentials = self.description.generate_student_access_credentials()
+            return {username: user['password'] for username, user in credentials.items()}
+        else:
             return {}
-        credentials = self.description.generate_student_access_credentials()
-        return {username: user['password'] for username, user in credentials.items()}
+        

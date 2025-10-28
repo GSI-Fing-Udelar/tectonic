@@ -460,7 +460,7 @@ class NetworkInterface():
             base = 2
             if guest.is_in_services_network:
                 base += 1
-            if guest.entry_point and description.enable_ssh_access:
+            if guest.entry_point and not description.guacamole.enable:
                 base += 1
         elif description.config.platform == "aws":
             base = -1
@@ -702,9 +702,9 @@ class ElasticDescription(ServiceDescription):
         validate.boolean("deploy_default_policy", value)
         self._deploy_default_policy = value
 
-    def load_service(self, data):
+    def load_elastic(self, data):
         """Loads the information from the yaml structure in data."""
-        super().load_service(data)
+        self.load_service(data)
         self.monitor_type = data.get("monitor_type", self.monitor_type)
         self.deploy_default_policy = data.get("deploy_default_policy", self.deploy_default_policy)
         
@@ -716,9 +716,9 @@ class CalderaDescription(ServiceDescription):
         self.disk = 20
         self.port = 10443
         
-    def load_service(self, data):
+    def load_caldera(self, data):
         """Loads the information from the yaml structure in data."""
-        super().load_service(data)
+        self.load_service(data)
 
 class PacketbeatDescription(ServiceDescription):
     def __init__(self, description):
@@ -735,9 +735,12 @@ class GuacamoleDescription(ServiceDescription):
         self.disk = 20
         self.port = 10443
 
-    def load_service(self, data):
-        """Loads the information from the yaml structure in data."""
-        super().load_service(data)
+class BastionHostDescription(ServiceDescription):
+    def __init__(self, description):
+        super().__init__(description, "bastion_host", "ubuntu22")
+        self.memory = 512
+        self.vcpu = 1
+        self.disk = 10
 
 class Description:
 
@@ -788,12 +791,9 @@ class Description:
         self._required(description_data, "lab_name")
         self.base_lab = description_data["lab_name"]
         self._elastic = ElasticDescription(self)
-        self.elastic.load_service(description_data.get("elastic_settings", {}))
-        self._packetbeat = PacketbeatDescription(self)
+        self._elastic.load_elastic(description_data.get("elastic_settings", {}))
         self._caldera = CalderaDescription(self)
-        self.caldera.load_service(description_data.get("caldera_settings", {}))
-        self._guacamole = GuacamoleDescription(self)
-        self.guacamole.load_service(description_data.get("guacamole_settings", {}))
+        self._caldera.load_caldera(description_data.get("caldera_settings", {}))
 
         # Load lab edition data
         self._required(lab_edition_data, "instance_number")
@@ -807,26 +807,34 @@ class Description:
         self.create_students_passwords = lab_edition_data.get("create_students_passwords", False)
         self._required(lab_edition_data, "random_seed")
         self.random_seed = lab_edition_data["random_seed"]
+        self.student_access_type = lab_edition_data.get("student_access_type", "ssh")
+        validate.supported_value("student_access_type", self.student_access_type, ["ssh", "guacamole"])
+        if self.student_access_type == "guacamole":
+            self.student_pubkey_dir = None
+            self.create_students_passwords = True
 
-        # Guacamole is enabled if it is enabled in the description and
-        # not disabled in the lab edition.
-        enable_guacamole = self.guacamole.enable and lab_edition_data.get("guacamole_settings", {}).get("enable", True)
-        self.guacamole.load_service(lab_edition_data.get("guacamole_settings", {}))
-        self.guacamole.enable = enable_guacamole
+        #Bastion host is used only in aws
+        self._bastion_host = BastionHostDescription(self)
+        self._bastion_host.enable = config.platform == "aws"
+
+        # Guacamole is enable if student access type is guacamole
+        self._guacamole = GuacamoleDescription(self)
+        self._guacamole.enable = self.student_access_type == "guacamole"
 
         # Elastic is enabled if it is enabled in the description and
         # not disabled in the lab edition.
-        enable_elastic = self.elastic.enable and lab_edition_data.get("elastic_settings", {}).get("enable", True)
-        self.elastic.load_service(lab_edition_data.get("elastic_settings", {}))
-        self.elastic.enable = enable_elastic
-        if enable_elastic and config.platform == "aws" and self.elastic.monitor_type == "traffic":
-            self.packetbeat.enable = True
+        enable_elastic = self._elastic.enable and lab_edition_data.get("elastic_settings", {}).get("enable", True)
+        self._elastic.load_elastic(lab_edition_data.get("elastic_settings", {}))
+        self._elastic.enable = enable_elastic
+        self._packetbeat = PacketbeatDescription(self)
+        if enable_elastic and config.platform == "aws" and self._elastic.monitor_type == "traffic":
+            self._packetbeat.enable = True
 
         # Caldera is enabled if it is enabled in the description and
         # not disabled in the lab edition.
-        enable_caldera = self.caldera.enable and lab_edition_data.get("caldera_settings", {}).get("enable", True)
-        self.caldera.load_service(lab_edition_data.get("caldera_settings", {}))
-        self.caldera.enable = enable_caldera
+        enable_caldera = self._caldera.enable and lab_edition_data.get("caldera_settings", {}).get("enable", True)
+        self._caldera.load_caldera(lab_edition_data.get("caldera_settings", {}))
+        self._caldera.enable = enable_caldera
 
         # Load base guests and topology
         self._required(description_data, "guest_settings")
@@ -859,25 +867,19 @@ class Description:
 
         # Load auxiliary networks
         self._auxiliary_networks = {}
-        if self._elastic.enable or self._caldera.enable or self._guacamole.enable:
-            auxiliary_network_name = f"{self.institution}-{self.lab_name}-services"
-            self._auxiliary_networks[auxiliary_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
-            if self.config.platform == "aws" and self._elastic.monitor_type == "traffic":
-                self._auxiliary_networks[auxiliary_network_name].members = ["elastic", "packetbeat", "caldera", "guacamole"]
-            else:
-                self._auxiliary_networks[auxiliary_network_name].members = ["elastic", "caldera", "guacamole"]
-
-        if self._elastic.enable or self.internet_access_required:
-            auxiliary_network_name = f"{self.institution}-{self.lab_name}-internet"
-            self._auxiliary_networks[auxiliary_network_name] = AuxiliaryNetwork(self, "internet", self.config.internet_network_cidr_block, "nat")
-            if self.config.platform != "aws":
-                self._auxiliary_networks[auxiliary_network_name].members = ["elastic"]
+        services_network_name = f"{self.institution}-{self.lab_name}-services"
+        self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
+        self._auxiliary_networks[services_network_name].members = ["bastion_host", "elastic", "packetbeat", "caldera", "guacamole"]
+        internet_network_name = f"{self.institution}-{self.lab_name}-internet"
+        self._auxiliary_networks[internet_network_name] = AuxiliaryNetwork(self, "internet", self.config.internet_network_cidr_block, "nat")
+        self._auxiliary_networks[internet_network_name].members = ["bastion_host", "elastic"]
 
         #Load services interfaces
-        self.elastic.load_interfaces(self._auxiliary_networks)
-        self.packetbeat.load_interfaces(self._auxiliary_networks)
-        self.caldera.load_interfaces(self._auxiliary_networks)
-        self.guacamole.load_interfaces(self.auxiliary_networks)
+        self._elastic.load_interfaces(self._auxiliary_networks)
+        self._packetbeat.load_interfaces(self._auxiliary_networks)
+        self._caldera.load_interfaces(self._auxiliary_networks)
+        self._guacamole.load_interfaces(self._auxiliary_networks)
+        self._bastion_host.load_interfaces(self._auxiliary_networks)
 
     def parse_machines(self, instances=[], guests=[], copies=[], only_instances=True, exclude=[]):
         """
@@ -893,13 +895,11 @@ class Description:
         Returns:
             list(str): full name of machines.
         """
-        infrastructure_guests = self.extra_guests
-        infrastructure_guests.update(self.services_guests)
 
         # Validate filters
         infrastructure_guests_names = []
-        for _, guest in infrastructure_guests.items():
-            infrastructure_guests_names.append(guest.base_name)
+        for _, service_guest in self.services_guests.items():
+            infrastructure_guests_names.append(service_guest.base_name)
 
         guests_aux = list(self.base_guests.keys())
         if not only_instances:
@@ -927,12 +927,12 @@ class Description:
             result.append(guest.name)
 
         if not only_instances:
-            for _, infra_guest in infrastructure_guests.items():
-                if guests and infra_guest.base_name not in guests:
+            for _, service_guest in self.services_guests.items():
+                if guests and service_guest.base_name not in guests:
                     continue
-                if exclude and infra_guest.base_name in exclude:
+                if exclude and service_guest.base_name in exclude:
                     continue
-                result.append(infra_guest.name)
+                result.append(service_guest.name)
 
         if len(result) == 0:
             raise DescriptionException(
@@ -968,7 +968,7 @@ class Description:
             username = f"{self.student_prefix}{i:0{digits}d}"
             users[username] = {}
             users[username]["instance"] = i
-            if self.create_students_passwords or self.guacamole.enable:
+            if self.create_students_passwords:
                 (password, salt) = self._generate_password()
                 users[username]["password"] = password
                 users[username]["password_hash"] = sha512_crypt.using(salt=salt).hash(password)
@@ -1049,10 +1049,6 @@ class Description:
     @property
     def create_students_passwords(self):
         return self._create_students_passwords
-    
-    @property
-    def enable_ssh_access(self):
-        return self.create_students_passwords or self.student_pubkey_dir != None
 
     @property
     def random_seed(self):
@@ -1069,11 +1065,6 @@ class Description:
     @property
     def topology(self):
         return self._topology
-
-    @property
-    def student_access_required(self):
-        return (self.config.platform == "aws" and
-                any(guest.entry_point for _, guest in self._base_guests.items()))
 
     @property
     def internet_access_required(self):
@@ -1133,19 +1124,8 @@ class Description:
         return services
 
     @property
-    def extra_guests(self):
-        """Compute the scenario extra data."""
-
-        extra = {}
-        if self.config.platform == "aws":
-            if self.student_access_required:
-                student_access = ServiceDescription(self, 'student_access', 'ubuntu22')
-                extra[student_access.name] = student_access
-            if self.config.aws.teacher_access == "host":
-                teacher_access = ServiceDescription(self, 'teacher_access', 'ubuntu22')
-                extra[teacher_access.name] = teacher_access
-        return extra
-
+    def bastion_host(self):
+        return self._bastion_host
 
     @property
     def elastic(self):
