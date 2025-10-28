@@ -130,3 +130,9 @@ variable "services_network_base_ip" {
   default     = 10
   description = "Starting IP from which to sequentially assign the services IPs. With default values, first entry point would get 192.168.5.10, and so on." 
 }
+
+variable "enable_ssh_access" {
+  type        = bool
+  default     = true
+  description = "Enable ssh access to machines"
+}

@@ -31,13 +31,13 @@ locals {
   # the necessary internal interfaces with dhcp.
   network_config = { for k, g in local.guest_data :
     k => join("\n", flatten(["version: 2", "ethernets:",
-      g.entry_point ? [
+      g.entry_point && var.enable_ssh_access ? [
 	"  ens3:", 
 	format("    addresses: [%s/%s]", cidrhost(var.libvirt_external_network, var.libvirt_bridge_base_ip+g.entry_point_index), split("/", var.libvirt_external_network)[1]),
 	format("    gateway4: %s", cidrhost(var.libvirt_external_network, 1)),
       ] : [],
       g.is_in_services_network ? [
-  "  ens${g.entry_point ? 4 : 3}:", 
+  "  ens${g.entry_point && var.enable_ssh_access ? 4 : 3}:", 
 	format("    addresses: [%s/%s]", cidrhost(var.services_network, var.services_network_base_ip+g.services_network_index), split("/", var.services_network)[1])
       ] : [],
       [ for interface in g.interfaces:
