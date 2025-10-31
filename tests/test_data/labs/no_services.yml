@@ -13,3 +13,6 @@ elastic_settings:
 
 caldera_settings:
   enable: no
+
+guacamole_settings:
+  enable: no

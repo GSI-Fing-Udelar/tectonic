@@ -79,7 +79,6 @@ class Client(ABC):
         """
         pass
 
-    @abstractmethod
     def get_machine_ip_in_services_network(self, machine_name):
         """
         Return the private IP address of an machine in the services network.
@@ -91,7 +90,7 @@ class Client(ABC):
         Return:
             str: IP address or None
         """
-        pass
+        return None
 
     def get_machine_public_ip(self, machine_name):
         """
