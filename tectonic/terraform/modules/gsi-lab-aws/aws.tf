@@ -40,21 +40,21 @@ resource "aws_security_group" "entry_point_sg" {
     from_port       = 22
     to_port         = 22
     protocol        = "tcp"
-    cidr_blocks     = [var.services_network_cidr_block, var.internet_network_cidr_block]
+    security_groups = [ data.aws_security_group.bastion_host_scenario_sg.id ]
   }
   ingress {
     description     = "Allow inbound RDP traffic from guacamole/bastion host to lab entry points."
     from_port       = 3389
     to_port         = 3389
     protocol        = "tcp"
-    cidr_blocks     = [var.services_network_cidr_block, var.internet_network_cidr_block]
+    security_groups = [ data.aws_security_group.bastion_host_scenario_sg.id ]
   }
   ingress {
     description     = "Allow inbound VNC traffic from guacamole/bastion host to lab entry points."
     from_port       = 5900
     to_port         = 5900
     protocol        = "tcp"
-    cidr_blocks     = [var.services_network_cidr_block, var.internet_network_cidr_block]
+    security_groups = [ data.aws_security_group.bastion_host_scenario_sg.id ]
   }
 
   tags = {

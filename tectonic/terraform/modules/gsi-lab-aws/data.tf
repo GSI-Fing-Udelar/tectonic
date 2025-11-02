@@ -65,10 +65,16 @@ data "aws_route53_zone" "reverse" {
 data "aws_instance" "packetbeat" {
   count         = var.monitor && var.monitor_type == "traffic" ? 1 : 0
   instance_tags = {
-    Name = "${var.institution}-${var.lab_name}-packetbeat"
+    Name = ""
   }
   filter {
     name   = "instance-state-name"
     values = ["running"]
+  }
+}
+
+data "aws_security_group" "bastion_host_scenario_sg" {
+  tags = {
+    Name = "${var.institution}-${var.lab_name}-bastion_host"
   }
 }
