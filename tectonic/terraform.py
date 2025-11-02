@@ -254,6 +254,7 @@ class Terraform(ABC):
             "disk": guest.disk,
             "hostname": guest.hostname,
             "base_os": guest.os,
+            "monitor": guest.monitor,
             "interfaces": {name: self._get_network_interface_variables(interface) for name, interface in guest.interfaces.items()},
             "is_in_services_network": guest.is_in_services_network,
         }

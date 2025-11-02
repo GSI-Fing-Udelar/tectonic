@@ -389,18 +389,24 @@ def tectonic(
     help="Whether to create the base image for Guacamole.",
 )
 @click.option(
+    "--bastion_host_image/--no-bastion_host_image",
+    default=False,
+    show_default=True,
+    help="Whether to create the base image for Guacamole.",
+)
+@click.option(
     "--force",
     "-f",
     help="Force the deployment of instances without a confirmation prompt.",
     is_flag=True,
 )
-def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_image, guacamole_image, force):
+def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_image, guacamole_image, bastion_host_image, force):
     """Deploy the cyber range."""
     if not force:
         confirm_machines(ctx, instances, guest_names=None, copies=None, action="Deploying")
 
     if images:
-        _create_images(ctx, packetbeat_image, elastic_image, caldera_image, guacamole_image, True)
+        _create_images(ctx, packetbeat_image, elastic_image, caldera_image, guacamole_image, bastion_host_image, True)
 
     ctx.obj["core"].deploy(instances, images, False)
 
@@ -503,7 +509,13 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, forc
     "--guacamole/--no-guacamole",
     default=True,
     show_default=True,
-    help="Whether to create the base image for Guacample.",
+    help="Whether to create the base image for Guacamole.",
+)
+@click.option(
+    "--bastion_host/--no-bastion_host",
+    default=True,
+    show_default=True,
+    help="Whether to create the base image for Bastion host.",
 )
 @click.option(
     "--guests",
@@ -512,13 +524,13 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, forc
     type=click.STRING,
     help="Name of guests to list.",
 )
-def create_images(ctx, packetbeat, elastic, caldera, guacamole, machines, guests):
+def create_images(ctx, packetbeat, elastic, caldera, guacamole, bastion_host, machines, guests):
     """Create lab base images."""
     ctx.obj["description"].parse_machines(instances=None, guests=guests, copies=None, only_instances=True)
-    _create_images(ctx, packetbeat, elastic, caldera, guacamole, machines, guests)
+    _create_images(ctx, packetbeat, elastic, caldera, guacamole, bastion_host, machines, guests)
 
 
-def _create_images(ctx, packetbeat, elastic, caldera, guacamole, machines, guests=None):
+def _create_images(ctx, packetbeat, elastic, caldera, guacamole, bastion_host, machines, guests=None):
     services = []
     if elastic and ctx.obj["description"].elastic.enable:
         services.append("elastic")
@@ -528,6 +540,8 @@ def _create_images(ctx, packetbeat, elastic, caldera, guacamole, machines, guest
         services.append("caldera")
     if guacamole and ctx.obj["description"].guacamole.enable:
         services.append("guacamole")
+    if bastion_host and ctx.obj["description"].bastion_host.enable:
+        services.append("bastion_host")
     if services:
         click.echo("Creating services images ...")
         ctx.obj["core"].create_services_images(services)

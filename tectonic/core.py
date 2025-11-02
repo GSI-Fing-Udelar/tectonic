@@ -121,19 +121,11 @@ class Core:
         if create_services_images:
             self.create_services_images()
 
-        if self.config.platform in ["docker", "libvirt"]:
-            self.terraform_service.deploy(instances)
+        self.terraform_service.deploy(instances)
 
-            self.ansible.configure_services()
+        self.ansible.configure_services()
 
-            self.terraform.deploy(instances)
-
-        elif self.config.platform in ["aws"]:
-            self.terraform.deploy(instances)
-                
-            self.terraform_service.deploy(instances)
-            
-            self.ansible.configure_services()
+        self.terraform.deploy(instances)
 
         self.ansible.wait_for_connections(instances=instances)
 
@@ -160,12 +152,8 @@ class Core:
             services (list(str)): list of services to destroy
             destroy_images (bool): whether to destroy instances images.
         """
-        if self.config.platform in ["docker", "libvirt"]:
-            self.terraform.destroy(instances)
-            self.terraform_service.destroy(instances)
-        elif self.config.platform in ["aws"]:
-            self.terraform_service.destroy(instances)
-            self.terraform.destroy(instances)
+        self.terraform.destroy(instances)
+        self.terraform_service.destroy(instances)
         
         if instances is None:
             # Destroy Packetbeat
@@ -270,18 +258,13 @@ class Core:
         """
         instances_info = {}
         if self.config.platform == "aws":
-            if self.description.student_access_required:
-                student_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-student_access")
-                if student_access_ip is not None:
-                    instances_info["Student Access IP"] = student_access_ip
-            if self.config.aws.teacher_access == "host":
-                teacher_access_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-teacher_access")
-                if teacher_access_ip is not None:
-                    instances_info["Teacher Access IP"] = teacher_access_ip
+            if self.description.bastion_host.enable:
+                bastion_host_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-bastion_host") 
+                instances_info["Bastion Host IP"] = bastion_host_ip
 
         service_info = {}
         for _, service in self.description.services_guests.items():
-            if service.base_name != "packetbeat":
+            if service.base_name != "packetbeat" and service.base_name != "bastion_host":
                 credentials = self.terraform_service.get_service_credentials(service, self.ansible)
                 service_info[service.base_name] = {
                     "URL": f"https://{service.service_ip}:{service.port}",
@@ -422,7 +405,7 @@ class Core:
         only_instances = True
         entry_points = [guest.base_name for _, guest in self.description.base_guests.items() if guest.entry_point]
         if self.config.platform == "aws" and entry_points:
-            entry_points.append("student_access")
+            entry_points.append("bastion_host")
             only_instances = False
         users = self.description.generate_student_access_credentials()
         self.ansible.run(

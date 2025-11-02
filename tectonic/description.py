@@ -739,6 +739,15 @@ class GuacamoleDescription(ServiceDescription):
         """Loads the information from the yaml structure in data."""
         super().load_service(data)
 
+class BastionHostDescription(ServiceDescription):
+    def __init__(self, description):
+        super().__init__(description, "bastion_host", "ubuntu22", True)
+        self.disk = 10
+
+    @property
+    def instance_type(self):
+        return self._description.config.aws.access_host_instance_type
+
 class Description:
 
     def __init__(self, config, lab_edition_path):
@@ -794,6 +803,7 @@ class Description:
         self.caldera.load_service(description_data.get("caldera_settings", {}))
         self._guacamole = GuacamoleDescription(self)
         self.guacamole.load_service(description_data.get("guacamole_settings", {}))
+        self._bastion_host = BastionHostDescription(self)
 
         # Load lab edition data
         self._required(lab_edition_data, "instance_number")
@@ -828,6 +838,16 @@ class Description:
         self.caldera.load_service(lab_edition_data.get("caldera_settings", {}))
         self.caldera.enable = enable_caldera
 
+        # Bastion Host
+        self.bastion_host.enable = self.config.platform == "aws" and (
+            self.config.aws.teacher_access == "host" or 
+            self.create_students_passwords or
+            self.student_pubkey_dir != None or
+            self.elastic.enable or
+            self.caldera.enable or
+            self.guacamole.enable
+        )
+
         # Load base guests and topology
         self._required(description_data, "guest_settings")
         self._base_guests = {}
@@ -859,25 +879,25 @@ class Description:
 
         # Load auxiliary networks
         self._auxiliary_networks = {}
-        if self._elastic.enable or self._caldera.enable or self._guacamole.enable:
-            auxiliary_network_name = f"{self.institution}-{self.lab_name}-services"
-            self._auxiliary_networks[auxiliary_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
-            if self.config.platform == "aws" and self._elastic.monitor_type == "traffic":
-                self._auxiliary_networks[auxiliary_network_name].members = ["elastic", "packetbeat", "caldera", "guacamole"]
-            else:
-                self._auxiliary_networks[auxiliary_network_name].members = ["elastic", "caldera", "guacamole"]
-
-        if self._elastic.enable or self.internet_access_required:
-            auxiliary_network_name = f"{self.institution}-{self.lab_name}-internet"
-            self._auxiliary_networks[auxiliary_network_name] = AuxiliaryNetwork(self, "internet", self.config.internet_network_cidr_block, "nat")
-            if self.config.platform != "aws":
-                self._auxiliary_networks[auxiliary_network_name].members = ["elastic"]
+        services_network_name = f"{self.institution}-{self.lab_name}-services"
+        self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
+        if self.config.platform == "aws" and self.elastic.monitor_type == "traffic":
+            self._auxiliary_networks[services_network_name].members = ["elastic", "packetbeat", "caldera", "guacamole"]
+        else:
+            self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole"]
+        internet_network_name = f"{self.institution}-{self.lab_name}-internet"
+        self._auxiliary_networks[internet_network_name] = AuxiliaryNetwork(self, "internet", self.config.internet_network_cidr_block, "nat")
+        if self.config.platform == "aws":
+            self._auxiliary_networks[internet_network_name].members = ["bastion_host"]
+        if self.config.platform != "aws":
+            self._auxiliary_networks[internet_network_name].members = ["elastic"]
 
         #Load services interfaces
         self.elastic.load_interfaces(self._auxiliary_networks)
         self.packetbeat.load_interfaces(self._auxiliary_networks)
         self.caldera.load_interfaces(self._auxiliary_networks)
         self.guacamole.load_interfaces(self.auxiliary_networks)
+        self.bastion_host.load_interfaces(self.auxiliary_networks)
 
     def parse_machines(self, instances=[], guests=[], copies=[], only_instances=True, exclude=[]):
         """
@@ -887,23 +907,20 @@ class Description:
             instances (list(int)): numbers of instances.
             guests (tuple(str)): guest name of machines.
             copies (list(int)): number of copy of the machines.
-            only_instances (bool): Whether to return only scenario machines or include aux machines.
+            only_instances (bool): Whether to return only scenario machines or include services machines.
             exclude (list(str)): base name of machines to exclude.
 
         Returns:
             list(str): full name of machines.
         """
-        infrastructure_guests = self.extra_guests
-        infrastructure_guests.update(self.services_guests)
-
         # Validate filters
-        infrastructure_guests_names = []
-        for _, guest in infrastructure_guests.items():
-            infrastructure_guests_names.append(guest.base_name)
+        services_guests_names = []
+        for _, guest in self.services_guests.items():
+            services_guests_names.append(guest.base_name)
 
         guests_aux = list(self.base_guests.keys())
         if not only_instances:
-            guests_aux = guests_aux + infrastructure_guests_names
+            guests_aux = guests_aux + services_guests_names
         if max(instances or [], default=0) > self.instance_number:
             raise DescriptionException("Invalid instance numbers specified.")
         if guests is not None and not set(guests).issubset(set(guests_aux)):
@@ -927,10 +944,12 @@ class Description:
             result.append(guest.name)
 
         if not only_instances:
-            for _, infra_guest in infrastructure_guests.items():
+            for _, infra_guest in self.services_guests.items():
                 if guests and infra_guest.base_name not in guests:
                     continue
                 if exclude and infra_guest.base_name in exclude:
+                    continue
+                if instances:
                     continue
                 result.append(infra_guest.name)
 
@@ -1071,11 +1090,6 @@ class Description:
         return self._topology
 
     @property
-    def student_access_required(self):
-        return (self.config.platform == "aws" and
-                any(guest.entry_point for _, guest in self._base_guests.items()))
-
-    @property
     def internet_access_required(self):
         return any(guest.internet_access for _, guest in self._base_guests.items())
 
@@ -1122,6 +1136,8 @@ class Description:
         """Compute the scenario services data."""
 
         services = {}
+        if self.bastion_host.enable:
+            services[self.bastion_host.name] = self.bastion_host
         if self.elastic.enable:
             services[self.elastic.name] = self.elastic
             if self.config.platform == "aws" and self.elastic.monitor_type == "traffic":
@@ -1131,21 +1147,6 @@ class Description:
         if self.guacamole.enable:
             services[self.guacamole.name] = self.guacamole
         return services
-
-    @property
-    def extra_guests(self):
-        """Compute the scenario extra data."""
-
-        extra = {}
-        if self.config.platform == "aws":
-            if self.student_access_required:
-                student_access = ServiceDescription(self, 'student_access', 'ubuntu22')
-                extra[student_access.name] = student_access
-            if self.config.aws.teacher_access == "host":
-                teacher_access = ServiceDescription(self, 'teacher_access', 'ubuntu22')
-                extra[teacher_access.name] = teacher_access
-        return extra
-
 
     @property
     def elastic(self):
@@ -1162,6 +1163,10 @@ class Description:
     @property
     def guacamole(self):
         return self._guacamole
+    
+    @property
+    def bastion_host(self):
+        return self._bastion_host
 
     @property
     def auxiliary_networks(self):

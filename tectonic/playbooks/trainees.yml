@@ -33,7 +33,7 @@
 #     authorized_keys file.
 
 - name: "Create student users on student access host."
-  hosts: student_access
+  hosts: bastion_host
   gather_facts: true
 
   tasks:
@@ -101,7 +101,7 @@
         - ansible_facts['os_family'] != "Windows"
 
 - name: "Create student users on the rest of the machines."
-  hosts: all:!student_access:!guacamole
+  hosts: all:!bastion_host:!guacamole
   gather_facts: true
   vars:
     digit_count: "{{ instances | string | length }}"
@@ -192,7 +192,7 @@
         - users[username].authorized_keys is defined
         - ansible_facts['os_family'] == "Windows"
 
-- name: "Configue Guacamole access"
+- name: "Configure Guacamole access"
   hosts: guacamole
   gather_facts: true
   vars:

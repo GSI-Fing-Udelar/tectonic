@@ -67,9 +67,14 @@ variable "os_data_json" {
   description = "A JSON encoded map of operating system information."
 }
 
+variable "ssh_public_key_file" {
+  description = "ssh public key"
+  default     = "~/.ssh/id_rsa.pub"
+}
+
 variable "authorized_keys" {
   type        = string
-  description = "Admin user authorized_keys file contents "
+  description = "Admin user authorized_keys file contents."
 }
 
 variable "configure_dns" {
@@ -84,6 +89,12 @@ variable "services_network_cidr_block" {
   default     = "10.0.0.128/25"
 }
 
+variable "internet_network_cidr_block" {
+  description = "CIDR block for internet subnet"
+  type        = string
+  default     = "10.0.0.0/25"
+}
+
 variable "network_cidr_block" {
   description = "CIDR block for lab VPC"
   type        = string
@@ -96,20 +107,13 @@ variable "monitor_type" {
   description = "How to monitor instances using Elastic."
 }
 
-variable "packetbeat_vlan_id" {
-  description = "Identifier of the VLAN needed for traffic mirroring."
+variable "teacher_access_type" {
   type        = string
-  default     = "1"
-}
+  default     = "host"
+  description = "Type of teacher access. Can be 'host' or 'endpoint'."
 
-variable "machines_to_monitor" {
-  description = "Base name of the machines to monitor with packetbeat. All instances and copies will be monitored."
-  type        = list(string)
-  default     = []
-}
-
-variable "monitor" {
-  description = "Whether to monitor instances."
-  type        = bool
-  default     = false
+  validation {
+    condition     = can(regex("^(endpoint|host)$", var.teacher_access_type))
+    error_message = "Supported type of teacher access is 'endpoint', 'host'."
+  }
 }

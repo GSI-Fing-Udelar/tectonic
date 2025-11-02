@@ -50,12 +50,6 @@ variable "aws_region" {
   description = "The region to use for the aws provider"
 }
 
-variable "access_host_instance_type" {
-  type        = string
-  default     = "t2.micro"
-  description = "The AWS instance type to use in teacher and student access machines."
-}
-
 variable "network_cidr_block" {
   description = "CIDR block for lab VPC"
   type        = string
@@ -102,18 +96,6 @@ variable "ssh_public_key_file" {
   default     = "~/.ssh/id_rsa.pub"
 }
 
-variable "teacher_access" {
-  type        = string
-  default     = "host"
-  description = "Type of teacher access. Can be 'host' or 'endpoint'."
-
-  validation {
-    condition     = can(regex("^(endpoint|host)$", var.teacher_access))
-    error_message = "Supported type of teacher access is 'endpoint', 'host'."
-  }
-}
-
-
 variable "authorized_keys" {
   type        = string
   description = "Admin user authorized_keys file contents "
@@ -122,17 +104,23 @@ variable "authorized_keys" {
 variable "configure_dns" {
   description = "Whether to configure DNS hostnames for instances."
   type        = bool
-  default     = true
+  default     = false
 }
 
-variable "services_internet_access" {
+variable "monitor" {
   type        = bool
   default     = false
-  description = "Wheter to allow internet access for services"
+  description = "Monitor instances using Elastic"
 }
 
 variable "monitor_type" {
   type        = string
   default     = "traffic"
   description = "How to monitor instances using Elastic."
+}
+
+variable "packetbeat_vlan_id" {
+  description = "Identifier of the VLAN needed for traffic mirroring."
+  type        = string
+  default     = "1"
 }
