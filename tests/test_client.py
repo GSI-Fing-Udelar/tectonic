@@ -1,12 +1,9 @@
 import pytest
 import re
-import copy
-from unittest.mock import patch, MagicMock, call
-
+from unittest.mock import patch, MagicMock
 import libvirt
 import libvirt_qemu
-
-from tectonic.client import Client, ClientException
+from tectonic.client import ClientException
 from tectonic.client_aws import ClientAWS, ClientAWSException
 from tectonic.client_libvirt import ClientLibvirt, ClientLibvirtException
 
@@ -88,9 +85,9 @@ def test_get_ssh_proxy_command(client):
         client.config.aws.teacher_access = "endpoint"
         assert "aws ec2-instance-connect" in client.get_ssh_proxy_command()
         client.config.aws.teacher_access = "host"
-        teacher_ip = client._get_teacher_access_ip()
-        user = client._get_teacher_access_username()
-        assert re.match(f"^ssh.*{user}@{teacher_ip}", client.get_ssh_proxy_command())
+        bastion_host_ip = client._get_bastion_host_ip()
+        user = client._get_bastion_host_username()
+        assert re.match(f"^ssh.*{user}@{bastion_host_ip}", client.get_ssh_proxy_command())
     else:
         assert client.get_ssh_proxy_command() is None
 

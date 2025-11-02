@@ -1,6 +1,5 @@
 import pytest
 import types
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 from tectonic.ansible import Ansible, AnsibleException
 
@@ -99,5 +98,7 @@ def test_configure_services_empty(ansible_client):
     # no services => nothing happens
     ansible_client.description.elastic.enable = False
     ansible_client.description.caldera.enable = False
+    ansible_client.description.guacamole.enable = False
+    ansible_client.description.bastion_host.enable = False
     # should not raise
     ansible_client.configure_services()
