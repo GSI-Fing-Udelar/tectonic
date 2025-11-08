@@ -254,23 +254,35 @@ class Ansible:
         if services:
             extra_vars = {
                 "elastic" : {
+                    "enable": self.description.elastic.enable,
+                    "ip": self.description.elastic.service_ip,
+                    "port": self.description.elastic.port,
+                    "description_path": str(self.description.scenario_dir),
                     "monitor_type": self.description.elastic.monitor_type,
                     "deploy_policy": self.description.elastic.deploy_default_policy,
                     "policy_name": self.config.elastic.packetbeat_policy_name if self.description.elastic.monitor_type == "traffic" else self.config.elastic.endpoint_policy_name,
                     "http_proxy" : self.config.proxy if self.config.proxy is not None else "",
-                    "description_path": str(self.description.scenario_dir),
-                    "ip": self.description.elastic.service_ip,
                     "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
                     "dns": self.config.docker.dns,
                 },
                 "caldera":{
+                    "enable": self.description.caldera.enable,
                     "ip": self.description.caldera.service_ip,
+                    "port": self.description.caldera.port,
                     "description_path": str(self.description.scenario_dir),
-                    "ot_enabled": str(self.config.caldera.ot_enabled)
+                    "ot_enabled": str(self.config.caldera.ot_enabled),
                 },
                 "guacamole":{
+                    "enable": self.description.guacamole.enable,
                     "ip": self.description.guacamole.service_ip,
-                    "description_path": str(self.description.scenario_dir),
+                    "port": self.description.guacamole.port,
+                },
+                "bastion_host":{
+                    "enable": self.description.bastion_host.enable,
+                    "ip": self.description.bastion_host.service_ip,
+                    "port": self.description.bastion_host.port,
+                    "services_enable": self.description.elastic.enable or self.description.caldera.enable or self.description.guacamole.enable,
+                    "domain": "tectonic.cyberrange.com",
                 }
             }
             inventory = self.build_inventory(machine_list=services, extra_vars=extra_vars)

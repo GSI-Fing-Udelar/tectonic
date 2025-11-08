@@ -669,8 +669,12 @@ class ServiceDescription(MachineDescription):
     @property
     def service_ip(self):
         for _, interface in self.interfaces.items():
-            if interface.network.base_name == "services":
-                return interface.private_ip
+            if self.base_name == "bastion_host":
+                if interface.network.base_name == "internet":
+                    return interface.private_ip
+            else:
+                if interface.network.base_name == "services":
+                    return interface.private_ip
 
 class ElasticDescription(ServiceDescription):
     supported_monitor_types = ["traffic", "endpoint"]
@@ -714,7 +718,7 @@ class CalderaDescription(ServiceDescription):
         self.memory = 2048
         self.vcpu = 2
         self.disk = 20
-        self.port = 10443
+        self.port = 8443
         
     def load_service(self, data):
         """Loads the information from the yaml structure in data."""
@@ -743,6 +747,7 @@ class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
         super().__init__(description, "bastion_host", "ubuntu22", True)
         self.disk = 10
+        self.port = 443
 
     @property
     def instance_type(self):

@@ -257,19 +257,24 @@ class Core:
             dict: scenario information.
         """
         instances_info = {}
-        if self.config.platform == "aws":
-            if self.description.bastion_host.enable:
-                bastion_host_ip = self.client.get_machine_public_ip(f"{self.description.institution}-{self.description.lab_name}-bastion_host") 
-                instances_info["Bastion Host IP"] = bastion_host_ip
+        bastion_host_ip = ""
+        if self.config.platform == "aws" and self.description.bastion_host.enable:
+            bastion_host_ip = self.client.get_machine_public_ip(self.description.bastion_host.name)
+            instances_info["Bastion Host IP"] = bastion_host_ip
 
         service_info = {}
         for _, service in self.description.services_guests.items():
             if service.base_name != "packetbeat" and service.base_name != "bastion_host":
-                credentials = self.terraform_service.get_service_credentials(service, self.ansible)
+                if self.config.platform == "aws" and self.description.bastion_host.enable:
+                    service_ip = bastion_host_ip
+                    service_port = self.description.bastion_host.port
+                else:
+                    service_ip = service.service_ip
+                    service_port = service.port
                 service_info[service.base_name] = {
-                    "URL": f"https://{service.service_ip}:{service.port}",
-                    "Credentials": credentials,
-                }
+                    "URL": f"https://{service_ip}:{service_port}",
+                    "Credentials": self.terraform_service.get_service_credentials(service, self.ansible),
+                }    
         return {
             "instances_info": instances_info,
             "services_info": service_info,

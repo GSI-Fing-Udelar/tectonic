@@ -274,16 +274,30 @@ resource "aws_security_group" "bastion_host_scenario_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
-    description = "Bastion Host: Allow ingress HTTP traffic from internet."
+    description = "Bastion Host: Allow ingress HTTP traffic from internet to default virtualhost."
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
-    description = "Bastion Host: Allow ingress HTTP traffic from internet."
+    description = "Bastion Host: Allow ingress HTTP traffic from internet to bastion_host/guacamole virtualhost."
     from_port   = 443
     to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    description = "Bastion Host: Allow ingress HTTP traffic from internet to elastic virtualhost."
+    from_port   = 5601
+    to_port     = 5601
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    description = "Bastion Host: Allow ingress HTTP traffic from internet to caldera virtualhost."
+    from_port   = 8443
+    to_port     = 8443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }

@@ -18,3 +18,53 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 #
+- name: Finish playbook execution if reverse proxy already configured
+  block:
+    - name: Check if reverse_proxy file exists
+      ansible.builtin.stat:
+        path: /etc/apache2/sites-available/tectonic.conf
+      register: reverse_proxy
+    - name: End execution if reverse_proxy file exists
+      ansible.builtin.meta: end_play
+      when: reverse_proxy.stat.exists
+      
+- name: Configure reverse proxy
+  block:
+    - name: Create selfsigned certificate
+      ansible.builtin.command:
+        cmd: openssl req -x509 -newkey rsa:4096 -keyout /opt/privkey.pem -out /opt/fullchain.pem -sha256 -days 3650 -nodes -subj "/C=UY/ST=Montevideo/L=Montevideo/O=FING/OU=GSI/CN={{ bastion_host.domain }}"
+    - name: Disable default vhost
+      ansible.builtin.command:
+        cmd: a2dissite 000-default
+    - name: Enable apache modules
+      ansible.builtin.command:
+        cmd: a2enmod proxy proxy_http ssl rewrite proxy_wstunnel headers
+    - name: Adjust apache ports.conf
+      ansible.builtin.copy:
+        dest: /etc/apache2/ports.conf
+        content: |
+          Listen 80
+          Listen {{ bastion_host.port }}
+          Listen {{ elastic.port }}
+          Listen {{ caldera.port }}
+    - name: Copy tectonic virtual host
+      ansible.builtin.template:
+        src: templates/tectonic.j2
+        dest: /etc/apache2/sites-available/tectonic.conf
+    - name: Copy tectonic site
+      ansible.builtin.template:
+        src: templates/index.j2
+        dest: /var/www/html/index.html
+    - name: Copy sites files
+      ansible.builtin.copy: 
+        src: files/
+        dest: /var/www/html
+    - name: Enable apache site
+      ansible.builtin.command:
+        cmd: a2ensite tectonic
+    - name: Restart apache
+      ansible.builtin.service:
+        name: apache2
+        state: started
+        enabled: true
+  when: bastion_host.services_enable
