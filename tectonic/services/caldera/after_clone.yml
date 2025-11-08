@@ -208,12 +208,12 @@
         zone: public
         permanent: true
         state: enabled
-        rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port=8443 protocol=tcp accept"
+        rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port={{ caldera.port }} protocol=tcp accept"
       when: platform == "libvirt" or platform == "docker"
     - name: Configure firewalld - Add port to default zone
       ansible.posix.firewalld:
         zone: public
-        port: "8443/tcp"
+        port: "{{ caldera.port }}/tcp"
         permanent: true
         state: enabled
       when: platform == "aws"

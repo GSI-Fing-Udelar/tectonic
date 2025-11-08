@@ -111,12 +111,12 @@
         zone: public
         permanent: true
         state: enabled
-        rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port=5601 protocol=tcp accept"
+        rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port={{ elastic.port }} protocol=tcp accept"
       when: platform == "libvirt" or platform == "docker"
     - name: Configure firewalld - Allow access to Kibana
       ansible.posix.firewalld:
         zone: public
-        port: "5601/tcp"
+        port: "{{ elastic.port }}/tcp"
         permanent: true
         state: enabled
       when: platform == "aws"

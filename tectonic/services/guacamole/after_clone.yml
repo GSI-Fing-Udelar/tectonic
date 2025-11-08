@@ -28,6 +28,23 @@
       ansible.builtin.meta: end_play
       when: credentials.stat.exists
 
+- name: Copy Tomcat configuration
+  ansible.builtin.template:
+    src: templates/server.j2
+    dest: /etc/tomcat9/server.xml
+    owner: root
+    group: tomcat
+
+- name: Enable and start services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: true
+    daemon_reload : true
+  with_items:
+    - tomcat9
+    - guacd
+
 - name: Configure firewall (iptables)
   block:
     - name: Set Gateway IP
@@ -54,7 +71,7 @@
         chain: INPUT
         protocol: tcp
         source: "{{ gateway_ip }}"
-        destination_port: 10443
+        destination_port: "{{ guacamole.port }}"
         jump: ACCEPT
     - name: Configure firewall | Allow related or established connections
       ansible.builtin.iptables:
