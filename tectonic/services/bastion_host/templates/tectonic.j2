@@ -1,0 +1,74 @@
+<VirtualHost *:{{ bastion_host.port }}>
+    ServerName {{ bastion_host.domain }}
+
+    DocumentRoot /var/www/html
+    
+    ErrorLog ${APACHE_LOG_DIR}/tectonic_error.log
+    CustomLog ${APACHE_LOG_DIR}/tectonic_access.log combined
+
+    SSLEngine on
+    SSLProtocol All -SSLv2 -SSLv3 -TLSv1
+    SSLCertificateFile /opt/fullchain.pem
+    SSLCertificateKeyFile /opt/privkey.pem
+
+    SSLProxyEngine on
+    SSLProxyVerify none
+    SSLProxyCheckPeerCN off
+    SSLProxyCheckPeerExpire off
+
+{% if guacamole.enable %}
+    <Location "/guacamole/">
+        ProxyPass "https://{{ guacamole.ip }}:{{ guacamole.port }}/"
+        ProxyPassReverse "https://{{ guacamole.ip }}:{{ guacamole.port }}/"
+    </Location>
+
+    <Location "/guacamole/websocket-tunnel/">
+        ProxyPass "wss://{{ guacamole.ip }}:{{ guacamole.port }}/websocket-tunnel"
+        ProxyPassReverse "wss://{{ guacamole.ip }}:{{ guacamole.port }}/websocket-tunnel"
+    </Location>
+{% endif %}
+</VirtualHost>
+
+{% if elastic.enable %}
+<VirtualHost *:{{ elastic.port }}>
+    ServerName {{ bastion_host.domain }}
+
+    ErrorLog ${APACHE_LOG_DIR}/elastic_error.log
+    CustomLog ${APACHE_LOG_DIR}/elastic_access.log combined
+
+    SSLEngine on
+    SSLProtocol All -SSLv2 -SSLv3 -TLSv1
+    SSLCertificateFile /opt/fullchain.pem
+    SSLCertificateKeyFile /opt/privkey.pem
+
+    SSLProxyEngine on
+    SSLProxyVerify none
+    SSLProxyCheckPeerCN off
+    SSLProxyCheckPeerExpire off
+    
+    ProxyPass "/" "https://{{ elastic.ip }}:{{ elastic.port }}/"
+    ProxyPassReverse "/" "https://{{ elastic.ip }}:{{ elastic.port }}/"
+</VirtualHost>
+{% endif %}
+
+{% if caldera.enable %}
+<VirtualHost *:{{ caldera.port }}>
+    ServerName {{ bastion_host.domain }}
+
+    ErrorLog ${APACHE_LOG_DIR}/caldera_error.log
+    CustomLog ${APACHE_LOG_DIR}/caldera_access.log combined
+
+    SSLEngine on
+    SSLProtocol All -SSLv2 -SSLv3 -TLSv1
+    SSLCertificateFile /opt/fullchain.pem
+    SSLCertificateKeyFile /opt/privkey.pem
+
+    SSLProxyEngine on
+    SSLProxyVerify none
+    SSLProxyCheckPeerCN off
+    SSLProxyCheckPeerExpire off
+
+    ProxyPass "/" "https://{{ caldera.ip }}:{{ caldera.port }}/"
+    ProxyPassReverse "/" "https://{{ caldera.ip }}:{{ caldera.port }}/"
+</VirtualHost>
+{% endif %}
