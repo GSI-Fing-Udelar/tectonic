@@ -1,0 +1,48 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+- name: Create trainer user
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Configure trainer user in Linux RHEL
+      ansible.builtin.user:
+        name: "{{ username }}"
+        password: "{{ password_hash }}"
+        shell: /bin/bash
+        groups: wheel
+      when: ansible_facts['os_family'] == "RedHat"
+    - name: Configure trainer user in Linux Debian
+      ansible.builtin.user:
+        name: "{{ username }}"
+        password: "{{ password_hash }}"
+        shell: /bin/bash
+        groups: sudo
+      when: ansible_facts['os_family'] == "Debian"
+    - name: Configure trainer user in Windows
+      ansible.windows.win_user:
+        name: "{{ username }}"
+        password: "{{ password }}"
+        groups:
+          - Administrators
+          - Remote Desktop Users
+      when: ansible_facts['os_family'] == "Windows"

@@ -1,19 +1,42 @@
 <user-mapping>
+    <authorize username="{{ trainer.username }}" password="{{ trainer.password | md5 }}" encoding="md5">
+{% for machine_name, machine_data in machines.items() %}
+{% for access_protocol_name, access_protocol_data in machine_data.access_protocols.items() %}
+        <connection name="{{ machine_name }} ({{ access_protocol_name }})">
+            <protocol>{{ access_protocol_name }}</protocol>
+            <param name="hostname">{{ machine_data.ip }}</param>
+            <param name="port">{{ access_protocol_data.port }}</param>
+            <param name="username">{{ trainer.username }}</param>
+            <param name="password">{{ trainer.password }}</param>
+            <param name="enable-sftp">true</param>
+{% if access_protocol_name == "rdp" %}
+            <param name="ignore-cert">true</param>
+            <param name="sftp-hostname">{{ machine_data.ip }}</param>
+            <param name="sftp-port">{{ access_protocol_data.ftp_port }}</param>
+            <param name="sftp-username">{{ trainer.username }}</param>
+            <param name="sftp-password">{{ trainer.password }}</param>
+{% endif %}
+        </connection>
+{% endfor %}
+{% endfor %}
+    </authorize>
+
+
 {% for user_name, user_data in users.items() %}
     <authorize username="{{ user_name }}" password="{{ user_data.password | md5 }}" encoding="md5">
-{% for entry_point_name, entry_point_data in entry_points_data.items() %}
-{% if user_data.instance == entry_point_data.instance %}
-{% for access_protocol_name, access_protocol_data in entry_point_data.access_protocols.items() %}
-        <connection name="{{ entry_point_name }} ({{ access_protocol_name }})">
+{% for machine_name, machine_data in machines.items() %}
+{% if machine_data.entry_point and user_data.instance == machine_data.instance %}
+{% for access_protocol_name, access_protocol_data in machine_data.access_protocols.items() %}
+        <connection name="{{ machine_name }} ({{ access_protocol_name }})">
             <protocol>{{ access_protocol_name }}</protocol>
-            <param name="hostname">{{ entry_point_data.ip }}</param>
+            <param name="hostname">{{ machine_data.ip }}</param>
             <param name="port">{{ access_protocol_data.port }}</param>
             <param name="username">{{ user_name }}</param>
             <param name="password">{{ user_data.password }}</param>
             <param name="enable-sftp">true</param>
 {% if access_protocol_name == "rdp" %}
             <param name="ignore-cert">true</param>
-            <param name="sftp-hostname">{{ entry_point_data.ip }}</param>
+            <param name="sftp-hostname">{{ machine_data.ip }}</param>
             <param name="sftp-port">{{ access_protocol_data.ftp_port }}</param>
             <param name="sftp-username">{{ user_name }}</param>
             <param name="sftp-password">{{ user_data.password }}</param>

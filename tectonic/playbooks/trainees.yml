@@ -32,7 +32,7 @@
 #     Optional. If not set, the user is created with an empty
 #     authorized_keys file.
 
-- name: "Create student users on student access host."
+- name: "Create student users on bastion host."
   hosts: bastion_host
   gather_facts: true
 
@@ -192,7 +192,7 @@
         - users[username].authorized_keys is defined
         - ansible_facts['os_family'] == "Windows"
 
-- name: "Configure Guacamole access"
+- name: Create student users on guacamole
   hosts: guacamole
   gather_facts: true
   vars:
@@ -200,16 +200,6 @@
     username: "{{ '%s%0{}d'.format(digit_count) | format(prefix, instance) }}"
   
   tasks:
-    - name: Get trainer password
-      block:
-        - name: Get trainer password | Read credentials file
-          ansible.builtin.slurp:
-            src: /root/credentials
-          register: credentials_raw
-        - name: Get trainer password | Get password
-          ansible.builtin.set_fact:
-            trainer_password: "{{ credentials_raw.content | b64decode | regex_search('^trainer\\s+(\\S+)', '\\1') }}"
-    
     - name: Create user mapping
       ansible.builtin.template:
         src: templates/guacamole-user-mapping.j2

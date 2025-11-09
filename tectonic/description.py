@@ -1000,6 +1000,18 @@ class Description:
                 users[username]["authorized_keys"] = tectonic.utils.read_files_in_dir(
                     Path(self.student_pubkey_dir) / username)
         return users
+    
+    def generate_trainer_access_credentials(self, password):
+        """
+        Returns a dictionary of trainers with username, password and password_hash.
+        """
+        (password, salt) = self._generate_password(password)
+        return {
+            "username": "trainer",
+            "password": password,
+            "password_hash": sha512_crypt.using(salt=salt).hash(password)
+        }
+
 
     #----------- Getters ----------
     @property
@@ -1121,6 +1133,8 @@ class Description:
                     ) or (
                         self.caldera.enable and (base_guest.red_team_agent or base_guest.blue_team_agent)
                     ) or (
+                        self.config.platform != "aws" and self.guacamole.enable
+                    ) or (
                         self.guacamole.enable and base_guest.entry_point
                     )
                     guest = GuestDescription(self, base_guest, instance_num, copy, is_in_services_network)
@@ -1134,7 +1148,6 @@ class Description:
                     if is_in_services_network:
                         services_network_index += 1
         return guests
-        
         
     @property
     def services_guests(self):
@@ -1312,9 +1325,10 @@ class Description:
                 return advanced_options_file.resolve().as_posix()
         return "/dev/null"
 
-    def _generate_password(self):
+    def _generate_password(self, password=None):
         """Generate a pseudo random password and salt."""
         characters = string.ascii_letters + string.digits
-        password = "".join(random.choice(characters) for _ in range(12))
+        if password == None:
+            password = "".join(random.choice(characters) for _ in range(12))
         salt = "".join(random.choice(characters) for _ in range(16))
         return password, salt
