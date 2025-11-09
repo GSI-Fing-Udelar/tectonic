@@ -266,12 +266,12 @@ class Core:
         service_info = {}
         for _, service in self.description.services_guests.items():
             if service.base_name != "packetbeat" and service.base_name != "bastion_host":
-                if self.config.platform == "aws" and self.description.bastion_host.enable:
+                service_ip = service.service_ip
+                service_port = service.port
+                if self.description.bastion_host.enable:
                     service_ip = bastion_host_ip
-                    service_port = self.description.bastion_host.port
-                else:
-                    service_ip = service.service_ip
-                    service_port = service.port
+                    if service.base_name == "guacamole":
+                        service_port = self.description.bastion_host.port
                 service_info[service.base_name] = {
                     "URL": f"https://{service_ip}:{service_port}",
                     "Credentials": self.terraform_service.get_service_credentials(service, self.ansible),
@@ -433,6 +433,9 @@ class Core:
                     guacamole_password = self.terraform_service.get_service_credentials(service, self.ansible)['trainer']
             trainer_credentials = self.description.generate_trainer_access_credentials(guacamole_password)
             self.ansible.run(
+                instances=instances,
+                guests=None,
+                copies=None,
                 playbook=self.ANSIBLE_TRAINER_PLAYBOOK,
                 only_instances=True,
                 extra_vars=trainer_credentials,

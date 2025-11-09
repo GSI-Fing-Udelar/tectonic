@@ -24,20 +24,39 @@
   become: true
   gather_facts: true
   tasks:
-    - name: Configure trainer user in Linux RHEL
-      ansible.builtin.user:
-        name: "{{ username }}"
-        password: "{{ password_hash }}"
-        shell: /bin/bash
-        groups: wheel
-      when: ansible_facts['os_family'] == "RedHat"
-    - name: Configure trainer user in Linux Debian
-      ansible.builtin.user:
-        name: "{{ username }}"
-        password: "{{ password_hash }}"
-        shell: /bin/bash
-        groups: sudo
-      when: ansible_facts['os_family'] == "Debian"
+    - name: Configure trainer user in Linux
+      block:
+        - name: Configure trainer user in Linux | Create user
+          ansible.builtin.user:
+            name: "{{ username }}"
+            password: "{{ password_hash }}"
+            shell: /bin/bash
+        - name: Configure trainer user in Linux | Add user to sudoers without password
+          ansible.builtin.copy:
+            dest: "/etc/sudoers.d/98-trainer"
+            content: "{{ username }} ALL=(ALL) NOPASSWD:ALL"
+        - name: Configure trainer user in Linux | Enable SSH login with password
+          block:
+            - name: Configure trainer user in Linux | Enable SSH login with password | Find SSH config files
+              ansible.builtin.find:
+                paths: /etc/ssh/sshd_config.d
+                file_type: file
+              register: ssh_config
+            - name: Configure trainer user in Linux | Enable SSH login with password | Adjust SSH configuration files
+              ansible.builtin.lineinfile:
+                path: "{{ item.path }}"
+                regex: "^\\s*PasswordAuthentication"
+                line: "PasswordAuthentication yes"
+              with_items:
+                - "{{ ssh_config['files'] }}"
+                - { path: '/etc/ssh/sshd_config' }
+              register: sshd_conf
+            - name: Configure trainer user in Linux | Enable SSH login with password | Restart SSH service
+              ansible.builtin.service:
+                name: sshd
+                state: restarted
+              when: sshd_conf.changed
+      when: ansible_facts['os_family'] != "Windows"
     - name: Configure trainer user in Windows
       ansible.windows.win_user:
         name: "{{ username }}"
