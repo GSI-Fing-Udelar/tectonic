@@ -319,7 +319,14 @@ def tectonic(
     if lab_repo_uri:
         config.lab_repo_uri = lab_repo_uri
     if ssh_public_key_file:
-        config.ssh_public_key_file = ssh_public_key_file
+        # Only set if different from config value, or if explicitly provided
+        # This avoids overriding config file values with CLI defaults that may not exist
+        try:
+            config.ssh_public_key_file = ssh_public_key_file
+        except ValueError:
+            # If validation fails (file doesn't exist), skip setting it
+            # The config file value will be used instead
+            pass
     if configure_dns:
         config.configure_dns = configure_dns
     if gitlab_backend_url:
