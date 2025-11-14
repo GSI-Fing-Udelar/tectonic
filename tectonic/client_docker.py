@@ -55,9 +55,9 @@ class ClientDocker(Client):
         super().__init__(config, description)
         try:
             self.connection = docker.DockerClient(base_url=config.docker.uri)
-        except:
+        except Exception as e:
             self.connection = None
-            raise ClientDockerException(f"Cannot connect to docker server at {config.docker.uri}")
+            raise ClientDockerException(f"Cannot connect to docker server at {config.docker.uri}: {e}")
         
     def get_machine_status(self, machine_name):
         try:

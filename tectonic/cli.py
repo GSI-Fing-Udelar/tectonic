@@ -335,25 +335,38 @@ def tectonic(
         config.gitlab_backend_username = gitlab_backend_username
     if gitlab_backend_access_token:
         config.gitlab_backend_access_token = gitlab_backend_access_token
-    if packer_executable_path:
+    if packer_executable_path and packer_executable_path != "packer":
+        # Only override if explicitly provided and different from default
+        # This avoids overriding config file values with CLI defaults
         config.packer_executable_path = packer_executable_path
-    if packer_executable_path:
-        config.packer_executable_path = packer_executable_path
-    if libvirt_uri:
-        config.libvirt.uri = libvirt_uri
     if proxy:
         config.proxy = proxy
     if keep_ansible_logs:
         config.ansible.keep_logs = keep_ansible_logs
-    if docker_uri:
+    if libvirt_uri and libvirt_uri != "qemu:///system":
+        # Only override if explicitly provided and different from default
+        # This avoids overriding config file values with CLI defaults
+        config.libvirt.uri = libvirt_uri
+    if docker_uri and docker_uri != "unix:///var/run/docker.sock":
+        # Only override if explicitly provided and different from default
+        # This avoids overriding config file values with CLI defaults
         config.docker.uri = docker_uri
-    if docker_dns:
+    if docker_dns and docker_dns != "8.8.8.8":
+        # Only override if explicitly provided and different from default
+        # This avoids overriding config file values with CLI defaults
         config.docker.dns = docker_dns
-    if ansible_forks:
+    if ansible_forks and str(ansible_forks) != "10":
+        # Only override if explicitly provided and different from default
+        # This avoids overriding config file values with CLI defaults
         config.ansible.forks = ansible_forks
-    if ansible_pipelining:
+    if ansible_pipelining is not False and str(ansible_pipelining).lower() != "false":
+        # Only override if explicitly provided and different from default
+        # This avoids overriding config file values with CLI defaults
+        # Note: Click boolean flags return actual booleans, not strings
         config.ansible.pipelining = ansible_pipelining
-    if ansible_timeout:
+    if ansible_timeout and str(ansible_timeout) != "10":
+        # Only override if explicitly provided and different from default
+        # This avoids overriding config file values with CLI defaults
         config.ansible.timeout = ansible_timeout
 
     ctx.obj["config"] = config
