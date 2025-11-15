@@ -28,6 +28,13 @@
       ansible.builtin.meta: end_play
       when: credentials.stat.exists
 
+- name: Enable guacamole brute force protection
+  ansible.builtin.copy:
+    src: "/root/guacamole-auth-ban-{{ guacamole.version }}/guacamole-auth-ban-{{ guacamole.version }}.jar"
+    dest: /etc/guacamole/extensions/
+    remote_src: yes
+  when: guacamole.brute_force_protection_enabled == "True"
+
 - name: Copy Tomcat configuration
   ansible.builtin.template:
     src: templates/server.j2

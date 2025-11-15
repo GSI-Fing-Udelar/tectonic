@@ -25,11 +25,16 @@ class TectonicConfigGuacamole(object):
 
     def __init__(self):
         self._version = "1.6.0"
+        self._brute_force_protection_enabled = False
 
     #----------- Getters ----------
     @property
     def version(self):
         return self._version
+    
+    @property
+    def brute_force_protection_enabled(self):
+        return self._brute_force_protection_enabled
     
     #----------- Setters ----------
     @version.setter
@@ -40,3 +45,8 @@ class TectonicConfigGuacamole(object):
         if value == "latest":
             value = "1.6.0"
         self._version = value
+
+    @brute_force_protection_enabled.setter
+    def brute_force_protection_enabled(self, value):
+        validate.boolean("Guacamole brute force protection enabled", value)
+        self._brute_force_protection_enabled = value

@@ -97,6 +97,7 @@ main `config` section and special sections for different platforms
   or assign a specific version. Default: `1.6.0`. All tests were
   performed on version 1.6.0 so we recommend using it. However, it may
   also work for new Guacamole versions.
+* `enable_brute_force_protection`: Whether Guacamole's brute force protection should be enabled. See [Guacamole brute force protection](https://guacamole.apache.org/doc/1.6.0/gug/auth-ban.html#securing-guacamole-against-brute-force-attacks). Default: `no`.
 
 
 You can find an example configuration file with the default values

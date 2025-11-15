@@ -35,6 +35,16 @@
     line: "{{caldera.ip}} {{ ansible_facts['fqdn'] }}"
   when: platform != "docker"
 
+- name: Enable Caldera OT plugins
+  block:
+    - name: Enable Caldera OT plugins | Load variables
+      ansible.builtin.include_vars:
+        file: vars/variables.yml
+    - name: "Enable Caldera OT plugins: {{ item.name }}"
+      ansible.builtin.command: "mv /root/ot_plugins/{{ item.name }} /opt/caldera/plugins/"
+      loop: "{{ ot_plugins }}"
+  when: caldera.ot_enabled == "True"
+
 - name: Create certificates
   block:
     - name: Create certificates directory
@@ -145,7 +155,7 @@
     dest: /opt/caldera/script.sh
     content: |
       #!/bin/bash
-      nohup python3.12 server.py &
+      nohup python3.12 server.py --build &
 
 - name: Create Caldera service 
   ansible.builtin.copy: 

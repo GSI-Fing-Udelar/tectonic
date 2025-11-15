@@ -276,6 +276,8 @@ class Ansible:
                     "enable": self.description.guacamole.enable,
                     "ip": self.description.guacamole.service_ip,
                     "port": self.description.guacamole.port,
+                    "brute_force_protection_enabled": str(self.config.guacamole.brute_force_protection_enabled),
+                    "version": self.config.guacamole.version,
                 },
                 "bastion_host":{
                     "enable": self.description.bastion_host.enable,

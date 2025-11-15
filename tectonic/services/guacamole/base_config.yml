@@ -138,22 +138,17 @@
               bind_host = 127.0.0.1
               bind_port = 4822
 
-    - name: Configure guacamole brute force protection
+    - name: Install brute force protection
       block:
-        - name: Configure guacamole brute force protection | Create extensions directory
+        - name: Install brute force protection | Create extensions directory
           ansible.builtin.file:
             path: /etc/guacamole/extensions
             state: directory
             mode: '0755'
-        - name: Configure guacamole brute force protection | Download extension
+        - name: Install brute force protection | Download extension
           ansible.builtin.unarchive:
             src: "https://apache.org/dyn/closer.lua/guacamole/{{ guacamole_version }}/binary/guacamole-auth-ban-{{ guacamole_version }}.tar.gz?action=download"
             dest: /root
-            remote_src: yes
-        - name: Configure guacamole brute force protection | Copy extension
-          ansible.builtin.copy:
-            src: "/root/guacamole-auth-ban-{{ guacamole_version }}/guacamole-auth-ban-{{ guacamole_version }}.jar"
-            dest: /etc/guacamole/extensions/
             remote_src: yes
 
     - name: Configure database
@@ -262,7 +257,6 @@
         path: "/root/{{ item }}"
         state: absent
       with_items:
-        - "guacamole-auth-ban-{{ guacamole_version }}"
         - "guacamole-auth-jdbc-{{ guacamole_version }}"
         - "guacamole-server-{{ guacamole_version }}"
         - "mysql-connector-j-{{ mysql_driver_version }}"

@@ -133,11 +133,6 @@ variable "caldera_version" {
   description = "Caldera version to install."
 }
 
-variable "caldera_ot_enabled" {
-  type = string
-  description = "Enable OT plugins for Caldera."
-}
-
 #Packetbeat variables
 variable "packetbeat_vlan_id" {
   type = string
@@ -322,7 +317,6 @@ build {
       ["--extra-vars", "elastic_latest_version=${var.elastic_latest_version}"],
       ["--extra-vars", "elastic_version=${var.elastic_version}"],
       ["--extra-vars", "caldera_version=${var.caldera_version}"],
-      ["--extra-vars", "caldera_ot_enabled=${var.caldera_ot_enabled}"],
       ["--extra-vars", "packetbeat_vlan_id=${var.packetbeat_vlan_id}"],
       ["--extra-vars", "elasticsearch_memory=${var.elasticsearch_memory}"],
       ["--extra-vars", "guacamole_version=${var.guacamole_version}"],
