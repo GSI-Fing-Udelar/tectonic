@@ -30,9 +30,19 @@
       
 - name: Configure reverse proxy
   block:
+    - name: Create directory for certificate
+      ansible.builtin.file:
+        path: /etc/letsencrypt/live/{{ bastion_host.domain }}/
+        state: directory
+    - name: Create symbolic link
+      ansible.builtin.file:
+        src: /etc/letsencrypt/live/{{ bastion_host.domain }}/
+        dest: /etc/letsencrypt/live/active
+        force: yes
+        state: link
     - name: Create selfsigned certificate
       ansible.builtin.command:
-        cmd: openssl req -x509 -newkey rsa:4096 -keyout /opt/privkey.pem -out /opt/fullchain.pem -sha256 -days 3650 -nodes -subj "/C=UY/ST=Montevideo/L=Montevideo/O=FING/OU=GSI/CN={{ bastion_host.domain }}"
+        cmd: openssl req -x509 -newkey rsa:4096 -keyout /etc/letsencrypt/live/{{ bastion_host.domain }}/privkey.pem -out /etc/letsencrypt/live/{{ bastion_host.domain }}/fullchain.pem -sha256 -days 3650 -nodes -subj "/C=UY/ST=Montevideo/L=Montevideo/O=FING/OU=GSI/CN={{ bastion_host.domain }}"
     - name: Disable default vhost
       ansible.builtin.command:
         cmd: a2dissite 000-default
