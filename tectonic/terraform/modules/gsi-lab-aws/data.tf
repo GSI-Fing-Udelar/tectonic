@@ -33,8 +33,9 @@ data "aws_key_pair" "pub_key" {
   include_public_key = true
 }
 
-data "aws_nat_gateways" "ngws" {
-  tags = {
+data "aws_nat_gateway" "ngw" {
+  state = "available" 
+  tags  = {
     Name = "${var.institution}-${var.lab_name}"
   }
 }

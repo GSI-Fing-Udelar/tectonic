@@ -160,7 +160,7 @@ resource "aws_route_table" "scenario_internet_access" {
   vpc_id = data.aws_vpc.vpc.id
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = data.aws_nat_gateways.ngws.ids[0]
+    gateway_id = data.aws_nat_gateway.ngw.id
   }
   tags = {
     Name = "${var.institution}-${var.lab_name}-scenario_internet_access"
