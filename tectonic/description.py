@@ -237,7 +237,7 @@ class MachineDescription:
     @property
     def access_protocols(self): #TODO: Maybe this should be specific in the scenario description.
         if self.os in ["ubuntu22", "kali", "rocky8", "rocky9"]:
-            return {"ssh":{"port":22}}
+            return {"ssh":{"port":22}, "rdp":{"port":3389,"ftp_port":22}}
         elif self.os in ["windows_srv_2022"]:
             return {"ssh":{"port":22}, "rdp":{"port":3389,"ftp_port":22}}
 
