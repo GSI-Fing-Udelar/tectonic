@@ -158,9 +158,8 @@ def test_parse_machines_elastic_endpoint(description):
     machine_list = description.parse_machines(only_instances=False)
     expected_machines = base_machines.copy() + [
         'udelar-lab01-elastic',
+        'udelar-lab01-bastion_host'
     ]
-    if description.config.platform == "aws":
-        expected_machines += ['udelar-lab01-bastion_host']
     assert set(machine_list) == set(expected_machines)
 
 
@@ -189,11 +188,11 @@ def test_parse_machines_teacher_host(description):
     expected_machines = base_machines.copy() + [
         'udelar-lab01-elastic',
         'udelar-lab01-caldera',
-        'udelar-lab01-guacamole'
+        'udelar-lab01-guacamole',
+        'udelar-lab01-bastion_host'
     ]
     if description.config.platform == "aws":
-        expected_machines += ['udelar-lab01-packetbeat',
-                              'udelar-lab01-bastion_host']
+        expected_machines += ['udelar-lab01-packetbeat']
     assert set(machine_list) == set(expected_machines)
 
 def test_parse_machines_filter_guests_with_services(description):
@@ -221,11 +220,8 @@ def test_parse_machines_exclude_service(description):
     expected_machines = base_machines.copy() + [
         'udelar-lab01-caldera',
         'udelar-lab01-guacamole',
+        'udelar-lab01-bastion_host'
     ]
-    if description.config.platform == "aws":
-        expected_machines += [
-            'udelar-lab01-bastion_host'
-        ]
     assert set(machine_list) == set(expected_machines)
 
 def test_parse_machines_services(description):
@@ -240,12 +236,12 @@ def test_parse_machines_services(description):
     expected_machines = base_machines.copy() + [
         'udelar-lab01-elastic',
         'udelar-lab01-caldera',
-        'udelar-lab01-guacamole'
+        'udelar-lab01-guacamole',
+        'udelar-lab01-bastion_host',
     ]
     if description.config.platform == "aws":
         expected_machines += [
-            'udelar-lab01-packetbeat',
-            'udelar-lab01-bastion_host',
+            'udelar-lab01-packetbeat',   
         ]
     assert set(machine_list) == set(expected_machines)
 
