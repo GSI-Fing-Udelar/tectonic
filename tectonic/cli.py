@@ -446,6 +446,18 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     help="Whether to destroy the Caldera machine.",
 )
 @click.option(
+    "--guacamole/--no-guacamole",
+    default=False,
+    show_default=True,
+    help="Whether to destroy the Guacamole machine.",
+)
+@click.option(
+    "--bastion_host/--no-bastion_host",
+    default=False,
+    show_default=True,
+    help="Whether to destroy the Bastion Host machine.",
+)
+@click.option(
     "--instances", "-i", help="Range of instances to destroy.", type=NUMBER_RANGE
 )
 @click.option(
@@ -454,7 +466,7 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     help="Force the destruction of instances without a confirmation prompt.",
     is_flag=True,
 )
-def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, force):
+def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, guacamole, bastion_host, force):
     """Delete and destroy all resources of the cyber range. 
 
     If instances are specified only destroys running guests for those instances.
@@ -476,6 +488,10 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, forc
         services.append("elastic")
     if caldera:
         services.append("caldera")
+    if guacamole:
+        services.append("guacamole")
+    if bastion_host:
+        services.append("bastion_host")
 
     ctx.obj["core"].destroy(instances, machines, services, images)
 
