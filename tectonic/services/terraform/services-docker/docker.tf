@@ -45,11 +45,14 @@ resource "docker_container" "machines" {
   
   hostname = each.value.hostname
 
-  ports {
-    internal = lookup(each.value, "port")
-    external = lookup(each.value, "port")
-    ip = "127.0.0.1"
-    protocol = "tcp"
+  dynamic "ports" {
+    for_each = each.value.ports
+    content {
+      internal = ports.value.internal_port
+      external = ports.value.external_port
+      ip = "127.0.0.1"
+      protocol = "tcp"
+    }
   }
 
   upload {

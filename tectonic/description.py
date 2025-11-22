@@ -612,6 +612,7 @@ class ServiceDescription(MachineDescription):
         self.is_in_services_network = False
         self.entry_point = False
         self.internet_access = internet_access
+        self.ports = {}
 
     @property
     def base_name(self):
@@ -669,12 +670,21 @@ class ServiceDescription(MachineDescription):
     @property
     def service_ip(self):
         for _, interface in self.interfaces.items():
-            if self.base_name == "bastion_host":
-                if interface.network.base_name == "internet":
-                    return interface.private_ip
+            if self._description.config.platform == "aws":
+                if self.base_name == "bastion_host":
+                    if interface.network.base_name == "internet":
+                        return interface.private_ip
             else:
                 if interface.network.base_name == "services":
                     return interface.private_ip
+                
+    @property
+    def ports(self):
+        return self._ports
+    
+    @ports.setter
+    def ports(self, value):
+        self._ports = value
 
 class ElasticDescription(ServiceDescription):
     supported_monitor_types = ["traffic", "endpoint"]
@@ -686,7 +696,6 @@ class ElasticDescription(ServiceDescription):
         self.disk = 50
         self.monitor_type = self.supported_monitor_types[0]
         self.deploy_default_policy = True
-        self.port = 5601
 
     @property
     def monitor_type(self):
@@ -718,7 +727,6 @@ class CalderaDescription(ServiceDescription):
         self.memory = 2048
         self.vcpu = 2
         self.disk = 20
-        self.port = 8443
         
     def load_service(self, data):
         """Loads the information from the yaml structure in data."""
@@ -737,7 +745,6 @@ class GuacamoleDescription(ServiceDescription):
         self.memory = 1024
         self.vcpu = 2
         self.disk = 20
-        self.port = 10443
 
     def load_service(self, data):
         """Loads the information from the yaml structure in data."""
@@ -746,12 +753,24 @@ class GuacamoleDescription(ServiceDescription):
 class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
         super().__init__(description, "bastion_host", "ubuntu22", True)
-        self.disk = 10
-        self.port = 443
+        self.ports = {
+            "elastic": {"internal_port": description.config.elastic.internal_port, "external_port": description.config.elastic.external_port},
+            "caldera": {"internal_port": description.config.caldera.internal_port, "external_port": description.config.caldera.external_port},
+            "guacamole": {"internal_port": description.config.guacamole.internal_port, "external_port": description.config.guacamole.external_port},
+        }
 
     @property
     def instance_type(self):
-        return self._description.config.aws.access_host_instance_type
+        if self._description.config.platform == "aws":
+            return self._description.config.aws.access_host_instance_type
+        else:
+            self._description.instance_type.get_guest_instance_type(
+                self.memory,
+                self.vcpu,
+                0,
+                False,
+                "endpoint"
+            )
 
 class Description:
 
@@ -847,7 +866,8 @@ class Description:
         self.bastion_host.enable = self.config.platform == "aws" and (
             self.config.aws.teacher_access == "host" or 
             self.create_students_passwords or
-            self.student_pubkey_dir != None or
+            self.student_pubkey_dir != None 
+        ) or (
             self.elastic.enable or
             self.caldera.enable or
             self.guacamole.enable
@@ -886,10 +906,12 @@ class Description:
         self._auxiliary_networks = {}
         services_network_name = f"{self.institution}-{self.lab_name}-services"
         self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
-        if self.config.platform == "aws" and self.elastic.monitor_type == "traffic":
-            self._auxiliary_networks[services_network_name].members = ["elastic", "packetbeat", "caldera", "guacamole"]
+        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole"]
+        if self.config.platform == "aws":
+            if self.elastic.monitor_type == "traffic":
+                self._auxiliary_networks[services_network_name].members.append("packetbeat")
         else:
-            self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole"]
+            self._auxiliary_networks[services_network_name].members.append("bastion_host")
         internet_network_name = f"{self.institution}-{self.lab_name}-internet"
         self._auxiliary_networks[internet_network_name] = AuxiliaryNetwork(self, "internet", self.config.internet_network_cidr_block, "nat")
         if self.config.platform == "aws":

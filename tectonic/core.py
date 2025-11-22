@@ -259,21 +259,21 @@ class Core:
         """
         instances_info = {}
         bastion_host_ip = ""
-        if self.config.platform == "aws" and self.description.bastion_host.enable:
-            bastion_host_ip = self.client.get_machine_public_ip(self.description.bastion_host.name)
-            instances_info["Bastion Host IP"] = bastion_host_ip
+        if self.description.bastion_host.enable:
+            if self.config.platform == "aws":
+                bastion_host_ip = self.client.get_machine_public_ip(self.description.bastion_host.name)
+                instances_info["Bastion Host IP"] = bastion_host_ip
+            elif self.config.platform == "docker":
+                bastion_host_ip = "127.0.0.1"
+            else:
+                bastion_host_ip = self.client.get_machine_private_ip(self.description.bastion_host.name)
 
         service_info = {}
         for _, service in self.description.services_guests.items():
-            if service.base_name != "packetbeat" and service.base_name != "bastion_host":
-                service_ip = service.service_ip
-                service_port = service.port
-                if self.description.bastion_host.enable:
-                    service_ip = bastion_host_ip
-                    if service.base_name == "guacamole":
-                        service_port = self.description.bastion_host.port
+            if service.base_name not in ["packetbeat", "bastion_host"]:
+                service_port = self.description.bastion_host.ports[service.base_name]["external_port"]
                 service_info[service.base_name] = {
-                    "URL": f"https://{service_ip}:{service_port}",
+                    "URL": f"https://{bastion_host_ip}:{service_port}",
                     "Credentials": self.terraform_service.get_service_credentials(service, self.ansible),
                 }    
         return {
