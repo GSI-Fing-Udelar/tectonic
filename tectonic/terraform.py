@@ -36,7 +36,7 @@ class Terraform(ABC):
     Description: manages interaction with Terraform to deploy/destroy scenarios.
     """
 
-    BACKEND_TYPE = "GITLAB"
+    BACKEND_TYPE = "FILE"
 
     #BACKEND_TYPE = "FILE" # Possible values: FILE (for local files as backend), GITLAB (use gitlab as backend. You must change backend.tf of each terraform module).
 
