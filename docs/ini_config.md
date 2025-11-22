@@ -84,6 +84,7 @@ main `config` section and special sections for different platforms
   mind that this user needs to be able to escalate privileges to root
   without a password. To do this you can configure the sudoers file.
   Default: `tectonic`.
+* `external_port`: port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `5601`.
 
 ### [caldera] section:
 * `version`: Caldera version to use. Use `latest` for latest version
@@ -91,6 +92,7 @@ main `config` section and special sections for different platforms
   performed on version 5.4.0 so we recommend using it. However, it may
   also work for new Caldera versions.
 * `ot_enabled`: Enable OT plugins for Caldera. Default: `no`.
+* `external_port`: port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `8443`.
 
 ### [guacamole] section:
 * `version`: Guacamole version to use. Use `latest` for latest version
@@ -98,6 +100,7 @@ main `config` section and special sections for different platforms
   performed on version 1.6.0 so we recommend using it. However, it may
   also work for new Guacamole versions.
 * `enable_brute_force_protection`: Whether Guacamole's brute force protection should be enabled. See [Guacamole brute force protection](https://guacamole.apache.org/doc/1.6.0/gug/auth-ban.html#securing-guacamole-against-brute-force-attacks). Default: `no`.
+* `external_port`: port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `10443`.
 
 
 You can find an example configuration file with the default values

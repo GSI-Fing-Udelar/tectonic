@@ -117,3 +117,34 @@ variable "teacher_access_type" {
     error_message = "Supported type of teacher access is 'endpoint', 'host'."
   }
 }
+
+
+variable "elastic_internal_port" {
+  description = "Elastic internal port"
+  type        = number
+}
+
+variable "elastic_external_port" {
+  description = "Elastic external port"
+  type        = number
+}
+
+variable "caldera_internal_port" {
+  description = "Caldera internal port"
+  type        = number
+}
+
+variable "caldera_external_port" {
+  description = "Caldera external port"
+  type        = number
+}
+
+variable "guacamole_internal_port" {
+  description = "Guacamole internal port"
+  type        = number
+}
+
+variable "guacamole_external_port" {
+  description = "Guacamole external port"
+  type        = number
+}

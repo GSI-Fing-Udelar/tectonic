@@ -109,8 +109,8 @@ resource "aws_security_group" "caldera_scenario_sg" {
   }
   ingress {
     description       = "Caldera: Allow traffic from bastion host."
-    from_port         = 8443
-    to_port           = 8443
+    from_port         = var.caldera_internal_port
+    to_port           = var.caldera_internal_port
     protocol          = "tcp"
     cidr_blocks       = [var.internet_network_cidr_block]
   }
@@ -152,8 +152,8 @@ resource "aws_security_group" "elastic_endpoint_scenario_sg" {
   }
   ingress {
     description       = "Elastic: Allow traffic from bastion host."
-    from_port         = 5601
-    to_port           = 5601
+    from_port         = var.elastic_internal_port
+    to_port           = var.elastic_internal_port
     protocol          = "tcp"
     cidr_blocks       = [var.internet_network_cidr_block]
   }
@@ -174,8 +174,8 @@ resource "aws_security_group" "elastic_traffic_scenario_sg" {
   vpc_id   = module.vpc.vpc_id
   ingress {
     description       = "Elastic: Allow traffic from bastion host."
-    from_port         = 5601
-    to_port           = 5601
+    from_port         = var.elastic_internal_port
+    to_port           = 56var.elastic_internal_port01
     protocol          = "tcp"
     cidr_blocks       = [var.internet_network_cidr_block]
   }
@@ -225,8 +225,8 @@ resource "aws_security_group" "guacamole_scenario_sg" {
   vpc_id   = module.vpc.vpc_id
   ingress {
     description       = "Guacamole: Allow traffic from bastion host"
-    from_port         = 10443
-    to_port           = 10443
+    from_port         = var.guacamole_internal_port
+    to_port           = var.guacamole_internal_port
     protocol          = "tcp"
     cidr_blocks       = [var.internet_network_cidr_block]
   }
@@ -282,22 +282,22 @@ resource "aws_security_group" "bastion_host_scenario_sg" {
   }
   ingress {
     description = "Bastion Host: Allow ingress HTTP traffic from internet to bastion_host/guacamole virtualhost."
-    from_port   = 443
-    to_port     = 443
+    from_port   = var.guacamole_external_port
+    to_port     = var.guacamole_external_port
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
     description = "Bastion Host: Allow ingress HTTP traffic from internet to elastic virtualhost."
-    from_port   = 5601
-    to_port     = 5601
+    from_port   = var.elastic_external_port
+    to_port     = var.elastic_external_port
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
     description = "Bastion Host: Allow ingress HTTP traffic from internet to caldera virtualhost."
-    from_port   = 8443
-    to_port     = 8443
+    from_port   = var.caldera_external_port
+    to_port     = var.caldera_external_port
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }

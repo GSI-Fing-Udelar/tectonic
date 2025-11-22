@@ -146,6 +146,12 @@ class TerraformServiceAWS(TerraformService):
         result["configure_dns"] = self.config.configure_dns
         result["teacher_access_type"] = self.config.aws.teacher_access
         result["monitor_type"] = self.description.elastic.monitor_type
+        result["elastic_internal_port"] = self.config.elastic.internal_port
+        result["elastic_external_port"] = self.config.elastic.external_port
+        result["caldera_internal_port"] = self.config.caldera.internal_port
+        result["caldera_external_port"] = self.config.caldera.external_port
+        result["guacamole_internal_port"] = self.config.guacamole.internal_port
+        result["guacamole_external_port"] = self.config.guacamole.external_port
         return result
     
     def _get_network_interface_variables(self, interface):

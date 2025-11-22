@@ -73,12 +73,12 @@
         source: "{{ gateway_ip }}"
         destination_port: 22
         jump: ACCEPT
-    - name: Configure firewall | Allow access to guacamole from server
+    - name: Configure firewall | Allow access to guacamole from bastion_host server
       ansible.builtin.iptables:
         chain: INPUT
         protocol: tcp
-        source: "{{ gateway_ip }}"
-        destination_port: "{{ guacamole.port }}"
+        source: "{{ bastion_host.ip }}"
+        destination_port: "{{ guacamole.internal_port }}"
         jump: ACCEPT
     - name: Configure firewall | Allow related or established connections
       ansible.builtin.iptables:

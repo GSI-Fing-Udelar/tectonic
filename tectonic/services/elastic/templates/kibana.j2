@@ -1,6 +1,6 @@
 # Managed by Ansible
 
-server.port: 5601
+server.port: "{{ elastic.internal_port }}"
 server.host: 0.0.0.0
 server.ssl.enabled: true
 server.ssl.certificate: /etc/kibana/certs/elk.crt

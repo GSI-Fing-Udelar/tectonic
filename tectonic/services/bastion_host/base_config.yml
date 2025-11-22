@@ -33,6 +33,7 @@
         name: 
           - apache2
           - certbot
+          - iptables-persistent
     
     - name: Disable and stop apache service
       ansible.builtin.service:

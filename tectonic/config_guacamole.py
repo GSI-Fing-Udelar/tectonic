@@ -26,6 +26,8 @@ class TectonicConfigGuacamole(object):
     def __init__(self):
         self._version = "1.6.0"
         self._brute_force_protection_enabled = False
+        self._internal_port = 10443
+        self._external_port = 443
 
     #----------- Getters ----------
     @property
@@ -35,6 +37,14 @@ class TectonicConfigGuacamole(object):
     @property
     def brute_force_protection_enabled(self):
         return self._brute_force_protection_enabled
+
+    @property
+    def internal_port(self):
+        return self._internal_port
+    
+    @property
+    def external_port(self):
+        return self._external_port
     
     #----------- Setters ----------
     @version.setter
@@ -50,3 +60,13 @@ class TectonicConfigGuacamole(object):
     def brute_force_protection_enabled(self, value):
         validate.boolean("Guacamole brute force protection enabled", value)
         self._brute_force_protection_enabled = value
+
+    @internal_port.setter
+    def internal_port(self, value):
+        validate.number("Guacamole internal port", value)
+        self._internal_port = value
+
+    @external_port.setter
+    def external_port(self, value):
+        validate.number("Guacamole external port", value)
+        self._external_port = value

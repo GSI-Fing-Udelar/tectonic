@@ -13,7 +13,7 @@
                 pathname="conf/tomcat-users.xml" />
     </GlobalNamingResources>
     <Service name="Catalina">
-    <Connector port="{{ guacamole.port }}" protocol="org.apache.coyote.http11.Http11NioProtocol"
+    <Connector port="{{ guacamole.internal_port }}" protocol="org.apache.coyote.http11.Http11NioProtocol"
                 maxThreads="150" SSLEnabled="true">
         <SSLHostConfig>
             <Certificate certificateKeystoreFile="conf/localhost-rsa.jks" keystorePass="changeit"
@@ -30,13 +30,11 @@
         <Valve className="org.apache.catalina.valves.AccessLogValve" directory="logs"
                 prefix="localhost_access_log" suffix=".txt"
                 pattern="%h %l %u %t &quot;%r&quot; %s %b" />
-{% if platform == "aws" %}
         <Valve className="org.apache.catalina.valves.RemoteIpValve"
                internalProxies="{{ bastion_host.ip | replace('.', '\.') }}"
                remoteIpHeader="x-forwarded-for"
                remoteIpProxiesHeader="x-forwarded-by"
                protocolHeader="x-forwarded-proto" />
-{% endif %}
         </Host>
     </Engine>
     </Service>

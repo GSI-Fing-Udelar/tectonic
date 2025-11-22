@@ -256,7 +256,8 @@ class Ansible:
                 "elastic" : {
                     "enable": self.description.elastic.enable,
                     "ip": self.description.elastic.service_ip,
-                    "port": self.description.elastic.port,
+                    "internal_port": self.config.elastic.internal_port,
+                    "external_port": self.config.elastic.external_port,
                     "description_path": str(self.description.scenario_dir),
                     "monitor_type": self.description.elastic.monitor_type,
                     "deploy_policy": self.description.elastic.deploy_default_policy,
@@ -268,21 +269,22 @@ class Ansible:
                 "caldera":{
                     "enable": self.description.caldera.enable,
                     "ip": self.description.caldera.service_ip,
-                    "port": self.description.caldera.port,
+                    "internal_port": self.config.caldera.internal_port,
+                    "external_port": self.config.caldera.external_port,
                     "description_path": str(self.description.scenario_dir),
                     "ot_enabled": str(self.config.caldera.ot_enabled),
                 },
                 "guacamole":{
                     "enable": self.description.guacamole.enable,
                     "ip": self.description.guacamole.service_ip,
-                    "port": self.description.guacamole.port,
+                    "internal_port": self.config.guacamole.internal_port,
+                    "external_port": self.config.guacamole.external_port,
                     "brute_force_protection_enabled": str(self.config.guacamole.brute_force_protection_enabled),
                     "version": self.config.guacamole.version,
                 },
                 "bastion_host":{
                     "enable": self.description.bastion_host.enable,
                     "ip": self.description.bastion_host.service_ip,
-                    "port": self.description.bastion_host.port,
                     "services_enable": self.description.elastic.enable or self.description.caldera.enable or self.description.guacamole.enable,
                     "domain": "tectonic.cyberrange.com",
                 }
