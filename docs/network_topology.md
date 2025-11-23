@@ -66,10 +66,10 @@ copy will have IP `10.0.1.6/25`.
 
 The `internet_network_cidr_block` and `services_network_cidr_block`
 subnets (defined in the ini config file) are special networks used to
-locate services (Elastic and Caldera) and allow them to access the
+locate services (Elastic, Caldera, Guacamole and Bastion Host) and allow them to access the
 internet. These subnets cannot be the same as the subnets used to
 locate scenario instances, and are by default assigned networks in the
-range `10.0.0.0/24`, which is unused by instances.
+range `10.0.0.0/24` which is unused by instances.
 
 
 ### Traffic

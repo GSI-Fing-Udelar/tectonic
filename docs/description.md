@@ -15,6 +15,7 @@ A lab description consists of the following resources:
   configurations, and optional files in the `ansible` directory.
 * Elastic and kibana policies and resources, in the `elastic`
   directory, if using elastic for evaluation.
+* Caldera resources in the `caldera` directory  if using caldera for adversary emulation.
 
 ### Scenario description
 The scenario description is a YAML file with three main sections: 
@@ -276,6 +277,12 @@ elastic_settings:
   deploy_default_policy: yes
 
 caldera_settings:
+  enable: yes
+  memory: 2048
+  vpcu: 2
+  disk: 20
+
+guacamole_settings:
   enable: yes
   memory: 2048
   vpcu: 2
