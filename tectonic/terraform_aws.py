@@ -287,6 +287,7 @@ class TerraformAWS(Terraform):
         result["monitor_type"] = self.description.elastic.monitor_type
         result["packetbeat_vlan_id"] = self.config.aws.packetbeat_vlan_id
         result["monitor"] = self.description.elastic.enable
+        result["guacamole_ip"] = f"{self.description.guacamole.service_ip}/32"
         return result
     
     def _get_guest_variables(self, guest):

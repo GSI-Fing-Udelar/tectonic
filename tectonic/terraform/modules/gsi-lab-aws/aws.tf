@@ -67,11 +67,33 @@ resource "aws_security_group" "teacher_entry_point_sg" {
 
   vpc_id = data.aws_vpc.vpc.id
   ingress {
-    description     = "Allow inbound SSH traffic from teacher access host to lab entry points."
+    description     = "Allow inbound SSH traffic from teacher access host."
     from_port       = 22
     to_port         = 22
     protocol        = "tcp"
     security_groups = [ data.aws_security_group.teacher_access_host_scenario_sg.id ]
+  }
+
+  ingress {
+    description = "Allow inbound SSH traffic from guacamole."
+    from_port   = "22"
+    to_port     = "22"
+    protocol    = "tcp"
+    cidr_blocks = [var.guacamole_ip]
+  }
+  ingress {
+    description = "Allow inbound RDP traffic from guacamole."
+    from_port   = "3389"
+    to_port     = "3389"
+    protocol    = "tcp"
+    cidr_blocks = [var.guacamole_ip]
+  }
+  ingress {
+    description = "Allow inbound VNC traffic from guacamole."
+    from_port   = "5900"
+    to_port     = "5900"
+    protocol    = "tcp"
+    cidr_blocks = [var.guacamole_ip]
   }
 
   tags = {

@@ -124,3 +124,8 @@ variable "packetbeat_vlan_id" {
   type        = string
   default     = "1"
 }
+
+variable "guacamole_ip" {
+  type        = string
+  description = "Guacamole IP."
+}
