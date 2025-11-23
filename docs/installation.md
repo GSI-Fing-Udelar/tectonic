@@ -76,6 +76,34 @@
       ```bash
       sudo usermod -a -G libvirt <current_user>
       ```
+    - Verify that there is a network named `default' of type NAT:
+      ```
+      virsh net-list --all
+      ```
+      If that network does not exist, then create it by applying the following steps:
+        - Create an network.xml file with the network definition containing the following content:
+          ```
+          <network>
+            <name>default</name>
+            <forward mode="nat">
+              <nat>
+                <port start="1024" end="65535"/>
+              </nat>
+            </forward>
+            <bridge name="virbr0" stp="on" delay="0"/>
+            <ip address="192.168.124.1" netmask="255.255.255.0">
+              <dhcp>
+                <range start="192.168.124.2" end="192.168.124.254"/>
+              </dhcp>
+            </ip>
+          </network>
+          ```
+        - Create and start network:
+          ```
+          virsh net-define network.xml
+          virsh net-start default
+          virsh net-autostart default
+          ```
     - Create the `libvirt_storage_pool` volume pool to use in the cyberrange. For example, a dir backed pool named "tectonic":
       ```bash
         sudo mkdir -p <directory>

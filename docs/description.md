@@ -215,6 +215,23 @@ The lab edition is a YAML file with the following options:
   + `student_pubkey_dir`: A directory containing a subdirectory for
     each student, with SSH public keys. Optional, defaults to not
     setting any public key in the users authorized_keys file.
+    For example, if three instances of a scenario are deployed and
+    student_prefix is trainee, then three subdirectories: trainee1, 
+    trainee2, and trianee3 must be created within the student_pubkey_dir directory.
+    Inside each subdirectory, files containing the public keys of the students corresponding
+    to each instance should be placed. In general, this directory should be organized as follows:
+    ```
+    <student_pubkey_dir>/
+            ├── <student_prefix>01/
+            │       ├── key1.pub
+            │       │
+            │       └── keyN.pub
+            │        
+            └─ <student_prefix>NN/
+                    ├── key1.pub
+                    │
+                    └── keyN.pub
+    ```
   + `create_students_passwords`: Whether to create a pseudo-random
     password for the students. These passwords are printed on
     deployment and student-access execution. Optional, defaults to
