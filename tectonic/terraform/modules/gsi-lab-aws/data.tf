@@ -79,3 +79,9 @@ data "aws_security_group" "bastion_host_scenario_sg" {
     Name = "${var.institution}-${var.lab_name}-bastion_host"
   }
 }
+
+data "aws_security_group" "teacher_access_host_scenario_sg" {
+  tags = {
+    Name = "${var.institution}-${var.lab_name}-teacher_access_host"
+  }
+}

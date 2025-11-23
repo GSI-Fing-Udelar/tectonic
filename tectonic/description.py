@@ -670,10 +670,9 @@ class ServiceDescription(MachineDescription):
     @property
     def service_ip(self):
         for _, interface in self.interfaces.items():
-            if self._description.config.platform == "aws":
-                if self.base_name == "bastion_host":
-                    if interface.network.base_name == "internet":
-                        return interface.private_ip
+            if self._description.config.platform == "aws" and self.base_name == "bastion_host":
+                if interface.network.base_name == "internet":
+                    return interface.private_ip
             else:
                 if interface.network.base_name == "services":
                     return interface.private_ip
@@ -772,6 +771,13 @@ class BastionHostDescription(ServiceDescription):
                 "endpoint"
             )
 
+class TeacherAccessHostDescription(ServiceDescription):
+    def __init__(self, description):
+        super().__init__(description, "teacher_access_host", "ubuntu22", True)
+        self.memory = 512
+        self.vcpu = 1
+        self.disk = 10
+
 class Description:
 
     def __init__(self, config, lab_edition_path):
@@ -828,6 +834,7 @@ class Description:
         self._guacamole = GuacamoleDescription(self)
         self.guacamole.load_service(description_data.get("guacamole_settings", {}))
         self._bastion_host = BastionHostDescription(self)
+        self._teacher_access_host = TeacherAccessHostDescription(self)
 
         # Load lab edition data
         self._required(lab_edition_data, "instance_number")
@@ -863,8 +870,7 @@ class Description:
         self.caldera.enable = enable_caldera
 
         # Bastion Host
-        self.bastion_host.enable = self.config.platform == "aws" and (
-            self.config.aws.teacher_access == "host" or 
+        self.bastion_host.enable = self.config.platform == "aws" and ( 
             self.create_students_passwords or
             self.student_pubkey_dir != None 
         ) or (
@@ -872,6 +878,9 @@ class Description:
             self.caldera.enable or
             self.guacamole.enable
         )
+
+        # Teacher Access Host
+        self.teacher_access_host.enable = self.config.platform == "aws" and self.config.aws.teacher_access == "host"
 
         # Load base guests and topology
         self._required(description_data, "guest_settings")
@@ -908,6 +917,7 @@ class Description:
         self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
         self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole"]
         if self.config.platform == "aws":
+            self._auxiliary_networks[services_network_name].members.append("teacher_access_host")
             if self.elastic.monitor_type == "traffic":
                 self._auxiliary_networks[services_network_name].members.append("packetbeat")
         else:
@@ -925,6 +935,7 @@ class Description:
         self.caldera.load_interfaces(self._auxiliary_networks)
         self.guacamole.load_interfaces(self.auxiliary_networks)
         self.bastion_host.load_interfaces(self.auxiliary_networks)
+        self.teacher_access_host.load_interfaces(self.auxiliary_networks)
 
     def parse_machines(self, instances=[], guests=[], copies=[], only_instances=True, exclude=[]):
         """
@@ -1186,6 +1197,8 @@ class Description:
             services[self.caldera.name] = self.caldera
         if self.guacamole.enable:
             services[self.guacamole.name] = self.guacamole
+        if self.teacher_access_host.enable:
+            services[self.teacher_access_host.name] = self.teacher_access_host
         return services
 
     @property
@@ -1207,6 +1220,10 @@ class Description:
     @property
     def bastion_host(self):
         return self._bastion_host
+    
+    @property
+    def teacher_access_host(self):
+        return self._teacher_access_host
 
     @property
     def auxiliary_networks(self):

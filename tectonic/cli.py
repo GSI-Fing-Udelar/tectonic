@@ -392,7 +392,7 @@ def tectonic(
     "--bastion_host_image/--no-bastion_host_image",
     default=False,
     show_default=True,
-    help="Whether to create the base image for Guacamole.",
+    help="Whether to create the base image for Bastion host.",
 )
 @click.option(
     "--force",

@@ -114,13 +114,6 @@ resource "aws_security_group" "caldera_scenario_sg" {
     protocol          = "tcp"
     cidr_blocks       = [var.internet_network_cidr_block]
   }
-  ingress {
-    description       = "Caldera: Allow traffic from bastion host."
-    from_port         = 22
-    to_port           = 22
-    protocol          = "tcp"
-    cidr_blocks       = [var.internet_network_cidr_block]
-  }
   egress {
     description = "Allow outbound traffic to all scenario instances."
     from_port   = 0
@@ -157,13 +150,6 @@ resource "aws_security_group" "elastic_endpoint_scenario_sg" {
     protocol          = "tcp"
     cidr_blocks       = [var.internet_network_cidr_block]
   }
-  ingress {
-    description       = "Elastic: Allow traffic from bastion host."
-    from_port         = 22
-    to_port           = 22
-    protocol          = "tcp"
-    cidr_blocks       = [var.internet_network_cidr_block]
-  }
   tags = {
     Name = format("%s-%s-elastic_endpoint", var.institution, var.lab_name)
   }
@@ -175,7 +161,7 @@ resource "aws_security_group" "elastic_traffic_scenario_sg" {
   ingress {
     description       = "Elastic: Allow traffic from bastion host."
     from_port         = var.elastic_internal_port
-    to_port           = 56var.elastic_internal_port01
+    to_port           = var.elastic_internal_port
     protocol          = "tcp"
     cidr_blocks       = [var.internet_network_cidr_block]
   }
@@ -201,13 +187,6 @@ resource "aws_security_group" "packetbeat_scenario_sg" {
     protocol    = "udp"
     cidr_blocks = [var.network_cidr_block]
   }
-  ingress {
-    description       = "Packetbeat: Allow traffic from bastion host."
-    from_port         = 22
-    to_port           = 22
-    protocol          = "tcp"
-    cidr_blocks       = [var.internet_network_cidr_block]
-  }
   egress {
     description = "Allow all outbound traffic to all scenario instances."
     from_port   = 0
@@ -227,13 +206,6 @@ resource "aws_security_group" "guacamole_scenario_sg" {
     description       = "Guacamole: Allow traffic from bastion host"
     from_port         = var.guacamole_internal_port
     to_port           = var.guacamole_internal_port
-    protocol          = "tcp"
-    cidr_blocks       = [var.internet_network_cidr_block]
-  }
-  ingress {
-    description       = "Guacamole: Allow traffic from bastion host."
-    from_port         = 22
-    to_port           = 22
     protocol          = "tcp"
     cidr_blocks       = [var.internet_network_cidr_block]
   }
@@ -313,6 +285,28 @@ resource "aws_security_group" "bastion_host_scenario_sg" {
   }
 }
 
+resource "aws_security_group" "teacher_access_host_scenario_sg" {
+  description = "[Service] Allow traffic for Teacher Access Host."
+  vpc_id   = module.vpc.vpc_id
+  ingress {
+    description = "Teacher Access Host: Allow ingress SSH traffic bastion host."
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.internet_network_cidr_block]
+  }
+  egress {
+    description = "Teacher Access Host: Allow SSH outbound traffic to all scenario instances."
+    from_port   = "22"
+    to_port     = "22"
+    protocol    = "tcp"
+    cidr_blocks = [var.network_cidr_block]
+  }
+  tags = {
+    Name = format("%s-%s-teacher_access_host", var.institution, var.lab_name)
+  }
+}
+
 resource "aws_network_interface" "interfaces" {
   for_each    = local.network_interfaces
   subnet_id   = local.guest_data[each.value.guest_name].base_name == "bastion_host" ? module.vpc.public_subnets[0] : module.vpc.private_subnets[0]
@@ -325,6 +319,7 @@ resource "aws_network_interface" "interfaces" {
     local.guest_data[each.value.guest_name].base_name == "packetbeat" ? [aws_security_group.packetbeat_scenario_sg.id ] : [],
     local.guest_data[each.value.guest_name].base_name == "guacamole" ? [aws_security_group.guacamole_scenario_sg.id] : [],
     local.guest_data[each.value.guest_name].base_name == "bastion_host" ? [aws_security_group.bastion_host_scenario_sg.id] : [],
+    local.guest_data[each.value.guest_name].base_name == "teacher_access_host" ? [aws_security_group.teacher_access_host_scenario_sg.id] : [],
   )
   tags = {
     Name = each.key
@@ -333,7 +328,7 @@ resource "aws_network_interface" "interfaces" {
 
 resource "aws_instance" "machines" {
   for_each = local.guest_data
-  ami = data.aws_ami.base_images[each.value.base_name].id
+  ami = each.value.base_name == "teacher_access_host" ? data.aws_ami.teacher_access_host.id : data.aws_ami.base_images[each.value.base_name].id
   instance_type = each.value.instance_type
   key_name = aws_key_pair.pub_key.key_name
   dynamic "network_interface" {

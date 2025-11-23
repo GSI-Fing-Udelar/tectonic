@@ -30,6 +30,25 @@ data "aws_ami" "base_images" {
   }
 }
 
+data "aws_ami" "teacher_access_host" {
+  most_recent = true
+  owners      = [local.os_data[var.default_os]["owner"]]
+
+  filter {
+    name = "name"
+    values = [local.os_data[var.default_os]["ami_filter"]]
+  }
+
+  filter {
+    name   = "root-device-type"
+    values = ["ebs"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
 data "aws_availability_zones" "available" {
   state = "available"
 }

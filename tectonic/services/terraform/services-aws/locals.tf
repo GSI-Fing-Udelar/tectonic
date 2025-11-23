@@ -24,7 +24,7 @@ locals {
 
   os_data = jsondecode(var.os_data_json)
 
-  guest_basenames = distinct([for g in local.guest_data : g.base_name])
+  guest_basenames = distinct([for g in local.guest_data : g.base_name if g.base_name != "teacher_access_host"])
 
   network_interfaces = { for interface in flatten(
     [for g in local.guest_data :

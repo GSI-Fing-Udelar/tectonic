@@ -266,11 +266,13 @@ class Core:
             elif self.config.platform == "docker":
                 bastion_host_ip = "127.0.0.1"
             else:
-                bastion_host_ip = self.client.get_machine_private_ip(self.description.bastion_host.name)
+                bastion_host_ip = self.description.bastion_host.service_ip
+        if self.description.teacher_access_host.enable:
+            instances_info["Teacher Access Host IP"] = self.description.teacher_access_host.service_ip
 
         service_info = {}
         for _, service in self.description.services_guests.items():
-            if service.base_name not in ["packetbeat", "bastion_host"]:
+            if service.base_name not in ["packetbeat", "bastion_host", "teacher_access_host"]:
                 service_port = self.description.bastion_host.ports[service.base_name]["external_port"]
                 service_info[service.base_name] = {
                     "URL": f"https://{bastion_host_ip}:{service_port}",

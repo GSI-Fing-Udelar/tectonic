@@ -31,8 +31,8 @@ resource "aws_subnet" "instance_subnets" {
   }
 }
 
-resource "aws_security_group" "entry_point_sg" {
-  description = "[Entry Point Machines] Allow inbound traffic from bastion host to lab entry points."
+resource "aws_security_group" "student_entry_point_sg" {
+  description = "[Sudent Access] Allow inbound traffic from bastion host to lab entry points for student access."
 
   vpc_id = data.aws_vpc.vpc.id
   ingress {
@@ -58,7 +58,24 @@ resource "aws_security_group" "entry_point_sg" {
   }
 
   tags = {
-    Name = format("%s-%s-entry_point", var.institution, var.lab_name)
+    Name = format("%s-%s-student_entry_point", var.institution, var.lab_name)
+  }
+}
+
+resource "aws_security_group" "teacher_entry_point_sg" {
+  description = "[Teacher Access] Allow inbound traffic from teacher access host."
+
+  vpc_id = data.aws_vpc.vpc.id
+  ingress {
+    description     = "Allow inbound SSH traffic from teacher access host to lab entry points."
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [ data.aws_security_group.teacher_access_host_scenario_sg.id ]
+  }
+
+  tags = {
+    Name = format("%s-%s-teacher_entry_point", var.institution, var.lab_name)
   }
 }
 
@@ -180,8 +197,8 @@ resource "aws_network_interface" "interfaces" {
 
   source_dest_check = false
 
-  security_groups = concat([aws_security_group.subnet_sg[each.value.subnetwork_name].id, aws_security_group.entry_point_sg.id],
-    local.guest_data[each.value.guest_name].entry_point ? [aws_security_group.entry_point_sg.id] : [],
+  security_groups = concat([aws_security_group.subnet_sg[each.value.subnetwork_name].id, aws_security_group.teacher_entry_point_sg.id],
+    local.guest_data[each.value.guest_name].entry_point ? [aws_security_group.student_entry_point_sg.id] : [],
     local.guest_data[each.value.guest_name].internet_access ? [aws_security_group.internet_access_sg[0].id] : [],
     local.guest_data[each.value.guest_name].is_in_services_network ? [aws_security_group.services_subnet_sg.id] : [],
   )
