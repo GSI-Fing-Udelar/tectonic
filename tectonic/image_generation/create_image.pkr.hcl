@@ -289,7 +289,7 @@ build {
 
 
   provisioner "ansible" {
-    playbook_file = "${abspath(path.root)}/libvirt_conf.yml"
+    playbook_file = "${abspath(path.root)}/initial_configuration.yml"
     
     use_sftp = var.platform == "docker"
     use_proxy = var.platform == "docker"
@@ -301,6 +301,7 @@ build {
       var.proxy != null ? ["--extra-vars", "proxy=${var.proxy} platform=${var.platform}"] : ["--extra-vars", "platform=${var.platform}"],
       var.ansible_scp_extra_args != "" ? ["--scp-extra-args", "${var.ansible_scp_extra_args}"] : [],
       ["--extra-vars", "ansible_no_target_syslog=${var.remove_ansible_logs}"],
+      ["--extra-vars", "gui=${local.machines[source.name]["gui"]}"]
     )
     ansible_ssh_extra_args = [var.ansible_ssh_common_args]
     

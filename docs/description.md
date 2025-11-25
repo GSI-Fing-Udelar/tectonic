@@ -38,6 +38,7 @@ The scenario description is a YAML file with three main sections:
   + `gpu`: Whether the machine has a CPU. Only supported in AWS for
     now (this is costly, a `g4dn.xlarge` instance is used). Default:
     `no`.
+  + `gui`: Whether to install GUI on the machine to allow access via graphical interface (RDP/VNC) if using Guacamole. Default: `no`.
   + `base_os`: The operating system of the guest. Must be one of
     `ubuntu22`, `rocky8`, `rocky9`, `kali` or `windows_srv_2022`. Default is
     taken from the global `default_os` description attribute mentioned
@@ -95,6 +96,8 @@ guest_settings:
     memory: 1024
     vcpu: 1
     disk: 10
+    gpu: no
+    gui: no
     base_os: ubuntu22
     internet_access: no
     copies: 1
@@ -107,6 +110,8 @@ guest_settings:
     memory: 1024
     vcpu: 1
     disk: 10
+    gpu: no
+    gui: no
     base_os: ubuntu22
     internet_access: no
     copies: 1

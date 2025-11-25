@@ -184,6 +184,7 @@ class MachineDescription:
         self.vcpu = 1
         self.disk = 10
         self.gpu = False
+        self.gui = False
 
     #----------- Getters ----------
     @property
@@ -233,13 +234,23 @@ class MachineDescription:
                                                                        self.gpu,
                                                                        self.monitor,
                                                                        self._description.elastic.monitor_type)
+
+    @property
+    def access_protocols(self):
+        print(self.gui)
+        if self.gui:
+            return {
+                "ssh":{"port":22},
+                "rdp":{"port":3389,"ftp_port":22}
+            }
+        else:
+            return {
+                "ssh":{"port":22}
+            }
     
     @property
-    def access_protocols(self): #TODO: Maybe this should be specific in the scenario description.
-        if self.os in ["ubuntu22", "kali", "rocky8", "rocky9"]:
-            return {"ssh":{"port":22}, "rdp":{"port":3389,"ftp_port":22}}
-        elif self.os in ["windows_srv_2022"]:
-            return {"ssh":{"port":22}, "rdp":{"port":3389,"ftp_port":22}}
+    def gui(self):
+        return self._gui
 
     #----------- Setters ----------
     @institution.setter
@@ -282,6 +293,11 @@ class MachineDescription:
         validate.number("disk", value, min_value=5)
         self._disk = value
 
+    @gui.setter
+    def gui(self, value):
+        validate.boolean("gui", value)
+        self._gui = value
+
     def load_machine(self, data):
         """Loads the information from the yaml structure in data."""
         if not data:
@@ -290,6 +306,7 @@ class MachineDescription:
         self.vcpu = data.get("vcpu", self.vcpu)
         self.disk = data.get("disk", self.disk)
         self.gpu = data.get("gpu", self.gpu)
+        self.gui = data.get("gui", self.gui)
 
     def toJSON(self):
         "{}"
@@ -380,7 +397,8 @@ class BaseGuestDescription(MachineDescription):
         result["instance_type"] = self.instance_type
         result["vcpu"] = self.vcpu
         result["memory"] = self.memory
-        result["disk"] = self.disk        
+        result["disk"] = self.disk
+        result["gui"] = self.gui       
         return result
 
 class NetworkInterface():
@@ -505,6 +523,8 @@ class GuestDescription(BaseGuestDescription):
         self.services_network_index = 0
         self.advanced_options_file = None
 
+        self.gui = base_guest.gui
+
     @property
     def name(self):
         copy_suffix = ("-" + str(self.copy)) if self.copies > 1 else ""
@@ -598,6 +618,7 @@ class GuestDescription(BaseGuestDescription):
         result["base_os"] = self.os
         result["is_in_services_network"] = self.is_in_services_network
         result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
+        result["gui"] = self.gui
         return result
 
 class ServiceDescription(MachineDescription):

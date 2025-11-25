@@ -283,7 +283,7 @@ build {
   }
 
   provisioner "ansible" {
-    playbook_file = "${abspath(path.root)}/../../image_generation/libvirt_conf.yml"
+    playbook_file = "${abspath(path.root)}/../../image_generation/initial_configuration.yml"
 
     use_sftp = var.platform == "docker"
     use_proxy = var.platform == "docker"
