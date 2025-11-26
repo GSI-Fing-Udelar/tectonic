@@ -74,4 +74,8 @@
       ]
     }
   ]
+  "ignorePaths": [
+    "tectonic/terraform/modules/gsi-lab-libvirt/versions.tf",
+    "tectonic/services/terraform/services-libvirt/versions.tf",
+  ]
 }
