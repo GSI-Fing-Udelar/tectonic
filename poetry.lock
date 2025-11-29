@@ -53,6 +53,27 @@ python-daemon = "*"
 pyyaml = "*"
 
 [[package]]
+name = "anyio"
+version = "4.11.0"
+description = "High-level concurrency and networking framework on top of asyncio or Trio"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "anyio-4.11.0-py3-none-any.whl", hash = "sha256:0287e96f4d26d4149305414d4e3bc32f0dcd0862365a4bddea19d7a1ec38c4fc"},
+    {file = "anyio-4.11.0.tar.gz", hash = "sha256:82a8d0b81e318cc5ce71a5f1f8b5c4e63619620b63141ef8c995fa0db95a57c4"},
+]
+
+[package.dependencies]
+exceptiongroup = {version = ">=1.0.2", markers = "python_version < \"3.11\""}
+idna = ">=2.8"
+sniffio = ">=1.1"
+typing_extensions = {version = ">=4.5", markers = "python_version < \"3.13\""}
+
+[package.extras]
+trio = ["trio (>=0.31.0)"]
+
+[[package]]
 name = "astroid"
 version = "3.3.11"
 description = "An abstract syntax tree for Python with inference support."
@@ -216,18 +237,18 @@ uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "boto3"
-version = "1.40.55"
+version = "1.40.65"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "boto3-1.40.55-py3-none-any.whl", hash = "sha256:2e30f5a0d49e107b8a5c0c487891afd300bfa410e1d918bf187ae45ac3839332"},
-    {file = "boto3-1.40.55.tar.gz", hash = "sha256:27e35b4fa9edd414ce06c1a748bf57cacd8203271847d93fc1053e4a4ec6e1a9"},
+    {file = "boto3-1.40.65-py3-none-any.whl", hash = "sha256:ab91d8d8ef0477997d35abebf67829e52e50bf807b02333affa384c70b33c86b"},
+    {file = "boto3-1.40.65.tar.gz", hash = "sha256:52e2715838d65e6b000e0077a942ce2d3e1a38f9764414ad01a602912eccf924"},
 ]
 
 [package.dependencies]
-botocore = ">=1.40.55,<1.41.0"
+botocore = ">=1.40.65,<1.41.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.14.0,<0.15.0"
 
@@ -236,14 +257,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.40.55"
+version = "1.40.65"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "botocore-1.40.55-py3-none-any.whl", hash = "sha256:cdc38f7a4ddb30a2cd1cdd4fabde2a5a16e41b5a642292e1c30de5c4e46f5d44"},
-    {file = "botocore-1.40.55.tar.gz", hash = "sha256:79b6472e2de92b3519d44fc1eec8c5feced7f99a0d10fdea6dc93133426057c1"},
+    {file = "botocore-1.40.65-py3-none-any.whl", hash = "sha256:152f595321f5a2b712601286650e912c2e5ca3b109892ab4c0175ac58d8de10d"},
+    {file = "botocore-1.40.65.tar.gz", hash = "sha256:cdbbf9d90a9e9c4a6000055013d98b92efc4ceb1bce0d9bcd70e14461dc22ab3"},
 ]
 
 [package.dependencies]
@@ -723,18 +744,18 @@ files = [
 
 [[package]]
 name = "deprecated"
-version = "1.2.18"
+version = "1.3.1"
 description = "Python @deprecated decorator to deprecate old python classes, functions or methods."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
 groups = ["main", "dev"]
 files = [
-    {file = "Deprecated-1.2.18-py2.py3-none-any.whl", hash = "sha256:bd5011788200372a32418f888e326a09ff80d0214bd961147cfed01b5c018eec"},
-    {file = "deprecated-1.2.18.tar.gz", hash = "sha256:422b6f6d859da6f2ef57857761bfb392480502a64c3028ca9bbe86085d72115d"},
+    {file = "deprecated-1.3.1-py2.py3-none-any.whl", hash = "sha256:597bfef186b6f60181535a29fbe44865ce137a5079f295b479886c82729d5f3f"},
+    {file = "deprecated-1.3.1.tar.gz", hash = "sha256:b1b50e0ff0c1fddaa5708a2c6b0a6588bb09b892825ab2b214ac9ea9d92a5223"},
 ]
 
 [package.dependencies]
-wrapt = ">=1.10,<2"
+wrapt = ">=1.10,<3"
 
 [package.extras]
 dev = ["PyTest", "PyTest-Cov", "bump2version (<1)", "setuptools ; python_version >= \"3.12\"", "tox"]
@@ -799,43 +820,46 @@ gmpy2 = ["gmpy2"]
 
 [[package]]
 name = "elastic-transport"
-version = "9.1.0"
+version = "9.2.0"
 description = "Transport classes and utilities shared among Python Elastic client libraries"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "elastic_transport-9.1.0-py3-none-any.whl", hash = "sha256:369fa56874c74daae4ea10cbf40636d139f38f42bec0e006b9cd45a168ee7fce"},
-    {file = "elastic_transport-9.1.0.tar.gz", hash = "sha256:1590e44a25b0fe208107d5e8d7dea15c070525f3ac9baafbe4cb659cd14f073d"},
+    {file = "elastic_transport-9.2.0-py3-none-any.whl", hash = "sha256:f52b961e58e6b76d488993286907f61a6ddccbdae8e0135ce8d369227b6282d8"},
+    {file = "elastic_transport-9.2.0.tar.gz", hash = "sha256:0331466ca8febdb7d168c0fbf159294b0066492733b51da94f4dd28a0ee596cd"},
 ]
 
 [package.dependencies]
 certifi = "*"
+sniffio = "*"
 urllib3 = ">=1.26.2,<3"
 
 [package.extras]
-develop = ["aiohttp", "furo", "httpx", "opentelemetry-api", "opentelemetry-sdk", "orjson", "pytest", "pytest-asyncio", "pytest-cov", "pytest-httpbin", "pytest-httpserver", "pytest-mock", "requests", "respx", "sphinx (>2)", "sphinx-autodoc-typehints", "trustme"]
+develop = ["aiohttp", "anyio", "furo", "httpx", "opentelemetry-api", "opentelemetry-sdk", "orjson", "pytest", "pytest-asyncio", "pytest-cov", "pytest-httpbin", "pytest-httpserver", "pytest-mock", "requests", "respx", "sphinx (>2)", "sphinx-autodoc-typehints", "trio", "trustme"]
 
 [[package]]
 name = "elasticsearch"
-version = "9.1.1"
+version = "9.2.0"
 description = "Python client for Elasticsearch"
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "elasticsearch-9.1.1-py3-none-any.whl", hash = "sha256:2a5c27c57ca3dd3365f665c82c9dcd8666ccfb550d5b07c688c21ec636c104e5"},
-    {file = "elasticsearch-9.1.1.tar.gz", hash = "sha256:be20acda2a97591a9a6cf4981fc398ee6fca3291cf9e7a9e52b6a9f41a46d393"},
+    {file = "elasticsearch-9.2.0-py3-none-any.whl", hash = "sha256:87090fe98c515ec0fce82f633fe11d7e90e04d93581b6b3e05de29efe4cc8b74"},
+    {file = "elasticsearch-9.2.0.tar.gz", hash = "sha256:99656baa34b10130402b6c38429feddf7aee1c3247566e8f95f0d0267fe9f9ab"},
 ]
 
 [package.dependencies]
-elastic-transport = ">=9.1.0,<10"
+anyio = "*"
+elastic-transport = ">=9.2.0,<10"
 python-dateutil = "*"
+sniffio = "*"
 typing-extensions = "*"
 
 [package.extras]
 async = ["aiohttp (>=3,<4)"]
-dev = ["aiohttp", "black", "build", "coverage", "isort", "jinja2", "mapbox-vector-tile", "mypy", "nox", "numpy", "orjson", "pandas", "pyarrow", "pyright", "pytest", "pytest-asyncio", "pytest-cov", "pytest-mock", "python-dateutil", "pyyaml (>=5.4)", "requests (>=2,<3)", "simsimd", "tqdm", "twine", "types-python-dateutil", "types-tqdm", "unasync"]
+dev = ["aiohttp", "black", "build", "coverage", "httpx", "isort", "jinja2", "mapbox-vector-tile", "mypy", "nox", "numpy", "orjson", "pandas", "pyarrow ; python_version < \"3.14\"", "pydantic", "pyright", "pytest", "pytest-asyncio", "pytest-cov", "pytest-mock", "python-dateutil", "pyyaml (>=5.4)", "requests (>=2,<3)", "simsimd", "tqdm", "trio", "twine", "types-python-dateutil", "types-tqdm", "unasync"]
 docs = ["sphinx", "sphinx-autodoc-typehints", "sphinx-rtd-theme (>=2.0)"]
 orjson = ["orjson (>=3)"]
 pyarrow = ["pyarrow (>=1)"]
@@ -848,7 +872,7 @@ version = "1.3.0"
 description = "Backport of PEP 654 (exception groups)"
 optional = false
 python-versions = ">=3.7"
-groups = ["dev"]
+groups = ["main", "dev"]
 markers = "python_version == \"3.10\""
 files = [
     {file = "exceptiongroup-1.3.0-py3-none-any.whl", hash = "sha256:4d111e6e0c13d0644cad6ddaa7ed0261a0b36971f6d23e7ec9b4b9097da78a10"},
@@ -1797,6 +1821,18 @@ groups = ["main", "dev"]
 files = [
     {file = "six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"},
     {file = "six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81"},
+]
+
+[[package]]
+name = "sniffio"
+version = "1.3.1"
+description = "Sniff out which async library your code is running under"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2"},
+    {file = "sniffio-1.3.1.tar.gz", hash = "sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc"},
 ]
 
 [[package]]
