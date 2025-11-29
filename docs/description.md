@@ -190,6 +190,10 @@ to a group of machines. For example, this play will apply to all
     ...
 ```
 
+Optionally, the user can provide a set of parameters to be used in the playbooks. For example, these parameters can be flags to be uniquely configured for each instance. To do this, a `ansible/parameters` directory must be created and files with the .ndjson extension should be placed there, where each line of the file must be a JSON object containing the parameters.
+
+See [ansible](./ansible.md) for more information.
+
 ### Elastic Security artifacts
 
 Elastic Security configuration is done based on artifacts that are automatically imported into the Elasticsearch, Kibana and Fleet components. As part of the scenario specification, these artifacts must be provided. See [Elastic](./elastic.md) for more information.

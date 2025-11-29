@@ -102,6 +102,9 @@ main `config` section and special sections for different platforms
 * `enable_brute_force_protection`: Whether Guacamole's brute force protection should be enabled. See [Guacamole brute force protection](https://guacamole.apache.org/doc/1.6.0/gug/auth-ban.html#securing-guacamole-against-brute-force-attacks). Default: `no`.
 * `external_port`: port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `10443`.
 
+## [bastion_host] section
+* `domain`:Domain name used.
+
 
 You can find an example configuration file with the default values
 [here](./tectonic/tectonic.ini).

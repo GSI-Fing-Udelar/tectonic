@@ -422,17 +422,11 @@ class Core:
             copies=None,
             playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
             only_instances=only_instances,
-            extra_vars={"users": users,
-                        "prefix": self.description.student_prefix,
-                        "ssh_password_login": self.description.create_students_passwords or self.description.guacamole.enable},
             quiet=True,
         )
 
         if self.description.guacamole.enable:
-            guacamole_password = ""
-            for _, service in self.description.services_guests.items():
-                if service.base_name == "guacamole":
-                    guacamole_password = self.terraform_service.get_service_credentials(service, self.ansible)['trainer']
+            guacamole_password = self.terraform_service.get_service_credentials(self.description.guacamole, self.ansible)['trainer']
             trainer_credentials = self.description.generate_trainer_access_credentials(guacamole_password)
             self.ansible.run(
                 instances=instances,
@@ -440,7 +434,9 @@ class Core:
                 copies=None,
                 playbook=self.ANSIBLE_TRAINER_PLAYBOOK,
                 only_instances=True,
-                extra_vars=trainer_credentials,
+                extra_vars={
+                    "trainer": trainer_credentials,   
+                },
                 quiet=True,
             )
 
@@ -460,9 +456,7 @@ class Core:
                 playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
                 only_instances=False,
                 extra_vars={
-                    "users": users,
-                    "prefix": self.description.student_prefix,
-                    "machines": machines_data, 
+                    "instances": machines_data, 
                     "trainer": trainer_credentials,   
                 },
                 quiet=True

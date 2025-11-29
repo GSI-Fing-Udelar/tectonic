@@ -43,13 +43,16 @@
         password: "{{ item.value.password_hash | default(omit) }}"
         shell: "/usr/sbin/nologin"
       loop: "{{ users | dict2items }}"
+      when: config.platform == "aws"
 
     - name: "Populate authorized_keys"
       ansible.posix.authorized_key:
         user: "{{ item.key }}"
         key: "{{ item.value.authorized_keys }}"
       loop: "{{ users | dict2items }}"
-      when: item.value.authorized_keys is defined
+      when: 
+        - item.value.authorized_keys is defined
+        - config.platform == aws
 
     - name: "Enable SSH login with password"
       block:
@@ -74,6 +77,7 @@
           when: sshd_conf.changed
       when: 
         - ssh_password_login
+        - config.platform == "aws"
     
     - name: "Disable SSH login with password"
       block:
@@ -99,13 +103,14 @@
       when: 
         - not ssh_password_login
         - ansible_facts['os_family'] != "Windows"
+        - config.platform == "aws"
 
 - name: "Create student users on the rest of the machines."
   hosts: all:!bastion_host:!guacamole
   gather_facts: true
   vars:
-    digit_count: "{{ instances | string | length }}"
-    username: "{{ '%s%0{}d'.format(digit_count) | format(prefix, instance) }}"
+    digit_count: "{{ instances_number | string | length }}"
+    username: "{{ '%s%0{}d'.format(digit_count) | format(student_prefix, instance['instance_number'] ) }}"
 
   tasks:
     - name: "Create the trainee user (optionally with password)"
@@ -197,10 +202,7 @@
 
 - name: Create student users on guacamole
   hosts: guacamole
-  gather_facts: true
-  vars:
-    digit_count: "{{ instances | string | length }}"
-    username: "{{ '%s%0{}d'.format(digit_count) | format(prefix, instance) }}"
+  gather_facts: false
   
   tasks:
     - name: Create user mapping

@@ -237,7 +237,6 @@ class MachineDescription:
 
     @property
     def access_protocols(self):
-        print(self.gui)
         if self.gui:
             return {
                 "ssh":{"port":22},
@@ -307,9 +306,6 @@ class MachineDescription:
         self.disk = data.get("disk", self.disk)
         self.gpu = data.get("gpu", self.gpu)
         self.gui = data.get("gui", self.gui)
-
-    def toJSON(self):
-        "{}"
 
 class BaseGuestDescription(MachineDescription):
     def __init__(self, description, base_name):
@@ -608,17 +604,14 @@ class GuestDescription(BaseGuestDescription):
 
     def to_dict(self):
         """Convert a GuestDescription object to the dictionary expected by packer."""
-        result = {}
+        result = super().to_dict()
         result["base_name"] = self.base_name
         result["name"] = self.name
-        result["vcpu"] = self.vcpu
-        result["memory"] = self.memory
-        result["disk"] = self.disk
+        result["instance_number"] = self.instance
+        result["copy"] = self.copy
         result["hostname"] = self.hostname
-        result["base_os"] = self.os
         result["is_in_services_network"] = self.is_in_services_network
         result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
-        result["gui"] = self.gui
         return result
 
 class ServiceDescription(MachineDescription):
@@ -633,7 +626,6 @@ class ServiceDescription(MachineDescription):
         self.is_in_services_network = False
         self.entry_point = False
         self.internet_access = internet_access
-        self.ports = {}
 
     @property
     def base_name(self):
@@ -697,14 +689,20 @@ class ServiceDescription(MachineDescription):
             else:
                 if interface.network.base_name == "services":
                     return interface.private_ip
-                
-    @property
-    def ports(self):
-        return self._ports
-    
-    @ports.setter
-    def ports(self, value):
-        self._ports = value
+
+    def to_dict(self):
+        """Convert a ServiceDescription object to the dictionary expected by packer."""
+        result = {}
+        result["enable"] = self.enable
+        result["base_name"] = self.base_name
+        result["name"] = self.name
+        result["vcpu"] = self.vcpu
+        result["memory"] = self.memory
+        result["disk"] = self.disk
+        result["base_os"] = self.os
+        result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
+        result["ip"] = self.service_ip
+        return result
 
 class ElasticDescription(ServiceDescription):
     supported_monitor_types = ["traffic", "endpoint"]
@@ -740,6 +738,12 @@ class ElasticDescription(ServiceDescription):
         super().load_service(data)
         self.monitor_type = data.get("monitor_type", self.monitor_type)
         self.deploy_default_policy = data.get("deploy_default_policy", self.deploy_default_policy)
+
+    def to_dict(self):
+        result = super().to_dict()
+        result["monitor_type"] = self.monitor_type
+        result["deploy_default_policy"] = self.deploy_default_policy
+        return result | self._description.config.elastic.to_dict()
         
 class CalderaDescription(ServiceDescription):
     def __init__(self, description):
@@ -751,6 +755,10 @@ class CalderaDescription(ServiceDescription):
     def load_service(self, data):
         """Loads the information from the yaml structure in data."""
         super().load_service(data)
+
+    def to_dict(self):
+        result = super().to_dict()
+        return result | self._description.config.caldera.to_dict()
 
 class PacketbeatDescription(ServiceDescription):
     def __init__(self, description):
@@ -769,6 +777,10 @@ class GuacamoleDescription(ServiceDescription):
     def load_service(self, data):
         """Loads the information from the yaml structure in data."""
         super().load_service(data)
+
+    def to_dict(self):
+        result = super().to_dict()
+        return result | self._description.config.guacamole.to_dict()
 
 class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
@@ -791,6 +803,31 @@ class BastionHostDescription(ServiceDescription):
                 False,
                 "endpoint"
             )
+    
+    @property
+    def ports(self):
+        return self._ports
+    
+    @ports.setter
+    def ports(self, value):
+        self._ports = value
+
+    @property
+    def domain(self):
+        if self._description.config.platform == "aws":
+            return self._description.config.aws.access_host_instance_type
+        else:
+            self._description.instance_type.get_guest_instance_type(
+                self.memory,
+                self.vcpu,
+                0,
+                False,
+                "endpoint"
+            )
+
+    def to_dict(self):
+        result = super().to_dict()
+        return result | self._description.config.bastion_host.to_dict()
 
 class TeacherAccessHostDescription(ServiceDescription):
     def __init__(self, description):
@@ -1392,3 +1429,29 @@ class Description:
             password = "".join(random.choice(characters) for _ in range(12))
         salt = "".join(random.choice(characters) for _ in range(16))
         return password, salt
+    
+    def to_dict(self):
+        services = {}
+        instances = {}
+        networks = {}
+        for _, service in self.services_guests.items():
+            services[service.base_name] = service.to_dict()
+        for _, instance in self.scenario_guests.items():
+            instances[instance.name] = instance.to_dict()
+        for _, network in self.scenario_networks.items():
+            networks[network.name] = network.to_dict()
+        return {
+            "institution": self.institution,
+            "lab_name": self.lab_name,
+            "instances_number": self.instance_number,
+            "scenario_dir": self.scenario_dir,
+            "random_seed": self.random_seed,
+            "create_students_password": self.create_students_passwords,
+            "student_prefix": self.student_prefix,
+            "services": services,
+            "instances": instances,
+            "networks": networks,
+            "config": self.config.to_dict(),
+            "users": self.generate_student_access_credentials(),
+            "ssh_password_login": self.create_students_passwords or self.guacamole.enable,
+        }

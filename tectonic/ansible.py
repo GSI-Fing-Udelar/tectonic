@@ -19,14 +19,9 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-import math
 from pathlib import Path
 import ansible_runner
 import importlib.resources as tectonic_resources
-
-from tectonic.config import TectonicConfig
-from tectonic.description import MachineDescription, Description, DescriptionException
-from tectonic.client import Client
 
 logger = logging.getLogger(__name__)
 
@@ -85,48 +80,34 @@ class Ansible:
             if guest.instance not in networks:
                 networks[guest.instance] = {}
             for _, interface in guest.interfaces.items():
-                if interface.network.name not in networks[guest.instance]:
-                    networks[guest.instance][interface.network.name] = {}
-                networks[guest.instance][interface.network.name][guest.base_name] = interface.name
+                if interface.network.base_name not in networks[guest.instance]:
+                    networks[guest.instance][interface.network.base_name] = {}
+                networks[guest.instance][interface.network.base_name][guest.base_name] = interface.private_ip
 
         for machine_name in machine_list:
             if machine_name in self.description.services_guests:
                 machine = self.description.services_guests[machine_name]
             elif machine_name in self.description.scenario_guests:
                 machine = self.description.scenario_guests[machine_name]
-            elif machine_name in self.description.extra_guests:
-                machine = self.description.extra_guests[machine_name]
             else:
                 raise AnsibleException(f"Machine name {machine_name} not found.")
-
-            ansible_username = username or machine.admin_username
-            hostname = self.client.get_ssh_hostname(machine_name)
 
             if not inventory.get(machine.base_name):
                 inventory[machine.base_name] = {
                     "hosts": {},
                     "vars": {
-                                "ansible_become": True,
-                                "basename": machine.base_name,
-                                "instances": self.description.instance_number,
-                                "platform": self.config.platform,
-                                "institution": self.description.institution,
-                                "lab_name": self.description.lab_name,
-                                "ansible_connection" : "community.docker.docker_api" if self.config.platform == "docker" else "ssh", #export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES on macos
-                                "docker_host": self.config.docker.uri,
-                            } | extra_vars,
+                        "ansible_become": True,
+                        "ansible_connection" : "community.docker.docker_api" if self.config.platform == "docker" else "ssh", #export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES on macos
+                        "ansible_docker_docker_host": self.config.docker.uri,
+                    } | self.description.to_dict() | extra_vars,
                 }
-
             inventory[machine.base_name]["hosts"][machine.name] = {
-                "ansible_host": hostname if self.config.platform != "docker" else machine.name,
-                "ansible_user": ansible_username,
+                "ansible_host": self.client.get_ssh_hostname(machine_name) if self.config.platform != "docker" else machine.name,
+                "ansible_user": username or machine.admin_username,
                 "ansible_ssh_common_args": ssh_args,
-                "machine_name": machine.name,
-                "instance": machine.instance,
-                "copy": machine.copy,
-                "networks": networks[machine.instance],
-                "parameter": parameters[machine.instance] if machine.instance else {},
-                "random_seed": self.description.random_seed,
+                "instance": machine.to_dict(),
+                "topology": networks[machine.instance],
+                "parameters": parameters[machine.instance] if machine.instance else {},
             }
 
             if machine.os == "windows_srv_2022":
@@ -152,12 +133,8 @@ class Ansible:
                     "ansible_become": True,
                     "ansible_user": username or self.config.elastic.user_install_packetbeat,
                     "basename": "localhost",
-                    "instances": self.description.instance_number,
-                    "platform": self.config.platform,
-                    "institution": self.description.institution,
-                    "lab_name": self.description.lab_name,
                     "ansible_connection" : "local",
-                } | extra_vars,
+                } | self.description.to_dict() | extra_vars,
             }
         }
 
@@ -250,45 +227,6 @@ class Ansible:
         )
 
     def configure_services(self):
-        services = [service.name for _, service in self.description.services_guests.items()]
-        if services:
-            extra_vars = {
-                "elastic" : {
-                    "enable": self.description.elastic.enable,
-                    "ip": self.description.elastic.service_ip,
-                    "internal_port": self.config.elastic.internal_port,
-                    "external_port": self.config.elastic.external_port,
-                    "description_path": str(self.description.scenario_dir),
-                    "monitor_type": self.description.elastic.monitor_type,
-                    "deploy_policy": self.description.elastic.deploy_default_policy,
-                    "policy_name": self.config.elastic.packetbeat_policy_name if self.description.elastic.monitor_type == "traffic" else self.config.elastic.endpoint_policy_name,
-                    "http_proxy" : self.config.proxy if self.config.proxy is not None else "",
-                    "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
-                    "dns": self.config.docker.dns,
-                },
-                "caldera":{
-                    "enable": self.description.caldera.enable,
-                    "ip": self.description.caldera.service_ip,
-                    "internal_port": self.config.caldera.internal_port,
-                    "external_port": self.config.caldera.external_port,
-                    "description_path": str(self.description.scenario_dir),
-                    "ot_enabled": str(self.config.caldera.ot_enabled),
-                },
-                "guacamole":{
-                    "enable": self.description.guacamole.enable,
-                    "ip": self.description.guacamole.service_ip,
-                    "internal_port": self.config.guacamole.internal_port,
-                    "external_port": self.config.guacamole.external_port,
-                    "brute_force_protection_enabled": str(self.config.guacamole.brute_force_protection_enabled),
-                    "version": self.config.guacamole.version,
-                },
-                "bastion_host":{
-                    "enable": self.description.bastion_host.enable,
-                    "ip": self.description.bastion_host.service_ip,
-                    "services_enable": self.description.elastic.enable or self.description.caldera.enable or self.description.guacamole.enable,
-                    "domain": "tectonic.cyberrange.com",
-                }
-            }
-            inventory = self.build_inventory(machine_list=services, extra_vars=extra_vars)
-            self.wait_for_connections(inventory=inventory)
-            self.run(inventory=inventory, playbook=self.ANSIBLE_SERVICE_PLAYBOOK, quiet=True)
+        inventory = self.build_inventory(machine_list=[service.name for _, service in self.description.services_guests.items()])
+        self.wait_for_connections(inventory=inventory)
+        self.run(inventory=inventory, playbook=self.ANSIBLE_SERVICE_PLAYBOOK, quiet=True)
