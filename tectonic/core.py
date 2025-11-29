@@ -125,6 +125,7 @@ class Core:
         self.terraform_service.deploy(instances)
 
         self.ansible.configure_services()
+        print("aca")
 
         self.terraform.deploy(instances)
 

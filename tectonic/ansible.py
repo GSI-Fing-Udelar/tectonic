@@ -227,6 +227,8 @@ class Ansible:
         )
 
     def configure_services(self):
-        inventory = self.build_inventory(machine_list=[service.name for _, service in self.description.services_guests.items()])
-        self.wait_for_connections(inventory=inventory)
-        self.run(inventory=inventory, playbook=self.ANSIBLE_SERVICE_PLAYBOOK, quiet=True)
+        enabled_services = [service.name for _, service in self.description.services_guests.items()]
+        if len(enabled_services) > 0:
+            inventory = self.build_inventory(machine_list=enabled_services)
+            self.wait_for_connections(inventory=inventory)
+            self.run(inventory=inventory, playbook=self.ANSIBLE_SERVICE_PLAYBOOK, quiet=True)
