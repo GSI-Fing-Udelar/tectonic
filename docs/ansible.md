@@ -430,3 +430,11 @@ Below is a reference example.
     }
 }
 ```
+
+If you have any doubts about the variables available on the host where a playbook is running, you can add the following task to your playbook to print the variables:
+
+```
+- name: Print all variables/facts known for the current host
+  ansible.builtin.debug:
+    var: hostvars[inventory_hostname]
+```

@@ -125,7 +125,6 @@ class Core:
         self.terraform_service.deploy(instances)
 
         self.ansible.configure_services()
-        print("aca")
 
         self.terraform.deploy(instances)
 
@@ -266,7 +265,7 @@ class Core:
                 instances_info["Bastion Host IP"] = bastion_host_ip
             elif self.config.platform == "docker":
                 bastion_host_ip = "127.0.0.1"
-            else:
+            elif self.config.platform == "libvirt":
                 bastion_host_ip = self.description.bastion_host.service_ip
         if self.description.teacher_access_host.enable:
             instances_info["Teacher Access Host IP"] = self.description.teacher_access_host.service_ip

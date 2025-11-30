@@ -1432,14 +1432,21 @@ class Description:
     
     def to_dict(self):
         services = {}
+        services["elastic"] = self.elastic.to_dict()
+        services["packetbeat"] = self.packetbeat.to_dict()
+        services["caldera"] = self.caldera.to_dict()
+        services["guacamole"] = self.guacamole.to_dict()
+        services["bastion_host"] = self.bastion_host.to_dict()
+        services["teacher_access_host"] = self.teacher_access_host.to_dict()
+
         instances = {}
-        networks = {}
-        for _, service in self.services_guests.items():
-            services[service.base_name] = service.to_dict()
         for _, instance in self.scenario_guests.items():
             instances[instance.name] = instance.to_dict()
+
+        networks = {}
         for _, network in self.scenario_networks.items():
             networks[network.name] = network.to_dict()
+
         return {
             "institution": self.institution,
             "lab_name": self.lab_name,

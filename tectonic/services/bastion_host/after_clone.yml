@@ -22,17 +22,17 @@
   block:
     - name: Check if reverse_proxy file exists
       ansible.builtin.stat:
-        path: /etc/apache2/sites-available/conf
+        path: /etc/apache2/sites-available/tectonic.conf
       register: reverse_proxy
-    - name: End execution if reverse_proxy file exists
+    - name: End execution if reverse_proxy file exists or no need to configure reverse proxy
       ansible.builtin.meta: end_play
-      when: reverse_proxy.stat.exists
+      when: reverse_proxy.stat.exists or not (services.elastic.enable or services.caldera.enable or services.guacamole.enable)
       
 - name: Configure firewall (iptables)
   block:
     - name: Set Gateway IP
       ansible.builtin.set_fact:
-        gateway_ip: "{{ (services.guacamole.ip | split('.'))[0] }}.{{ (services.guacamole.ip | split('.'))[1] }}.{{ (services.guacamole.ip | split('.'))[2] }}.129"
+        gateway_ip: "{{ (services.bastion_host.ip | split('.'))[0] }}.{{ (services.bastion_host.ip | split('.'))[1] }}.{{ (services.bastion_host.ip | split('.'))[2] }}.129"
     - name: Configure firewall | Flush rules
       ansible.builtin.iptables:
         table: filter

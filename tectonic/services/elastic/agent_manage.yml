@@ -47,7 +47,7 @@
             - name: "Install agent"
               block: 
               - name: "Install agent"
-                ansible.builtin.shell: "./elastic-agent install --url={{ elastic_url }} --enrollment-token={{ token }} --base-path=/opt/elastic-agent-{{ institution }}-{{ lab_name }} --insecure --non-interactive --config.proxy-disabled --delay-enroll"
+                ansible.builtin.shell: "./elastic-agent install --url={{ elastic_url }} --enrollment-token={{ token }} --base-path=/opt/elastic-agent-{{ institution }}-{{ lab_name }} --insecure --non-interactive --proxy-disabled --delay-enroll"
                 args:
                   chdir: "/opt/elastic-agent-{{ services.elastic.version }}-linux-x86_64/"
             - name: "Move elastic-agent binary"
