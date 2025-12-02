@@ -1,0 +1,313 @@
+---
+# ==============================================================================
+# WannaCry Simulator - Base Image Configuration (base_config.yml)
+# ==============================================================================
+# This playbook runs DURING base image creation (Packer phase).
+# It installs all necessary dependencies that require internet access.
+#
+# EXECUTION CONTEXT:
+#   - Runs on the base image before cloning
+#   - Internet connection is AVAILABLE
+#   - Variables: instances, basename
+#
+# PURPOSE:
+#   Install all system packages and dependencies needed for the simulation
+#   since after_clone.yml runs in an isolated network without internet access.
+#
+# INSTALLED COMPONENTS:
+#   1. Forensic tools (auditd, ent, osquery)
+#   2. Python and pip
+#   3. Python libraries (cryptography, faker, openpyxl)
+#   4. System utilities (pandoc for PDF generation)
+# ==============================================================================
+
+- name: "Install WannaCry Simulator Dependencies - Base Image"
+  hosts: victim
+  gather_facts: yes
+  become: yes
+  
+  tasks:
+    - name: "Display base configuration message"
+      debug:
+        msg:
+          - "=============================================="
+          - "  CONFIGURING BASE IMAGE FOR WANNACRY SIMULATOR"
+          - "=============================================="
+          - "Installing dependencies with internet access"
+          - "This runs BEFORE instance cloning"
+          - "=============================================="
+    
+    # =========================================================================
+    # STEP 1: Update package cache
+    # =========================================================================
+    - name: "Update apt package cache"
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+    
+    # =========================================================================
+    # STEP 1.5: Install GPG (required for apt_key module)
+    # =========================================================================
+    - name: "Install GPG tools (required for repository key management)"
+      apt:
+        name:
+          - gnupg
+          - gpg
+          - ca-certificates
+        state: present
+      when: ansible_os_family == "Debian"
+    
+    # =========================================================================
+    # STEP 2: Install system packages
+    # =========================================================================
+    - name: "Install system packages for forensic analysis"
+      apt:
+        name:
+          # Forensic and security tools
+          - auditd                    # Audit daemon for system call monitoring
+          - audispd-plugins          # Audit dispatcher plugins
+          - ent                      # Entropy calculator for file analysis
+          
+          # Python environment
+          - python3                  # Python 3 interpreter
+          - python3-pip             # Python package installer
+          - python3-dev             # Python development headers
+          - python3-venv            # Virtual environment support
+          
+          # System utilities
+          - curl                    # For downloading resources
+          - wget                    # Alternative downloader
+          - git                     # Version control (for potential updates)
+          
+          # Document generation
+          - pandoc                  # Universal document converter (for PDF generation)
+          - texlive-latex-base     # LaTeX base (required by pandoc for PDF)
+          - texlive-fonts-recommended  # LaTeX fonts
+          
+          # Build tools (required by some Python packages)
+          - build-essential        # GCC and other compilation tools
+          - libssl-dev            # OpenSSL development headers (for cryptography)
+          - libffi-dev            # FFI development headers
+          
+        state: present
+        install_recommends: no
+      when: ansible_os_family == "Debian"
+    
+    # =========================================================================
+    # STEP 3: Install osquery (requires special repository)
+    # =========================================================================
+    # osquery is a powerful SQL-based system monitoring tool
+    # It's not available in standard Ubuntu repositories
+    
+    - name: "Check if osquery is already installed"
+      command: which osqueryi
+      register: osquery_check
+      failed_when: false
+      changed_when: false
+    
+    - name: "Add osquery GPG key"
+      apt_key:
+        url: https://pkg.osquery.io/deb/pubkey.gpg
+        state: present
+      when: 
+        - ansible_os_family == "Debian"
+        - osquery_check.rc != 0
+    
+    - name: "Add osquery repository"
+      apt_repository:
+        repo: "deb [arch=amd64] https://pkg.osquery.io/deb deb main"
+        state: present
+        filename: osquery
+      when: 
+        - ansible_os_family == "Debian"
+        - osquery_check.rc != 0
+    
+    - name: "Install osquery"
+      apt:
+        name: osquery
+        state: present
+        update_cache: yes
+      when: 
+        - ansible_os_family == "Debian"
+        - osquery_check.rc != 0
+    
+    # =========================================================================
+    # STEP 4: Install Python dependencies
+    # =========================================================================
+    # These libraries are required by the custom Ansible modules
+    
+    - name: "Upgrade pip to latest version"
+      pip:
+        name: pip
+        state: latest
+        executable: pip3
+    
+    - name: "Install Python cryptography library"
+      pip:
+        name: cryptography
+        state: present
+        executable: pip3
+      # cryptography: Required for AES-256-CBC encryption (encrypt_files_aes module)
+    
+    - name: "Install Python faker library"
+      pip:
+        name: faker
+        state: present
+        executable: pip3
+      # faker: Required for generating realistic file content and metadata
+    
+    - name: "Install openpyxl for Excel file generation"
+      pip:
+        name: openpyxl
+        state: present
+        executable: pip3
+      # openpyxl: Required for generating .xlsx files (generate_files_bulk module)
+    
+    - name: "Install reportlab for advanced PDF generation"
+      pip:
+        name: reportlab
+        state: present
+        executable: pip3
+      # reportlab: Alternative PDF library used by some modules
+    
+    - name: "Install pillow for image manipulation"
+      pip:
+        name: pillow
+        state: present
+        executable: pip3
+      # pillow: Required for image file generation (generate_file module)
+    
+    # =========================================================================
+    # STEP 5: Configure auditd (pre-configuration) - Skip for Docker
+    # =========================================================================
+    - name: "Enable auditd service"
+      service:
+        name: auditd
+        enabled: yes
+        state: started
+      when: platform is not defined or platform != 'docker'
+      ignore_errors: yes  # Don't fail if auditd cannot start (Docker limitation)
+    
+    - name: "Create audit rules directory"
+      file:
+        path: /etc/audit/rules.d
+        state: directory
+        mode: '0750'
+    
+    # =========================================================================
+    # STEP 6: Create working directories
+    # =========================================================================
+    - name: "Create simulation working directory"
+      file:
+        path: /opt/wannacry_simulator
+        state: directory
+        mode: '0755'
+    
+    - name: "Create logs directory"
+      file:
+        path: /var/log/wannacry_simulator
+        state: directory
+        mode: '0755'
+    
+    # =========================================================================
+    # STEP 7: Verification
+    # =========================================================================
+    - name: "Verify Python cryptography installation"
+      command: python3 -c "from cryptography.fernet import Fernet; print('OK')"
+      register: crypto_test
+      changed_when: false
+      failed_when: crypto_test.rc != 0
+    
+    - name: "Verify faker installation"
+      command: python3 -c "from faker import Faker; print('OK')"
+      register: faker_test
+      changed_when: false
+      failed_when: faker_test.rc != 0
+    
+    - name: "Display installation summary"
+      debug:
+        msg:
+          - "=============================================="
+          - "   BASE IMAGE CONFIGURATION COMPLETED"
+          - "=============================================="
+          - ""
+          - "✅ Installed Components:"
+          - "   - Forensic Tools: auditd, ent, osquery"
+          - "   - Python Environment: Python 3, pip"
+          - "   - Python Libraries: cryptography, faker, openpyxl, pillow"
+          - "   - Document Tools: pandoc, LaTeX"
+          - "   - Build Tools: gcc, make, libssl-dev"
+          - ""
+          - "✅ Verification:"
+          - "   - Cryptography: {{ crypto_test.stdout }}"
+          - "   - Faker: {{ faker_test.stdout }}"
+          - ""
+          - "📁 Working Directory: /opt/wannacry_simulator"
+          - "📋 Logs Directory: /var/log/wannacry_simulator"
+          - ""
+          - "🎯 Next Phase: Instance cloning and simulation execution"
+          - "=============================================="
+
+# ==============================================================================
+# ANALYST WORKSTATION BASE CONFIGURATION
+# ==============================================================================
+- name: "Install Forensic Tools - Analyst Workstation Base Image"
+  hosts: analyst
+  gather_facts: yes
+  become: yes
+  
+  tasks:
+    - name: "Install forensic analysis tools"
+      apt:
+        name:
+          - gnupg                   # GPG for key management
+          - auditd
+          - ent
+          - python3
+          - python3-pip
+          - wireshark-common
+          - tcpdump
+          - binutils
+          - hexedit
+          - nmap
+          - netcat
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+    
+    - name: "Add osquery repository for analyst workstation"
+      block:
+        - name: "Add osquery GPG key"
+          apt_key:
+            url: https://pkg.osquery.io/deb/pubkey.gpg
+            state: present
+        
+        - name: "Add osquery repository"
+          apt_repository:
+            repo: "deb [arch=amd64] https://pkg.osquery.io/deb deb main"
+            state: present
+            filename: osquery
+        
+        - name: "Install osquery"
+          apt:
+            name: osquery
+            state: present
+            update_cache: yes
+      when: ansible_os_family == "Debian"
+    
+    - name: "Install Python forensic libraries"
+      pip:
+        name:
+          - cryptography
+          - faker
+        state: present
+        executable: pip3
+    
+    - name: "Display analyst workstation configuration complete"
+      debug:
+        msg:
+          - "=============================================="
+          - "   ANALYST WORKSTATION BASE CONFIGURED"
+          - "=============================================="
+          - "Ready for forensic investigation tasks"

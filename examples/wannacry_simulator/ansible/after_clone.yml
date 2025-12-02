@@ -1,0 +1,233 @@
+---
+# ==============================================================================
+# WannaCry Ransomware Simulator - Main Playbook (after_clone.yml)
+# ==============================================================================
+# This playbook runs AFTER the instances are cloned from the base image.
+# It executes the complete WannaCry simulation using the wannacry_simulator role.
+#
+# EXECUTION CONTEXT (provided by Tectonic):
+#   - instances: Total number of instances (from lab edition)
+#   - instance: Current instance number (1, 2, 3, ...)
+#   - copy: Copy number within instance
+#   - basename: Base name of the guest (e.g., "victim")
+#   - parameter: Instance-specific parameters (if any)
+#   - random_seed: Seed for reproducible randomization
+#
+# PLAYBOOK FLOW:
+#   1. Install system dependencies (auditd, ent, osquery)
+#   2. Configure auditd for ransomware detection
+#   3. Generate realistic file system
+#   4. Apply temporal distributions (timestamps)
+#   5. Encrypt files with AES-256-CBC
+#   6. Deploy ransom notes and malware artifacts
+#   7. Provide forensic analysis instructions
+#
+# NOTES:
+#   - No internet connection available (after_clone runs in isolated network)
+#   - All dependencies must be installed in base_config.yml
+#   - Custom modules are loaded from ansible/library/ automatically
+#   - Custom role loaded from ansible/roles/ automatically
+# ==============================================================================
+
+- name: "WannaCry Ransomware Simulation - Victim Machine"
+  hosts: victim
+  # Gather facts because we need system information for the simulation
+  gather_facts: yes
+  become: yes
+  
+  # Pre-tasks: Ensure forensic tools are installed
+  # These tools will be used for post-simulation analysis
+  pre_tasks:
+    - name: "Display simulation start message"
+      debug:
+        msg:
+          - "=============================================="
+          - "  STARTING WANNACRY RANSOMWARE SIMULATION"
+          - "=============================================="
+          - "Instance: {{ instance }}"
+          - "Copy: {{ copy }}"
+          - "Target: {{ basename }}"
+          - "Random Seed: {{ random_seed | default('not set') }}"
+          - "=============================================="
+    
+    - name: "Update apt cache"
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+    
+    - name: "Install forensic tools for post-simulation analysis"
+      apt:
+        name:
+          - auditd
+          - audispd-plugins
+          - ent
+          - osquery
+          - python3
+          - python3-pip
+        state: present
+      when: ansible_os_family == "Debian"
+    
+    - name: "Install Python dependencies for encryption"
+      pip:
+        name:
+          - cryptography
+          - faker
+          - openpyxl
+        state: present
+        executable: pip3
+    
+    - name: "Configure auditd for ransomware detection"
+      copy:
+        dest: /etc/audit/rules.d/wannacry.rules
+        content: |
+          # Audit rules for ransomware detection
+          # Monitor file operations in target directory
+          -w {{ target_directory }} -p wa -k wannacry_simulator
+        mode: '0640'
+      notify: restart auditd
+      when: ansible_virtualization_type != 'docker'  # Skip in Docker containers
+  
+  # Main simulation role
+  # This role orchestrates the complete WannaCry simulation workflow
+  # It uses the custom Ansible modules from ansible/library/
+  roles:
+    - wannacry_simulator
+  
+  # Handlers
+  handlers:
+    - name: restart auditd
+      service:
+        name: auditd
+        state: restarted
+      when: ansible_virtualization_type != 'docker'  # Skip in Docker containers
+      ignore_errors: yes  # Don't fail if auditd cannot restart
+  
+  # Post-tasks: Display analysis instructions
+  post_tasks:
+    - name: "Display post-simulation instructions"
+      debug:
+        msg:
+          - "=============================================="
+          - "       SIMULATION COMPLETED SUCCESSFULLY"
+          - "=============================================="
+          - ""
+          - "📁 Infected Directory: {{ target_directory }}"
+          - "🔐 Encryption Method: AES-256-CBC (REAL)"
+          - "🎯 Encrypted Extension: .{{ encrypted_extension }}"
+          - ""
+          - "🔍 FORENSIC ANALYSIS COMMANDS:"
+          - ""
+          - "1. View encrypted files:"
+          - "   ls -lh {{ target_directory }}/"
+          - "   find {{ target_directory }} -name '*.{{ encrypted_extension }}'"
+          - ""
+          - "2. Count encrypted files:"
+          - "   find {{ target_directory }} -name '*.{{ encrypted_extension }}' | wc -l"
+          - ""
+          - "3. View ransom note:"
+          - "   cat {{ target_directory }}/@Please_Read_Me@.txt"
+          - ""
+          - "4. Verify encryption with hexdump:"
+          - "   hexdump -C $(find {{ target_directory }} -name '*.{{ encrypted_extension }}' | head -1) | head -20"
+          - ""
+          - "5. Analyze file entropy (detect encryption):"
+          - "   find {{ target_directory }} -name '*.{{ encrypted_extension }}' | head -5 | xargs -I {} sh -c 'echo \"File: {}\"; ent {}'"
+          - ""
+          - "6. Check auditd logs for mass file operations:"
+          - "   ausearch -k wannacry_simulator | grep -i 'type=SYSCALL'"
+          - ""
+          - "7. Query file types:"
+          - "   find {{ target_directory }} -name '*.{{ encrypted_extension }}' | head -10 | xargs file"
+          - ""
+          - "8. Inspect timestamps:"
+          - "   stat $(find {{ target_directory }} -name '*.{{ encrypted_extension }}' | head -5)"
+          - ""
+          - "9. Run forensic analyzer (comprehensive analysis):"
+          - "   python3 /tmp/wannacry_forensics_analyzer.py {{ target_directory }}"
+          - ""
+          - "=============================================="
+          - "⚠️  CRITICAL WARNING:"
+          - "   Files are REALLY encrypted with AES-256-CBC"
+          - "   They CANNOT be recovered without the key"
+          - "   This is for TRAINING purposes ONLY"
+          - "=============================================="
+      when: not ansible_check_mode
+
+# ==============================================================================
+# FORENSIC ANALYST WORKSTATION CONFIGURATION (Optional)
+# ==============================================================================
+# This play prepares the analyst machine with tools and scripts for
+# investigating the infected victim machine remotely
+# ==============================================================================
+
+- name: "Forensic Analysis Workstation Setup"
+  hosts: analyst
+  gather_facts: yes
+  become: yes
+  
+  tasks:
+    - name: "Install forensic analysis tools"
+      apt:
+        name:
+          - auditd
+          - ent
+          - osquery
+          - python3
+          - python3-pip
+          - wireshark-common
+          - tcpdump
+          - binutils
+          - hexedit
+        state: present
+      when: ansible_os_family == "Debian"
+    
+    - name: "Install Python forensic libraries"
+      pip:
+        name:
+          - cryptography
+          - pefile
+          - yara-python
+        state: present
+        executable: pip3
+    
+    - name: "Copy forensic analysis script to analyst workstation"
+      copy:
+        src: ../library/wannacry_forensics_analyzer.py
+        dest: /home/{{ ansible_user }}/wannacry_forensics_analyzer.py
+        mode: '0755'
+        owner: "{{ ansible_user }}"
+    
+    - name: "Create analysis workspace"
+      file:
+        path: /home/{{ ansible_user }}/forensic_analysis
+        state: directory
+        owner: "{{ ansible_user }}"
+        mode: '0755'
+    
+    - name: "Display analyst workstation ready message"
+      debug:
+        msg:
+          - "=============================================="
+          - "   FORENSIC ANALYST WORKSTATION READY"
+          - "=============================================="
+          - ""
+          - "🔬 Installed Tools:"
+          - "   - auditd (log analysis)"
+          - "   - ent (entropy calculation)"
+          - "   - osquery (system querying)"
+          - "   - Wireshark/tcpdump (network analysis)"
+          - "   - hexedit (binary analysis)"
+          - ""
+          - "📋 Analysis Script:"
+          - "   ~/wannacry_forensics_analyzer.py"
+          - ""
+          - "💼 Workspace:"
+          - "   ~/forensic_analysis/"
+          - ""
+          - "🎯 Next Steps:"
+          - "   1. SSH to victim machine: ssh {{ hostvars[groups['victim'][0]].ansible_host }}"
+          - "   2. Run forensic analyzer remotely"
+          - "   3. Collect artifacts for analysis"
+          - "   4. Document findings in workspace"
+          - "=============================================="
