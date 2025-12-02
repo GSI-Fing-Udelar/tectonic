@@ -1,0 +1,110 @@
+---
+# WannaCry Simulator - Default Variables
+
+# Target directory (infected system simulation)
+target_directory: "/tmp/wannacry_simulator"
+
+# Executable names (WannaCry variants)
+executable_names:
+  - "mssecsvc.exe"          # WannaCry service executable
+  - "tasksche.exe"          # WannaCry task scheduler
+  - "wcry.exe"              # WannaCry encryptor
+  - "wannacry.exe"          # Main dropper
+  - "@WanaDecryptor@.exe"   # Decryptor GUI
+
+# YARA pattern inclusion (from ReversingLabs)
+include_yara_patterns:
+  - main_1
+  - main_2
+  - main_3
+  - start_service_3
+  - main_4
+
+# Number of files to encrypt (typically 200-500 files)
+files_to_encrypt: 150
+
+# Encrypted file extension
+encrypted_extension: "WNCRY"
+
+# Distribution of original file types (before encryption)
+original_file_distribution:
+  docx: 30
+  pdf: 25
+  jpg: 20
+  xlsx: 15
+  txt: 10
+
+# Infection time window
+infection_window:
+  start: "-4h"  # Attack start (4 hours ago)
+  end: "0"      # Until now
+
+# Ratio of deleted files (10-15% logs, backups, shadow copies)
+deletion_ratio: 12
+
+# Ransom notes
+ransom_notes:
+  - "@Please_Read_Me@.txt"
+  - "@WanaDecryptor@.exe"
+  - "@WanaDecryptor@.bmp"
+
+# Seed for reproducibility
+faker_seed: 42
+
+# Force re-run (set to true to ignore idempotency)
+force_rerun: true
+
+# Enable entropy CLI (ent) installation when the binary is missing
+install_ent_cli: false
+
+# Global switch for tasks requiring privilege escalation (apt, auditd rules)
+enable_privileged_actions: true
+
+# Enable auditd monitoring for massive file writes/creations
+enable_auditd_monitoring: false
+
+# Audit rule key used to search for simulator activity
+auditd_rule_key: "wannacry_simulator"
+
+# Enable osquery spot checks for mass file operations
+enable_osquery_checks: false
+
+# Number of sample files to show in osquery output
+osquery_file_sample_limit: 5
+
+# Run the IoC scanner automatically after the simulation
+run_ioc_scanner: true
+
+# Enable legacy IoC scanner (basic) in addition to forensics analyzer
+enable_legacy_ioc_scanner: false
+
+# Drop generated PE files into a Samba share instead of the target directory
+use_samba_for_pe: true
+
+# Samba share path where PE files should be written when enabled
+samba_share_path: "/srv/samba/wannacry_share"
+
+# Owner and group to set on the Samba drop directory when created
+samba_owner: "{{ ansible_user_id | default('root') }}"
+samba_group: "{{ ansible_user_gid | default(ansible_user_id) | default('root') }}"
+
+# Directory that will receive PE files (switches to Samba when enabled)
+pe_output_directory: "{{ use_samba_for_pe | ternary(samba_share_path, target_directory) }}"
+
+# Add EICAR test signature for antivirus detection (default: false)
+# EICAR is a harmless test string recognized by ALL antivirus software
+# This will make files detectable by VirusTotal and other AV scanners
+# add_eicar_signature: false
+
+# File naming pattern (uses faker + index for unique names)
+# Available variables:
+#   {n} - file number
+#   {date} - current date (YYYYMMDD)
+#   {time} - current time (HHMMSS)
+#   {file_type} - file extension
+#   {faker_name} - random person name (UNIQUE per file)
+#   {faker_company} - random company name (UNIQUE per file)
+#   {faker_city} - random city name (UNIQUE per file)
+#   {faker_word} - random word (UNIQUE per file)
+#   {faker_job} - random job title (UNIQUE per file)
+file_naming_pattern: "document_{n}_{faker_company}"

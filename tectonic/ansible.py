@@ -217,6 +217,35 @@ class Ansible:
         self.output = ""
         self.debug_outputs = []
         extravars = { "ansible_no_target_syslog" : not self.config.ansible.keep_logs }
+        
+        # ============================================================================
+        # CUSTOM ANSIBLE COMPONENTS INTEGRATION
+        # ============================================================================
+        # Tectonic supports custom Ansible modules, roles, and filter plugins by
+        # setting environment variables that Ansible automatically recognizes.
+        # 
+        # When a scenario includes custom components in its ansible/ directory:
+        #   - ansible/library/        -> Custom modules (e.g., encrypt_files_aes.py)
+        #   - ansible/roles/          -> Custom roles (e.g., wannacry_simulator)
+        #   - ansible/filter_plugins/ -> Custom Jinja2 filters
+        #
+        # These paths are exposed to Ansible via environment variables:
+        #   - ANSIBLE_LIBRARY: Where Ansible looks for custom modules
+        #   - ANSIBLE_ROLES_PATH: Where Ansible searches for roles
+        #   - ANSIBLE_FILTER_PLUGINS: Where Ansible loads custom filters
+        #
+        # This approach:
+        #   ✓ Maintains backward compatibility (empty string if paths don't exist)
+        #   ✓ No need for ansible.cfg in scenarios
+        #   ✓ Works seamlessly with ansible_runner
+        #   ✓ Allows scenarios to extend Ansible functionality
+        # ============================================================================
+        
+        scenario_ansible_dir = Path(self.description.scenario_dir) / "ansible"
+        custom_library_path = scenario_ansible_dir / "library"
+        custom_roles_path = scenario_ansible_dir / "roles"
+        custom_filter_plugins_path = scenario_ansible_dir / "filter_plugins"
+        
         envvars = { 
             "ANSIBLE_FORKS": self.config.ansible.forks,
             "ANSIBLE_HOST_KEY_CHECKING": False,
@@ -224,6 +253,22 @@ class Ansible:
             "ANSIBLE_GATHERING": "explicit",
             "ANSIBLE_TIMEOUT": self.config.ansible.timeout,
         }
+        
+        # Add custom Ansible component paths if they exist in the scenario
+        # These paths allow scenarios to provide specialized modules and roles
+        # without modifying the core Tectonic installation
+        if custom_library_path.exists() and custom_library_path.is_dir():
+            envvars["ANSIBLE_LIBRARY"] = custom_library_path.as_posix()
+            logger.info(f"Using custom Ansible library: {custom_library_path}")
+        
+        if custom_roles_path.exists() and custom_roles_path.is_dir():
+            envvars["ANSIBLE_ROLES_PATH"] = custom_roles_path.as_posix()
+            logger.info(f"Using custom Ansible roles: {custom_roles_path}")
+        
+        if custom_filter_plugins_path.exists() and custom_filter_plugins_path.is_dir():
+            envvars["ANSIBLE_FILTER_PLUGINS"] = custom_filter_plugins_path.as_posix()
+            logger.info(f"Using custom Ansible filter plugins: {custom_filter_plugins_path}")
+        
         r = ansible_runner.interface.run(
             inventory=inventory,
             playbook=playbook,

@@ -1,0 +1,447 @@
+---
+# WannaCry Simulator - Main Tasks
+
+- name: "WannaCry Simulation - Starting"
+  debug:
+    msg: "Simulating WannaCry ransomware behavior using Ansible primitives"
+
+# ============================================
+# IDEMPOTENCY CHECK
+# ============================================
+- name: "[IDEMPOTENCY] Check if simulation already executed"
+  stat:
+    path: "{{ target_directory }}/.wannacry_executed"
+  register: simulation_marker
+
+- name: "[IDEMPOTENCY] Set force_rerun if not defined"
+  set_fact:
+    force_rerun: false
+  when: force_rerun is not defined
+
+- name: "[IDEMPOTENCY] Skip if already executed"
+  debug:
+    msg: "Simulation already executed. Use force_rerun=true to re-execute."
+  when: 
+    - simulation_marker.stat.exists
+    - not force_rerun
+
+# ============================================
+# TOOLING & MONITORING PREP
+# ============================================
+- name: "[TOOLS] Check if ent CLI is present"
+  command: "command -v ent"
+  register: ent_cli_check
+  changed_when: false
+  failed_when: false
+
+- name: "[TOOLS] Install ent CLI on Debian-based systems when requested"
+  package:
+    name: ent
+    state: present
+  become: true
+  when:
+    - install_ent_cli | default(false) | bool
+    - enable_privileged_actions | default(false) | bool
+    - ansible_os_family == 'Debian'
+
+- name: "[TOOLS] Warn if ent CLI is missing (scanner will fallback)"
+  debug:
+    msg: "ent CLI not found; IoC scanner will fallback to internal entropy calculation."
+  when:
+    - ent_cli_check.rc != 0
+    - not install_ent_cli
+
+# ============================================
+# PHASE 0: AUDITD SETUP (BEFORE ENCRYPTION)
+# ============================================
+- block:
+    - name: "[AUDITD] Ensure auditd is installed to watch mass file writes"
+      package:
+        name: auditd
+        state: present
+      become: true
+      when:
+        - ansible_os_family == 'Debian'
+        - enable_privileged_actions
+
+    - name: "[AUDITD] Configure audit rules for simulator directories"
+      copy:
+        dest: "/etc/audit/rules.d/{{ auditd_rule_key }}.rules"
+        content: |
+          -w {{ target_directory }} -p wa -k {{ auditd_rule_key }}
+          -w {{ pe_output_directory }} -p wa -k {{ auditd_rule_key }}_pe
+        mode: '0640'
+      become: true
+      when: enable_privileged_actions | default(false) | bool
+
+    - name: "[AUDITD] Load audit rules immediately"
+      command: "augenrules --load"
+      become: true
+      changed_when: false
+      failed_when: false
+      register: auditd_load
+      when: enable_privileged_actions | default(false) | bool
+
+    - name: "[AUDITD] Warn when audit rule load failed"
+      debug:
+        msg: "Auditd rule load failed (non-fatal). Investigate /etc/audit/audit.rules line numbers or missing watched paths. stderr: {{ auditd_load.stderr }}"
+      when: auditd_load.rc != 0
+
+    - name: "[AUDITD] Show active audit watches"
+      command: "auditctl -l"
+      become: true
+      changed_when: false
+      when: enable_privileged_actions | default(false) | bool
+      
+    - name: "[AUDITD] Flush previous audit events"
+      shell: "ausearch -k {{ auditd_rule_key }} --format text > /dev/null 2>&1 || true"
+      become: true
+      changed_when: false
+      when: enable_privileged_actions | default(false) | bool
+  when: 
+    - enable_auditd_monitoring
+    - enable_privileged_actions | default(false) | bool
+
+- name: "[AUDITD] Warn when auditd automation is skipped on non-Debian hosts"
+  debug:
+    msg: "Auditd automation is only pre-wired for Debian-like systems. Configure manually on this platform."
+  when:
+    - enable_auditd_monitoring
+    - enable_privileged_actions
+    - ansible_os_family != 'Debian'
+
+- name: "[AUDITD] Warn when privileged actions are disabled"
+  debug:
+    msg: "Auditd setup skipped because enable_privileged_actions=false; configure audit rules manually if needed."
+  when:
+    - enable_auditd_monitoring
+    - not enable_privileged_actions
+
+# ============================================
+# PHASE 1: ENVIRONMENT PREPARATION
+# ============================================
+- name: "[PREP] Ensure target directory exists"
+  file:
+    path: "{{ target_directory }}"
+    state: directory
+    mode: '0755'
+
+- name: "[PREP] Ensure Samba PE drop directory exists when enabled"
+  file:
+    path: "{{ pe_output_directory }}"
+    state: directory
+    mode: '0775'
+  become: "{{ enable_privileged_actions }}"
+  when:
+    - use_samba_for_pe
+    - enable_privileged_actions
+
+- name: "[PREP] Set ownership on Samba PE drop directory"
+  file:
+    path: "{{ pe_output_directory }}"
+    state: directory
+    mode: '0775'
+    owner: "{{ samba_owner }}"
+    group: "{{ samba_group }}"
+  become: "{{ enable_privileged_actions }}"
+  when:
+    - use_samba_for_pe
+    - enable_privileged_actions
+
+- name: "[PREP] Warn when Samba drop directory creation is skipped (no privileges)"
+  debug:
+    msg: "Skipping Samba PE drop directory creation because enable_privileged_actions=false. Set use_samba_for_pe=false or choose a user-writable path."
+  when:
+    - use_samba_for_pe
+    - not enable_privileged_actions
+
+# ============================================
+# PHASE 2-4: FILE GENERATION AND ENCRYPTION
+# (Bloque con idempotencia)
+# ============================================
+- block:
+    # CLEANUP: Remove all files when force_rerun is enabled
+    - name: "[CLEANUP] Remove all existing files in target directory (force_rerun)"
+      shell: |
+        find {{ target_directory }} -type f ! -name '.wannacry_executed' -delete
+        find {{ target_directory }} -mindepth 1 -type d -empty -delete
+      args:
+        executable: /bin/bash
+      when: force_rerun
+
+    # PHASE 2: GENERATE ORIGINAL FILES
+    - name: "[LAYER 2] Generate original files (before encryption)"
+      generate_files_bulk:
+        base_directory: "{{ target_directory }}"
+        count: "{{ files_to_encrypt }}"
+        distribution: "{{ original_file_distribution }}"
+        structure: "tree"
+        tree_depth: 2
+        subdirs_per_level: 3
+        name_pattern: "{{ file_naming_pattern | default('document_{n}_{faker_company}') }}"
+        faker_seed: "{{ faker_seed }}"
+      register: original_files
+
+    - name: "[INFO] Original files generated"
+      debug:
+        msg: "Generated {{ original_files.generated_count }} files in tree structure"
+
+    # PHASE 3: APPLY REALISTIC TIMESTAMPS (PRE-INFECTION)
+    - name: "[PREP] List generated files for temporal distribution"
+      find:
+        paths: "{{ target_directory }}"
+        recurse: yes
+        file_type: file
+      register: files_for_timestamps
+
+    - name: "[LAYER 2] Apply realistic timestamps to original files"
+      apply_temporal_distribution:
+        files: "{{ files_for_timestamps.files | map(attribute='path') | list }}"
+        base_timestamp: "{{ ansible_date_time.epoch | int }}"
+        creation_distribution:
+          type: uniform
+          params:
+            offset_min: "-30d"  # Files created 30 days ago
+            offset_max: "-7d"   # Up to 7 days ago
+        modification_distribution:
+          type: gaussian
+          params:
+            mean: "2d"      # Modified ~2 days later
+            stddev: "12h"   # ±12 hours
+        access_distribution:
+          type: exponential
+          params:
+            mean: "3d"      # Accessed ~3 days later
+        seed: "{{ faker_seed }}"
+      register: timestamps_original
+
+    # PHASE 4: REAL AES-256 ENCRYPTION
+    - name: "[PREP] List files to encrypt"
+      find:
+        paths: "{{ target_directory }}"
+        recurse: yes
+        file_type: file
+        excludes: "@Please_Read_Me@.txt"
+      register: files_to_encrypt_list
+
+    - name: "[LAYER 1] Encrypt files with AES-256-CBC (WannaCry algorithm)"
+      encrypt_files_aes:
+        files: "{{ files_to_encrypt_list.files | map(attribute='path') | list }}"
+        encrypted_extension: "{{ encrypted_extension }}"
+        keep_original: false
+      register: encryption_result
+      when: files_to_encrypt_list.matched > 0
+
+    - name: "[INFO] Encryption completed"
+      debug:
+        msg: "Encrypted {{ encryption_result.total_encrypted }} files with AES-256. Key: {{ encryption_result.encryption_key[:32] }}..."
+      when: encryption_result is defined
+
+  when: not simulation_marker.stat.exists or force_rerun
+
+# ============================================
+# PHASE 5-8: POST-ENCRYPTION ACTIVITIES
+# (Bloque con idempotencia)
+# ============================================
+- block:
+    # PHASE 5: CREATE RANSOM NOTES
+    - name: "[LAYER 1] Create ransom note: @Please_Read_Me@.txt"
+      generate_file:
+        name: "@Please_Read_Me@"
+        extension: "txt"
+        path: "{{ target_directory }}/@Please_Read_Me@.txt"
+        content: |
+          =====================================================
+                          WANNACRY RANSOMWARE
+          =====================================================
+          
+          Ooops, your important files are encrypted.
+          
+          If you see this text, then your files are no longer
+          accessible, because they have been encrypted.
+          
+          What happened to my computer?
+          Your important files are encrypted. Many of your documents,
+          photos, videos, databases and other files are no longer
+          accessible because they have been encrypted.
+          
+          Can I recover my files?
+          Sure. We guarantee that you can recover all your files safely
+          and easily. But you have not so enough time.
+          
+          You can decrypt some of your files for free. Try now by
+          clicking <Decrypt>.
+          
+          But if you want to decrypt all your files, you need to pay.
+          You only have 3 days to submit the payment. After that the
+          price will be doubled.
+          
+          Also, if you don't pay in 7 days, you won't be able to
+          recover your files forever.
+          
+          We will have free events for users who are so poor that they
+          couldn't pay in 6 months.
+          
+          How do I pay?
+          Payment is accepted in Bitcoin only.
+          
+          Contact us:
+          - Email: wowsmith123456@posteo.net
+          - Bitcoin Address: 115p7UMMngoj1pMvkpHijcRdfJNXj6LrLn
+          
+          Price: $300 USD (0.1 BTC)
+          
+          =====================================================
+                      DO NOT RENAME OR MODIFY FILES
+                      OR YOU WILL LOSE THEM FOREVER
+          =====================================================
+        permissions: "0644"
+
+    - name: "[LAYER 1] Create ransom note in subdirectories"
+      shell: |
+        find {{ target_directory }} -type d -exec cp {{ target_directory }}/@Please_Read_Me@.txt {}/ \;
+      args:
+        executable: /bin/bash
+
+    # PHASE 6: APPLY INFECTION TIMESTAMPS (MASSIVE)
+    - name: "[PREP] List all encrypted files"
+      find:
+        paths: "{{ target_directory }}"
+        patterns: "*.{{ encrypted_extension }}"
+        recurse: yes
+      register: encrypted_files
+
+    - name: "[LAYER 2] Apply infection timestamps (concentrated in 2-4h window)"
+      apply_temporal_distribution:
+        files: "{{ encrypted_files.files | map(attribute='path') | list }}"
+        base_timestamp: "{{ ansible_date_time.epoch | int }}"
+        creation_distribution:
+          type: uniform
+          params:
+            offset_min: "{{ infection_window.start }}"  # -4h
+            offset_max: "{{ infection_window.end }}"     # 0 (now)
+        modification_distribution:
+          type: gaussian
+          params:
+            mean: "2m"      # Modified ~2 minutes after "encryption"
+            stddev: "30s"   # ±30 seconds (very concentrated)
+        access_distribution:
+          type: deterministic
+          params:
+            fixed_offset: "5s"  # Accessed 5s later
+        seed: "{{ faker_seed }}"
+      register: timestamps_infected
+      when: encrypted_files.matched > 0
+
+    # PHASE 7: DELETE LOGS AND SHADOW COPIES
+    - name: "[LAYER 2] Simulate deletion of backups and shadow copies"
+      shared_features_bulk:
+        base_directory: "{{ target_directory }}"
+        deleted_ratio: "{{ deletion_ratio }}"
+        name_pattern: "*.{{ encrypted_extension }}"
+      register: deletion_result
+
+    # PHASE 8: CHANGE PERMISSIONS (READ-ONLY)
+    - name: "[LAYER 2] Set encrypted files to read-only"
+      shared_features_bulk:
+        base_directory: "{{ target_directory }}"
+        default_permissions: "0444"  # Read-only
+        name_pattern: "*.{{ encrypted_extension }}"
+      register: permissions_result
+
+    # PHASE 9: GENERATE PE FILES WITH WANNACRY SIGNATURES
+    - name: "[GENERATION] Create PE files with WannaCry signatures"
+      generate_pe_wannacry:
+        target_directory: "{{ pe_output_directory }}"
+        executable_names: "{{ executable_names }}"
+        include_patterns: "{{ include_yara_patterns }}"
+        seed: "{{ faker_seed }}"
+      register: pe_generation_result
+
+  when: not simulation_marker.stat.exists or force_rerun
+
+# ============================================
+# IDEMPOTENCY MARKER
+# ============================================
+- name: "[IDEMPOTENCY] Create execution marker"
+  copy:
+    content: |
+      Simulation executed at: {{ ansible_date_time.iso8601 }}
+      Encrypted files: {{ encryption_result.total_encrypted | default(0) }}
+      Encryption key: {{ encryption_result.encryption_key | default('N/A') }}
+    dest: "{{ target_directory }}/.wannacry_executed"
+    mode: '0644'
+  when: not simulation_marker.stat.exists or force_rerun
+
+# ============================================
+# FORENSIC ANALYSIS (AUDITD + ENT + OSQUERY)
+# ============================================
+- block:
+    - name: "[FORENSICS] Run comprehensive forensic analysis (auditd + ent + osquery)"
+      command: "python3 {{ playbook_dir }}/library/wannacry_forensics_analyzer.py {{ target_directory }} {{ auditd_rule_key }}"
+      register: forensics_result
+      changed_when: false
+      failed_when: false  # Don't fail playbook on high threat score
+
+    - name: "[FORENSICS] Display forensic analysis output"
+      debug:
+        msg: "{{ forensics_result.stdout_lines }}"
+
+    - name: "[FORENSICS] Check threat level"
+      debug:
+        msg: 
+          - "⚠️  THREAT DETECTED - Exit code: {{ forensics_result.rc }}"
+          - "  0 = Low threat"
+          - "  1 = Warning (score >= 40)"
+          - "  2 = Critical (score >= 70)"
+      when: forensics_result.rc > 0
+  when: run_ioc_scanner
+
+# ============================================
+# IOC SCANNER EXECUTION (Legacy - Optional)
+# ============================================
+- block:
+    - name: "[VERIFY] Run basic WannaCry IoC scanner"
+      command: "python3 {{ playbook_dir }}/library/wannacry_ioc_scanner.py {{ target_directory }}"
+      register: ioc_scan_result
+      changed_when: false
+
+    - name: "[VERIFY] Show IoC scanner output"
+      debug:
+        msg: "{{ ioc_scan_result.stdout_lines }}"
+  when: 
+    - run_ioc_scanner
+    - enable_legacy_ioc_scanner | default(false)
+
+# ============================================
+# FINAL SUMMARY
+# ============================================
+- name: "WannaCry Simulation Summary"
+  debug:
+    msg:
+      - "=============================================="
+      - "           WANNACRY SIMULATION COMPLETE"
+      - "=============================================="
+      - ""
+      - "Status: {% if simulation_marker.stat.exists and not force_rerun %}Skipped (already executed){% else %}Executed successfully{% endif %}"
+      - "Target Directory: {{ target_directory }}"
+      - "PE Output Directory: {{ pe_output_directory }}"
+      - "Original files: {{ original_files.generated_count | default('N/A') }}"
+      - "Encrypted files: {{ encryption_result.total_encrypted | default(0) }}"
+      - "Deleted files: {{ deletion_result.files_deleted | default(0) }} ({{ deletion_ratio }}%)"
+      - "Ransom notes: {{ ransom_notes | length }}"
+      - "Infection window: {{ infection_window.start }} to {{ infection_window.end }}"
+      - "Encryption: AES-256-CBC (WannaCry algorithm)"
+      - "Encryption Key: {{ encryption_result.encryption_key | default('N/A') }}"
+      - "Auditd enabled: {{ enable_auditd_monitoring }}"
+      - "osquery checks enabled: {{ enable_osquery_checks }}"
+      - "IoC scanner executed: {{ run_ioc_scanner }}"
+      - ""
+      - "Verification commands:"
+      - "  ls -lh {{ target_directory }}/"
+      - "  find {{ target_directory }} -name '*.{{ encrypted_extension }}' | wc -l"
+      - "  cat {{ target_directory }}/@Please_Read_Me@.txt"
+      - "  file {{ target_directory }}/**/*.{{ encrypted_extension }} | head -5"
+      - "  hexdump -C {{ target_directory }}/**/*.{{ encrypted_extension }} | head -10"
+      - ""
+      - "=============================================="
