@@ -18,6 +18,11 @@
     ]
   },
   "packageRules": [
+      // Ignore dmacvicar minor updates, since they break compatibility
+    {
+      "matchPackageNames": ["dmacvicar/libvirt"],
+      "enabled": false
+    },
     {
       "groupName": "github-actions",
       "matchManagers": [
@@ -73,9 +78,5 @@
         "*"
       ]
     }
-  ]
-  "ignorePaths": [
-    "tectonic/terraform/modules/gsi-lab-libvirt/versions.tf",
-    "tectonic/services/terraform/services-libvirt/versions.tf",
   ]
 }
