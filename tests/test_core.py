@@ -109,7 +109,7 @@ def test_deploy(core):
     core.ansible.configure_services = MagicMock()
     core.ansible.wait_for_connections = MagicMock()
     core.ansible.run = MagicMock()
-    core.configure_students_access = MagicMock(return_value={})
+    core.configure_access = MagicMock(return_value={})
     core.description.elastic.enable = True
     core.description.elastic.monitor_type = "traffic"
     core.description.caldera.enable = True
@@ -121,7 +121,7 @@ def test_deploy(core):
 
     core.ansible.wait_for_connections.assert_called_once()
     core.ansible.run.assert_called_once()
-    core.configure_students_access.assert_called_once()
+    core.configure_access.assert_called_once()
 
 
 def test_destroy(core):
@@ -146,7 +146,7 @@ def test_recreate(core):
     core.terraform.recreate = MagicMock()
     core.ansible.wait_for_connections = MagicMock()
     core.ansible.run = MagicMock()
-    core.configure_students_access = MagicMock()
+    core.configure_access = MagicMock()
     core.description.elastic.enable = True
     core.description.elastic.monitor_type = "endpoint"
     core.description.caldera.enable = True
@@ -261,11 +261,13 @@ def test_console_invalid(core):
         core.console(1, "g", 1)
 
 
-def test_configure_students_access(core):
+def test_configure_access(core):
     core.description._base_guests = {"g": MagicMock(base_name="g", entry_point=True)}
+    core.description.guacamole.enable = True
+    core.terraform_service.get_service_credentials = MagicMock(return_value={"trainer": "password"})
     core.description.generate_student_access_credentials = MagicMock(return_value={"u": {"password": "p"}})
     core.ansible.run = MagicMock()
-    users = core.configure_students_access([1])
+    users = core.configure_access([1])
     assert "u" in users
 
 

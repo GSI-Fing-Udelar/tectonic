@@ -32,6 +32,8 @@ class TectonicConfigElastic(object):
         self.packetbeat_policy_name = "Packetbeat"
         self.endpoint_policy_name = "Endpoint"
         self.user_install_packetbeat = "tectonic"
+        self._internal_port = 5601
+        self._external_port = 5601
 
 
     #----------- Getters ----------
@@ -50,6 +52,14 @@ class TectonicConfigElastic(object):
     @property
     def user_install_packetbeat(self):
         return self._user_install_packetbeat
+    
+    @property
+    def internal_port(self):
+        return self._internal_port
+    
+    @property
+    def external_port(self):
+        return self._external_port
 
 
     #----------- Setters ----------
@@ -85,3 +95,13 @@ class TectonicConfigElastic(object):
         versions = soup.find_all('a', attrs={"title": re.compile("Elasticsearch version \\d+\\.\\d+\\.\\d+")})
         latest_version = versions[0].get("title").split(" ")[2]
         return latest_version
+    
+    @internal_port.setter
+    def internal_port(self, value):
+        validate.number("Elastic internal port", value)
+        self._internal_port = value
+
+    @external_port.setter
+    def external_port(self, value):
+        validate.number("Elastic external port", value)
+        self._external_port = value

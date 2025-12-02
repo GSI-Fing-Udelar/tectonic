@@ -59,12 +59,11 @@ OS_DATA = {
         "ami_filter": "kali-last-snapshot-amd64*",
         "owner": "679593333241",  # TODO: Marketplace owner id
         "username": "kali",
-        # cloud-init image not provided by Kali :(
-        # See https://codingpackets.com/blog/kali-linux-cloud-init-image/
-            "cloud_image_url": "file:///data/isos/kali-linux-2023.3-qemu-amd64.qcow2",
-        "cloud_image_checksum": "b48cc396cf91ea1f38de4dca7abfcc0175f07d7af1b7e6df89a76194e7fda3d9",
-        # "cloud_image_url": "https://cdimage.kali.org/kali-2023.3/kali-linux-2023.3-qemu-amd64.7z"
-        # "cloud_image_checksum": "9ebbea4abb545c8e4a56153e2b5fa0ad90658c583af2fa76ad8c0a0b4ba23e20",
+        # "cloud_image_url": "https://kali.download/cloud-images/kali-2025.3/kali-linux-2025.3-cloud-genericcloud-amd64.tar.xz",
+        "cloud_image_url": "file:///data/isos/kali-linux-2025.3-cloud-genericcloud-amd64.qcow2",
+        "cloud_image_checksum": "ef21c5c186a6de18ab3109bd75494a56834b92d04641aa59a7d8f6691d17d2bc",
+        "docker_base_image": "gsitectonic/kali",
+        "entrypoint": "/usr/sbin/init",
         },
     "windows_srv_2022": {
         "ami_filter": "Windows_Server-2022-English-Full-Base*",

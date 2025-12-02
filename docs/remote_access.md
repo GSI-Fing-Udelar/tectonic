@@ -1,82 +1,137 @@
 ## Access to instances
-Access to the cyber range machines is available via SSH. The trainer's
-authentication method is through a public/private key.
+Access to the cyber range depends on three factors: the platform, the configured access type, and the type of user.
 
-We are working on incorporating other access methods such as Guacamole.
+### Trainer access
+Trainers have access to all machines in the cyber range, including the service machines. 
 
-### Trainer access:
-To access any host in the scenario, including services, the trainer can use the command:
+Trainers authenticate on the machines using local users with
+administrative privileges. The default user to connect to each machine
+depends on the operating system:
+
+| **SO**           | **Admin username** |
+|:----------------:|:------------------:|
+| ubuntu22         | ubuntu             |
+| kali             | kali               |
+| rocky8           | rocky              |
+| rocky9           | rocky              |
+| windows_srv_2022 | Administrator      |
+
+Authentication is performed via public/private key or with a password
+in the case of Guacamole. 
+
+For SSH access, in addition to the `ssh_public_key_file` option
+configured in the ini file, a list of all public keys present in the
+`teacher_pubkey_dir` [lab edition
+option](./description.md#lab-edition-information) are added to the
+teacher account in all machines of the Cyber Range.
+
+The keys must be placed inside the `teacher_pubkey_dir` directory and
+are automatically copied by Tectonic during the deployment phase.
+
+The available access types for these users are listed below. 
+
+#### Tectonic command
+
+Using the following command included in Tectonic:
 
 ```
 tectonic -c <ini_conf_file> <lab_edition_file> console -i <instance> -g <guest> -c <copy>
 ```
 
-Another way to access is through SSH connections. In this case, the connection depends on the `platform` used.
+#### SSH
 
-#### AWS
+Using an SSH client. Access depends on the platform being used.
+
+###### AWS
 
 ```
-ssh -J ubuntu@<teacher_access_ip> <admin_username>@<machine_ip>
+ssh -J ubuntu@<bastion_host_ip>,ubuntu@<teacher_access_host_ip> <admin_username>@<machine_ip>
 ```
 
 where:
 
+- `bastion_host_ip`: is obtained from the output of the `info` command.
 - `teacher_access_ip`: is obtained from the output of the `info` command.
-- `admin_username`: depends on the machine's OS. See the [description](./description.md) for more details.
+- `admin_username`: depends on the machine's OS, as in the table above.
 - `machine_ip`: is obtained from the output of the `list` command.
 
-#### Libvirt and Docker
+###### Libvirt and Docker
 
 ```
 ssh <admin_username>@<machine_ip>
 ```
 where:
 
- - `admin_username`: depends on the machine's OS. See the [description](./description.md) for more details.
+ - `admin_username`: depends on the machine's OS, as in the table above.
  - `machine_ip`: is obtained from the output of the `list` command.
 
-**Note:** In the case of Docker, it only works if you're using Linux.
-For macOS and Windows, use the `console` command.
+**Note:** In the case of Docker, it only works if you're using Linux. For macOS and Windows, use the `console` command.
 
+#### Guacamole
+
+If the Guacamole service was deployed as part of the scenario, the trainer will be able to access the instance machines through this service using a web browser. The access credentials for the machines are the same as the credentials for the Guacamole service. The access credentials can be obtained with the `info` command.
 
 ### Trainee access
 
-The connection method depends on the type of `platform` used. The
-trainee can only access the machines that were marked as `entry_point`
-in the [description](./description.md). The trainee's authentication
-method will use either a public/private key or passwords as defined in
-the [lab edition file](./description.md#lab-edition-information). If
-passwords are used, they can be obtained with the `info` command.
+The trainee can only access the machines that were marked as `entry_point` in the [description](./description.md). 
 
-#### AWS
+Trainees authenticate on **entry points machines** using local users
+of the form `<student_prefix>N`, where `student_prefix` (`trainee` by
+default) is configured in the [lab edition
+file](./description.md#lab-edition-information), and `N` is the
+instance number (padded with enough zeros for the total number of
+instances in the scenario).
+
+These users have maximum privileges (root/administrator). The
+trainee's authentication method will use either a public/private key
+or passwords as defined in the [lab edition
+file](./description.md#lab-edition-information). If passwords are
+used, they can be obtained with the `info` command.
+
+The available access types for these users are listed below. 
+
+#### Guacamole
+
+If the Guacamole service was deployed as part of the scenario, the
+trainee will be able to access their machines through this service
+using a web browser. The access credentials can be obtained with the
+`info` command.
+
+#### SSH
+
+Using an SSH client. 
+
+If `create_students_passwords: yes` is configured in the lab edition
+file, access credentials for the trainees' SSH access will be
+autogenerated and can be obtained with the `info` command. Otherwise,
+if public keys were configured through the `student_pubkey_dir`
+option, the trainees will not need passwords to access the machines.
+
+Access depends on the platform being used.
+
+###### AWS
 
 ```
-ssh -J traineeXX@<student_access_ip> traineeXX@<machine_ip>
+ssh -J traineeN@<bastion_host_ip> traineeXX@<machine_ip>
 ```
 
 where:
 
- - `XX`: will be the instance number assigned to the user.
- - `student_access_ip`: is obtained from the output of the `info` command.
+ - `N`: will be the instance number assigned to the user.
+ - `bastion_host_ip`: is obtained from the output of the `info` command.
  - `machine_ip`: is obtained from the output of the `list` command.
 
-#### Libvirt
+###### Libvirt
 
 ```
-ssh traineeXX@<machine_ip>
+ssh traineeN@<machine_ip>
 ```
 where:
 
- - `XX`: will be the instance number assigned to the user.
- - `machine_ip`: it depends on the `external_network` and
-   `bridge_base_ip` options in the ini config file. Assuming a
-   scenario with a single `entry_point` per instance, then the
-   entry_point of instance X will have the IP `bridge_base_ip` + X
-   within the `external_network`. Taking the default values ​​of these
-   variables, the entry point of instance 1 will have the IP
-   192.168.0.11, that of instance 2 the IP 192.168.0.12 and so on.
+ - `N`: will be the instance number assigned to the user.
+ - `machine_ip`: it depends on the `external_network` and `bridge_base_ip` options in the ini config file. Assuming a scenario with a single `entry_point` per instance, then the entry_point of instance X will have the IP `bridge_base_ip` + X within the `external_network`. Taking the default values ​​of these variables, the entry point of instance 1 will have the IP 192.168.0.11, that of instance 2 the IP 192.168.0.12 and so on.
 
-#### Docker
+###### Docker
 
-Not applicable, since Docker is used solely as a development and
-testing environment for the scenarios.
+Not applicable, since Docker is used solely as a development and testing environment for the scenarios.
+

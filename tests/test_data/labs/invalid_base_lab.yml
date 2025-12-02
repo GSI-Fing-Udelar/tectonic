@@ -19,3 +19,9 @@ caldera_settings:
   vcpu: 2
   memory: 2048
   disk: 20
+
+guacamole:
+  enable: yes
+  vcpu: 2
+  memory: 2048
+  disk: 20

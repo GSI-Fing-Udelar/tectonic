@@ -36,7 +36,9 @@ class Terraform(ABC):
     Description: manages interaction with Terraform to deploy/destroy scenarios.
     """
 
-    BACKEND_TYPE = "FILE" # Possible values: FILE (for local files as backend), GITLAB (use gitlab as backend. You must change backend.tf of each terraform module).
+    BACKEND_TYPE = "FILE"
+
+    #BACKEND_TYPE = "FILE" # Possible values: FILE (for local files as backend), GITLAB (use gitlab as backend. You must change backend.tf of each terraform module).
 
     def __init__(self, config, description):
         """
@@ -254,6 +256,7 @@ class Terraform(ABC):
             "disk": guest.disk,
             "hostname": guest.hostname,
             "base_os": guest.os,
+            "monitor": guest.monitor,
             "interfaces": {name: self._get_network_interface_variables(interface) for name, interface in guest.interfaces.items()},
             "is_in_services_network": guest.is_in_services_network,
         }

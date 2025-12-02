@@ -154,6 +154,7 @@ class TerraformLibvirt(Terraform):
         result["libvirt_bridge_base_ip"] = self.config.libvirt.bridge_base_ip
         result["services_network"] = self.config.services_network_cidr_block
         result["services_network_base_ip"] = len(self.description.services_guests.keys())+10 #TODO: use a different network?
+        result["enable_ssh_access"] = self.description.enable_ssh_access
         return result
 
     def _get_guest_variables(self, guest):

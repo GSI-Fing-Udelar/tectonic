@@ -87,7 +87,7 @@ resource "libvirt_domain" "machines" {
   cloudinit = libvirt_cloudinit_disk.commoninit[each.key].id
 
   dynamic "network_interface" { 
-    for_each = each.value.entry_point ? ["external-nic"] : []
+    for_each = each.value.entry_point && var.enable_ssh_access ? ["external-nic"] : []
     content { 
       network_id = libvirt_network.external.id
     }

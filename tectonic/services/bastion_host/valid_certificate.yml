@@ -1,0 +1,68 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Obtain a valid Let's Encrypt certificate. 
+# First, ensure that the domain you are using resolves to the bastion host's public IP address.
+#
+- name: Get Let's Encrypt valid certificate (ubuntu 22)
+  hosts: bastion_host
+  become: true
+  vars:
+    domain: "tectonic.sytes.net"
+  tasks:
+    - name: Disable all vhosts
+      ansible.builtin.command:
+        cmd: a2dissite *
+    - name: Enable default vhost
+      ansible.builtin.command:
+        cmd: a2ensite 000-default
+    - name: Restart apache
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
+        enabled: true
+    - name: Delete directory for certificate
+      ansible.builtin.file:
+        path: /etc/letsencrypt/live/{{ domain }}/
+        state: absent
+    - name: Delete symbolic link
+      ansible.builtin.file:
+        path: /etc/letsencrypt/live/active
+        state: absent
+    - name: Obtain valid certificate
+      ansible.builtin.command:
+        cmd: "certbot certonly --webroot -w /var/www/html -n --agree-tos --email admin@{{ domain }} --domain {{ domain }}"
+    - name: Create symbolic link
+      ansible.builtin.file:
+        src: /etc/letsencrypt/live/{{ domain }}/
+        dest: /etc/letsencrypt/live/active
+        force: yes
+        state: link
+    - name: Enable tectonic vhost
+      ansible.builtin.command:
+        cmd: a2ensite tectonic
+    - name: Disable default vhost
+      ansible.builtin.command:
+        cmd: a2dissite 000-default
+    - name: Restart apache
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
+        enabled: true

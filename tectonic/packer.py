@@ -178,7 +178,7 @@ class Packer(ABC):
             "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
             "caldera_version": self.config.caldera.version,
             "packetbeat_vlan_id": self.config.aws.packetbeat_vlan_id,
-            "caldera_ot_enabled": str(self.config.caldera.ot_enabled),
+            "guacamole_version": self.config.guacamole.version,
         }
         if self.config.proxy:
             args["proxy"] = self.config.proxy

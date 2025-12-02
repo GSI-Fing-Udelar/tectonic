@@ -86,48 +86,6 @@ class TerraformServiceAWS(TerraformService):
                     resources.append('aws_route53_record.records["'f"{service.name}-{interface.network.name}"'"]')
                     resources.append('aws_route53_record.records_reverse["'f"{service.name}-{interface.network.name}"'"]')
         return resources
-    
-    def _get_session_resources_name(self, instances):
-        """
-        Returns the name of the aws_ec2_traffic_mirror_session resource of the AWS Terraform module.
-
-        Parameters:
-          instances (list(str)): instances to use.
-
-        Returns:
-          list(str): resources name of the aws_ec2_traffic_mirror_session for the services.
-        """
-        resources = []
-        # TODO: Check if this is equivalent to what was before
-        for _, guest in self.description.scenario_guests.items():
-            if instances and guest.instance not in instances:
-                continue
-            for _, interface in guest.interfaces.items():
-                resources.append(f"aws_ec2_traffic_mirror_session.session[\"{interface.name}\"]")
-
-        # TODO: Here
-        # for instance in filter(
-        #     lambda i: i <= self.description.instance_number,
-        #     instances or range(1, self.description.instance_number + 1),
-        # ):
-        #     for _, guest in  self.description._base_guests.items:
-        #         network_index = 1
-        #         for _ in self.description.get_guest_networks(guest):
-        #             if self.description.get_guest_copies(guest) == 1:
-        #                 resources.append(
-        #                     'aws_ec2_traffic_mirror_session.session["'
-        #                     f"{self.description.institution}-{self.description.lab_name}-{instance}-{guest}-{network_index}"
-        #                     '"]'
-        #                 )
-        #             else:
-        #                 for copy in self.description.get_copy_range(guest):
-        #                     resources.append(
-        #                         'aws_ec2_traffic_mirror_session.session["'
-        #                         f"{self.description.institution}-{self.description.lab_name}-{instance}-{guest}-{copy}-{network_index}"
-        #                         '"]'
-        #                     )
-        #             network_index = network_index + 1
-        return resources
 
     def _get_resources_to_target_apply(self, instances):
         """
@@ -140,24 +98,25 @@ class TerraformServiceAWS(TerraformService):
             list(str): names of resources.
         """
         resources = [
+            "module.vpc",
+            "aws_key_pair.pub_key",
             "aws_security_group.services_internet_access_sg[0]",
             "aws_security_group.caldera_scenario_sg",
             "aws_security_group.elastic_endpoint_scenario_sg",
             "aws_security_group.elastic_traffic_scenario_sg",
+            "aws_security_group.packetbeat_scenario_sg",
+            "aws_security_group.guacamole_scenario_sg",
+            "aws_security_group.bastion_host_scenario_sg",
+            "aws_eip.bastion_host",
+            "aws_eip_association.eip_assoc_bastion_host"
         ]
         resources = resources + self._get_machine_resources_name()
         resources = resources + self._get_security_group_resources_name()
         resources = resources + self._get_interface_resources_name()
         if self.config.configure_dns:
             resources = resources + self._get_dns_resources_name()
-        if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
-            resources = resources + [
-                "aws_ec2_traffic_mirror_target.packetbeat[0]",
-                "aws_ec2_traffic_mirror_filter.filter[0]",
-                "aws_ec2_traffic_mirror_filter_rule.filter_all_inbound[0]",
-                "aws_ec2_traffic_mirror_filter_rule.filter_all_outbound[0]",
-            ]
-            resources = resources + self._get_session_resources_name(instances)
+        if self.config.aws.teacher_access == "endpoint":
+            resources.append("aws_ec2_instance_connect_endpoint.teacher_access[0]")
         return resources
         
     def _get_resources_to_target_destroy(self, instances):
@@ -170,10 +129,7 @@ class TerraformServiceAWS(TerraformService):
         Return:
             list(str): names of resources.
         """
-        resources = []
-        if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
-            resources = self._get_session_resources_name(instances)
-        return resources
+        return []
  
     def _get_terraform_variables(self):
         """
@@ -185,11 +141,17 @@ class TerraformServiceAWS(TerraformService):
         result = super()._get_terraform_variables()
         result["aws_region"] = self.config.aws.region
         result["network_cidr_block"] = self.config.network_cidr_block
+        result["services_network_cidr_block"] = self.config.services_network_cidr_block
+        result["internet_network_cidr_block"] = self.config.internet_network_cidr_block
         result["configure_dns"] = self.config.configure_dns
+        result["teacher_access_type"] = self.config.aws.teacher_access
         result["monitor_type"] = self.description.elastic.monitor_type
-        result["packetbeat_vlan_id"] = self.config.aws.packetbeat_vlan_id
-        result["machines_to_monitor"] = [guest_name for guest_name, guest in self.description.base_guests.items() if guest.monitor]
-        result["monitor"] = self.description.elastic.enable
+        result["elastic_internal_port"] = self.config.elastic.internal_port
+        result["elastic_external_port"] = self.config.elastic.external_port
+        result["caldera_internal_port"] = self.config.caldera.internal_port
+        result["caldera_external_port"] = self.config.caldera.external_port
+        result["guacamole_internal_port"] = self.config.guacamole.internal_port
+        result["guacamole_external_port"] = self.config.guacamole.external_port
         return result
     
     def _get_network_interface_variables(self, interface):

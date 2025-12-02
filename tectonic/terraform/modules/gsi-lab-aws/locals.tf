@@ -54,4 +54,12 @@ locals {
     ]) :
     format("%s-%s", record.name, record.network) => record
   }
+
+  interfaces_to_mirror = { for interface in flatten(
+    [for g in local.guest_data :
+      [for key, value in g.interfaces : value if g.monitor && var.monitor_type == "traffic"]
+    ]) :
+    interface.name => interface
+  }
+
 }

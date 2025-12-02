@@ -76,14 +76,43 @@
       ```bash
       sudo usermod -a -G libvirt <current_user>
       ```
-    - Create the `libvirt_storage_pool` volume pool to use in the cyberrange. For example, a dir backed pool named "tectonic":
+    - Verify that there is a network named `default' of type NAT:
+      ```
+      virsh net-list --all
+      ```
+      If that network does not exist, then create it by applying the following steps:
+        - Create an network.xml file with the network definition containing the following content:
+          ```
+          <network>
+            <name>default</name>
+            <forward mode="nat">
+              <nat>
+                <port start="1024" end="65535"/>
+              </nat>
+            </forward>
+            <bridge name="virbr0" stp="on" delay="0"/>
+            <ip address="192.168.124.1" netmask="255.255.255.0">
+              <dhcp>
+                <range start="192.168.124.2" end="192.168.124.254"/>
+              </dhcp>
+            </ip>
+          </network>
+          ```
+        - Create and start network:
+          ```
+          virsh net-define network.xml
+          virsh net-start default
+          virsh net-autostart default
+          ```
+    - Create the `libvirt_storage_pool` volume pool to use in the cyberrange. For example, a dir backed pool named `tectonic`:
       ```bash
         sudo mkdir -p <directory>
         sudo chmod 0775 <directory>
         sudo chgrp libvirt <directory>
         virsh -c qemu:///system pool-create-as tectonic dir --target=<directory>
       ```
-    - Create a bridge named as the `libvirt_bridge` ini file parameter ("tectonic" by default):
+
+    - Create a bridge named as the `libvirt_bridge` ini file parameter (`tectonic` by default):
       ```bash
       nmcli con add type bridge ifname tectonic
       nmcli con up bridge-tectonic
@@ -96,9 +125,15 @@
       ```
     - It might be necessary to modify the AppArmor configuration. If you have "permission denied" problems, try disabling it:
       ```bash
-      sudo systemctl disable --now apparmor
-      ```
-      then reboot.
+	  systemctl disable --now apparmor
+	  ```
+
+	  + To permamently disable AppArmor, edit `/etc/default/grub` and add the line: 
+	    ```
+		GRUB_CMDLINE_LINUX="apparmor=0"
+		```
+
+	    Then run `grub-update` and reboot.
 
 #### Rocky Linux
 - Install Python 3.11 (or newer) and pip
@@ -233,7 +268,7 @@
     - Install [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html):
 
   - Libvirt:
-    We have not installed libvirt on MacOS so we cannot help you on this point.
+	Unfortunately, Libvirt is not yet supported for MacOS installations.
 
 #### Windows 10/11
 - On Windows
@@ -246,17 +281,14 @@
       - Install Docker Desktop following [instructions](https://docs.docker.com/desktop/setup/install/mac-install/)
       - Enable Docker on your WSL 2 distro. On Docker Desktop go to Configuration -> Resources -> WSL Integration and select your distro
 
-  - AWS:
-    - Configurations are applied within the Linux installed on WSL
+    - AWS:
+      - Configurations are applied within the Linux installed on WSL
 
-  - Libvirt:
-    - You can run libvirt on a Linux VM in WSL 2 if you have neested virtualization enabled. Configurations are applied within the Linux installed on WSL
+    - Libvirt:
+      - You can run libvirt on a Linux VM in WSL 2 if you have nested
+        virtualization enabled. Configurations are applied within the
+        Linux installed on WSL
 
 - On Linux WSL 2
-<<<<<<< HEAD
-  - Follow the Tectonic installation guides for Linux Ubuntu/RHEL until the step where the ssh key is generated
-  - If you want to use AWS or Libvirt then also apply the configurations detailed in the installation guide
-=======
   - Follow the Tectonic installation guides for Ubuntu/RHEL Linux until the step where the ssh key is generated
-  - If you want to use AWS then also apply the configurations detailed in the installation guide
->>>>>>> main
+  - If you want to use AWS or Libvirt then also apply the configurations detailed in the installation guide

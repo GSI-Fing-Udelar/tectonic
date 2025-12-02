@@ -52,23 +52,10 @@ class TerraformAWS(Terraform):
         Returns:
           list(str): resources name of the aws_instances for the instances.
         """
-        exclude = []
-        for _, service in self.description.services_guests.items():
-            exclude.append(service.base_name)
-        for _, extra in self.description.extra_guests.items():
-            exclude.append(extra.base_name)
-        machines = self.description.parse_machines(instances, guests, copies, False, exclude)
+        machines = self.description.parse_machines(instances, guests, copies, True, [])
         resources = []
         for machine in machines:
             resources.append('aws_instance.machines["' f"{machine}" '"]')
-        # student_access_name = f"{self.description.institution}-{self.description.lab_name}-student_access"
-        # teacher_access_name = f"{self.description.institution}-{self.description.lab_name}-teacher_access"
-        # if student_access_name in machines:
-        #     resources.remove('aws_instance.machines["' f"{student_access_name}" '"]')
-        #     resources.append("aws_instance.student_access[0]")
-        # if teacher_access_name in machines:
-        #     resources.remove('aws_instance.machines["' f"{teacher_access_name}" '"]')
-        #     resources.append("aws_instance.teacher_access_host[0]")
         return resources
 
     def _get_route_table_resources_name(self, instances):
@@ -202,6 +189,25 @@ class TerraformAWS(Terraform):
 
         return resources
     
+    def _get_session_resources_name(self, instances):
+        """
+        Returns the name of the aws_ec2_traffic_mirror_session resource of the AWS Terraform module.
+
+        Parameters:
+          instances (list(str)): instances to use.
+
+        Returns:
+          list(str): resources name of the aws_ec2_traffic_mirror_session for the services.
+        """
+        resources = []
+        for _, guest in self.description.scenario_guests.items():
+            if instances and guest.instance not in instances:
+                continue
+            if guest.monitor:
+                for _, interface in guest.interfaces.items():
+                    resources.append(f"aws_ec2_traffic_mirror_session.session[\"{interface.name}\"]")
+        return resources
+    
     def _get_resources_to_target_apply(self, instances):
         """
         Returns the name of the aws resource of the AWS Terraform module to target apply base on the instances number.
@@ -212,28 +218,25 @@ class TerraformAWS(Terraform):
         Return:
             list(str): names of resources.
         """
-        resources = [
-            "module.vpc",
-            "aws_instance.student_access[0]",
-            "aws_security_group.bastion_host_sg",
-            "aws_security_group.teacher_access_sg",
-            "aws_key_pair.admin_pubkey",
-            "aws_security_group.entry_point_sg",
-        ]
+        resources = ["aws_security_group.entry_point_sg"]
         resources = resources + self._get_interface_resources_name(instances)
         resources = resources + self._get_subnet_resources_name(instances)
         resources = resources + self._get_security_group_resources_name(instances)
         resources = resources + self._get_machine_resources_name(instances, None, None)
-        if self.config.aws.teacher_access == "endpoint":
-            resources.append("aws_ec2_instance_connect_endpoint.teacher_access[0]")
-        else:
-            resources.append("aws_instance.teacher_access_host[0]")
         if self.description.internet_access_required:
             resources.append("aws_route_table.scenario_internet_access[0]")
             resources.append("aws_security_group.internet_access_sg[0]")
             resources = resources + self._get_route_table_resources_name(instances)
         if self.config.configure_dns:
             resources = resources + self._get_dns_resources_name(instances)
+        if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
+            resources = resources + [
+                "aws_ec2_traffic_mirror_target.packetbeat[0]",
+                "aws_ec2_traffic_mirror_filter.filter[0]",
+                "aws_ec2_traffic_mirror_filter_rule.filter_all_inbound[0]",
+                "aws_ec2_traffic_mirror_filter_rule.filter_all_outbound[0]",
+            ]
+            resources = resources + self._get_session_resources_name(instances)
         return resources
     
     def _get_resources_to_target_destroy(self, instances):
@@ -250,6 +253,8 @@ class TerraformAWS(Terraform):
         # resources = resources + self._get_interface_resources_name(instances) #TODO: fix this. If interfaces are added to be removed then all machines are removed.
         if self.config.configure_dns:
             resources = resources + self._get_dns_resources_name(instances)
+        if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
+            resources =  resources + self._get_session_resources_name(instances)
         return resources
 
     def _get_resources_to_recreate(self, instances, guests, copies):
@@ -265,10 +270,6 @@ class TerraformAWS(Terraform):
           list(str): resources name to recreate.
         """
         resources = self._get_machine_resources_name(instances, guests, copies)
-        if "student_access" in guests:
-            resources.append("aws_instance.student_access[0]")
-        if "teacher_access" in guests and self.config.aws.teacher_access == "host":
-            resources.append("aws_instance.teacher_access_host[0]")
         return resources
     
     def _get_terraform_variables(self):
@@ -282,11 +283,11 @@ class TerraformAWS(Terraform):
         result["aws_region"] = self.config.aws.region
         result["network_cidr_block"] = self.config.network_cidr_block
         result["services_network_cidr_block"] = self.config.services_network_cidr_block
-        result["internet_network_cidr_block"] = self.config.internet_network_cidr_block
-        result["teacher_access"] = self.config.aws.teacher_access
-        result["services_internet_access"] = self.description.elastic.enable
+        result["monitor"] = self.description.elastic.enable
         result["monitor_type"] = self.description.elastic.monitor_type
-        result["access_host_instance_type"] = self.config.aws.access_host_instance_type
+        result["packetbeat_vlan_id"] = self.config.aws.packetbeat_vlan_id
+        result["monitor"] = self.description.elastic.enable
+        result["guacamole_ip"] = f"{self.description.guacamole.service_ip}/32"
         return result
     
     def _get_guest_variables(self, guest):
