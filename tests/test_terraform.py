@@ -1,10 +1,6 @@
 import pytest
-import json
-import os
-import python_terraform
-from unittest.mock import MagicMock, patch, call
-
-from tectonic.terraform import Terraform, TerraformException
+from unittest.mock import MagicMock, patch
+from tectonic.terraform import TerraformException
 
 def test_run_terraform_cmd_success(terraform):
     mock_t = MagicMock()

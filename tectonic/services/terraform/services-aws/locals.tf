@@ -24,7 +24,7 @@ locals {
 
   os_data = jsondecode(var.os_data_json)
 
-  guest_basenames = distinct([for g in local.guest_data : g.base_name])
+  guest_basenames = distinct([for g in local.guest_data : g.base_name if g.base_name != "teacher_access_host"])
 
   network_interfaces = { for interface in flatten(
     [for g in local.guest_data :
@@ -51,15 +51,6 @@ locals {
       ]
     ]) :
     format("%s-%s", record.name, record.network) => record
-  }
-
-  interfaces_to_mirror = { for interface_data in flatten(
-    [for i, interface in data.aws_network_interface.interface : {
-      interface_name : interface.tags.Name,
-      interface_id : interface.id
-      }
-      if can(regex("^${var.institution}-${var.lab_name}-\\d+-(${join("|", var.machines_to_monitor)})(-\\d+)?-\\d+$", interface.tags.Name)) && var.monitor && var.monitor_type == "traffic"
-    ]) : interface_data.interface_name => interface_data
   }
 
 }

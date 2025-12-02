@@ -173,7 +173,7 @@ def test_load_config(test_data_path):
 
     default_tectonic_config = TectonicConfig(parser['config']['lab_repo_uri'])
 
-    for section in ["config", "ansible", "aws", "libvirt", "docker", "elastic", "caldera"]:
+    for section in ["config", "ansible", "aws", "libvirt", "docker", "elastic", "caldera", "guacamole"]:
         if section == "config":
             config_obj = config
             default_config = default_tectonic_config
@@ -217,4 +217,11 @@ def test_config_elastic_latest(test_data_path):
     config.elastic.elastic_stack_version = 'latest'
 
     assert re.match(r"\d+.\d+.\d+", config.elastic.elastic_stack_version)
+
+def test_config_guacamole_latest(test_data_path):
+    filename = Path(test_data_path).joinpath("config", "tectonic1.ini")
+    config = TectonicConfig.load(filename)
+    config.guacamole.version = 'latest'
+
+    assert re.match(r"\d+.\d+.\d+", config.guacamole.version)
     

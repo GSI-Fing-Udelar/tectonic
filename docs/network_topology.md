@@ -7,7 +7,7 @@ default `10.0.0.0/16`). Within this network, a `/24` subnetwork is
 generated for each scenario instance, so that instance `i` gets
 network `10.0.i.0/24`. 
 
-We divide each instance's `10.0.i.0/24` block into the number of
+We divide each instance's `10.0.i.0/24` block by the number of
 networks defined in the scenario. If `N` is the total number of
 defined networks, then network `k` of instance `i` will be assigned
 the block:
@@ -57,19 +57,19 @@ topology:
       - attacker
 ```
 
-The `attacker` of instance 1 will have IP `10.0.1.4/25` in the network
-`internal` and will have IP `10.0.1.132/25` in the network `external`.
-Similarly, the `attacker` of instance 2 will have the IPs
+The `attacker` of instance 1 will have IP `10.0.1.4/25` in the
+`internal` network and will have IP `10.0.1.132/25` in the `external`
+network. Similarly, the `attacker` of instance 2 will have the IPs
 `10.0.2.4/25` and `10.0.2.132/25`. The first copy of the `victim`
 machine of instance 1 will have IP `10.0.1.5/25`, while the second
 copy will have IP `10.0.1.6/25`.
 
 The `internet_network_cidr_block` and `services_network_cidr_block`
 subnets (defined in the ini config file) are special networks used to
-locate services (Elastic and Caldera) and allow them to access the
+locate services (Elastic, Caldera, Guacamole and Bastion Host) and allow them to access the
 internet. These subnets cannot be the same as the subnets used to
 locate scenario instances, and are by default assigned networks in the
-range `10.0.0.0/24`, which is unused by instances.
+range `10.0.0.0/24` which is unused by instances.
 
 
 ### Traffic

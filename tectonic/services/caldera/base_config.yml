@@ -59,30 +59,22 @@
         version: "{{ caldera_version }}"
         recursive: true
 
-    - name: Install Caldera OT plugins
+    - name: Download Caldera OT plugins
       block:
-        - name: "Download Caldera OT plugins"
+        - name: Download Caldera OT plugins
           ansible.builtin.git:
             repo: "https://github.com/mitre/{{ item.name }}.git"
-            dest: "/tmp/ot_plugins/{{ item.name }}/"
+            dest: "/root/ot_plugins/{{ item.name }}/"
             version: "v{{ item.version }}"
           loop: "{{ ot_plugins }}"
-        - name: "Download iec61850 payloads"
+        - name: Download iec61850 payloads
           ansible.builtin.get_url:
             url: "https://github.com/mitre/iec61850-payloads/releases/download/v1.0.0/{{ item }}"
-            dest: /tmp/ot_plugins/iec61850/payloads
+            dest: /root/ot_plugins/iec61850/payloads
           with_items:
             - iec61850_actions
             - iec61850_actions.exe
             - iec61850_actions_darwin
-        - name: "Install Caldera OT plugins: {{ item.name }}"
-          ansible.builtin.command: "mv /tmp/ot_plugins/{{ item.name }} /opt/caldera/plugins/"
-          loop: "{{ ot_plugins }}"
-        - name: Remove tmp files
-          ansible.builtin.file:
-            path: /tmp/ot_plugins/caldera_ot/
-            state: absent
-      when: caldera_ot_enabled == "True"
 
     - name: Install Caldera requirements
       ansible.builtin.command: python3.12 -m pip install -r /opt/caldera/requirements.txt

@@ -30,57 +30,25 @@ data "aws_ami" "base_images" {
   }
 }
 
-data "aws_vpc" "vpc" {
-  tags = {
-    Name = "${var.institution}-${var.lab_name}"
+data "aws_ami" "teacher_access_host" {
+  most_recent = true
+  owners      = [local.os_data[var.default_os]["owner"]]
+
+  filter {
+    name = "name"
+    values = [local.os_data[var.default_os]["ami_filter"]]
   }
-}
 
-data "aws_network_interfaces" "interfaces" {
-  tags = {
-    Institution = var.institution
-    Lab         = var.lab_name
+  filter {
+    name   = "root-device-type"
+    values = ["ebs"]
   }
-}
-
-data "aws_security_group" "teacher_access_sg" {
-  tags = {
-    Name = "${var.institution}-${var.lab_name}-teacher_access"
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
   }
-}
-
-data "aws_network_interface" "interface" {
-  for_each = toset(data.aws_network_interfaces.interfaces.ids)
-  id       = each.value
-}
-
-data "aws_key_pair" "pub_key" {
-  key_name           = "${var.institution}-${var.lab_name}-pubkey"
-  include_public_key = true
 }
 
 data "aws_availability_zones" "available" {
   state = "available"
-}
-
-data "aws_subnet" "services_subnet" {
-  for_each    = local.subnetworks
-  vpc_id      = data.aws_vpc.vpc.id
-  availability_zone       = data.aws_availability_zones.available.names[0]
-  cidr_block  = lookup(each.value, "cidr")
-  tags = {
-    Institution = var.institution
-    Lab         = var.lab_name
-  }
-}
-
-data "aws_route53_zone" "reverse" {
-  count         = var.configure_dns ? 1 : 0
-  name          = "in-addr.arpa"
-  private_zone  = true
-  vpc_id        = data.aws_vpc.vpc.id
-  tags = {
-    Institution = var.institution
-    Lab         = var.lab_name
-  }
 }

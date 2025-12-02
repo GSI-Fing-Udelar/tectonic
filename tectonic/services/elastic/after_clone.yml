@@ -71,15 +71,9 @@
     group: elasticsearch
 
 - name: Set Gateway IP
-  block:
-    - name: Set gateway_ip for Docker
-      ansible.builtin.set_fact:
-        gateway_ip: "{{ (elastic.ip | split('.'))[0] }}.{{ (elastic.ip | split('.'))[1] }}.{{ (elastic.ip | split('.'))[2] }}.1"
-      when: platform == "docker"
-    - name: Set gateway_ip for Libvirt
-      ansible.builtin.set_fact:
-        gateway_ip: "{{ (elastic.ip | split('.'))[0] }}.{{ (elastic.ip | split('.'))[1] }}.{{ (elastic.ip | split('.'))[2] }}.129"
-      when: platform == "libvirt"
+  ansible.builtin.set_fact:
+    gateway_ip: "{{ (elastic.ip | split('.'))[0] }}.{{ (elastic.ip | split('.'))[1] }}.{{ (elastic.ip | split('.'))[2] }}.129"
+  when: platform == "docker" or platform == "libvirt"
 
 - name: Configure firewalld
   block:
@@ -106,17 +100,17 @@
         state: enabled
         rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port=22 protocol=tcp accept"
       when: platform == "libvirt" or platform == "docker"
-    - name: Configure firewalld - Allow access to kibana from server
+    - name: Configure firewalld - Allow access to kibana from bastion_host server
       ansible.posix.firewalld:
         zone: public
         permanent: true
         state: enabled
-        rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port=5601 protocol=tcp accept"
+        rich_rule: "rule family=ipv4 source address={{ bastion_host.ip }}/32 port port={{ elastic.internal_port }} protocol=tcp accept"
       when: platform == "libvirt" or platform == "docker"
     - name: Configure firewalld - Allow access to Kibana
       ansible.posix.firewalld:
         zone: public
-        port: "5601/tcp"
+        port: "{{ elastic.internal_port }}/tcp"
         permanent: true
         state: enabled
       when: platform == "aws"

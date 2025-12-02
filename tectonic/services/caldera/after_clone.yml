@@ -35,6 +35,16 @@
     line: "{{caldera.ip}} {{ ansible_facts['fqdn'] }}"
   when: platform != "docker"
 
+- name: Enable Caldera OT plugins
+  block:
+    - name: Enable Caldera OT plugins | Load variables
+      ansible.builtin.include_vars:
+        file: vars/variables.yml
+    - name: "Enable Caldera OT plugins: {{ item.name }}"
+      ansible.builtin.command: "mv /root/ot_plugins/{{ item.name }} /opt/caldera/plugins/"
+      loop: "{{ ot_plugins }}"
+  when: caldera.ot_enabled == "True"
+
 - name: Create certificates
   block:
     - name: Create certificates directory
@@ -100,14 +110,14 @@
               option http-server-close
 
           frontend caldera-https-mgmt
-              bind *:8443 ssl crt plugins/ssl/conf/certificate.pem
-              http-request add-header proxy_port 8443
+              bind *:{{ caldera.internal_port }} ssl crt plugins/ssl/conf/certificate.pem
+              http-request add-header proxy_port {{ caldera.internal_port }}
               http-request set-header X-Forwarded-Proto https
               default_backend caldera_server
 
           frontend caldera-https-agents
               bind *:443 ssl crt plugins/ssl/conf/certificate.pem
-              http-request add-header proxy_port 8443
+              http-request add-header proxy_port 443
               http-request set-header X-Forwarded-Proto https
               acl beacon path_beg /beacon
               acl file_upload path_beg /file/upload
@@ -145,7 +155,7 @@
     dest: /opt/caldera/script.sh
     content: |
       #!/bin/bash
-      nohup python3.12 server.py &
+      nohup python3.12 server.py --build &
 
 - name: Create Caldera service 
   ansible.builtin.copy: 
@@ -176,6 +186,7 @@
 - name: Set Gateway IP
   ansible.builtin.set_fact:
     gateway_ip: "{{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.129"
+  when: platform == "libvirt" or platform == "docker"
 
 - name: Configure firewalld
   block:
@@ -203,17 +214,17 @@
         state: enabled
         rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port=22 protocol=tcp accept"
       when: platform == "libvirt" or platform == "docker"
-    - name: Configure firewalld - Allow access to caldera from server
+    - name: Configure firewalld - Allow access to caldera from bastion_host server
       ansible.posix.firewalld:
         zone: public
         permanent: true
         state: enabled
-        rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port=8443 protocol=tcp accept"
+        rich_rule: "rule family=ipv4 source address={{ bastion_host.ip }}/32 port port={{ caldera.internal_port }} protocol=tcp accept"
       when: platform == "libvirt" or platform == "docker"
     - name: Configure firewalld - Add port to default zone
       ansible.posix.firewalld:
         zone: public
-        port: "8443/tcp"
+        port: "{{ caldera.internal_port }}/tcp"
         permanent: true
         state: enabled
       when: platform == "aws"

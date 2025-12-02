@@ -22,3 +22,6 @@ elastic_settings:
 
 caldera_settings:
   enable: yes
+
+guacamole:
+  enable: yes

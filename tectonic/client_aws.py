@@ -245,13 +245,15 @@ class ClientAWS(Client):
             machine_name (str): name of the machine.
             username (str): username to use. Default: None
         """
-        if machine_name == self._get_teacher_access_name():
-            interactive_shell(self._get_teacher_access_ip(), self._get_teacher_access_username())
+        if machine_name == self._get_bastion_host_name():
+            interactive_shell(self._get_bastion_host_ip(), self._get_bastion_host_username())
         else:
             hostname = self.get_ssh_hostname(machine_name)
             username = username or self.description.get_guest_username(self.description.get_base_name(machine_name))
             if self.config.aws.teacher_access == "host":
-                gateway = (self._get_teacher_access_ip(), self._get_teacher_access_username())
+                gateway = [(self._get_bastion_host_ip(), self._get_bastion_host_username())]
+                if machine_name != self.description.teacher_access_host.name:
+                    gateway.append((self._get_teacher_access_host_ip(), self._get_teacher_access_host_username()))
             else:
                 gateway = self.EIC_ENDPOINT_SSH_PROXY
             if not hostname:
@@ -268,10 +270,11 @@ class ClientAWS(Client):
         if self.config.aws.teacher_access == "endpoint":
             proxy_command = self.EIC_ENDPOINT_SSH_PROXY
         else:
-            access_ip = self._get_teacher_access_ip()
-            username = self._get_teacher_access_username()
-            connection_string = f"{username}@{access_ip}"
-            proxy_command = f"ssh {self.config.ansible.ssh_common_args} -W %h:%p {connection_string}"
+            bastion_host_ip = self._get_bastion_host_ip()
+            bastion_host_username = self._get_bastion_host_username()
+            teacher_access_host_ip = self._get_teacher_access_host_ip()
+            teacher_access_host_username = self._get_teacher_access_host_username()
+            proxy_command = f"ssh {self.config.ansible.ssh_common_args} -W %h:%p -o ProxyCommand='ssh {self.config.ansible.ssh_common_args} -W {teacher_access_host_ip}:22 {bastion_host_username}@{bastion_host_ip}' {teacher_access_host_username}@{teacher_access_host_ip}"
         return proxy_command
     
     def get_ssh_hostname(self, machine):
@@ -289,33 +292,53 @@ class ClientAWS(Client):
         else:
             return self.get_machine_private_ip(machine)
         
-    def _get_teacher_access_username(self):
+    def _get_bastion_host_username(self):
+        """
+        Returns username for connection to bastion host.
+
+        Return:
+            str: username to use.
+        """
+        return OS_DATA[self.description.bastion_host.os]["username"]
+    
+    def _get_teacher_access_host_username(self):
         """
         Returns username for connection to teacher access host.
 
         Return:
             str: username to use.
         """
-        return OS_DATA[self.description.default_os]["username"]
+        return OS_DATA[self.description.teacher_access_host.os]["username"]
     
-    def _get_teacher_access_ip(self):
+    def _get_bastion_host_ip(self):
         """
-        Returns the public IP assigned to the teacher access host.
+        Returns the public IP assigned to the bastion host.
 
         Return:
-            str: public IP for teacher access.
+            str: public IP for basion host.
         """
         if self.config.aws.teacher_access == "host":
-            return self.get_machine_public_ip(self._get_teacher_access_name())
+            return self.get_machine_public_ip(self.description.bastion_host.name)
         return None
     
-    def _get_teacher_access_name(self):
+    def _get_teacher_access_host_ip(self):
         """
-        Returns the name of the teacher access host.
+        Returns the private IP assigned to the teacher access host.
 
         Return:
-            str: teacher access host name.
+            str: private IP for teacher access host.
         """
         if self.config.aws.teacher_access == "host":
-            return f"{self.description.institution}-{self.description.lab_name}-teacher_access"
+            return self.description.teacher_access_host.service_ip
+        return None
+    
+    def _get_bastion_host_name(self):
+        """
+        Returns the name of the bastion host.
+
+        Return:
+            str: bastion host name.
+        """
+        if self.config.aws.teacher_access == "host":
+            return self.description.bastion_host.name
         return None

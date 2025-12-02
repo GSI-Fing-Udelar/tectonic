@@ -85,6 +85,18 @@ class ClientDocker(Client):
         except Exception as e:
             raise ClientDockerException(str(e)) from e
         
+    def get_machine_ip_in_services_network(self, machine_name):
+        try:
+            container = self.connection.containers.get(machine_name)
+            if container:
+                for network in container.attrs["NetworkSettings"]["Networks"]:
+                    ip_addr = container.attrs["NetworkSettings"]["Networks"][network]["IPAddress"]
+                    if ip_address(ip_addr) in ip_network(self.config.services_network_cidr_block):
+                        return ip_addr
+            return None
+        except Exception as e:
+            raise ClientDockerException(str(e)) from e
+
     def _get_image_id(self, image_name):
         try:
             image = self.connection.images.get(image_name)

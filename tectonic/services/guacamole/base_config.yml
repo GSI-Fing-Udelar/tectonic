@@ -1,0 +1,263 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+
+- name: "Install Guacamole (Ubuntu 22.04)"
+  hosts: guacamole
+  become: true
+  gather_facts: true
+  vars:
+    mysql_driver_version: 9.5.0
+
+  tasks:
+    - name: "Update repos"
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install packages
+      ansible.builtin.package:
+        name: 
+          - libcairo2-dev
+          - libjpeg-turbo8-dev
+          - libpng-dev
+          - libtool-bin
+          - uuid-dev
+          - libossp-uuid-dev
+          - libavcodec-dev
+          - libavformat-dev
+          - libavutil-dev
+          - libswscale-dev
+          - freerdp2-dev
+          - libpango1.0-dev
+          - libssh2-1-dev
+          - libtelnet-dev
+          - libvncserver-dev
+          - libwebsockets-dev
+          - libpulse-dev
+          - libssl-dev
+          - libvorbis-dev
+          - libwebp-dev
+          - make
+          - tomcat9
+          - tomcat9-admin
+          - tomcat9-common
+          - tomcat9-user
+          - mysql-server
+          - python3-pymysql
+          - iptables-persistent
+        state: present
+
+    - name: Download guacamole
+      ansible.builtin.unarchive:
+        src: "https://downloads.apache.org/guacamole/{{ guacamole_version }}/source/guacamole-server-{{ guacamole_version }}.tar.gz"
+        dest: /root/
+        remote_src: yes
+
+    - name: Build guacamole
+      block:
+        - name: Build guacamole | Configure
+          ansible.builtin.command: ./configure --with-systemd-dir=/etc/systemd/system/
+          args:
+            chdir: /root/guacamole-server-{{ guacamole_version }}
+        - name: Build guacamole | Make
+          ansible.builtin.command: make
+          args:
+            chdir: /root/guacamole-server-{{ guacamole_version }}
+        - name: Build guacamole | Make install
+          ansible.builtin.command: make install
+          args:
+            chdir: /root/guacamole-server-{{ guacamole_version }}
+        - name: Build guacamole | ldconfig
+          ansible.builtin.command: ldconfig
+          args:
+            chdir: /root/guacamole-server-{{ guacamole_version }}
+
+    - name: Create Guacamole user
+      block:
+        - name: Create Guacamole user | Create user
+          ansible.builtin.user:
+            name: guacd
+            shell: /sbin/nologin
+            home: /var/lib/guacd
+        - name: Create Guacamole user | Create user home
+          ansible.builtin.file:
+            path: /var/lib/guacd
+            state: directory
+            mode: '0755'
+            owner: guacd
+            group: guacd 
+        - name: Create Guacamole user | Adjust service file
+          ansible.builtin.lineinfile:
+            path: /etc/systemd/system/guacd.service
+            regexp: '^User='
+            line: User=guacd
+
+    - name: Download guacamole webapp
+      ansible.builtin.get_url:
+        url: "https://downloads.apache.org/guacamole/{{ guacamole_version }}/binary/guacamole-{{ guacamole_version }}.war"
+        dest: /var/lib/tomcat9/webapps/ROOT.war
+    - name: Configure guacamole
+      block:
+        - name: Configure guacamole | Create configuration directory
+          ansible.builtin.file:
+            path: /etc/guacamole
+            state: directory
+            mode: '0755'
+        - name: Configure guacamole | Create guacamole properties file
+          ansible.builtin.copy:
+            dest: /etc/guacamole/guacamole.properties
+            content: |
+                guacd-hostname: localhost
+                guacd-port: 4822
+                auth-provider: net.sourceforge.guacamole.net.basic.BasicFileAuthenticationProvider
+                basic-user-mapping: /etc/guacamole/user-mapping.xml
+            mode: '0640'
+            owner: root
+            group: tomcat
+        - name: Configure guacamole | Create guacd config file
+          ansible.builtin.copy:
+            dest: /etc/guacamole/guacd.conf
+            content: |
+              [server]
+              bind_host = 127.0.0.1
+              bind_port = 4822
+
+    - name: Install brute force protection
+      block:
+        - name: Install brute force protection | Create extensions directory
+          ansible.builtin.file:
+            path: /etc/guacamole/extensions
+            state: directory
+            mode: '0755'
+        - name: Install brute force protection | Download extension
+          ansible.builtin.unarchive:
+            src: "https://apache.org/dyn/closer.lua/guacamole/{{ guacamole_version }}/binary/guacamole-auth-ban-{{ guacamole_version }}.tar.gz?action=download"
+            dest: /root
+            remote_src: yes
+
+    - name: Configure database
+      block:
+        - name: Configure database | Download mysql driver
+          ansible.builtin.command: "curl -L https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-j-{{ mysql_driver_version }}.tar.gz -O"
+          args:
+            chdir: /root
+        - name: Configure database | Unarchive mysql driver
+          ansible.builtin.unarchive:
+            src: "/root/mysql-connector-j-{{ mysql_driver_version }}.tar.gz"
+            dest: /root
+            remote_src: yes
+        - name: Configure database | Create lib directory
+          ansible.builtin.file:
+            path: /etc/guacamole/lib
+            state: directory
+            mode: '0755'
+        - name: Configure database | Copy mysql driver
+          ansible.builtin.copy:
+            src: "/root/mysql-connector-j-{{ mysql_driver_version }}/mysql-connector-j-{{ mysql_driver_version }}.jar"
+            dest: /etc/guacamole/lib/
+            remote_src: yes
+        - name: Configure database | Download extension
+          ansible.builtin.unarchive:
+            src: "https://apache.org/dyn/closer.lua/guacamole/{{ guacamole_version }}/binary/guacamole-auth-jdbc-{{ guacamole_version }}.tar.gz?action=download"
+            dest: /root
+            remote_src: yes
+        - name: Configure database | Copy database extension
+          ansible.builtin.copy:
+            src: "/root/guacamole-auth-jdbc-{{ guacamole_version }}/mysql/guacamole-auth-jdbc-mysql-{{ guacamole_version }}.jar"
+            dest: /etc/guacamole/extensions/
+            remote_src: yes
+        - name: Configure database | Start mysql service
+          ansible.builtin.systemd_service:
+            name: mysql
+            state: restarted
+            enabled: true
+            daemon_reload : true
+        - name: Configure database | Create database and import schemas
+          community.mysql.mysql_db:
+            name: guacamole_db
+            state: import
+            target: "/root/guacamole-auth-jdbc-{{ guacamole_version }}/mysql/schema/{{ item }}"
+            login_unix_socket: /run/mysqld/mysqld.sock
+          with_items:
+            - 001-create-schema.sql
+            - 002-create-admin-user.sql
+        - name: Configure database | Create guacamole database password
+          ansible.builtin.set_fact:
+            guacamole_database_password: "{{ lookup('community.general.random_string', length=30, special=false) }}"
+        - name: Configure database | Create guacamole database user
+          community.mysql.mysql_user:
+            name: guacamole_user
+            password: "{{ guacamole_database_password }}"
+            priv: "guacamole_db.*:SELECT,INSERT,UPDATE,DELETE"
+            state: present
+            login_unix_socket: /run/mysqld/mysqld.sock
+        - name: Configure database | Set database options
+          ansible.builtin.lineinfile:
+            path: /etc/guacamole/guacamole.properties
+            line: "{{ item }}"
+          with_items:
+            - "mysql-database: guacamole_db"
+            - "mysql-username: guacamole_user"
+            - "mysql-password: {{ guacamole_database_password }}"
+
+    - name: Secure Tomcat
+      block:
+        - name: Secure Tomcat | Create keystore
+          ansible.builtin.command:
+            cmd: keytool -genkey -keyalg RSA -alias tomcat -keystore /etc/tomcat9/localhost-rsa.jks -validity 365 -keysize 2048 -storepass changeit -dname 'cn=guacamole, ou=tectonic, o=tectonic, c=UY'
+        - name: Secure Tomcat | Delete default root app
+          ansible.builtin.file:
+            path: /var/lib/tomcat9/webapps/ROOT
+            state: absent
+    
+    - name: Delete unused packages
+      ansible.builtin.package:
+        name: 
+          - libcairo2-dev
+          - libjpeg-turbo8-dev
+          - libpng-dev
+          - libtool-bin
+          - uuid-dev
+          - libossp-uuid-dev
+          - libavcodec-dev
+          - libavformat-dev
+          - libavutil-dev
+          - libswscale-dev
+          - freerdp2-dev
+          - libpango1.0-dev
+          - libssh2-1-dev
+          - libtelnet-dev
+          - libvncserver-dev
+          - libwebsockets-dev
+          - libpulse-dev
+          - libssl-dev
+          - libvorbis-dev
+          - libwebp-dev
+          - make
+        state: absent
+
+    - name: Delete unused files
+      ansible.builtin.file:
+        path: "/root/{{ item }}"
+        state: absent
+      with_items:
+        - "guacamole-auth-jdbc-{{ guacamole_version }}"
+        - "guacamole-server-{{ guacamole_version }}"
+        - "mysql-connector-j-{{ mysql_driver_version }}"
+        - "mysql-connector-j-{{ mysql_driver_version }}.tar.gz"

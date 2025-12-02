@@ -125,7 +125,7 @@ commands = [
       "core_function": "run_automation",
      },
     { "command": "student-access",
-      "core_function": "configure_students_access",
+      "core_function": "configure_access",
      },
     { "command": "recreate",
       "core_function": "recreate",
