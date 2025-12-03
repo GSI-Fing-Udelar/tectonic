@@ -86,5 +86,5 @@ class TerraformServiceDocker(TerraformService):
             dict: machines variables.
         """
         result = super()._get_service_machine_variables(service)
-        result["ports"] = service.ports
+        result["ports"] =  service.ports if service.base_name == "bastion_host" else {}
         return result

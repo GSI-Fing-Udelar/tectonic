@@ -30,6 +30,7 @@ from tectonic.config_docker import TectonicConfigDocker
 from tectonic.config_elastic import TectonicConfigElastic
 from tectonic.config_caldera import TectonicConfigCaldera
 from tectonic.config_guacamole import TectonicConfigGuacamole
+from tectonic.config_bastion_host import TectonicConfigBastionHost
 
 class TectonicConfig(object):
     """Class to store Tectonic configuration."""
@@ -63,6 +64,7 @@ class TectonicConfig(object):
         self._elastic = TectonicConfigElastic()
         self._caldera = TectonicConfigCaldera()
         self._guacamole = TectonicConfigGuacamole()
+        self.bastion_host = TectonicConfigBastionHost()
 
 
     #----------- Getters ----------
@@ -260,5 +262,24 @@ class TectonicConfig(object):
         TectonicConfig._assign_attributes(config.elastic, parser, 'elastic')
         TectonicConfig._assign_attributes(config.caldera, parser, 'caldera')
         TectonicConfig._assign_attributes(config.guacamole, parser, 'guacamole')
+        TectonicConfig._assign_attributes(config.bastion_host, parser, 'bastion_host')
 
         return config
+    
+    def to_dict(self):
+        result = {
+            "platform": self.platform,
+            "network_cidr_block": self.network_cidr_block,
+            "internet_network_cidr_block": self.internet_network_cidr_block,
+            "services_network_cidr_block": self.services_network_cidr_block,
+            "configure_dns": self.configure_dns,
+            "debug": self.debug,
+            "platforms":{
+                "aws": self.aws.to_dict(),
+                "libvirt": self.libvirt.to_dict(),
+                "docker": self.docker.to_dict(),
+            } 
+        }
+        if self.proxy:
+            result["proxy"] = self.proxy
+        return result

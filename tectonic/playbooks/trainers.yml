@@ -28,13 +28,13 @@
       block:
         - name: Configure trainer user in Linux | Create user
           ansible.builtin.user:
-            name: "{{ username }}"
-            password: "{{ password_hash }}"
+            name: "{{ trainer.username }}"
+            password: "{{ trainer.password_hash }}"
             shell: /bin/bash
         - name: Configure trainer user in Linux | Add user to sudoers without password
           ansible.builtin.copy:
             dest: "/etc/sudoers.d/98-trainer"
-            content: "{{ username }} ALL=(ALL) NOPASSWD:ALL"
+            content: "{{ trainer.username }} ALL=(ALL) NOPASSWD:ALL"
         - name: Configure trainer user in Linux | Enable SSH login with password
           block:
             - name: Configure trainer user in Linux | Enable SSH login with password | Find SSH config files
@@ -59,8 +59,8 @@
       when: ansible_facts['os_family'] != "Windows"
     - name: Configure trainer user in Windows
       ansible.windows.win_user:
-        name: "{{ username }}"
-        password: "{{ password }}"
+        name: "{{ trainer.username }}"
+        password: "{{ trainer.password }}"
         groups:
           - Administrators
           - Remote Desktop Users

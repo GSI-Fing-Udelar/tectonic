@@ -141,8 +141,6 @@ class TerraformService(Terraform):
             })
             endpoint_token = result[0]["token"]
             extra_vars = {
-                "institution": self.description.institution,
-                "lab_name": self.description.lab_name,
                 "token": endpoint_token,
                 "elastic_url": f"https://{self.description.elastic.service_ip}:8220",
             }
@@ -161,8 +159,6 @@ class TerraformService(Terraform):
         """
         if self.client.get_machine_status(self.description.caldera.name) == "RUNNING":
             extra_vars = {
-                "institution": self.description.institution,
-                "lab_name": self.description.lab_name,
                 "caldera_ip": self.description.caldera.service_ip,
                 "caldera_agent_type": "red",
             }
@@ -202,8 +198,6 @@ class TerraformService(Terraform):
         """
         variables = {
             "action": action,
-            "institution": self.description.institution,
-            "lab_name": self.description.lab_name,
         }
         inventory = self._build_packetbeat_inventory(ansible, variables)
         ansible.run(inventory=inventory, playbook=self.PACKETBEAT_PLAYBOOK, quiet=True)
@@ -229,10 +223,6 @@ class TerraformService(Terraform):
                 "action": "install",
                 "elastic_url": f"https://{elastic_ip}:8220",
                 "token": agent_token,
-                "elastic_agent_version": self.config.elastic.elastic_stack_version,
-                "institution": self.description.institution,
-                "lab_name": self.description.lab_name,
-                "proxy": self.config.proxy,
             }
             inventory = self._build_packetbeat_inventory(ansible, variables)
             ansible.wait_for_connections(inventory=inventory)
@@ -247,8 +237,6 @@ class TerraformService(Terraform):
         """
         variables = {
             "action": "delete",
-            "institution": self.description.institution,
-            "lab_name": self.description.lab_name,
         }
         inventory = self._build_packetbeat_inventory(ansible, variables)
         ansible.run(inventory=inventory, playbook=self.PACKETBEAT_PLAYBOOK, quiet=True)

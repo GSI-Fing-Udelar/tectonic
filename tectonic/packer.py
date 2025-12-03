@@ -145,7 +145,7 @@ class Packer(ABC):
             "os_data_json": json.dumps(OS_DATA),
             "platform": self.config.platform,
             "remove_ansible_logs": str(not self.config.ansible.keep_logs),
-            "elastic_version": self.config.elastic.elastic_stack_version
+            "elastic_version": self.config.elastic.version
         }
         if self.config.proxy:
             args["proxy"] = self.config.proxy
@@ -173,8 +173,8 @@ class Packer(ABC):
             "platform": self.config.platform,
             "remove_ansible_logs": str(not self.config.ansible.keep_logs),
             #TODO: pass variables as a json as part of each host
-            "elastic_version": self.config.elastic.elastic_stack_version, 
-            "elastic_latest_version": str(self.config.elastic.elastic_stack_version == "latest"), # TODO: Check this
+            "elastic_version": self.config.elastic.version, 
+            "elastic_latest_version": str(self.config.elastic.version == "latest"), # TODO: Check this
             "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
             "caldera_version": self.config.caldera.version,
             "packetbeat_vlan_id": self.config.aws.packetbeat_vlan_id,

@@ -120,5 +120,5 @@
                 state: enabled
                 immediate: true
           when: ansible_facts['os_family'] in ['RedHat', 'Rocky']
-      when: gui
+      when: gui | default('false') | bool
 

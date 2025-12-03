@@ -18,37 +18,23 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-import tectonic.validate as validate
-
-class TectonicConfigDocker(object):
-    """Class to store Tectonic docker configuration."""
+class TectonicConfigBastionHost(object):
+    """Class to store Tectonic bastion host configuration."""
 
     def __init__(self):
-        self.uri = "unix:///var/run/docker.sock"
-        self.dns = "8.8.8.8"
-
+        self.domain = "tectonic.cyberrange.com"
 
     #----------- Getters ----------
     @property
-    def uri(self):
-        return self._uri
-
-    @property
-    def dns(self):
-        return self._dns
-
-
+    def domain(self):
+        return self._domain
+    
     #----------- Setters ----------
-    @uri.setter
-    def uri(self, value):
-        self._uri = value
-
-    @dns.setter
-    def dns(self, value):
-        validate.ip_address_or_hostname("dns", value)
-        self._dns = value
+    @domain.setter
+    def domain(self, value):
+        self._domain = value
 
     def to_dict(self):
         return {
-            "dns": self.dns,
+            "domain": self.domain,
         }

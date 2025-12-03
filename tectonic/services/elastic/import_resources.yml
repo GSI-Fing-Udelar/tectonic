@@ -33,7 +33,7 @@
           "kbn-xsrf": "ansible"
         body: "{{ lookup('ansible.builtin.file', item) }}"
       with_fileglob:
-        - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/elasticsearch/ingest_pipelines/*.json"
+        - "{{ scenario_dir }}/elastic/{{ services.elastic.monitor_type }}/elasticsearch/ingest_pipelines/*.json"
     - name: Import component templates
       ansible.builtin.include_tasks: ../../playbooks/make_request.yml
       vars:
@@ -47,7 +47,7 @@
           "kbn-xsrf": "ansible"
         body: "{{ lookup('ansible.builtin.file', item) }}"
       with_fileglob:
-        - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/elasticsearch/component_templates/*.json"
+        - "{{ scenario_dir }}/elastic/{{ services.elastic.monitor_type }}/elasticsearch/component_templates/*.json"
     - name: Import ILM policies
       ansible.builtin.include_tasks: ../../playbooks/make_request.yml
       vars:
@@ -61,7 +61,7 @@
           "kbn-xsrf": "ansible"
         body: "{{ lookup('ansible.builtin.file', item) }}"
       with_fileglob:
-        - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/elasticsearch/ilm_policies/*.json"
+        - "{{ scenario_dir }}/elastic/{{ services.elastic.monitor_type }}/elasticsearch/ilm_policies/*.json"
     - name: Import index templates
       ansible.builtin.include_tasks: ../../playbooks/make_request.yml
       vars:
@@ -75,12 +75,12 @@
           "kbn-xsrf": "ansible"
         body: "{{ lookup('ansible.builtin.file', item) }}"
       with_fileglob:
-        - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/elasticsearch/index_templates/*.json"
+        - "{{ scenario_dir }}/elastic/{{ services.elastic.monitor_type }}/elasticsearch/index_templates/*.json"
 
 - name: Import Fleet resources
   ansible.builtin.include_tasks: import_resources_fleet.yml
   with_fileglob:
-    - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/fleet/agent_policies/*.json"
+    - "{{ scenario_dir }}/elastic/{{ services.elastic.monitor_type }}/fleet/agent_policies/*.json"
   loop_control:
     loop_var: policy
 
@@ -97,10 +97,10 @@
       "kbn-xsrf": "ansible"
     body: "{{ lookup('ansible.builtin.file', integration) | from_json | ansible.builtin.combine({'policy_id':elastic_result_policy['json']['item']['id']}) }}"
   with_fileglob:
-    - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/fleet/policy_integrations/{{ elastic.policy_name }}/*.json"
+    - "{{ scenario_dir }}/elastic/{{ services.elastic.monitor_type }}/fleet/policy_integrations/{{ services.elastic.packetbeat_policy_name if services.elastic.monitor_type == 'traffic' else  services.elastic.endpoint_policy_name }}/*.json"
   loop_control:
     loop_var: integration
-  when: elastic.deploy_policy
+  when: services.elastic.deploy_default_policy
 
 - name: Import Kibana resources
   block:
@@ -121,7 +121,7 @@
             filename: "{{ item | ansible.builtin.basename }}"
             mime_type: "application/octet-stream"
       with_fileglob:
-        - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/kibana/saved_objects/*.ndjson"
+        - "{{ scenario_dir }}/elastic/{{ services.elastic.monitor_type }}/kibana/saved_objects/*.ndjson"
     - name: Import siem rules
       ansible.builtin.include_tasks: ../../playbooks/make_request.yml
       vars:
@@ -139,4 +139,4 @@
             filename: "{{ item | ansible.builtin.basename }}"
             mime_type: "application/octet-stream"
       with_fileglob:
-        - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/kibana/security_rules/*.ndjson"  
+        - "{{ scenario_dir }}/elastic/{{ services.elastic.monitor_type }}/kibana/security_rules/*.ndjson"  

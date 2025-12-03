@@ -89,3 +89,9 @@ class TectonicConfigLibvirt(object):
     def bridge_base_ip(self, value):
         validate.number("bridge_base_ip", value, min_value=5, max_value=254)
         self._bridge_base_ip = value
+
+    def to_dict(self):
+        return {
+            "external_network": self.external_network,
+            "bridge_base_ip": self.bridge_base_ip,
+        }

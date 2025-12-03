@@ -68,7 +68,7 @@ elastic_settings:
   # How to monitor instances. traffic (only network traffic with
   # packetbeat) or endpoint (monitor processes, network traces, files,
   # logs). Default: traffic.
-  monitor_type: "endpoint"
+  monitor_type: "traffic"
   # Wheter to deploy default policy. Default: yes.
   deploy_default_policy: yes
 

@@ -29,4 +29,4 @@
       KEY: "{{ red_api_key }}"
     body: "{{ lookup('ansible.builtin.file', item) }} "
   with_fileglob:
-    - "{{caldera.description_path}}/caldera/operations/*.json"
+    - "{{ scenario_dir }}/caldera/operations/*.json"
