@@ -2,35 +2,51 @@
 
 ### Config
 
-Modifies the Ansible options in the INI file to change Ansible’s global configurations.
+Modify the Ansible options in the [ini file](./ini_config.md) to
+change Ansible's global configurations.
 
 ### Facts
 
-In Ansible, by default, facts are always gathered when executing a playbook. In order to optimize Ansible executions in Tectonic, fact collection has been disabled by default. Therefore, if your playbooks need to use facts, make sure to enable them using `gather_facts: yes` at the play level.
+In Ansible, by default, facts are always gathered when executing a
+playbook. In order to optimize Ansible executions in Tectonic, fact
+collection has been disabled by default. Therefore, if your playbooks
+need to use facts, make sure to enable them using `gather_facts: yes`
+at the playbook level.
 
 ### Parameters
 
-These parameters are used to individualize the instances, for example by configuring unique flag values. Tectonic selects parameters from the user-provided parameter lists in a pseudo-random manner (based on the value of the random seed) and assigns them to each instance.
+These parameters are used to individualize the instances, for example
+by configuring unique flag values. Tectonic selects parameters from
+the user-provided parameters in the `ansible/parameters` directory,
+inside `ndjson` files. These `ndjson` files should contain a value per
+line in json format. A value is selected for each parameter in a
+pseudo-random manner (based on the value of the `random_seed` option
+in the [lab edition file](./description.md#lab-edition-information))
+and assigns them to each instance.
 
-The parameters are loaded as dictionaries within the variable:
+The parameters are loaded in the playbook as dictionaries in the `parameters`
+variable:
 
 ```
 parameters['<parameter_file_name>']
 ```
 
 For example, if there are two parameter files as follows:
++ Filename: `flags.ndjson`:
+
+	```
+	"super_secret_flag1"
+	"super_secret_flag2"
+	... 
+	```
+
++ Filename: `users.ndjson`
 ```
-filename: flags.ndjson
-content:
-"super_secret_flag"
-... 
-
-
-filename: users.ndjson
-content:
-{"name":"admin","password":"admin"}
+{"name":"admin1","password":"admin"}
+{"name":"admin2","password":"admin"}
 ...
 ```
+
 These parameters are used in a playbook as follows:
 
 ```
@@ -41,7 +57,10 @@ parameters["users"]["name"] and parametes["users"]["password"]
 
 ### Variables
 
-A set of Ansible variables is available that refer to Tectonic configurations and the scenario description. The variables are listed below.
+A set of Ansible variables is available that refer to the Tectonic
+configuration and the scenario description. 
+
+The variables for the `base_config` playbooks are the following:
 
 - `config`: Dictionary with configurations associated with parameters of the ini file.
     - `configure_dns`
@@ -84,12 +103,12 @@ A set of Ansible variables is available that refer to Tectonic configurations an
 - `institution`: Institution.
 - `lab_name`: Laboratory name.
 - `networks`:
-- `parameters`: Dictionary with defined parameters for the instance.
+- `parameters`: Dictionary with the chosen parameters for the instance.
 - `networks`: Scenario networks. Each entry in the scenario contains a network with its configuration parameters.
     - `<network_name>`
         - `ip_network`
         - `name`
-- `random_seed`: Seed used for parameters selection.
+- `random_seed`: Seed used for parameter selection.
 - `scenario_dir`: Directory with the scenario definition.
 - `services`: Services enabled in the scenario. Each entry in the dictionary contains a service with configuration parameters analogous to those listed for the 'instance' variable presented earlier. Additionally, each service has specific configuration parameters. The following lists these parameters for each service.
     - `bastion_host`
@@ -128,6 +147,17 @@ A set of Ansible variables is available that refer to Tectonic configurations an
         - `instance`
         - `password`
         - `password_hash`
+
+
+If you have any doubts about the variables available on the host where
+a playbook is running, you can add the following task to your playbook
+to print the variables:
+
+```
+- name: Print all variables/facts known for the current host
+  ansible.builtin.debug:
+    var: hostvars[inventory_hostname]
+```
 
 Below is a reference example.
 
@@ -429,12 +459,4 @@ Below is a reference example.
         "password_hash": "$6$rounds=656000$5ylj049ZZGbMoy0g$QBOgI48EI0Cp8hhvlYzAWQrLDEcy3CJGaiWmReAaDEVmEn2zAmKHFej.GgZ5T212R/JnZFbiDbaGACzF9HAro1"
     }
 }
-```
-
-If you have any doubts about the variables available on the host where a playbook is running, you can add the following task to your playbook to print the variables:
-
-```
-- name: Print all variables/facts known for the current host
-  ansible.builtin.debug:
-    var: hostvars[inventory_hostname]
 ```
