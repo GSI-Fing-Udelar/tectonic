@@ -179,6 +179,7 @@ class Packer(ABC):
             "caldera_version": self.config.caldera.version,
             "packetbeat_vlan_id": self.config.aws.packetbeat_vlan_id,
             "guacamole_version": self.config.guacamole.version,
+            "moodle_version": self.config.moodle.version,
         }
         if self.config.proxy:
             args["proxy"] = self.config.proxy
@@ -196,5 +197,6 @@ class Packer(ABC):
         """
         return {
             "base_os": service.os,
-            "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / service.base_name / 'base_config.yml')
+            "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / service.base_name / 'base_config.yml'),
+            "gui": service.gui,
         }

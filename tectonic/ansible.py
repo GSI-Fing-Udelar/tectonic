@@ -282,10 +282,23 @@ class Ansible:
                     "brute_force_protection_enabled": str(self.config.guacamole.brute_force_protection_enabled),
                     "version": self.config.guacamole.version,
                 },
+                "moodle":{
+                    "enable": self.description.moodle.enable,
+                    "ip": self.description.moodle.service_ip,
+                    "internal_port": self.config.moodle.internal_port,
+                    "external_port": self.config.moodle.external_port,
+                    "description_path": str(self.description.scenario_dir),
+                    "version": self.config.moodle.version,
+                    "site_fullname": self.config.moodle.site_fullname,
+                    "site_shortname": self.config.moodle.site_shortname,
+                    "admin_email": self.config.moodle.admin_email,
+                    "courses": self.description.moodle.courses,
+                    "moosh_commands": self.description.moodle.moosh_commands,
+                },
                 "bastion_host":{
                     "enable": self.description.bastion_host.enable,
                     "ip": self.description.bastion_host.service_ip,
-                    "services_enable": self.description.elastic.enable or self.description.caldera.enable or self.description.guacamole.enable,
+                    "services_enable": self.description.elastic.enable or self.description.caldera.enable or self.description.guacamole.enable or self.description.moodle.enable,
                     "domain": "tectonic.cyberrange.com",
                 }
             }

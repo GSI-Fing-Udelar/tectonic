@@ -1,24 +1,5 @@
-#
-# Tectonic - An academic Cyber Range
-# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
-# Uruguay
-#
-# This file is part of Tectonic.
-#
-# Tectonic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tectonic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
-- name: Finish playbook execution if Moodle already installed
+---
+- name: Check if Moodle already installed
   block:
     - name: Check if credentials file exists
       ansible.builtin.stat:
@@ -28,222 +9,218 @@
       ansible.builtin.meta: end_play
       when: credentials.stat.exists
 
-- name: Add hostname
-  lineinfile:
+- name: Add hostname to /etc/hosts
+  ansible.builtin.lineinfile:
     dest: /etc/hosts
     insertafter: EOF
     line: "{{ moodle.ip }} {{ ansible_facts['fqdn'] }}"
   when: platform != "docker"
 
-- name: Wait for MySQL to be ready
-  ansible.builtin.wait_for:
-    path: /run/mysqld/mysqld.sock
-    state: present
-    timeout: 60
-    delay: 2
+- name: Generate SSL certificates
+  block:
+    - name: Create certificates directory
+      ansible.builtin.file:
+        path: /etc/apache2/ssl
+        state: directory
+        mode: "0755"
+    - name: Create private key
+      community.crypto.openssl_privatekey:
+        path: /etc/apache2/ssl/moodle.key
+        size: 4096
+    - name: Create CSR
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: /etc/apache2/ssl/moodle.key
+        common_name: "{{ ansible_facts['fqdn'] }}"
+        country_name: UY
+        state_or_province_name: Montevideo
+        locality_name: Montevideo
+        organization_name: Tectonic
+        organizational_unit_name: Moodle
+        subject_alt_name:
+          - "DNS:{{ ansible_facts['fqdn'] }}"
+          - "DNS:{{ moodle.ip }}"
+          - "DNS:127.0.0.1"
+      register: moodle_csr
+    - name: Create self-signed certificate
+      community.crypto.x509_certificate:
+        path: /etc/apache2/ssl/moodle.crt
+        csr_content: "{{ moodle_csr.csr }}"
+        privatekey_path: /etc/apache2/ssl/moodle.key
+        provider: selfsigned
+        selfsigned_not_after: "+3650d"
 
-- name: Ensure MySQL service is running
-  ansible.builtin.systemd_service:
-    name: mysql
-    state: started
-    enabled: true
+- name: Configure MySQL
+  block:
+    - name: Wait for MySQL socket
+      ansible.builtin.wait_for:
+        path: /run/mysqld/mysqld.sock
+        state: present
+        timeout: 60
+        delay: 2
+    - name: Ensure MySQL is running
+      ansible.builtin.systemd_service:
+        name: mysql
+        state: started
+        enabled: true
+    - name: Optimize MySQL for installation
+      ansible.builtin.copy:
+        dest: /etc/mysql/mysql.conf.d/99-tectonic-speed.cnf
+        content: |
+          [mysqld]
+          innodb_flush_log_at_trx_commit = 2
+          skip-log-bin
+          innodb_buffer_pool_size = 512M
+          innodb_log_file_size = 128M
+          default-storage-engine = InnoDB
+          innodb_file_per_table = 1
+        mode: "0644"
+      register: mysql_config
+    - name: Restart MySQL if config changed
+      ansible.builtin.systemd_service:
+        name: mysql
+        state: restarted
+      when: mysql_config.changed
+    - name: Wait for MySQL after restart
+      ansible.builtin.wait_for:
+        path: /run/mysqld/mysqld.sock
+        state: present
+        timeout: 60
+        delay: 2
+      when: mysql_config.changed
 
-- name: Optimize MySQL for fast installation
-  ansible.builtin.copy:
-    dest: /etc/mysql/mysql.conf.d/99-tectonic-speed.cnf
-    content: |
-      [mysqld]
-      # Optimize for fast installation: use OS cache instead of physical disk sync per table
-      # Without this, creating 400+ tables takes 1 hour due to fsync() calls
-      innodb_flush_log_at_trx_commit = 2
-      # Disable binary logs (saves I/O during installation)
-      skip-log-bin
-      # Increase buffers for massive installation
-      innodb_buffer_pool_size = 512M
-      innodb_log_file_size = 128M
-      # Required base configurations
-      default-storage-engine = InnoDB
-      innodb_file_per_table = 1
-    mode: '0644'
-  register: mysql_config
+- name: Setup database
+  block:
+    - name: Generate random passwords
+      ansible.builtin.set_fact:
+        moodle_admin_password: "{{ lookup('community.general.random_string', length=20, special=false) }}"
+        moodle_db_password: "{{ lookup('community.general.random_string', length=30, special=false) }}"
+    - name: Create database
+      community.mysql.mysql_db:
+        name: moodle
+        encoding: utf8mb4
+        collation: utf8mb4_unicode_ci
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+      retries: 3
+      delay: 5
+    - name: Create database user
+      community.mysql.mysql_user:
+        name: moodle
+        password: "{{ moodle_db_password }}"
+        priv: "moodle.*:ALL"
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+      retries: 3
+      delay: 5
 
-- name: Restart MySQL to apply optimizations
-  ansible.builtin.systemd_service:
-    name: mysql
-    state: restarted
-  when: mysql_config.changed
+- name: Install Moodle
+  block:
+    - name: Remove existing config.php
+      ansible.builtin.file:
+        path: /var/www/html/moodle/config.php
+        state: absent
+    - name: Run CLI installer
+      ansible.builtin.shell: |
+        sudo -u www-data /usr/bin/php /var/www/html/moodle/admin/cli/install.php \
+          --non-interactive \
+          --agree-license \
+          --lang=en \
+          --wwwroot=https://{{ '127.0.0.1' if platform == 'docker' else (bastion_host.ip if bastion_host is defined else moodle.ip) }}:{{ moodle.external_port }} \
+          --dataroot=/var/moodledata \
+          --dbtype=mysqli \
+          --dbhost=localhost \
+          --dbname=moodle \
+          --dbuser=moodle \
+          --dbpass={{ moodle_db_password }} \
+          --fullname="{{ moodle.site_fullname }}" \
+          --shortname="{{ moodle.site_shortname }}" \
+          --adminuser=admin \
+          --adminpass={{ moodle_admin_password }} \
+          --adminemail={{ moodle.admin_email }}
+      register: moodle_install_result
+      failed_when: moodle_install_result.rc != 0 and "already installed" not in moodle_install_result.stdout
+    - name: Secure config.php permissions
+      ansible.builtin.file:
+        path: /var/www/html/moodle/config.php
+        owner: www-data
+        group: www-data
+        mode: "0440"
+    - name: Setup cron job
+      ansible.builtin.cron:
+        name: "Moodle Cron"
+        minute: "*"
+        user: "www-data"
+        job: "/usr/bin/php /var/www/html/moodle/admin/cli/cron.php >/dev/null 2>&1"
 
-- name: Wait for MySQL to be ready after restart
-  ansible.builtin.wait_for:
-    path: /run/mysqld/mysqld.sock
-    state: present
-    timeout: 60
-    delay: 2
-  when: mysql_config.changed
-
-- name: Generate random passwords
-  ansible.builtin.set_fact:
-    moodle_admin_password: "{{ lookup('community.general.random_string', length=20, special=false) }}"
-    moodle_db_password: "{{ lookup('community.general.random_string', length=30, special=false) }}"
-
-- name: Create Moodle database
-  community.mysql.mysql_db:
-    name: moodle
-    encoding: utf8mb4
-    collation: utf8mb4_unicode_ci
-    state: present
-    login_unix_socket: /run/mysqld/mysqld.sock
-  retries: 3
-  delay: 5
-
-- name: Create Moodle database user
-  community.mysql.mysql_user:
-    name: moodle
-    password: "{{ moodle_db_password }}"
-    priv: "moodle.*:ALL"
-    state: present
-    login_unix_socket: /run/mysqld/mysqld.sock
-  retries: 3
-  delay: 5
-
-- name: Remove existing config.php if present
-  ansible.builtin.file:
-    path: /var/www/html/moodle/config.php
-    state: absent
-
-- name: Install Moodle via CLI
-  ansible.builtin.shell: |
-    sudo -u www-data /usr/bin/php /var/www/html/moodle/admin/cli/install.php \
-      --non-interactive \
-      --agree-license \
-      --lang=en \
-      --wwwroot=http://{{ moodle.ip }} \
-      --dataroot=/var/moodledata \
-      --dbtype=mysqli \
-      --dbhost=localhost \
-      --dbname=moodle \
-      --dbuser=moodle \
-      --dbpass={{ moodle_db_password }} \
-      --fullname="{{ moodle.site_fullname }}" \
-      --shortname="{{ moodle.site_shortname }}" \
-      --adminuser=admin \
-      --adminpass={{ moodle_admin_password }} \
-      --adminemail={{ moodle.admin_email }}
-  register: moodle_install_result
-  failed_when: moodle_install_result.rc != 0 and "already installed" not in moodle_install_result.stdout
-
-- name: Secure config.php permissions
-  ansible.builtin.file:
-    path: /var/www/html/moodle/config.php
-    owner: www-data
-    group: www-data
-    mode: "0440"
-
-- name: Setup Moodle Cron Job
-  ansible.builtin.cron:
-    name: "Moodle Cron"
-    minute: "*"
-    user: "www-data"
-    job: "/usr/bin/php /var/www/html/moodle/admin/cli/cron.php >/dev/null 2>&1"
-
-- name: Enable and start services
+- name: Start web services
   ansible.builtin.systemd_service:
     name: "{{ item }}"
     state: restarted
     enabled: true
     daemon_reload: true
-  with_items:
+  loop:
     - apache2
     - php8.1-fpm
 
-- name: Set Gateway IP
-  ansible.builtin.set_fact:
-    gateway_ip: "{{ (moodle.ip | split('.'))[0] }}.{{ (moodle.ip | split('.'))[1] }}.{{ (moodle.ip | split('.'))[2] }}.129"
-  when: platform == "libvirt" or platform == "docker"
-
-- name: Configure firewall (iptables for Docker)
+- name: Configure firewall (Libvirt)
   block:
-    - name: Configure firewall | Flush rules
-      ansible.builtin.iptables:
-        table: filter
-        chain: "{{ item }}"
-        flush: yes
-      loop:
-        - INPUT
-        - FORWARD
-        - OUTPUT
-    - name: Configure firewall | Accept all input
-      ansible.builtin.iptables:
-        chain: INPUT
-        policy: ACCEPT
-    - name: Configure firewall | Accept all forward
-      ansible.builtin.iptables:
-        chain: FORWARD
-        policy: ACCEPT
-    - name: Configure firewall | Accept all output
-      ansible.builtin.iptables:
-        chain: OUTPUT
-        policy: ACCEPT
-  when: platform == "docker"
-
-- name: Configure firewalld (Libvirt/AWS)
-  block:
-    - name: Configure firewalld - Add HTTP port
+    - name: Set gateway IP
+      ansible.builtin.set_fact:
+        gateway_ip: "{{ (moodle.ip | split('.'))[0] }}.{{ (moodle.ip | split('.'))[1] }}.{{ (moodle.ip | split('.'))[2] }}.129"
+    - name: Allow HTTPS
       ansible.posix.firewalld:
         zone: public
-        port: "{{ moodle.internal_port }}/tcp"
+        port: "443/tcp"
         permanent: true
         state: enabled
-    - name: Configure firewalld - Remove ssh service from default zone
+    - name: Remove default SSH access
       ansible.posix.firewalld:
         zone: public
         service: ssh
         permanent: true
         state: disabled
-    - name: Configure firewalld - Allow ssh from gateway
+    - name: Allow SSH from gateway only
       ansible.posix.firewalld:
         zone: public
         rich_rule: rule family="ipv4" source address="{{ gateway_ip }}" service name="ssh" accept
         permanent: true
         state: enabled
-    - name: Configure firewalld - Reload
+    - name: Reload firewalld
       ansible.builtin.command: firewall-cmd --reload
       changed_when: false
   when: platform == "libvirt"
 
-- name: Copy SCORM packages to Moodle dirroot
-  ansible.builtin.copy:
-    src: "{{ moodle.description_path }}/{{ item.scorm_package }}"
-    dest: "/var/www/html/moodle/{{ item.scorm_package | basename }}"
-    owner: www-data
-    group: www-data
-    mode: '0644'
-  loop: "{{ moodle.courses | default([]) }}"
-  when: 
-    - moodle.courses is defined
-    - moodle.courses | length > 0
-    - item.scorm_package is defined
-  loop_control:
-    label: "{{ item.scorm_package }}"
-  register: scorm_copy_results
-  failed_when: 
-    - scorm_copy_results is failed
-    - "'does not exist' not in (scorm_copy_results.msg | default(''))"
+- name: Provision courses
+  block:
+    - name: Copy SCORM packages
+      ansible.builtin.copy:
+        src: "{{ moodle.description_path }}/{{ item.scorm_package }}"
+        dest: "/var/www/html/moodle/{{ item.scorm_package | basename }}"
+        owner: www-data
+        group: www-data
+        mode: "0644"
+      loop: "{{ moodle.courses | default([]) }}"
+      when: item.scorm_package is defined
+      loop_control:
+        label: "{{ item.scorm_package | default('no package') }}"
+      register: scorm_copy_results
+      failed_when:
+        - scorm_copy_results is failed
+        - "'does not exist' not in (scorm_copy_results.msg | default(''))"
+    - name: Execute Moosh commands
+      ansible.builtin.shell: |
+        sudo -u www-data php /opt/moosh/moosh.php -n -p /var/www/html/moodle {{ item }}
+      loop: "{{ moodle.moosh_commands | default([]) }}"
+      register: moosh_results
+      failed_when:
+        - moosh_results.rc != 0
+        - "'already exists' not in (moosh_results.stderr | default(''))"
+        - "'already exists' not in (moosh_results.stdout | default(''))"
+  when: (moodle.courses is defined and moodle.courses | length > 0) or (moodle.moosh_commands is defined and moodle.moosh_commands | length > 0)
 
-- name: Execute Moosh provisioning commands
-  ansible.builtin.shell: |
-    sudo -u www-data php /opt/moosh/moosh.php -n -p /var/www/html/moodle {{ item }}
-  loop: "{{ moodle.moosh_commands | default([]) }}"
-  register: moosh_results
-  failed_when: 
-    - moosh_results.rc != 0
-    - "'already exists' not in (moosh_results.stderr | default(''))"
-    - "'already exists' not in (moosh_results.stdout | default(''))"
-  when: moodle.moosh_commands is defined and (moodle.moosh_commands | length > 0)
-
-- name: Write credentials to file
+- name: Write credentials file
   ansible.builtin.copy:
     dest: /root/credentials
     content: |
       admin {{ moodle_admin_password }}
-    mode: '0640'
+    mode: "0640"

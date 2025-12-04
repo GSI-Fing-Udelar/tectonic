@@ -27,7 +27,7 @@
     - name: End execution if reverse_proxy file exists
       ansible.builtin.meta: end_play
       when: reverse_proxy.stat.exists
-      
+
 - name: Configure firewall (iptables)
   block:
     - name: Set Gateway IP
@@ -60,6 +60,21 @@
         - "{{ elastic.external_port }}"
         - "{{ caldera.external_port }}"
         - "{{ guacamole.external_port }}"
+      when: platform == "libvirt"
+    - name: Configure firewall | Allow Moodle/Apache from host (docker)
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        source: 0.0.0.0/0
+        destination_port: "{{ item }}"
+        jump: ACCEPT
+      loop:
+        - 80
+        - "{{ guacamole.external_port }}"
+        - "{{ elastic.external_port }}"
+        - "{{ caldera.external_port }}"
+        - "{{ moodle.external_port }}"
+      when: platform == "docker"
     - name: Configure firewall | Allow related or established connections
       ansible.builtin.iptables:
         chain: INPUT
@@ -115,6 +130,7 @@
           Listen {{ guacamole.external_port }}
           Listen {{ elastic.external_port }}
           Listen {{ caldera.external_port }}
+          Listen {{ moodle.external_port }}
     - name: Copy tectonic virtual host
       ansible.builtin.template:
         src: templates/tectonic.j2
@@ -124,7 +140,7 @@
         src: templates/index.j2
         dest: /var/www/html/index.html
     - name: Copy sites files
-      ansible.builtin.copy: 
+      ansible.builtin.copy:
         src: files/
         dest: /var/www/html
     - name: Enable apache site

@@ -1,19 +1,12 @@
 ---
-# Lab edition file for minimal Moodle validation scenario
-# This file configures parameters for this edition of the training
 
-# The name of the lab directory in examples/. Required.
 base_lab: moodle_minimal
 
-# The name of the institution. Optional.
 institution: udelar
 
-# The name of this edition. Optional.
 lab_edition_name: moodle_minimal_dev
 
-# Number of instances to deploy.
 instance_number: 1
 
-# Random seed for reproducible deployments.
 random_seed: 42
 
