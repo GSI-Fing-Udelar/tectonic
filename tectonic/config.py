@@ -30,6 +30,7 @@ from tectonic.config_docker import TectonicConfigDocker
 from tectonic.config_elastic import TectonicConfigElastic
 from tectonic.config_caldera import TectonicConfigCaldera
 from tectonic.config_guacamole import TectonicConfigGuacamole
+from tectonic.config_moodle import TectonicConfigMoodle
 
 class TectonicConfig(object):
     """Class to store Tectonic configuration."""
@@ -63,6 +64,7 @@ class TectonicConfig(object):
         self._elastic = TectonicConfigElastic()
         self._caldera = TectonicConfigCaldera()
         self._guacamole = TectonicConfigGuacamole()
+        self._moodle = TectonicConfigMoodle()
 
 
     #----------- Getters ----------
@@ -149,6 +151,10 @@ class TectonicConfig(object):
     @property
     def guacamole(self):
         return self._guacamole
+    
+    @property
+    def moodle(self):
+        return self._moodle
 
     #----------- Setters ----------
     @platform.setter
@@ -260,5 +266,6 @@ class TectonicConfig(object):
         TectonicConfig._assign_attributes(config.elastic, parser, 'elastic')
         TectonicConfig._assign_attributes(config.caldera, parser, 'caldera')
         TectonicConfig._assign_attributes(config.guacamole, parser, 'guacamole')
+        TectonicConfig._assign_attributes(config.moodle, parser, 'moodle')
 
         return config

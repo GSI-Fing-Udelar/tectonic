@@ -1,0 +1,170 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+---
+- name: "Install Moodle Base Image (Ubuntu 22.04)"
+  hosts: moodle
+  become: true
+  gather_facts: true
+  vars_files:
+    - vars/variables.yml
+
+  tasks:
+    - name: Set hostname
+      ansible.builtin.hostname:
+        name: moodle
+      when: platform != "docker"
+
+    - name: "Update repos"
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install dependencies
+      ansible.builtin.package:
+        name: 
+          - git
+          - unzip
+          - acl
+          - apache2
+          - mysql-server
+          - python3-pymysql
+          - iptables-persistent
+          - php8.1
+          - php8.1-fpm
+          - php8.1-gd
+          - php8.1-curl
+          - php8.1-opcache
+          - php8.1-xml
+          - php8.1-mbstring
+          - php8.1-mysql
+          - php8.1-zip
+          - php8.1-intl
+          - php8.1-soap
+          - php8.1-bcmath
+          - php-apcu
+          - libpcre3-dev
+        state: present
+
+    - name: Configure Apache modules
+      ansible.builtin.command: "a2enmod {{ item }}"
+      loop:
+        - rewrite
+        - proxy
+        - proxy_fcgi
+        - headers
+        - setenvif
+      changed_when: false
+      
+    - name: Configure PHP-FPM for Apache
+      ansible.builtin.command: a2enconf php8.1-fpm
+      changed_when: false
+
+    - name: Configure PHP max_input_vars for Moodle
+      ansible.builtin.lineinfile:
+        path: "{{ item }}"
+        regexp: '^;?max_input_vars\s*='
+        line: 'max_input_vars = 5000'
+      loop:
+        - /etc/php/8.1/fpm/php.ini
+        - /etc/php/8.1/cli/php.ini
+
+    - name: Create web root directory
+      ansible.builtin.file:
+        path: /var/www/html
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: "0755"
+
+    - name: Configure git safe directory
+      ansible.builtin.shell: |
+        git config --global --add safe.directory /var/www/html/moodle || true
+      changed_when: false
+
+    - name: Download Moodle Source Code
+      ansible.builtin.git:
+        repo: "https://github.com/moodle/moodle.git"
+        dest: /var/www/html/moodle
+        version: "{{ moodle_version }}"
+        depth: 1
+        update: yes
+        force: yes
+
+    - name: Set permissions for Moodle directory
+      ansible.builtin.file:
+        path: /var/www/html/moodle
+        owner: www-data
+        group: www-data
+        recurse: yes
+        mode: "0755"
+
+    - name: Create Moodle Data Directory
+      ansible.builtin.file:
+        path: /var/moodledata
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: "0770"
+
+    - name: Download Moosh ZIP
+      ansible.builtin.get_url:
+        url: "{{ moosh_download_url }}"
+        dest: /tmp/moosh.zip
+        mode: "0644"
+
+    - name: Extract Moosh
+      ansible.builtin.unarchive:
+        src: /tmp/moosh.zip
+        dest: /opt
+        remote_src: yes
+
+    - name: Create moosh symlink
+      ansible.builtin.file:
+        src: /opt/moosh/moosh.php
+        dest: /usr/local/bin/moosh
+        state: link
+
+    - name: Set Moosh permissions
+      ansible.builtin.file:
+        path: /opt/moosh
+        owner: www-data
+        group: www-data
+        recurse: yes
+
+    - name: Configure Apache VirtualHost for Moodle
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/000-default.conf
+        content: |
+          <VirtualHost *:80>
+              DocumentRoot /var/www/html/moodle
+              DirectoryIndex index.php index.html
+              <Directory /var/www/html/moodle>
+                  AllowOverride All
+                  Require all granted
+              </Directory>
+              <FilesMatch \.php$>
+                  SetHandler "proxy:unix:/run/php/php8.1-fpm.sock|fcgi://localhost"
+              </FilesMatch>
+          </VirtualHost>
+
+    - name: Remove default index.html
+      ansible.builtin.file:
+        path: /var/www/html/index.html
+        state: absent

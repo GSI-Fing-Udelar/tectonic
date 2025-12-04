@@ -770,6 +770,63 @@ class GuacamoleDescription(ServiceDescription):
         """Loads the information from the yaml structure in data."""
         super().load_service(data)
 
+class MoodleDescription(ServiceDescription):
+    def __init__(self, description):
+        super().__init__(description, "moodle", "ubuntu22")
+        self.memory = 4096
+        self.vcpu = 2
+        self.disk = 20
+        self.moosh_commands = []
+        self.courses = []
+        self._commands_generated = False
+
+    def load_service(self, data):
+        """Loads the information from the yaml structure in data."""
+        super().load_service(data)
+        if "courses" in data:
+            self.courses = data.get("courses", [])
+        
+        if not self._commands_generated:
+            self._generate_moosh_commands()
+            self._commands_generated = True
+
+    def _generate_moosh_commands(self):
+        """Generate Moosh commands from declarative course configuration.
+        
+        Since Tectonic creates clean VMs, course IDs are predictable:
+        - Frontpage is always ID 1
+        - First course is always ID 2
+        - Second course is always ID 3
+        - etc.
+        """
+        if not self.courses:
+            return
+        
+        import re
+        
+        generated_commands = []
+        course_id = 2
+        
+        for course in self.courses:
+            shortname = re.sub(r'[^A-Z0-9]', '', course.get("name", "").upper().replace(" ", ""))
+            if not shortname:
+                shortname = f"COURSE{course_id}"
+            
+            course_name = course.get("name", f"Course {course_id}")
+            generated_commands.append(f"course-create --category=1 --fullname='{course_name}' {shortname}")
+            
+            if "scorm_package" in course:
+                scorm_filename = course["scorm_package"].split("/")[-1]
+                scorm_name = course.get("name", "SCORM Activity")
+                generated_commands.append(
+                    f"activity-add --section=0 --name='{scorm_name}' "
+                    f"--options='packagefilepath={scorm_filename}' scorm {course_id}"
+                )
+            
+            course_id += 1
+        
+        self.moosh_commands = generated_commands
+
 class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
         super().__init__(description, "bastion_host", "ubuntu22", True)
@@ -777,6 +834,7 @@ class BastionHostDescription(ServiceDescription):
             "elastic": {"internal_port": description.config.elastic.internal_port, "external_port": description.config.elastic.external_port},
             "caldera": {"internal_port": description.config.caldera.internal_port, "external_port": description.config.caldera.external_port},
             "guacamole": {"internal_port": description.config.guacamole.internal_port, "external_port": description.config.guacamole.external_port},
+            "moodle": {"internal_port": description.config.moodle.internal_port, "external_port": description.config.moodle.external_port},
         }
 
     @property
@@ -854,6 +912,8 @@ class Description:
         self.caldera.load_service(description_data.get("caldera_settings", {}))
         self._guacamole = GuacamoleDescription(self)
         self.guacamole.load_service(description_data.get("guacamole_settings", {}))
+        self._moodle = MoodleDescription(self)
+        self.moodle.load_service(description_data.get("moodle_settings", {}))
         self._bastion_host = BastionHostDescription(self)
         self._teacher_access_host = TeacherAccessHostDescription(self)
 
@@ -890,6 +950,12 @@ class Description:
         self.caldera.load_service(lab_edition_data.get("caldera_settings", {}))
         self.caldera.enable = enable_caldera
 
+        # Moodle is enabled if it is enabled in the description and
+        # not disabled in the lab edition.
+        enable_moodle = self.moodle.enable and lab_edition_data.get("moodle_settings", {}).get("enable", True)
+        self.moodle.load_service(lab_edition_data.get("moodle_settings", {}))
+        self.moodle.enable = enable_moodle
+
         # Bastion Host
         self.bastion_host.enable = self.config.platform == "aws" and ( 
             self.create_students_passwords or
@@ -897,7 +963,8 @@ class Description:
         ) or (
             self.elastic.enable or
             self.caldera.enable or
-            self.guacamole.enable
+            self.guacamole.enable or
+            self.moodle.enable
         )
 
         # Teacher Access Host
@@ -936,7 +1003,7 @@ class Description:
         self._auxiliary_networks = {}
         services_network_name = f"{self.institution}-{self.lab_name}-services"
         self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
-        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole"]
+        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole", "moodle"]
         if self.config.platform == "aws":
             self._auxiliary_networks[services_network_name].members.append("teacher_access_host")
             if self.elastic.monitor_type == "traffic":
@@ -955,6 +1022,7 @@ class Description:
         self.packetbeat.load_interfaces(self._auxiliary_networks)
         self.caldera.load_interfaces(self._auxiliary_networks)
         self.guacamole.load_interfaces(self.auxiliary_networks)
+        self.moodle.load_interfaces(self.auxiliary_networks)
         self.bastion_host.load_interfaces(self.auxiliary_networks)
         self.teacher_access_host.load_interfaces(self.auxiliary_networks)
 
@@ -1218,6 +1286,8 @@ class Description:
             services[self.caldera.name] = self.caldera
         if self.guacamole.enable:
             services[self.guacamole.name] = self.guacamole
+        if self.moodle.enable:
+            services[self.moodle.name] = self.moodle
         if self.teacher_access_host.enable:
             services[self.teacher_access_host.name] = self.teacher_access_host
         return services
@@ -1237,6 +1307,10 @@ class Description:
     @property
     def guacamole(self):
         return self._guacamole
+    
+    @property
+    def moodle(self):
+        return self._moodle
     
     @property
     def bastion_host(self):

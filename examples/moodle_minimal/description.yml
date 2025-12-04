@@ -1,0 +1,44 @@
+---
+# The institution that created the lab. Alphanumeric. Required.
+institution: udelar
+
+# The name of the lab. Must be alphanumeric. Required.
+lab_name: moodle_minimal
+
+# The default operating system to use for guests. Must be one of
+# ubuntu22, rocky8, kali or windows_srv_2022. 
+# Optional, default: ubuntu22.
+default_os: ubuntu22
+
+# Minimal guest machine (required by Tectonic)
+guest_settings:
+  dummy:
+    memory: 512
+    vcpu: 1
+    disk: 5
+    base_os: ubuntu22
+    internet_access: no
+    monitor: no
+
+# Minimal topology
+topology:
+  - name: minimal_network
+    members:
+      - dummy
+
+moodle_settings:
+  enable: yes
+  courses:
+    - name: "Golf Explained"
+      scorm_package: scorm/golf_explained.zip
+
+# All other services disabled
+elastic_settings:
+  enable: no
+
+caldera_settings:
+  enable: no
+
+guacamole_settings:
+  enable: no
+
