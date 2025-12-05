@@ -771,69 +771,58 @@ class GuacamoleDescription(ServiceDescription):
         super().load_service(data)
 
 class MoodleDescription(ServiceDescription):
+    """Moodle service configuration.
+    
+    Provides a declarative interface for course provisioning. Instructors
+    define courses with optional SCORM packages, and the system generates
+    the appropriate Moosh commands automatically.
+    """
     def __init__(self, description):
         super().__init__(description, "moodle", "ubuntu22")
         self.memory = 4096
         self.vcpu = 2
         self.disk = 20
-        self.moosh_commands = []
         self.courses = []
-        self._commands_generated = False
+        self._moosh_commands = []
 
     def load_service(self, data):
-        """Loads the information from the yaml structure in data."""
         super().load_service(data)
-        if "courses" in data:
-            self.courses = data.get("courses", [])
-        
-        if not self._commands_generated:
-            self._generate_moosh_commands()
-            self._commands_generated = True
+        self.courses = data.get("courses", [])
+        self._generate_moosh_commands()
+
+    @property
+    def moosh_commands(self):
+        return self._moosh_commands
 
     def _generate_moosh_commands(self):
-        """Generate Moosh commands from declarative course configuration.
-        
-        Since Tectonic creates clean VMs, course IDs are predictable:
-        - Frontpage is always ID 1
-        - First course is always ID 2
-        - Second course is always ID 3
-        - etc.
-        """
-        if not self.courses:
-            return
-        
-        import re
-        
-        generated_commands = []
-        course_id = 2
+        """Generate Moosh commands from declarative course configuration."""
+        commands = []
+        course_id = 2  # Moodle reserves ID 1 for the frontpage
         
         for course in self.courses:
-            shortname = re.sub(r'[^A-Z0-9]', '', course.get("name", "").upper().replace(" ", ""))
-            if not shortname:
-                shortname = f"COURSE{course_id}"
+            name = course.get("name", f"Course {course_id}")
+            shortname = re.sub(r'[^A-Z0-9]', '', name.upper())[:20] or f"COURSE{course_id}"
             
-            course_name = course.get("name", f"Course {course_id}")
-            generated_commands.append(f"course-create --category=1 --fullname='{course_name}' {shortname}")
+            commands.append(f"course-create --category=1 --fullname='{name}' {shortname}")
             
             if "scorm_package" in course:
-                scorm_filename = course["scorm_package"].split("/")[-1]
-                scorm_name = course.get("name", "SCORM Activity")
-                generated_commands.append(
-                    f"activity-add --section=0 --name='{scorm_name}' "
-                    f"--options='packagefilepath={scorm_filename}' scorm {course_id}"
+                scorm_file = course["scorm_package"].split("/")[-1]
+                commands.append(
+                    f"activity-add --section=0 --name='{name}' "
+                    f"--options='packagefilepath={scorm_file}' scorm {course_id}"
                 )
             
             course_id += 1
         
-        self.moosh_commands = generated_commands
+        self._moosh_commands = commands
 
 class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
         super().__init__(description, "bastion_host", "ubuntu22", True)
         self.ports = {
-            "elastic": {"internal_port": description.config.elastic.external_port, "external_port": description.config.elastic.external_port},
-            "caldera": {"internal_port": description.config.caldera.external_port, "external_port": description.config.caldera.external_port},
-            "guacamole": {"internal_port": description.config.guacamole.external_port, "external_port": description.config.guacamole.external_port},
+            "elastic": {"internal_port": description.config.elastic.internal_port, "external_port": description.config.elastic.external_port},
+            "caldera": {"internal_port": description.config.caldera.internal_port, "external_port": description.config.caldera.external_port},
+            "guacamole": {"internal_port": description.config.guacamole.internal_port, "external_port": description.config.guacamole.external_port},
             "moodle": {"internal_port": description.config.moodle.external_port, "external_port": description.config.moodle.external_port},
         }
 
