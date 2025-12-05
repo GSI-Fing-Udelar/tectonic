@@ -61,20 +61,6 @@
         - "{{ caldera.external_port }}"
         - "{{ guacamole.external_port }}"
       when: platform == "libvirt"
-    - name: Configure firewall | Allow Moodle/Apache from host (docker)
-      ansible.builtin.iptables:
-        chain: INPUT
-        protocol: tcp
-        source: 0.0.0.0/0
-        destination_port: "{{ item }}"
-        jump: ACCEPT
-      loop:
-        - 80
-        - "{{ guacamole.external_port }}"
-        - "{{ elastic.external_port }}"
-        - "{{ caldera.external_port }}"
-        - "{{ moodle.external_port }}"
-      when: platform == "docker"
     - name: Configure firewall | Allow related or established connections
       ansible.builtin.iptables:
         chain: INPUT
@@ -99,7 +85,7 @@
         policy: ACCEPT
     - name: Configure firewall | Save rules
       ansible.builtin.command: service netfilter-persistent save
-  when: platform == "libvirt" or platform == "docker"
+  when: platform == "libvirt"
 
 - name: Configure reverse proxy
   block:
