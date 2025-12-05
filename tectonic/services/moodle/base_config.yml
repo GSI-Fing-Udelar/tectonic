@@ -38,7 +38,6 @@
           - php8.1-soap
           - php8.1-bcmath
           - php-apcu
-          - libpcre3-dev
         state: present
 
     - name: Configure Apache
@@ -82,22 +81,13 @@
         - /etc/php/8.1/fpm/php.ini
         - /etc/php/8.1/cli/php.ini
 
-    - name: Setup Moodle directories
-      block:
-        - name: Create web root
-          ansible.builtin.file:
-            path: /var/www/html
-            state: directory
-            owner: www-data
-            group: www-data
-            mode: "0755"
-        - name: Create data directory
-          ansible.builtin.file:
-            path: /var/moodledata
-            state: directory
-            owner: www-data
-            group: www-data
-            mode: "0770"
+    - name: Create Moodle data directory
+      ansible.builtin.file:
+        path: /var/moodledata
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: "0770"
 
     - name: Download Moodle
       block:
@@ -144,8 +134,3 @@
             owner: www-data
             group: www-data
             recurse: yes
-
-    - name: Remove default index.html
-      ansible.builtin.file:
-        path: /var/www/html/index.html
-        state: absent

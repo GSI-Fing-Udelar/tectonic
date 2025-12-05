@@ -37,8 +37,6 @@ class TectonicConfigMoodle(object):
 
     @version.setter
     def version(self, value):
-        if not (value.startswith("MOODLE_") and value.endswith("_STABLE")):
-            raise ValueError(f"Invalid Moodle version format: {value}")
         self._version = value
 
     @internal_port.setter
@@ -53,24 +51,12 @@ class TectonicConfigMoodle(object):
     
     @site_fullname.setter
     def site_fullname(self, value):
-        if not isinstance(value, str) or len(value) == 0:
-            raise ValueError(f"Invalid Moodle site fullname: {value}. Must be a non-empty string.")
-        if len(value) > 255:
-            raise ValueError(f"Invalid Moodle site fullname: {value}. Must be 255 characters or less.")
         self._site_fullname = value
     
     @site_shortname.setter
     def site_shortname(self, value):
-        if not isinstance(value, str) or len(value) == 0:
-            raise ValueError(f"Invalid Moodle site shortname: {value}. Must be a non-empty string.")
-        if len(value) > 100:
-            raise ValueError(f"Invalid Moodle site shortname: {value}. Must be 100 characters or less.")
-        validate.regex("Moodle site shortname", value, r"^[a-zA-Z0-9_-]+$")
         self._site_shortname = value
     
     @admin_email.setter
     def admin_email(self, value):
-        if not isinstance(value, str) or len(value) == 0:
-            raise ValueError(f"Invalid Moodle admin email: {value}. Must be a non-empty string.")
-        validate.regex("Moodle admin email", value, r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
         self._admin_email = value

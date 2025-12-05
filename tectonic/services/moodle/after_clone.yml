@@ -115,6 +115,9 @@
 
 - name: Install Moodle
   block:
+    - name: Set wwwroot host
+      ansible.builtin.set_fact:
+        moodle_host: "{{ '127.0.0.1' if platform == 'docker' else (bastion_host.ip if bastion_host.enable else moodle.ip) }}"
     - name: Remove existing config.php
       ansible.builtin.file:
         path: /var/www/html/moodle/config.php
@@ -125,7 +128,7 @@
           --non-interactive \
           --agree-license \
           --lang=en \
-          --wwwroot=https://{{ '127.0.0.1' if platform == 'docker' else (bastion_host.ip if bastion_host is defined else moodle.ip) }}:{{ moodle.external_port }} \
+          --wwwroot=https://{{ moodle_host }}:{{ moodle.external_port }} \
           --dataroot=/var/moodledata \
           --dbtype=mysqli \
           --dbhost=localhost \
@@ -157,38 +160,9 @@
     name: "{{ item }}"
     state: restarted
     enabled: true
-    daemon_reload: true
   loop:
     - apache2
     - php8.1-fpm
-
-- name: Configure firewall (Libvirt)
-  block:
-    - name: Set gateway IP
-      ansible.builtin.set_fact:
-        gateway_ip: "{{ (moodle.ip | split('.'))[0] }}.{{ (moodle.ip | split('.'))[1] }}.{{ (moodle.ip | split('.'))[2] }}.129"
-    - name: Allow HTTPS
-      ansible.posix.firewalld:
-        zone: public
-        port: "443/tcp"
-        permanent: true
-        state: enabled
-    - name: Remove default SSH access
-      ansible.posix.firewalld:
-        zone: public
-        service: ssh
-        permanent: true
-        state: disabled
-    - name: Allow SSH from gateway only
-      ansible.posix.firewalld:
-        zone: public
-        rich_rule: rule family="ipv4" source address="{{ gateway_ip }}" service name="ssh" accept
-        permanent: true
-        state: enabled
-    - name: Reload firewalld
-      ansible.builtin.command: firewall-cmd --reload
-      changed_when: false
-  when: platform == "libvirt"
 
 - name: Provision courses
   block:
