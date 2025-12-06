@@ -60,9 +60,16 @@ parameters["users"]["name"] and parametes["users"]["password"]
 A set of Ansible variables is available that refer to the Tectonic
 configuration and the scenario description. 
 
+#### Base configuration
+
 The variables for the `base_config` playbooks are the following:
 
+- `scenario_dir`: Path to the directory with the scenario definition.
+- `ansible_dir`: Path to the directory with the ansible playbooks.
 - `config`: Dictionary with configurations associated with parameters of the ini file.
+    - `ansible`
+        - `ssh_common_args`
+        - `keep_logs`
     - `configure_dns`
     - `debug`
     - `internet_network_cidr_block`
@@ -81,47 +88,47 @@ The variables for the `base_config` playbooks are the following:
     - `proxy`
     - `services_network_cidr_block`
     - `create_students_password`
-- `ìnstance`: Configuration parameters of the instance where the playbook is being executed.
-    - `base_name`
+- `institution`: Institution.
+- `lab_name`: Laboratory name.
+- `guest`: Base name of the guest.
+- `guests`: Configuration parameters of all guest. Each entry in the dictionary contains a guest with the following parameters:
     - `base_os`
-    - `copy`
+    - `blue_team_agent`
+    - `copies`
     - `disk`
+    - `entry_point`
     - `gui`
     - `hostname`
-    - `instance_number`
-    - `interfaces`: Dictionary of the instance’s interfaces.
+    - `instance`
+    - `instance_type`
+    - `interfaces`: Dictionary of the machine’s interfaces.
         - `<interface_name>`
             - `name`
             - `private_ip`
+            - `subnetwork_base_name`
+            - `subnetwork_cidr`
             - `subnetwork_name`
+    - `internet_access`
     - `is_in_services_network`
     - `memory`
+    - `monitor`
     - `name`
+    - `red_team_agent`
     - `vcpu`
-- `instances_number`: Number of the instance where the playbook is being executed.
-- `instances`: Configuration parameters of all instances. Each entry in the dictionary contains an instance, and the parameters are analogous to those previously indicated for the `instance` variable.
-- `institution`: Institution.
-- `lab_name`: Laboratory name.
-- `networks`:
-- `parameters`: Dictionary with the chosen parameters for the instance.
-- `networks`: Scenario networks. Each entry in the scenario contains a network with its configuration parameters.
-    - `<network_name>`
-        - `ip_network`
-        - `name`
-- `random_seed`: Seed used for parameter selection.
-- `scenario_dir`: Directory with the scenario definition.
-- `services`: Services enabled in the scenario. Each entry in the dictionary contains a service with configuration parameters analogous to those listed for the 'instance' variable presented earlier. Additionally, each service has specific configuration parameters. The following lists these parameters for each service.
+- `networks`: Network configuration. Each entry contains a network with the following parameters:
+    - `members`: List of the guest's base_name on the network.
+- `services`: Services enabled in the scenario. Each entry in the dictionary contains a service with configuration parameters analogous to those listed for the `guest` variable presented earlier. Additionally, each service has specific configuration parameters. The following lists these parameters for each service.
     - `bastion_host`
-        - `<instance_configuracion>`
+        - `<guest_configuracion>`
         - `domain`
     - `caldera`
-        - `<instance_configuracion>`
+        - `<guest_configuracion>`
         - `external_port`
         - `internal_port`
         - `ot_enabled`
         - `version`
     - `elastic`
-        - `<instance_configuracion>`
+        - `<guest_configuracion>`
         - `deploy_default_policy`
         - `endpoint_policy_name`
         - `external_port`
@@ -131,17 +138,40 @@ The variables for the `base_config` playbooks are the following:
         - `user_install_packetbeat`
         - `version`
     - `guacamole`
-        - `<instance_configuracion>`
+        - `<guest_configuracion>`
         - `brute_force_protection_enabled`
         - `external_port`
         - `internal_port`
         - `version`
+
+#### After clone configuration
+
+The variables for the `after_clone` playbooks are the same as those for `base_config`. The following variables are added or modified:
+
+- `instances`: Number of total instances.
+- `instance`: Guest instance number where the playbook is running.
+- `copy`: Guest copy number where the playbook is running.
+- `guests`: Configuration of all guests belonging to the instance corresponding to the guest where the playbook is running. It is a dictionary where each entry corresponds to a guest with the same variables as in `base_config` but also include the following:
+    - `base_name`
+    - `hostname`
+    - `instance`
+    - `interfaces`: Dictionary of the machine’s interfaces.
+        - `<interface_name>`
+            - `name`
+            - `private_ip`
+            - `subnetwork_base_name`
+            - `subnetwork_cidr`
+            - `subnetwork_name`
+    - `is_in_services_network`
+    - `name`
+- `networks`: Configuration of all networks belonging to the instance corresponding to the guest where the playbook is running. It is a dictionary where each entry corresponds to a network with the following variables.
+    - `members`: Dictionary where each entry contains the guest's base_name and its IP address on the network.
+    - `network_cidr`
+- `random_seed`: Seed used for parameter selection.
+- `parameters`: Dictionary with the chosen parameters for the instance.
+- `create_students_password`: Whether to create students passwords.
 - `ssh_password_login`: Enable password authentication for trainers.
 - `student_prefix`: Prefix for naming trainer users.
-- `topology`: Network configuration of the instance corresponding to the instance number of the machine where the playbook is being executed.
-    - `<network_base_name>`: Dictionary where each entry contains the machine's base_name and its IP address on the network.
-        - `<instance_base_name>` : <instance_ip>
-
 - `users`: Trainer users. Each entry in the dictionary is a user with the following configuration parameters.
     - `<user_name>`
         - `instance`
@@ -163,6 +193,10 @@ Below is a reference example.
 
 ```
 "config": {
+    "ansible": {
+        "keep_logs": false
+        "ssh_common_args: "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 "
+    }
     "configure_dns": false,
     "debug": true,
     "internet_network_cidr_block": "10.99.0.0/25",
@@ -186,35 +220,10 @@ Below is a reference example.
     "proxy": "http://localhost:3128",
     "services_network_cidr_block": "10.99.0.128/25"
 },
+"copy": "1",
 "create_students_password": true,
-"instance": {
-    "base_name": "attacker",
-    "base_os": "ubuntu22",
-    "copy": 1,
-    "disk": 15,
-    "gui": true,
-    "hostname": "attacker-2",
-    "instance_number": 2,
-    "interfaces": {
-        "test-test-2-attacker-2": {
-            "name": "test-test-2-attacker-2",
-            "private_ip": "10.99.2.4",
-            "subnetwork_name": "test-test-2-internal"
-        },
-        "test-test-2-attacker-3": {
-            "name": "test-test-2-attacker-3",
-            "private_ip": "10.99.2.132",
-            "subnetwork_name": "test-test-2-internal2"
-        }
-    },
-    "is_in_services_network": true,
-    "memory": 1024,
-    "name": "test-test-2-attacker",
-    "vcpu": 1
-},
-"instances_number": 2,
-"instances": {
-    "test-test-1-attacker": {
+"guests": {
+    "attacker": {
         "base_name": "attacker",
         "base_os": "ubuntu22",
         "copy": 1,
@@ -226,11 +235,15 @@ Below is a reference example.
             "test-test-1-attacker-2": {
                 "name": "test-test-1-attacker-2",
                 "private_ip": "10.99.1.4",
+                "subnetwork_base_name": "internal",
+                "subnetwork_cidr": "10.99.1.0/25",
                 "subnetwork_name": "test-test-1-internal"
             },
             "test-test-1-attacker-3": {
                 "name": "test-test-1-attacker-3",
                 "private_ip": "10.99.1.132",
+                "subnetwork_base_name": "internal2",
+                "subnetwork_cidr": "10.99.1.128/25",
                 "subnetwork_name": "test-test-1-internal2"
             }
         },
@@ -239,7 +252,7 @@ Below is a reference example.
         "name": "test-test-1-attacker",
         "vcpu": 1
     },
-    "test-test-1-victim": {
+    "victim": {
         "base_name": "victim",
         "base_os": "rocky9",
         "copy": 1,
@@ -251,6 +264,8 @@ Below is a reference example.
             "test-test-1-victim-2": {
                 "name": "test-test-1-victim-2",
                 "private_ip": "10.99.1.5",
+                "subnetwork_base_name": "internal",
+                "subnetwork_cidr": "10.99.1.0/25",
                 "subnetwork_name": "test-test-1-internal"
             }
         },
@@ -258,71 +273,26 @@ Below is a reference example.
         "memory": 1024,
         "name": "test-test-1-victim",
         "vcpu": 1
-    },
-    "test-test-2-attacker": {
-        "base_name": "attacker",
-        "base_os": "ubuntu22",
-        "copy": 1,
-        "disk": 15,
-        "gui": true,
-        "hostname": "attacker-2",
-        "instance": 2,
-        "interfaces": {
-            "test-test-2-attacker-2": {
-                "name": "test-test-2-attacker-2",
-                "private_ip": "10.99.2.4",
-                "subnetwork_name": "test-test-2-internal"
-            },
-            "test-test-2-attacker-3": {
-                "name": "test-test-2-attacker-3",
-                "private_ip": "10.99.2.132",
-                "subnetwork_name": "test-test-2-internal2"
-            }
-        },
-        "is_in_services_network": true,
-        "memory": 1024,
-        "name": "test-test-2-attacker",
-        "vcpu": 1
-    },
-    "test-test-2-victim": {
-        "base_name": "victim",
-        "base_os": "rocky9",
-        "copy": 1,
-        "disk": 15,
-        "gui": true,
-        "hostname": "victim-2",
-        "instance": 2,
-        "interfaces": {
-            "test-test-2-victim-2": {
-                "name": "test-test-2-victim-2",
-                "private_ip": "10.99.2.5",
-                "subnetwork_name": "test-test-2-internal"
-            }
-        },
-        "is_in_services_network": true,
-        "memory": 1024,
-        "name": "test-test-2-victim",
-        "vcpu": 1
     }
 },
+"guest": "attacker",
+"instance": 1,
+"instances": 2,
 "institution": "test",
 "lab_name": "test",
 "networks": {
-    "test-test-1-internal": {
-        "ip_network": "10.99.1.0/25",
-        "name": "test-test-1-internal"
+    "internal": {
+        "members": {
+            "attacker": "10.99.2.4",
+            "victim": "10.99.2.5"
+        },
+        "network_cidr":"10.99.1.0/25"
     },
-    "test-test-1-internal2": {
-        "ip_network": "10.99.1.128/25",
-        "name": "test-test-1-internal2"
-    },
-    "test-test-2-internal": {
-        "ip_network": "10.99.2.0/25",
-        "name": "test-test-2-internal"
-    },
-    "test-test-2-internal2": {
-        "ip_network": "10.99.2.128/25",
-        "name": "test-test-2-internal2"
+    "external": {
+        "members": {
+            "attacker": "10.99.1.132"
+        },
+        "network_cidr": "10.99.1.128/25"
     }
 },
 "parameters": {
@@ -330,6 +300,7 @@ Below is a reference example.
 },
 "random_seed": 1234567890,
 "scenario_dir": "/Users/gguerrero/Desktop/Fing/CyberRange/practicas/lab-test",
+"ansible_dir": "/Users/gguerrero/Desktop/Fing/CyberRange/practicas/lab-test/ansible",
 "services": {
     "bastion_host": {
         "base_name": "bastion_host",
@@ -438,15 +409,6 @@ Below is a reference example.
 },
 "ssh_password_login": true,
 "student_prefix": "trainee",
-"topology": {
-    "internal": {
-        "attacker": "10.99.2.4",
-        "victim": "10.99.2.5"
-    },
-    "external": {
-        "attacker": "10.99.2.132"
-    }
-},
 "users": {
     "trainee1": {
         "instance": 1,

@@ -25,12 +25,12 @@
   tasks:
     - name: "Download elastic agent"
       ansible.builtin.get_url:
-        url: https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ elastic_version }}-linux-x86_64.tar.gz
-        dest: /opt/elastic-agent-{{ elastic_version }}-linux-x86_64.tar.gz
+        url: https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ services.elastic.version }}-linux-x86_64.tar.gz
+        dest: /opt/elastic-agent-{{ services.elastic.version }}-linux-x86_64.tar.gz
         mode: "0440"
     - name: Extract elastic agent
       ansible.builtin.unarchive:
-        src: /opt/elastic-agent-{{ elastic_version }}-linux-x86_64.tar.gz
+        src: /opt/elastic-agent-{{ services.elastic.version }}-linux-x86_64.tar.gz
         dest: /opt
         remote_src: yes
     - name: Get interface name
@@ -58,5 +58,5 @@
         name: vxlan
     - name: Delete unused file
       ansible.builtin.file:
-        path: /opt/elastic-agent-{{ elastic_version }}-linux-x86_64.tar.gz
+        path: /opt/elastic-agent-{{ services.elastic.version }}-linux-x86_64.tar.gz
         state: absent

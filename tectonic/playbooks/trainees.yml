@@ -109,8 +109,8 @@
   hosts: all:!bastion_host:!guacamole
   gather_facts: true
   vars:
-    digit_count: "{{ instances_number | string | length }}"
-    username: "{{ '%s%0{}d'.format(digit_count) | format(student_prefix, instance['instance_number'] ) }}"
+    digit_count: "{{ instances | string | length }}"
+    username: "{{ '%s%0{}d'.format(digit_count) | format(student_prefix, instance ) }}"
 
   tasks:
     - name: "Create the trainee user (optionally with password)"

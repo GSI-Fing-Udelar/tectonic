@@ -76,13 +76,18 @@ class Ansible:
             ssh_args += f' -o ProxyCommand="{proxy_command}"'
 
         networks = {}
+        guests = {}
         for _, guest in self.description.scenario_guests.items():
+            if guest.instance not in guests:
+                guests[guest.instance] = {}
+            guests[guest.instance][guest.base_name] = guest.to_dict()
+
             if guest.instance not in networks:
                 networks[guest.instance] = {}
             for _, interface in guest.interfaces.items():
                 if interface.network.base_name not in networks[guest.instance]:
-                    networks[guest.instance][interface.network.base_name] = {}
-                networks[guest.instance][interface.network.base_name][guest.base_name] = interface.private_ip
+                    networks[guest.instance][interface.network.base_name] = {"members":{},"network_cidr":interface.network.ip_network}
+                networks[guest.instance][interface.network.base_name]["members"][guest.base_name] = interface.private_ip
 
         for machine_name in machine_list:
             if machine_name in self.description.services_guests:
@@ -99,14 +104,22 @@ class Ansible:
                         "ansible_become": True,
                         "ansible_connection" : "community.docker.docker_api" if self.config.platform == "docker" else "ssh", #export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES on macos
                         "ansible_docker_docker_host": self.config.docker.uri,
+                        "users": self.description.generate_student_access_credentials(),
+                        "ssh_password_login": self.description.create_students_passwords or self.description.guacamole.enable,
+                        "random_seed": self.description.random_seed,
+                        "create_students_password": self.description.create_students_passwords,
+                        "student_prefix": self.description.student_prefix,
                     } | self.description.to_dict() | extra_vars,
                 }
             inventory[machine.base_name]["hosts"][machine.name] = {
                 "ansible_host": self.client.get_ssh_hostname(machine_name) if self.config.platform != "docker" else machine.name,
                 "ansible_user": username or machine.admin_username,
                 "ansible_ssh_common_args": ssh_args,
-                "instance": machine.to_dict(),
-                "topology": networks[machine.instance],
+                "guest": machine.base_name,
+                "copy": machine.copy,
+                "instance": machine.instance,
+                "guests": guests[guest.instance], 
+                "networks": networks[machine.instance],
                 "parameters": parameters[machine.instance] if machine.instance else {},
             }
 

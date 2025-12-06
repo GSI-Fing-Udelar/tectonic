@@ -42,19 +42,3 @@ class PackerLibvirt(Packer):
             client (Client): Tectonic client object
         """
         super().__init__(config, description, client)
-    
-    def _get_service_machine_variables(self, service):
-        """
-        Return machines for creating services images.
-
-        Parameters:
-            service (ServiceDescription): services for which to create images.
-
-        Returns:
-            dict: machines variables.
-        """
-        result = super()._get_service_machine_variables(service)
-        result["vcpu"] = service.vcpu
-        result["memory"] = service.memory
-        result["disk"] = service.disk
-        return result

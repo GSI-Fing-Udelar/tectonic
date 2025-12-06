@@ -92,6 +92,8 @@ class TectonicConfigLibvirt(object):
 
     def to_dict(self):
         return {
+            "uri": self.uri,
+            "storage_pool" : self.storage_pool,
             "external_network": self.external_network,
             "bridge_base_ip": self.bridge_base_ip,
         }

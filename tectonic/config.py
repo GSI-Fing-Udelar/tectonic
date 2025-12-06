@@ -268,6 +268,7 @@ class TectonicConfig(object):
     
     def to_dict(self):
         result = {
+            "ansible": self.ansible.to_dict(),
             "platform": self.platform,
             "network_cidr_block": self.network_cidr_block,
             "internet_network_cidr_block": self.internet_network_cidr_block,

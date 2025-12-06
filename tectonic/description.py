@@ -30,6 +30,7 @@ from pathlib import Path
 import re
 import json
 
+import importlib.resources as tectonic_resources
 from tectonic.constants import OS_DATA
 import tectonic.utils
 import tectonic.validate as validate
@@ -81,6 +82,12 @@ class NetworkDescription():
             raise DescriptionException(f"Invalid members {value}. Must be a list of guest names.")
         self._members = value
 
+    def to_dict(self):
+        return {
+            "name": self.base_name,
+            "members": self.members
+        }
+
 class AuxiliaryNetwork(NetworkDescription):
 
     def __init__(self, description, network_name, ip_network, mode):
@@ -117,12 +124,12 @@ class AuxiliaryNetwork(NetworkDescription):
 
     def to_dict(self):
         """Convert an AuxiliaryNetwork object to the dictionary expected by terraform."""
-        result = {}
-        result["base_name"] = self.base_name
-        result["name"] = self.name
-        result["cidr"] = self.ip_network
-        result["mode"] = self.mode
-        return result
+        return {
+            "base_name" : self.base_name,
+            "name" : self.name,
+            "cidr" : self.ip_network,
+            "mode" : self.mode,
+        }
 
 class ScenarioNetwork(NetworkDescription):
 
@@ -170,10 +177,10 @@ class ScenarioNetwork(NetworkDescription):
 
     def to_dict(self):
         """Convert a ScenarioNetwork object to the dictionary expected by terraform."""
-        result = {}
-        result["name"] = self.name
-        result["ip_network"] = self.ip_network
-        return result
+        return {
+            "name" : self.name,
+            "ip_network" : self.ip_network
+        }
 
 class MachineDescription:
     def __init__(self, description, base_name, os=None):
@@ -307,6 +314,18 @@ class MachineDescription:
         self.gpu = data.get("gpu", self.gpu)
         self.gui = data.get("gui", self.gui)
 
+    def to_dict(self):
+        return {
+            "base_os": self.os,
+            "base_name": self.base_name,
+            "memory": self.memory,
+            "vcpu": self.vcpu,
+            "gpu": self.gpu,
+            "gui": self.gui,
+            "disk": self.disk,
+            "instance_type": self.instance_type,
+        }
+
 class BaseGuestDescription(MachineDescription):
     def __init__(self, description, base_name):
         super().__init__(description, base_name)
@@ -387,14 +406,13 @@ class BaseGuestDescription(MachineDescription):
 
     def to_dict(self):
         """Convert BaseGuestDescription object to the dictionary expected by packer."""
-        result = {}
-        result["base_os"] = self.os
-        result["endpoint_monitoring"] = self.monitor
-        result["instance_type"] = self.instance_type
-        result["vcpu"] = self.vcpu
-        result["memory"] = self.memory
-        result["disk"] = self.disk
-        result["gui"] = self.gui       
+        result = super().to_dict()
+        result["monitor"] = self.monitor
+        result["red_team_agent"] = self.red_team_agent
+        result["blue_team_agent"] = self.blue_team_agent
+        result["internet_access"] = self.internet_access
+        result["entry_point"] = self.entry_point
+        result["copies"] = self.copies  
         return result
 
 class NetworkInterface():
@@ -456,11 +474,13 @@ class NetworkInterface():
 
     def to_dict(self):
         """Convert a NetworkInterface object to the dictionary expected by terraform."""
-        result = {}
-        result["name"] = self.name
-        result["subnetwork_name"] = self.network.name
-        result["private_ip"] = self.private_ip
-        return result
+        return {
+            "name" : self.name,
+            "private_ip" : self.private_ip,
+            "subnetwork_name" : self.network.name,
+            "subnetwork_base_name" : self.network.base_name,
+            "subnetwork_cidr" : self.network.ip_network
+        }
         
     def _get_interface_index_to_sum(self, description, guest):
         """Returns number to be added to interface index.
@@ -607,7 +627,7 @@ class GuestDescription(BaseGuestDescription):
         result = super().to_dict()
         result["base_name"] = self.base_name
         result["name"] = self.name
-        result["instance_number"] = self.instance
+        result["instance"] = self.instance
         result["copy"] = self.copy
         result["hostname"] = self.hostname
         result["is_in_services_network"] = self.is_in_services_network
@@ -626,6 +646,7 @@ class ServiceDescription(MachineDescription):
         self.is_in_services_network = False
         self.entry_point = False
         self.internet_access = internet_access
+        self.ansible_playbook = str(tectonic_resources.files('tectonic') / 'services' / self.base_name / 'base_config.yml')
 
     @property
     def base_name(self):
@@ -646,6 +667,10 @@ class ServiceDescription(MachineDescription):
     @property
     def internet_access(self):
         return self._internet_access
+    
+    @property
+    def ansible_playbook(self):
+        return self._ansible_playbook
 
     @base_name.setter
     def base_name(self, value):
@@ -660,6 +685,10 @@ class ServiceDescription(MachineDescription):
     def internet_access(self, value):
         validate.boolean("internet_access", value)
         self._internet_access = value
+
+    @ansible_playbook.setter
+    def ansible_playbook(self, value):
+        self._ansible_playbook = value
 
     def load_service(self, data):
         """Loads the information from the yaml structure in data."""
@@ -692,17 +721,18 @@ class ServiceDescription(MachineDescription):
 
     def to_dict(self):
         """Convert a ServiceDescription object to the dictionary expected by packer."""
-        result = {}
-        result["enable"] = self.enable
-        result["base_name"] = self.base_name
-        result["name"] = self.name
-        result["vcpu"] = self.vcpu
-        result["memory"] = self.memory
-        result["disk"] = self.disk
-        result["base_os"] = self.os
-        result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
-        result["ip"] = self.service_ip
-        return result
+        return {
+            "enable" : self.enable,
+            "base_name" : self.base_name,
+            "name" : self.name,
+            "vcpu" : self.vcpu,
+            "memory" : self.memory,
+            "disk" : self.disk,
+            "base_os" : self.os,
+            "interfaces" : {name: interface.to_dict() for name, interface in self.interfaces.items()},
+            "ip" : self.service_ip,
+            "ansible_playbook" : self.ansible_playbook
+        }
 
 class ElasticDescription(ServiceDescription):
     supported_monitor_types = ["traffic", "endpoint"]
@@ -786,10 +816,21 @@ class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
         super().__init__(description, "bastion_host", "ubuntu22", True)
         self.ports = {
-            "elastic": {"internal_port": description.config.elastic.internal_port, "external_port": description.config.elastic.external_port},
-            "caldera": {"internal_port": description.config.caldera.internal_port, "external_port": description.config.caldera.external_port},
-            "guacamole": {"internal_port": description.config.guacamole.internal_port, "external_port": description.config.guacamole.external_port},
+            "guacamole": {
+                "internal_port": description.config.guacamole.internal_port,
+                "external_port": description.config.guacamole.external_port,
+            }
         }
+        if description.elastic.enable:
+            self.ports["elastic"] = {
+                "internal_port": description.config.elastic.internal_port, 
+                "external_port": description.config.elastic.external_port
+            }
+        if description.caldera.enable:
+            self.ports["caldera"] = {
+                "internal_port": description.config.caldera.internal_port,
+                "external_port": description.config.caldera.external_port
+            }
 
     @property
     def instance_type(self):
@@ -891,8 +932,6 @@ class Description:
         self.caldera.load_service(description_data.get("caldera_settings", {}))
         self._guacamole = GuacamoleDescription(self)
         self.guacamole.load_service(description_data.get("guacamole_settings", {}))
-        self._bastion_host = BastionHostDescription(self)
-        self._teacher_access_host = TeacherAccessHostDescription(self)
 
         # Load lab edition data
         self._required(lab_edition_data, "instance_number")
@@ -928,6 +967,7 @@ class Description:
         self.caldera.enable = enable_caldera
 
         # Bastion Host
+        self._bastion_host = BastionHostDescription(self)
         self.bastion_host.enable = self.config.platform == "aws" and ( 
             self.create_students_passwords or
             self.student_pubkey_dir != None 
@@ -938,6 +978,7 @@ class Description:
         )
 
         # Teacher Access Host
+        self._teacher_access_host = TeacherAccessHostDescription(self)
         self.teacher_access_host.enable = self.config.platform == "aws" and self.config.aws.teacher_access == "host"
 
         # Load base guests and topology
@@ -1439,26 +1480,12 @@ class Description:
         services["bastion_host"] = self.bastion_host.to_dict()
         services["teacher_access_host"] = self.teacher_access_host.to_dict()
 
-        instances = {}
-        for _, instance in self.scenario_guests.items():
-            instances[instance.name] = instance.to_dict()
-
-        networks = {}
-        for _, network in self.scenario_networks.items():
-            networks[network.name] = network.to_dict()
-
         return {
             "institution": self.institution,
             "lab_name": self.lab_name,
-            "instances_number": self.instance_number,
+            "instances": self.instance_number,
             "scenario_dir": self.scenario_dir,
-            "random_seed": self.random_seed,
-            "create_students_password": self.create_students_passwords,
-            "student_prefix": self.student_prefix,
+            "ansible_dir": self.ansible_dir,
             "services": services,
-            "instances": instances,
-            "networks": networks,
             "config": self.config.to_dict(),
-            "users": self.generate_student_access_credentials(),
-            "ssh_password_login": self.create_students_passwords or self.guacamole.enable,
         }

@@ -131,25 +131,15 @@ class Packer(ABC):
             dict: variables of the Packer module.
         """
         machines = [guest for _, guest in self.description.base_guests.items() if not guests or guest.base_name in guests]
-        args = {
-            "ansible_playbooks_path": self.description.ansible_dir,
+        networks = [network for _ , network in self.description.topology.items()]
+        return {
             "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
-            "ansible_ssh_common_args": self.config.ansible.ssh_common_args,
-            "aws_region": self.config.aws.region,
-            "instance_number": self.description.instance_number,
-            "institution": self.description.institution,
-            "lab_name": self.description.lab_name,
-            "libvirt_storage_pool": self.config.libvirt.storage_pool,
-            "libvirt_uri": self.config.libvirt.uri,
             "machines_json": json.dumps({guest.base_name: guest.to_dict() for guest in machines}),
             "os_data_json": json.dumps(OS_DATA),
-            "platform": self.config.platform,
-            "remove_ansible_logs": str(not self.config.ansible.keep_logs),
-            "elastic_version": self.config.elastic.version
+            "tectonic_json": json.dumps(self.description.to_dict()),
+            "networks_json": json.dumps({"networks":{network.base_name: network.to_dict() for network in networks}}),
+            "guests_json": json.dumps({"guests":{guest.base_name: guest.to_dict() for _, guest in self.description.base_guests.items()}}),
         }
-        if self.config.proxy:
-            args["proxy"] = self.config.proxy
-        return args
 
     def _get_service_variables(self, services):
         """
@@ -162,39 +152,9 @@ class Packer(ABC):
             dict: variables of the Packer module.
         """
         machines = [guest for _, guest in self.description.services_guests.items() if services is None or guest.base_name in services]
-        args = {
-            "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
-            "ansible_ssh_common_args": self.config.ansible.ssh_common_args,
-            "aws_region": self.config.aws.region,
-            "libvirt_storage_pool": self.config.libvirt.storage_pool,
-            "libvirt_uri": self.config.libvirt.uri,
-            "machines_json": json.dumps({guest.base_name: self._get_service_machine_variables(guest) for guest in machines}),
-            "os_data_json": json.dumps(OS_DATA),
-            "platform": self.config.platform,
-            "remove_ansible_logs": str(not self.config.ansible.keep_logs),
-            #TODO: pass variables as a json as part of each host
-            "elastic_version": self.config.elastic.version, 
-            "elastic_latest_version": str(self.config.elastic.version == "latest"), # TODO: Check this
-            "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
-            "caldera_version": self.config.caldera.version,
-            "packetbeat_vlan_id": self.config.aws.packetbeat_vlan_id,
-            "guacamole_version": self.config.guacamole.version,
-        }
-        if self.config.proxy:
-            args["proxy"] = self.config.proxy
-        return args
-    
-    def _get_service_machine_variables(self, service):
-        """
-        Return machines variables creating services images.
-
-        Parameters:
-            service (ServiceDescription): services for which to create images.
-
-        Returns:
-            dict: machines variables.
-        """
         return {
-            "base_os": service.os,
-            "ansible_playbook": str(tectonic_resources.files('tectonic') / 'services' / service.base_name / 'base_config.yml')
+            "ansible_scp_extra_args": "'-O'" if ssh_version() >= 9 and self.config.platform != "docker" else "",
+            "tectonic_json": json.dumps(self.description.to_dict()),
+            "machines_json": json.dumps({guest.base_name: guest.to_dict() for guest in machines}),
+            "os_data_json": json.dumps(OS_DATA),
         }
