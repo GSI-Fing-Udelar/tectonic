@@ -27,7 +27,7 @@
     - name: End execution if reverse_proxy file exists
       ansible.builtin.meta: end_play
       when: reverse_proxy.stat.exists
-
+      
 - name: Configure firewall (iptables)
   block:
     - name: Set Gateway IP
@@ -126,7 +126,7 @@
         src: templates/index.j2
         dest: /var/www/html/index.html
     - name: Copy sites files
-      ansible.builtin.copy:
+      ansible.builtin.copy: 
         src: files/
         dest: /var/www/html
     - name: Enable apache site

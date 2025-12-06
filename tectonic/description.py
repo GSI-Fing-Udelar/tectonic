@@ -773,8 +773,8 @@ class GuacamoleDescription(ServiceDescription):
 class MoodleDescription(ServiceDescription):
     """Moodle service configuration.
     
-    Provides a declarative interface for course provisioning. Instructors
-    define courses with optional SCORM packages, and the system generates
+    Provides a declarative interface for course and user provisioning.
+    Instructors define courses and users, and the system generates
     the appropriate Moosh commands automatically.
     """
     def __init__(self, description):
@@ -783,22 +783,40 @@ class MoodleDescription(ServiceDescription):
         self.vcpu = 2
         self.disk = 20
         self.courses = []
+        self.users = []
+        self.enroll_trainees = False
         self._moosh_commands = []
+        self._generated_users = []
 
     def load_service(self, data):
         super().load_service(data)
-        self.courses = data.get("courses", [])
-        self._generate_moosh_commands()
+        if "courses" in data:
+            self.courses = data["courses"]
+        if "users" in data:
+            self.users = data["users"]
+        if "enroll_trainees" in data:
+            self.enroll_trainees = data["enroll_trainees"]
 
     @property
     def moosh_commands(self):
         return self._moosh_commands
+    
+    @property
+    def generated_users(self):
+        return self._generated_users
 
-    def _generate_moosh_commands(self):
-        """Generate Moosh commands from declarative course configuration."""
+    def generate_moosh_commands(self, trainees=None):
+        """Generate Moosh commands for courses and users.
+        
+        Args:
+            trainees: Optional dict of trainee credentials from Tectonic.
+        """
         commands = []
+        self._generated_users = []
+        course_ids = []
         course_id = 2  # Moodle reserves ID 1 for the frontpage
         
+        # Create courses
         for course in self.courses:
             name = course.get("name", f"Course {course_id}")
             shortname = re.sub(r'[^A-Z0-9]', '', name.upper())[:20] or f"COURSE{course_id}"
@@ -812,7 +830,59 @@ class MoodleDescription(ServiceDescription):
                     f"--options='packagefilepath={scorm_file}' scorm {course_id}"
                 )
             
+            course_ids.append(course_id)
             course_id += 1
+        
+        # Create and enroll external users
+        for user in self.users:
+            email = user.get("email", "")
+            username = email.split("@")[0] if email else f"user{len(self._generated_users)+1}"
+            password = user.get("password")
+            role = user.get("role", "student")
+            
+            # Generate password if not provided
+            if not password:
+                password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+            
+            self._generated_users.append({
+                "username": username,
+                "email": email,
+                "password": password,
+                "role": role
+            })
+            
+            # Create user command
+            cmd = f"user-create --password={password} --email={email} {username}"
+            commands.append(cmd)
+            
+            # Enroll in all courses
+            for cid in course_ids:
+                commands.append(f"course-enrol -r {role} {cid} {username}")
+        
+        # Enroll trainees if enabled
+        if self.enroll_trainees and trainees:
+            for username, data in trainees.items():
+                password = data.get("password")
+                # Generate password if not provided
+                if not password:
+                    password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+                email = f"{username}@tectonic.local"
+                
+                self._generated_users.append({
+                    "username": username,
+                    "email": email,
+                    "password": password,
+                    "role": "student",
+                    "is_trainee": True
+                })
+                
+                # Create user command
+                cmd = f"user-create --password={password} --email={email} {username}"
+                commands.append(cmd)
+                
+                # Enroll in all courses
+                for cid in course_ids:
+                    commands.append(f"course-enrol -r student {cid} {username}")
         
         self._moosh_commands = commands
 

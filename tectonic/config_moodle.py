@@ -34,7 +34,7 @@ class TectonicConfigMoodle(object):
     @property
     def admin_email(self):
         return self._admin_email
-
+    
     @version.setter
     def version(self, value):
         self._version = value

@@ -1,5 +1,4 @@
 ---
-
 institution: udelar
 lab_name: moodle_minimal
 default_os: ubuntu22
@@ -20,9 +19,13 @@ topology:
 
 moodle_settings:
   enable: yes
+  enroll_trainees: yes
   courses:
     - name: "Golf Explained"
       scorm_package: scorm/golf_explained.zip
+  users:
+    - email: instructor@example.com
+      role: editingteacher
 
 elastic_settings:
   enable: no
