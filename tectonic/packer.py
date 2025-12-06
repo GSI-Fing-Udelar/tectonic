@@ -19,9 +19,8 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import packerpy
-from abc import ABC, abstractmethod
+from abc import ABC
 import json
-import math
 
 import importlib.resources as tectonic_resources
 from tectonic.ssh import ssh_version

@@ -18,8 +18,6 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-import importlib.resources as tectonic_resources
-
 from tectonic.packer import Packer
 
 class PackerLibvirtException(Exception):
