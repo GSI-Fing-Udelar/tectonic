@@ -721,18 +721,13 @@ class ServiceDescription(MachineDescription):
 
     def to_dict(self):
         """Convert a ServiceDescription object to the dictionary expected by packer."""
-        return {
-            "enable" : self.enable,
-            "base_name" : self.base_name,
-            "name" : self.name,
-            "vcpu" : self.vcpu,
-            "memory" : self.memory,
-            "disk" : self.disk,
-            "base_os" : self.os,
-            "interfaces" : {name: interface.to_dict() for name, interface in self.interfaces.items()},
-            "ip" : self.service_ip,
-            "ansible_playbook" : self.ansible_playbook
-        }
+        result = super().to_dict()
+        result["enable"] = self.enable,
+        result["name"] = self.name
+        result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
+        result["ip"] = self.service_ip
+        result["ansible_playbook"] = self.ansible_playbook
+        return result
 
 class ElasticDescription(ServiceDescription):
     supported_monitor_types = ["traffic", "endpoint"]
@@ -859,6 +854,8 @@ class BastionHostDescription(ServiceDescription):
 
     def to_dict(self):
         result = super().to_dict()
+        result["instance_type"] = self.instance_type
+        result["ports"] = self.ports
         return result | self._description.config.bastion_host.to_dict()
 
 class TeacherAccessHostDescription(ServiceDescription):

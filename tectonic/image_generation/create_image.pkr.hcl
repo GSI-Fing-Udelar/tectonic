@@ -257,8 +257,6 @@ build {
       ["--extra-vars", "ansible_become=true ansible_no_target_syslog=${local.remove_ansible_logs}"]
     )
     ansible_ssh_extra_args = [local.tectonic["config"]["ansible"]["ssh_common_args"]]
-    
-    except = local.tectonic["config"]["platform"] == "aws" ? local.machine_builds : []
   }
 
   provisioner "ansible" {
