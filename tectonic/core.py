@@ -273,7 +273,7 @@ class Core:
         service_info = {}
         for _, service in self.description.services_guests.items():
             if service.base_name not in ["packetbeat", "bastion_host", "teacher_access_host"]:
-                service_port = self.description.bastion_host.ports[service.base_name]["external_port"]
+                service_port = self.description.bastion_host.ports[service.base_name]
                 service_info[service.base_name] = {
                     "URL": f"https://{bastion_host_ip}:{service_port}",
                     "Credentials": self.terraform_service.get_service_credentials(service, self.ansible),

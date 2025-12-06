@@ -108,13 +108,9 @@
       ansible.builtin.command:
         cmd: a2enmod proxy proxy_http ssl rewrite proxy_wstunnel headers
     - name: Adjust apache ports.conf
-      ansible.builtin.copy:
+      ansible.builtin.template:
+        src: templates/ports.j2
         dest: /etc/apache2/ports.conf
-        content: |
-          Listen 80
-          Listen {{ services.guacamole.external_port }}
-          Listen {{ services.elastic.external_port }}
-          Listen {{ services.caldera.external_port }}
     - name: Copy tectonic virtual host
       ansible.builtin.template:
         src: templates/tectonic.j2

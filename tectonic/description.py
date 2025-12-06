@@ -816,21 +816,12 @@ class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
         super().__init__(description, "bastion_host", "ubuntu22", True)
         self.ports = {
-            "guacamole": {
-                "internal_port": description.config.guacamole.internal_port,
-                "external_port": description.config.guacamole.external_port,
-            }
+            "guacamole": description.config.guacamole.external_port
         }
         if description.elastic.enable:
-            self.ports["elastic"] = {
-                "internal_port": description.config.elastic.internal_port, 
-                "external_port": description.config.elastic.external_port
-            }
+            self.ports["elastic"] = description.config.elastic.external_port
         if description.caldera.enable:
-            self.ports["caldera"] = {
-                "internal_port": description.config.caldera.internal_port,
-                "external_port": description.config.caldera.external_port
-            }
+            self.ports["caldera"] = description.config.caldera.external_port
 
     @property
     def instance_type(self):
