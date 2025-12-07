@@ -1,37 +1,25 @@
 ---
 institution: udelar
-lab_name: moodle_minimal
+lab_name: moodle_example
 default_os: ubuntu22
 
 guest_settings:
-  dummy:
+  pc1:
+    base_os: ubuntu22
     memory: 512
     vcpu: 1
     disk: 5
-    base_os: ubuntu22
-    internet_access: no
-    monitor: no
+    internet_access: false
 
 topology:
-  - name: minimal_network
-    members:
-      - dummy
+  - name: lan
+    members: [pc1]
 
 moodle_settings:
-  enable: yes
-  enroll_trainees: yes
+  enable: true
   courses:
     - name: "Golf Explained"
       scorm_package: scorm/golf_explained.zip
   users:
     - email: instructor@example.com
       role: editingteacher
-
-elastic_settings:
-  enable: no
-
-caldera_settings:
-  enable: no
-
-guacamole_settings:
-  enable: no

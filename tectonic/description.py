@@ -811,80 +811,73 @@ class MoodleDescription(ServiceDescription):
         Args:
             trainees: Optional dict of trainee credentials from Tectonic.
         """
-        commands = []
+        self._moosh_commands = []
         self._generated_users = []
-        course_ids = []
-        course_id = 2  # Moodle reserves ID 1 for the frontpage
         
-        # Create courses
+        course_ids = self._generate_course_commands()
+        
+        for user in self.users:
+            self._add_user_command(user, course_ids)
+            
+        if self.enroll_trainees and trainees:
+            for username, data in trainees.items():
+                user_data = {
+                    "username": username,
+                    "password": data.get("password"),
+                    "email": f"{username}@tectonic.local",
+                    "role": "student",
+                    "is_trainee": True
+                }
+                self._add_user_command(user_data, course_ids)
+
+    def _generate_course_commands(self):
+        course_ids = []
+        course_id = 2  # ID 1 is Frontpage
+        
         for course in self.courses:
             name = course.get("name", f"Course {course_id}")
-            shortname = re.sub(r'[^A-Z0-9]', '', name.upper())[:20] or f"COURSE{course_id}"
+            default_short = re.sub(r'[^A-Z0-9_-]', '', name.upper())[:20]
+            shortname = course.get("shortname", default_short) or f"COURSE{course_id}"
             
-            commands.append(f"course-create --category=1 --fullname='{name}' {shortname}")
+            self._moosh_commands.append(f"course-create --category=1 --fullname='{name}' {shortname}")
             
             if "scorm_package" in course:
                 scorm_file = course["scorm_package"].split("/")[-1]
-                commands.append(
+                self._moosh_commands.append(
                     f"activity-add --section=0 --name='{name}' "
                     f"--options='packagefilepath={scorm_file}' scorm {course_id}"
                 )
             
             course_ids.append(course_id)
             course_id += 1
+        return course_ids
+
+    def _add_user_command(self, user_data, course_ids):
+        username = user_data.get("username")
+        if not username and user_data.get("email"):
+             username = user_data.get("email").split("@")[0]
         
-        # Create and enroll external users
-        for user in self.users:
-            email = user.get("email", "")
-            username = email.split("@")[0] if email else f"user{len(self._generated_users)+1}"
-            password = user.get("password")
-            role = user.get("role", "student")
+        if not username:
+             username = f"user{len(self._generated_users)+1}"
+
+        password = user_data.get("password")
+        if not password:
+            password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
             
-            # Generate password if not provided
-            if not password:
-                password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
-            
-            self._generated_users.append({
-                "username": username,
-                "email": email,
-                "password": password,
-                "role": role
-            })
-            
-            # Create user command
-            cmd = f"user-create --password={password} --email={email} {username}"
-            commands.append(cmd)
-            
-            # Enroll in all courses
-            for cid in course_ids:
-                commands.append(f"course-enrol -r {role} {cid} {username}")
-        
-        # Enroll trainees if enabled
-        if self.enroll_trainees and trainees:
-            for username, data in trainees.items():
-                password = data.get("password")
-                # Generate password if not provided
-                if not password:
-                    password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
-                email = f"{username}@tectonic.local"
-                
-                self._generated_users.append({
-                    "username": username,
-                    "email": email,
-                    "password": password,
-                    "role": "student",
-                    "is_trainee": True
-                })
-                
-                # Create user command
-                cmd = f"user-create --password={password} --email={email} {username}"
-                commands.append(cmd)
-                
-                # Enroll in all courses
-                for cid in course_ids:
-                    commands.append(f"course-enrol -r student {cid} {username}")
-        
-        self._moosh_commands = commands
+        email = user_data.get("email", "")
+        role = user_data.get("role", "student")
+
+        self._generated_users.append({
+            "username": username,
+            "email": email,
+            "password": password,
+            "role": role,
+            "is_trainee": user_data.get("is_trainee", False)
+        })
+
+        self._moosh_commands.append(f"user-create --password={password} --email={email} {username}")
+        for cid in course_ids:
+            self._moosh_commands.append(f"course-enrol -r {role} {cid} {username}")
 
 class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
