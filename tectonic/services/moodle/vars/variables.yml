@@ -1,6 +1,7 @@
 ---
 moosh_download_url: "https://moodle.org/plugins/download.php/34835/moosh_moodle45_2025020800.zip"
 moosh_version: "moodle45_2025020800"
+php_version: "8.1"
 
 system_packages:
   - git
@@ -11,16 +12,16 @@ system_packages:
   - python3-pymysql
 
 php_packages:
-  - php8.1
-  - php8.1-fpm
-  - php8.1-gd
-  - php8.1-curl
-  - php8.1-opcache
-  - php8.1-xml
-  - php8.1-mbstring
-  - php8.1-mysql
-  - php8.1-zip
-  - php8.1-intl
-  - php8.1-soap
-  - php8.1-bcmath
+  - "php{{ php_version }}"
+  - "php{{ php_version }}-fpm"
+  - "php{{ php_version }}-gd"
+  - "php{{ php_version }}-curl"
+  - "php{{ php_version }}-opcache"
+  - "php{{ php_version }}-xml"
+  - "php{{ php_version }}-mbstring"
+  - "php{{ php_version }}-mysql"
+  - "php{{ php_version }}-zip"
+  - "php{{ php_version }}-intl"
+  - "php{{ php_version }}-soap"
+  - "php{{ php_version }}-bcmath"
   - php-apcu

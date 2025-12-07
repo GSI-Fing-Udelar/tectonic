@@ -9,6 +9,10 @@
       ansible.builtin.meta: end_play
       when: credentials.stat.exists
 
+- name: Load variables
+  ansible.builtin.include_vars:
+    file: vars/variables.yml
+
 - name: Add hostname to /etc/hosts
   ansible.builtin.lineinfile:
     dest: /etc/hosts
@@ -166,7 +170,7 @@
     enabled: true
   loop:
     - apache2
-    - php8.1-fpm
+    - "php{{ php_version }}-fpm"
 
 - name: Configure firewall (iptables)
   block:
