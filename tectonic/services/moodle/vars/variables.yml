@@ -2,3 +2,25 @@
 moosh_download_url: "https://moodle.org/plugins/download.php/34835/moosh_moodle45_2025020800.zip"
 moosh_version: "moodle45_2025020800"
 
+system_packages:
+  - git
+  - unzip
+  - acl
+  - apache2
+  - mysql-server
+  - python3-pymysql
+
+php_packages:
+  - php8.1
+  - php8.1-fpm
+  - php8.1-gd
+  - php8.1-curl
+  - php8.1-opcache
+  - php8.1-xml
+  - php8.1-mbstring
+  - php8.1-mysql
+  - php8.1-zip
+  - php8.1-intl
+  - php8.1-soap
+  - php8.1-bcmath
+  - php-apcu

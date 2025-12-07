@@ -123,24 +123,28 @@
         path: /var/www/html/moodle/config.php
         state: absent
     - name: Run CLI installer
-      ansible.builtin.shell: |
-        sudo -u www-data /usr/bin/php /var/www/html/moodle/admin/cli/install.php \
-          --non-interactive \
-          --agree-license \
-          --lang=en \
-          --wwwroot=https://{{ moodle_host }}:{{ moodle.external_port }} \
-          --dataroot=/var/moodledata \
-          --dbtype=mysqli \
-          --dbhost=localhost \
-          --dbname=moodle \
-          --dbuser=moodle \
-          --dbpass={{ moodle_db_password }} \
-          --fullname="{{ moodle.site_fullname }}" \
-          --shortname="{{ moodle.site_shortname }}" \
-          --adminuser=admin \
-          --adminpass={{ moodle_admin_password }} \
+      ansible.builtin.command:
+        cmd: >
+          /usr/bin/php /var/www/html/moodle/admin/cli/install.php
+          --non-interactive
+          --agree-license
+          --lang=en
+          --wwwroot=https://{{ moodle_host }}:{{ moodle.external_port }}
+          --dataroot=/var/moodledata
+          --dbtype=mysqli
+          --dbhost=localhost
+          --dbname=moodle
+          --dbuser=moodle
+          --dbpass={{ moodle_db_password }}
+          --fullname="{{ moodle.site_fullname }}"
+          --shortname="{{ moodle.site_shortname }}"
+          --adminuser=admin
+          --adminpass={{ moodle_admin_password }}
           --adminemail={{ moodle.admin_email }}
+      become: true
+      become_user: www-data
       register: moodle_install_result
+      changed_when: "'already installed' not in moodle_install_result.stdout"
       failed_when: moodle_install_result.rc != 0 and "already installed" not in moodle_install_result.stdout
     - name: Secure config.php permissions
       ansible.builtin.file:
@@ -163,6 +167,51 @@
   loop:
     - apache2
     - php8.1-fpm
+
+- name: Configure firewall (iptables)
+  block:
+    - name: Set Gateway IP
+      ansible.builtin.set_fact:
+        gateway_ip: "{{ (moodle.ip | split('.'))[0] }}.{{ (moodle.ip | split('.'))[1] }}.{{ (moodle.ip | split('.'))[2] }}.129"
+
+    - name: Configure firewall | Flush existing rules
+      ansible.builtin.iptables:
+        table: filter
+        chain: "{{ item }}"
+        flush: yes
+      loop: [INPUT, FORWARD, OUTPUT]
+
+    - name: Configure firewall | Allow specific traffic
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: "{{ item.proto | default(omit) }}"
+        source: "{{ item.src | default(omit) }}"
+        destination_port: "{{ item.port | default(omit) }}"
+        in_interface: "{{ item.iface | default(omit) }}"
+        ctstate: "{{ item.ctstate | default(omit) }}"
+        jump: ACCEPT
+      loop:
+        - { ctstate: "ESTABLISHED,RELATED" }
+        - { iface: "lo" }
+        - { proto: "tcp", port: 22, src: "{{ gateway_ip }}" }
+        - {
+            proto: "tcp",
+            port: "{{ moodle.internal_port }}",
+            src: "{{ bastion_host.ip }}",
+          }
+
+    - name: Configure firewall | Set default policies
+      ansible.builtin.iptables:
+        chain: "{{ item.chain }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { chain: INPUT, policy: DROP }
+        - { chain: FORWARD, policy: DROP }
+        - { chain: OUTPUT, policy: ACCEPT }
+
+    - name: Configure firewall | Save rules
+      ansible.builtin.command: service netfilter-persistent save
+  when: platform == "libvirt" or platform == "docker"
 
 - name: Provision courses
   block:
