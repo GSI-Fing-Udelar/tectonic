@@ -273,7 +273,13 @@ class Layer3UserProfile:
         # Step 3: Generate directory structure
         directories = profile['directories']
         for directory in directories:
-            full_path = os.path.join(base_directory, directory.lstrip('/tmp/'))
+            # Remove /tmp/ prefix correctly (not with lstrip which removes individual chars)
+            if directory.startswith('/tmp/'):
+                dir_relative = directory[5:]  # Remove '/tmp/' (5 characters)
+            else:
+                dir_relative = directory.lstrip('/')
+            
+            full_path = os.path.join(base_directory, dir_relative)
             os.makedirs(full_path, exist_ok=True)
             if verbose:
                 print(f"Created directory: {full_path}")
@@ -294,8 +300,12 @@ class Layer3UserProfile:
             # Select random name pattern
             name_pattern = random.choice(profile['naming_patterns'])
             
-            # Generate files for this directory
-            target_dir = os.path.join(base_directory, directory.lstrip('/tmp/'))
+            # Generate files for this directory - remove /tmp/ prefix correctly
+            if directory.startswith('/tmp/'):
+                dir_relative = directory[5:]  # Remove '/tmp/' (5 characters)
+            else:
+                dir_relative = directory.lstrip('/')
+            target_dir = os.path.join(base_directory, dir_relative)
             
             success, created, failed, error = l2.generate_files_bulk(
                 count=dir_file_count,

@@ -245,7 +245,7 @@ def main():
                 choices=['personal', 'corporate', 'developer', 'designer', 'student', 'server']
             ),
             base_directory=dict(type='str', required=True),
-            file_count=dict(type='int', required=False, default=None),
+            file_count=dict(type='raw', required=False, default=None),
             faker_seed=dict(type='int', required=False, default=42),
             apply_temporal=dict(type='bool', required=False, default=True),
             apply_permissions=dict(type='bool', required=False, default=True),
@@ -266,6 +266,15 @@ def main():
     verbose = module.params['verbose']
     multi_user = module.params['multi_user']
     user_configs = module.params['user_configs']
+    
+    # Handle file_count: convert empty string or None to None
+    if file_count == '' or file_count == 'None' or file_count is None:
+        file_count = None
+    elif isinstance(file_count, str):
+        try:
+            file_count = int(file_count)
+        except ValueError:
+            file_count = None
     
     # Validate base directory path
     import os

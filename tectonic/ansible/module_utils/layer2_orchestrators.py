@@ -369,6 +369,9 @@ def _create_file_by_type(
     elif file_type in ['jpg', 'jpeg', 'png']:
         return l1.create_image_file(filepath, extension=file_type, size=50000, seed=seed)
     
+    elif file_type == 'svg':
+        return l1.create_svg_file(filepath, size=5000, seed=seed)
+    
     elif file_type in ['docx', 'doc']:
         return l1.create_docx_file(filepath, seed=seed)
     

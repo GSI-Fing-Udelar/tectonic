@@ -422,6 +422,116 @@ def create_image_file(
         return False, str(e)
 
 
+def create_svg_file(
+    filepath: str,
+    size: Union[int, str, None] = None,
+    seed: Optional[int] = None
+) -> Tuple[bool, str]:
+    """
+    Create an SVG (Scalable Vector Graphics) file.
+    
+    This primitive generates a valid SVG file with random shapes and colors.
+    
+    Args:
+        filepath: Full path where SVG will be created
+        size: Target size in bytes (approximate, controls complexity)
+        seed: Random seed for reproducible content
+        
+    Returns:
+        Tuple[bool, str]: (success, error_message)
+    """
+    try:
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        
+        # Parse size if it's a string
+        size_bytes = parse_size_string(size) if size else None
+        
+        # Set random seed if provided
+        if seed is not None:
+            random.seed(seed)
+        
+        # Determine canvas size and shape count based on target size
+        if size_bytes:
+            # More shapes = larger file
+            num_shapes = max(5, min(50, size_bytes // 100))
+        else:
+            num_shapes = 10
+        
+        width = 800
+        height = 600
+        
+        # Generate SVG content
+        svg_lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
+            f'  <title>Generated SVG</title>',
+            f'  <desc>Randomly generated SVG file with {num_shapes} shapes</desc>',
+            ''
+        ]
+        
+        # Background rectangle
+        bg_color = f'#{random.randint(200, 255):02x}{random.randint(200, 255):02x}{random.randint(200, 255):02x}'
+        svg_lines.append(f'  <rect width="{width}" height="{height}" fill="{bg_color}"/>')
+        svg_lines.append('')
+        
+        # Generate random shapes
+        shape_types = ['circle', 'rect', 'ellipse', 'polygon', 'line']
+        
+        for i in range(num_shapes):
+            shape_type = random.choice(shape_types)
+            color = f'#{random.randint(0, 255):02x}{random.randint(0, 255):02x}{random.randint(0, 255):02x}'
+            opacity = round(random.uniform(0.3, 1.0), 2)
+            
+            if shape_type == 'circle':
+                cx = random.randint(0, width)
+                cy = random.randint(0, height)
+                r = random.randint(10, 100)
+                svg_lines.append(f'  <circle cx="{cx}" cy="{cy}" r="{r}" fill="{color}" opacity="{opacity}"/>')
+            
+            elif shape_type == 'rect':
+                x = random.randint(0, width - 100)
+                y = random.randint(0, height - 100)
+                w = random.randint(20, 150)
+                h = random.randint(20, 150)
+                svg_lines.append(f'  <rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{color}" opacity="{opacity}"/>')
+            
+            elif shape_type == 'ellipse':
+                cx = random.randint(0, width)
+                cy = random.randint(0, height)
+                rx = random.randint(20, 100)
+                ry = random.randint(20, 100)
+                svg_lines.append(f'  <ellipse cx="{cx}" cy="{cy}" rx="{rx}" ry="{ry}" fill="{color}" opacity="{opacity}"/>')
+            
+            elif shape_type == 'polygon':
+                points = []
+                num_points = random.randint(3, 6)
+                for _ in range(num_points):
+                    px = random.randint(0, width)
+                    py = random.randint(0, height)
+                    points.append(f'{px},{py}')
+                points_str = ' '.join(points)
+                svg_lines.append(f'  <polygon points="{points_str}" fill="{color}" opacity="{opacity}"/>')
+            
+            elif shape_type == 'line':
+                x1 = random.randint(0, width)
+                y1 = random.randint(0, height)
+                x2 = random.randint(0, width)
+                y2 = random.randint(0, height)
+                stroke_width = random.randint(1, 5)
+                svg_lines.append(f'  <line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" stroke-width="{stroke_width}" opacity="{opacity}"/>')
+        
+        svg_lines.append('</svg>')
+        
+        # Write to file
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(svg_lines))
+        
+        return True, ""
+    
+    except Exception as e:
+        return False, str(e)
+
+
 def create_docx_file(
     filepath: str,
     content: Optional[str] = None,
@@ -1141,7 +1251,7 @@ def delete_file_with_debugfs(
     device: str,
     filename: str,
     directory: str = '/'
-) -> Tuple[bool, str, Optional[int]]:
+) -> Tuple[bool, str]:
     """
     Delete a file from ext4 filesystem using debugfs.
     
@@ -1155,7 +1265,7 @@ def delete_file_with_debugfs(
         directory: Directory containing file (default: root)
         
     Returns:
-        Tuple[bool, str, Optional[int]]: (success, error_message, inode_number_before_deletion)
+        Tuple[bool, str]: (success, error_message)
     """
     try:
         import subprocess
@@ -1180,23 +1290,21 @@ def delete_file_with_debugfs(
         
         # Check for errors
         if result.returncode != 0:
-            return False, f"debugfs rm failed: {result.stderr}", None
+            return False, f"debugfs rm failed: {result.stderr}"
         
         # Sync filesystem
         subprocess.run(['sync'], check=False)
         
-        return True, "", None
+        return True, ""
     
     except Exception as e:
-        return False, str(e), None
+        return False, str(e)
 
 
 def delete_file(
     filepath: str,
     backup: bool = False,
-    forensic_recoverable: bool = True,
-    use_debugfs: bool = False,
-    device: Optional[str] = None
+    forensic_recoverable: bool = True
 ) -> Tuple[bool, str, Optional[str]]:
     """
     Delete a file with optional backup and forensic recoverability.
@@ -1204,9 +1312,6 @@ def delete_file(
     This primitive removes a file from the filesystem. 
     
     Deletion modes:
-    - use_debugfs=True: Use debugfs for true forensic deletion on ext4.
-      Requires device parameter. Returns inode number in backup_path.
-      
     - forensic_recoverable=True: "Soft delete" - moves file to hidden directory
       (.deleted_files). This makes it 100% recoverable by simply moving it back.
       This simulates ransomware that doesn't immediately overwrite data, allowing
@@ -1221,50 +1326,25 @@ def delete_file(
       impossible. The only reliable "forensic recoverable" deletion is to not
       actually delete the file - just hide it.
       
-      HOWEVER, if you use debugfs to delete and capture the inode BEFORE deletion,
-      you can recover with icat using that inode number.
-      
     Args:
         filepath: Path to file to delete
         backup: Create backup before deleting
         forensic_recoverable: Enable forensic recovery (default: True)
-        use_debugfs: Use debugfs for deletion (requires device)
-        device: Block device for debugfs operations
         
     Returns:
-        Tuple[bool, str, Optional[str]]: (success, error_message, backup_path_or_inode)
+        Tuple[bool, str, Optional[str]]: (success, error_message, backup_path)
     """
     try:
-        if not os.path.exists(filepath) and not use_debugfs:
+        if not os.path.exists(filepath):
             return False, "File does not exist", None
         
         backup_path = None
         
         # Create backup if requested
-        if backup and not use_debugfs:
+        if backup:
             backup_path = filepath + '.backup'
             import shutil
             shutil.copy2(filepath, backup_path)
-        
-        # Debugfs deletion mode (true forensic recovery)
-        if use_debugfs:
-            if not device:
-                return False, "device parameter required for debugfs operations", None
-            
-            # Extract filename from filepath
-            filename = os.path.basename(filepath)
-            directory = os.path.dirname(filepath)
-            
-            # Convert absolute path to relative for debugfs
-            # debugfs expects paths relative to mount point
-            # We'll just use the filename in root directory
-            success, error, inode = delete_file_with_debugfs(device, filename, '/')
-            
-            if success and inode:
-                # Return inode as "backup" for recovery purposes
-                backup_path = f"inode:{inode}"
-            
-            return success, error, backup_path
         
         # Forensic-recoverable deletion (soft delete - move to hidden directory)
         if forensic_recoverable:

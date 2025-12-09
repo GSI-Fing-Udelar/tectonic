@@ -37,8 +37,6 @@ options:
 
 notes:
   - Requires sudo privileges for debugfs
-  - Only works on ext4 filesystems
-  - Returns inode number for forensic recovery with icat
   - File must already exist on the filesystem
 
 author:
@@ -73,12 +71,6 @@ filename:
   returned: always
   sample: "FORENSIC_passwords.txt"
 
-inode:
-  description: Inode number captured before deletion (for recovery)
-  type: int
-  returned: on success
-  sample: 12345
-
 deleted:
   description: Whether file was successfully deleted
   type: bool
@@ -90,6 +82,12 @@ device:
   type: str
   returned: always
   sample: "/dev/sda3"
+
+msg:
+  description: Status message
+  type: str
+  returned: always
+  sample: "Successfully deleted FORENSIC_passwords.txt from /dev/sda3 using debugfs"
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -131,8 +129,8 @@ def main():
         module.fail_json(msg=f"Failed to import layer1_primitives: {str(e)}")
     
     try:
-        # Call debugfs deletion primitive
-        success, error, inode = l1.delete_file_with_debugfs(
+        # Call debugfs deletion primitive (Layer 1)
+        success, error = l1.delete_file_with_debugfs(
             device=device,
             filename=filename,
             directory=directory
@@ -147,12 +145,8 @@ def main():
             'filename': filename,
             'device': device,
             'deleted': True,
-            'msg': f"Successfully deleted {filename} from {device}"
+            'msg': f"Successfully deleted {filename} from {device} using debugfs"
         }
-        
-        if inode:
-            result['inode'] = inode
-            result['msg'] += f" (inode {inode} - recoverable with icat)"
         
         module.exit_json(**result)
         

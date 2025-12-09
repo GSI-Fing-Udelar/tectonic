@@ -537,7 +537,7 @@ def phase5_apply_infection_timestamps(module: AnsibleModule, profile: dict, encr
     
     success, files_modified, failed_files, error = l2.apply_temporal_distribution(
         files=encrypted_files,
-        base_timestamp=int(time.time()),
+        base_timestamp=time.time(),
         distribution_type=infection['distribution']['type'],
         distribution_params=infection['distribution']['params'],
         seed=profile['faker_seed']
