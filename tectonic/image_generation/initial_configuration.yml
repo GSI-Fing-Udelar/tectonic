@@ -29,25 +29,25 @@
           ansible.builtin.copy:
             dest: /etc/profile.d/proxy.sh
             content: | 
-              export http_proxy={{ proxy }}
-              export https_proxy={{ proxy }}
+              export http_proxy={{ config.proxy }}
+              export https_proxy={{ config.proxy }}
           when: ansible_facts['os_family'] != "Windows"
 
         - name: "Apt proxy"
           ansible.builtin.copy:
             dest: /etc/apt/apt.conf.d/proxy.conf
             content: | 
-              Acquire::http::Proxy "{{ proxy }}";
-              Acquire::https::Proxy "{{ proxy }}";
-          when: ansible_facts['os_family'] == 'Debian'
+              Acquire::http::Proxy "{{ config.proxy }}";
+              Acquire::https::Proxy "{{ config.proxy }}";
+          when: ansible_facts['os_family'] in ['Debian', 'Ubuntu']
 
         - name: "Dnf proxy"
           ansible.builtin.lineinfile:
             path: /etc/dnf/dnf.conf
             regexp: '^proxy='
-            line: "proxy={{ proxy }}"
-          when: ansible_facts['os_family'] == 'RedHat' or ansible_facts['os_family'] == 'Fedora'
-      when: proxy is defined
+            line: "proxy={{ config.proxy }}"
+          when: ansible_facts['os_family'] in ['RedHat', 'Fedora', 'Rocky']
+      when: config.proxy is defined
 
     - name: Install qemu-guest-agent in libvirt
       block:
@@ -69,7 +69,7 @@
             name: acpid
             enabled: yes
             state: started
-      when: ansible_facts['os_family'] == 'Debian' and config.platform == "libvirt"
+      when: ansible_facts['os_family'] in ['Debian', 'Ubuntu'] and config.platform == "libvirt"
 
     - name: Install RDP and GUI
       block:
@@ -119,6 +119,6 @@
                 permanent: true
                 state: enabled
                 immediate: true
-          when: ansible_facts['os_family'] in ['RedHat', 'Rocky']
+          when: ansible_facts['os_family'] in ['RedHat', 'Rocky', 'Fedora']
       when: guests is defined and guests[guest]["gui"]
 

@@ -225,7 +225,7 @@ build {
 
   provisioner "shell" {
     inline = concat(
-      lookup(local.tectonic, "proxy", "") != "" ? ["sudo sed -i '/^proxy=/d' /etc/dnf/dnf.conf && echo 'proxy=${local.tectonic["proxy"]}' | sudo tee -a /etc/dnf/dnf.conf",
+      lookup(local.tectonic.config, "proxy", "") != "" ? ["sudo sed -i '/^proxy=/d' /etc/dnf/dnf.conf && echo 'proxy=${local.tectonic["config"]["proxy"]}' | sudo tee -a /etc/dnf/dnf.conf",
       ] : [],
       ["sudo dnf install -y python3.12 python3.12-pip"],
     )
