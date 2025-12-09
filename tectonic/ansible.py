@@ -224,27 +224,29 @@ class Ansible:
         # Tectonic supports custom Ansible modules, roles, and filter plugins by
         # setting environment variables that Ansible automatically recognizes.
         # 
-        # When a scenario includes custom components in its ansible/ directory:
-        #   - ansible/library/        -> Custom modules (e.g., encrypt_files_aes.py)
-        #   - ansible/roles/          -> Custom roles (e.g., wannacry_simulator)
-        #   - ansible/filter_plugins/ -> Custom Jinja2 filters
+        # Two-tier component discovery:
+        #   1. Core components (tectonic/ansible/):
+        #      - tectonic/ansible/library/        -> Global modules (e.g., encrypt_files_aes.py)
+        #      - tectonic/ansible/filter_plugins/ -> Global Jinja2 filters
+        #      - tectonic/ansible/module_utils/   -> Shared utilities for modules
+        #   
         #
-        # These paths are exposed to Ansible via environment variables:
-        #   - ANSIBLE_LIBRARY: Where Ansible looks for custom modules
-        #   - ANSIBLE_ROLES_PATH: Where Ansible searches for roles
-        #   - ANSIBLE_FILTER_PLUGINS: Where Ansible loads custom filters
+        # Path priority (uses colon-separated paths):
+        #   - ANSIBLE_LIBRARY: tectonic_library
+        #   - ANSIBLE_FILTER_PLUGINS: tectonic_filter_plugins
         #
         # This approach:
-        #   ✓ Maintains backward compatibility (empty string if paths don't exist)
-        #   ✓ No need for ansible.cfg in scenarios
+        #   ✓ Provides global components for all scenarios
+        #   ✓ Allows scenario-specific overrides
+        #   ✓ Maintains backward compatibility
         #   ✓ Works seamlessly with ansible_runner
-        #   ✓ Allows scenarios to extend Ansible functionality
         # ============================================================================
         
-        scenario_ansible_dir = Path(self.description.scenario_dir) / "ansible"
-        custom_library_path = scenario_ansible_dir / "library"
-        custom_roles_path = scenario_ansible_dir / "roles"
-        custom_filter_plugins_path = scenario_ansible_dir / "filter_plugins"
+        # Core Tectonic components (always available)
+        tectonic_ansible_dir = tectonic_resources.files('tectonic') / 'ansible'
+        tectonic_library_path = tectonic_ansible_dir / "library"
+        tectonic_filter_plugins_path = tectonic_ansible_dir / "filter_plugins"
+        tectonic_module_utils_path = tectonic_ansible_dir / "module_utils"
         
         envvars = { 
             "ANSIBLE_FORKS": self.config.ansible.forks,
@@ -254,20 +256,24 @@ class Ansible:
             "ANSIBLE_TIMEOUT": self.config.ansible.timeout,
         }
         
-        # Add custom Ansible component paths if they exist in the scenario
-        # These paths allow scenarios to provide specialized modules and roles
-        # without modifying the core Tectonic installation
-        if custom_library_path.exists() and custom_library_path.is_dir():
-            envvars["ANSIBLE_LIBRARY"] = custom_library_path.as_posix()
-            logger.info(f"Using custom Ansible library: {custom_library_path}")
-        
-        if custom_roles_path.exists() and custom_roles_path.is_dir():
-            envvars["ANSIBLE_ROLES_PATH"] = custom_roles_path.as_posix()
-            logger.info(f"Using custom Ansible roles: {custom_roles_path}")
-        
-        if custom_filter_plugins_path.exists() and custom_filter_plugins_path.is_dir():
-            envvars["ANSIBLE_FILTER_PLUGINS"] = custom_filter_plugins_path.as_posix()
-            logger.info(f"Using custom Ansible filter plugins: {custom_filter_plugins_path}")
+        # Build ANSIBLE_LIBRARY path
+        library_paths = []
+        if tectonic_library_path.exists() and tectonic_library_path.is_dir():
+            library_paths.append(tectonic_library_path.as_posix())
+            logger.info(f"Using core Ansible library: {tectonic_library_path}")
+        if library_paths:
+            envvars["ANSIBLE_LIBRARY"] = ":".join(library_paths)
+        # Build ANSIBLE_FILTER_PLUGINS path
+        filter_paths = []
+        if tectonic_filter_plugins_path.exists() and tectonic_filter_plugins_path.is_dir():
+            filter_paths.append(tectonic_filter_plugins_path.as_posix())
+            logger.info(f"Using core Ansible filter plugins: {tectonic_filter_plugins_path}")
+        if filter_paths:
+            envvars["ANSIBLE_FILTER_PLUGINS"] = ":".join(filter_paths)
+        # Set ANSIBLE_MODULE_UTILS (required for custom module_utils)
+        if tectonic_module_utils_path.exists() and tectonic_module_utils_path.is_dir():
+            envvars["ANSIBLE_MODULE_UTILS"] = tectonic_module_utils_path.as_posix()
+            logger.info(f"Using core Ansible module_utils: {tectonic_module_utils_path}")
         
         r = ansible_runner.interface.run(
             inventory=inventory,
@@ -285,7 +291,7 @@ class Ansible:
 
     def wait_for_connections(self, instances=None, guests=None, copies=None, only_instances=True, exclude=[], username=None, inventory=None):
         """Wait for machines to respond to ssh connections for ansible."""
-        playbook = tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'
+        playbook = tectonic_resources.files('tectonic') / 'ansible' / 'playbooks' / 'wait_for_connection.yml'
 
         return self.run(
             instances=instances, guests=guests, copies=copies,

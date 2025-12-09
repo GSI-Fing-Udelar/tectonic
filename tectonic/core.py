@@ -49,7 +49,7 @@ class Core:
     Description: orchestrate Tectonic main functionalities using InstanceManagement and ServiceManagement.
     """
     ANSIBLE_SERVICE_PLAYBOOK = tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'
-    ANSIBLE_TRAINEES_PLAYBOOK = tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'
+    ANSIBLE_TRAINEES_PLAYBOOK = tectonic_resources.files('tectonic') / 'ansible' / 'playbooks' / 'trainees.yml'
 
     def __init__(self, description):
         """

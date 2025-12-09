@@ -24,6 +24,7 @@ include = [
 	{ path="tectonic/playbooks", format = ["sdist", "wheel"] },
 	{ path="tectonic/services", format = ["sdist", "wheel"] },
 	{ path="tectonic/image_generation", format = ["sdist", "wheel"] },
+	{ path="tectonic/ansible", format = ["sdist", "wheel"] },
 ]
 
 
