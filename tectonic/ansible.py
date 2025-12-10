@@ -80,14 +80,18 @@ class Ansible:
         for _, guest in self.description.scenario_guests.items():
             if guest.instance not in guests:
                 guests[guest.instance] = {}
-            guests[guest.instance][guest.base_name] = guest.to_dict()
+            if guest.base_name not in guests[guest.instance]:
+                guests[guest.instance][guest.base_name] = {} 
+            guests[guest.instance][guest.base_name][guest.copy] = guest.to_dict()
 
             if guest.instance not in networks:
                 networks[guest.instance] = {}
             for _, interface in guest.interfaces.items():
                 if interface.network.base_name not in networks[guest.instance]:
                     networks[guest.instance][interface.network.base_name] = {"members":{},"network_cidr":interface.network.ip_network}
-                networks[guest.instance][interface.network.base_name]["members"][guest.base_name] = interface.private_ip
+                if guest.base_name not in networks[guest.instance][interface.network.base_name]["members"]:
+                    networks[guest.instance][interface.network.base_name]["members"][guest.base_name] = {}
+                networks[guest.instance][interface.network.base_name]["members"][guest.base_name][guest.copy] = interface.private_ip
 
         for machine_name in machine_list:
             if machine_name in self.description.services_guests:

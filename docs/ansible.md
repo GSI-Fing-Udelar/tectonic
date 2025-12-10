@@ -151,7 +151,7 @@ The variables for the `after_clone` playbooks are the same as those for `base_co
 - `instances`: Number of total instances.
 - `instance`: Guest instance number where the playbook is running.
 - `copy`: Guest copy number where the playbook is running.
-- `guests`: Configuration of all guests belonging to the instance corresponding to the guest where the playbook is running. It is a dictionary where each entry corresponds to a guest with the same variables as in `base_config` but also include the following:
+- `guests`: Configuration of all guests belonging to the instance corresponding to the guest where the playbook is running. It's a dictionary where the key corresponds to the guest's `base_name` and the value is a dictionary. For this last dictionary, the key corresponds to the `copy` and the value is a dictionary made up of the same parameters as in the `base_config` and includes the following additional values:
     - `base_name`
     - `hostname`
     - `instance`
@@ -164,8 +164,9 @@ The variables for the `after_clone` playbooks are the same as those for `base_co
             - `subnetwork_name`
     - `is_in_services_network`
     - `name`
-- `networks`: Configuration of all networks belonging to the instance corresponding to the guest where the playbook is running. It is a dictionary where each entry corresponds to a network with the following variables.
-    - `members`: Dictionary where each entry contains the guest's base_name and its IP address on the network.
+    - `copy`
+- `networks`: Configuration of all networks belonging to the instance corresponding to the guest where the playbook is running. It is a dictionary where the key corresponds to the base name of the network and the value is a dictionary with the following variables.
+    - `members`: It's a dictionary where the key corresponds to the guest's `base_name` and the value is a dictionary entry. Each dictionary is composed of keys representing the guest's `copy` and values ​​representing the corresponding IP address on the network.
     - `network_cidr`
 - `random_seed`: Seed used for parameter selection.
 - `parameters`: Dictionary with the chosen parameters for the instance.
@@ -223,68 +224,102 @@ Below is a reference example.
 "copy": "1",
 "create_students_password": true,
 "guests": {
-    "attacker": {
-        "base_name": "attacker",
-        "base_os": "ubuntu22",
-        "copy": 1,
-        "disk": 15,
-        "gui": true,
-        "hostname": "attacker-1",
-        "instance_number": 1,
-        "interfaces": {
-            "test-test-1-attacker-2": {
-                "name": "test-test-1-attacker-2",
-                "private_ip": "10.99.1.4",
-                "subnetwork_base_name": "internal",
-                "subnetwork_cidr": "10.99.1.0/25",
-                "subnetwork_name": "test-test-1-internal"
+    "attacker": 
+        "1": {
+            "base_name": "attacker",
+            "base_os": "ubuntu22",
+            "copies": 1,
+            "copy": 1,
+            "disk": 15,
+            "gui": true,
+            "hostname": "attacker-1",
+            "instance_number": 1,
+            "interfaces": {
+                "test-test-1-attacker-2": {
+                    "name": "test-test-1-attacker-2",
+                    "private_ip": "10.99.1.4",
+                    "subnetwork_base_name": "internal",
+                    "subnetwork_cidr": "10.99.1.0/25",
+                    "subnetwork_name": "test-test-1-internal"
+                },
+                "test-test-1-attacker-3": {
+                    "name": "test-test-1-attacker-3",
+                    "private_ip": "10.99.1.132",
+                    "subnetwork_base_name": "internal2",
+                    "subnetwork_cidr": "10.99.1.128/25",
+                    "subnetwork_name": "test-test-1-internal2"
+                }
             },
-            "test-test-1-attacker-3": {
-                "name": "test-test-1-attacker-3",
-                "private_ip": "10.99.1.132",
-                "subnetwork_base_name": "internal2",
-                "subnetwork_cidr": "10.99.1.128/25",
-                "subnetwork_name": "test-test-1-internal2"
-            }
-        },
-        "is_in_services_network": true,
-        "memory": 1024,
-        "name": "test-test-1-attacker",
-        "vcpu": 1
+            "is_in_services_network": true,
+            "memory": 1024,
+            "name": "test-test-1-attacker",
+            "vcpu": 1
+        }
     },
     "victim": {
-        "base_name": "victim",
-        "base_os": "rocky9",
-        "copy": 1,
-        "disk": 15,
-        "gui": true,
-        "hostname": "victim-1",
-        "instance": 1,
-        "interfaces": {
-            "test-test-1-victim-2": {
-                "name": "test-test-1-victim-2",
-                "private_ip": "10.99.1.5",
-                "subnetwork_base_name": "internal",
-                "subnetwork_cidr": "10.99.1.0/25",
-                "subnetwork_name": "test-test-1-internal"
-            }
+        "1": {
+            "base_name": "victim",
+            "base_os": "rocky9",
+            "copies": 2,
+            "copy": 1,
+            "disk": 15,
+            "gui": true,
+            "hostname": "victim-1-1",
+            "instance": 1,
+            "interfaces": {
+                "test-test-1-victim-1-2": {
+                    "name": "test-test-1-victim-1-2",
+                    "private_ip": "10.99.1.5",
+                    "subnetwork_base_name": "internal",
+                    "subnetwork_cidr": "10.99.1.0/25",
+                    "subnetwork_name": "test-test-1-internal"
+                }
+            },
+            "is_in_services_network": true,
+            "memory": 1024,
+            "name": "test-test-1-victim",
+            "vcpu": 1
         },
-        "is_in_services_network": true,
-        "memory": 1024,
-        "name": "test-test-1-victim",
-        "vcpu": 1
+        "2": {
+            "base_name": "victim",
+            "base_os": "rocky9",
+            "copies": 2,
+            "copy": 2,
+            "disk": 15,
+            "gui": true,
+            "hostname": "victim-1-2",
+            "instance": 1,
+            "interfaces": {
+                "test-test-1-victim-2-2": {
+                    "name": "test-test-1-victim-2-2",
+                    "private_ip": "10.99.1.6",
+                    "subnetwork_base_name": "internal",
+                    "subnetwork_cidr": "10.99.1.0/25",
+                    "subnetwork_name": "test-test-1-internal"
+                }
+            },
+            "is_in_services_network": true,
+            "memory": 1024,
+            "name": "test-test-1-victim",
+            "vcpu": 1
+        }
     }
 },
 "guest": "attacker",
 "instance": 1,
-"instances": 2,
+"instances": 1,
 "institution": "test",
 "lab_name": "test",
 "networks": {
     "internal": {
         "members": {
-            "attacker": "10.99.2.4",
-            "victim": "10.99.2.5"
+            "attacker": {
+                "1": "10.99.2.4"
+            }, 
+            "victim": {
+                "1": "10.99.2.5",
+                "2": "10.99.2.6"
+            }
         },
         "network_cidr":"10.99.1.0/25"
     },
