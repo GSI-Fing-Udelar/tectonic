@@ -90,7 +90,16 @@ try:
     from cryptography.hazmat.backends import default_backend
     CRYPTO_AVAILABLE = True
 except ImportError:
-    CRYPTO_AVAILABLE = False
+    # Auto-install cryptography if not available
+    try:
+        import subprocess
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'cryptography'])
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        from cryptography.hazmat.primitives import padding
+        from cryptography.hazmat.backends import default_backend
+        CRYPTO_AVAILABLE = True
+    except Exception:
+        CRYPTO_AVAILABLE = False
 
 
 # ============================================================================

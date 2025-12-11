@@ -4,6 +4,19 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
+import sys
+import subprocess
+
+# Auto-install cryptography if not available
+try:
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+except ImportError:
+    try:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'cryptography'])
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    except Exception:
+        pass  # Will be handled by layer1_primitives
+
 DOCUMENTATION = r'''
 ---
 module: execute_ransomware_profile
