@@ -120,7 +120,7 @@ class Ansible:
                 "ansible_user": username or machine.admin_username,
                 "ansible_ssh_common_args": ssh_args,
                 "guest": machine.base_name,
-                "copy": machine.copy,
+                "copy": str(machine.copy),
                 "instance": machine.instance,
                 "guests": guests[guest.instance], 
                 "networks": networks[machine.instance],
