@@ -127,7 +127,7 @@ source "libvirt" "machine" {
     bus        = "sata"
   }
   graphics {
-    type = "sdl"
+    type = "vnc"
   }
   cpu_mode = "host-passthrough"
   shutdown_mode = "acpi"
