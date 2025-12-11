@@ -26,6 +26,8 @@ import os
 import random
 import glob
 import math
+import sys
+import subprocess
 from typing import List, Dict, Tuple, Optional, Any, Union
 from datetime import datetime, timedelta
 
@@ -33,7 +35,13 @@ try:
     from faker import Faker
     FAKER_AVAILABLE = True
 except ImportError:
-    FAKER_AVAILABLE = False
+    # Auto-install faker if not available
+    try:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'faker'])
+        from faker import Faker
+        FAKER_AVAILABLE = True
+    except Exception:
+        FAKER_AVAILABLE = False
 
 
 # ============================================================================
@@ -677,10 +685,8 @@ def apply_shared_characteristics(
         if files_to_delete > 0:
             # Randomly select files to delete
             random.shuffle(files)
-            # Use hard delete (unrecoverable) if deletion_mode is 'hard'
-            forensic_recoverable = (deletion_mode == 'soft')
             for filepath in files[:files_to_delete]:
-                success, error, _ = l1.delete_file(filepath, backup=False, forensic_recoverable=forensic_recoverable)
+                success, error, _ = l1.delete_file(filepath, backup=False)
                 if success:
                     stats['files_deleted'] += 1
                 else:
@@ -794,6 +800,77 @@ def encrypt_files_bulk(
                 failed_files.append((filepath, error))
         
         return True, encrypted_files, failed_files, ""
+    
+    except Exception as e:
+        return False, [], [], str(e)
+
+
+# ============================================================================
+# LAYER 2: BULK DECRYPTION ORCHESTRATOR
+# ============================================================================
+
+def decrypt_files_bulk(
+    files: List[str],
+    decryption_key: bytes,
+    encrypted_extension: str = 'WNCRY',
+    keep_encrypted: bool = False
+) -> Tuple[bool, List[str], List[Tuple[str, str]], str]:
+    """
+    Decrypt multiple files using AES-256-CBC.
+    
+    This orchestrator coordinates Layer 1 decryption primitives to decrypt
+    a batch of previously encrypted files.
+    
+    Args:
+        files: List of encrypted file paths to decrypt
+        decryption_key: AES-256 key (32 bytes) - must match encryption key
+        encrypted_extension: Extension of encrypted files
+        keep_encrypted: Keep encrypted files after decryption (testing mode)
+        
+    Returns:
+        Tuple[bool, List[str], List[Tuple[str, str]], str]:
+            (success, decrypted_files, failed_files, error_message)
+    """
+    from . import layer1_primitives as l1
+    
+    try:
+        decrypted_files = []
+        failed_files = []
+        
+        for filepath in files:
+            if not os.path.exists(filepath):
+                failed_files.append((filepath, "File not found"))
+                continue
+            
+            # Skip if not encrypted (doesn't have the expected extension)
+            if not filepath.endswith(f'.{encrypted_extension}'):
+                failed_files.append((filepath, f"File doesn't have .{encrypted_extension} extension"))
+                continue
+            
+            # Calculate output path (remove encrypted extension)
+            output_path = filepath[:-len(encrypted_extension)-1]
+            
+            # Call Layer 1 decryption primitive
+            success, decrypted_path, error = l1.decrypt_file_aes256_cbc(
+                encrypted_path=filepath,
+                key_bytes=decryption_key,
+                output_path=output_path
+            )
+            
+            if success:
+                decrypted_files.append(decrypted_path)
+                
+                # Remove encrypted file unless keep_encrypted is True
+                if not keep_encrypted:
+                    try:
+                        os.remove(filepath)
+                    except Exception as e:
+                        # File was decrypted successfully, just warn about cleanup
+                        pass
+            else:
+                failed_files.append((filepath, error))
+        
+        return True, decrypted_files, failed_files, ""
     
     except Exception as e:
         return False, [], [], str(e)

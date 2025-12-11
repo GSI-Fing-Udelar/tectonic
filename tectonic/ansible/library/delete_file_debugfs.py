@@ -12,7 +12,6 @@ short_description: Delete file using debugfs on ext4 filesystem
 
 description:
   - Deletes a file from ext4 filesystem using debugfs
-  - Captures inode number before deletion for forensic recovery
   - True forensic deletion - file can be recovered with icat/Autopsy
   - Marks inode as deleted but data blocks remain intact temporarily
   

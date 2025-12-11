@@ -51,22 +51,6 @@ options:
     type: int
     default: 42
     
-  apply_temporal:
-    description:
-      - Apply temporal distribution to file timestamps
-      - Creates realistic access/modification patterns
-    required: false
-    type: bool
-    default: true
-    
-  apply_permissions:
-    description:
-      - Apply realistic file permissions based on profile
-      - Different profiles use different permission schemes
-    required: false
-    type: bool
-    default: true
-    
   verbose:
     description:
       - Print detailed progress information during generation
@@ -247,8 +231,6 @@ def main():
             base_directory=dict(type='str', required=True),
             file_count=dict(type='raw', required=False, default=None),
             faker_seed=dict(type='int', required=False, default=42),
-            apply_temporal=dict(type='bool', required=False, default=True),
-            apply_permissions=dict(type='bool', required=False, default=True),
             verbose=dict(type='bool', required=False, default=True),
             multi_user=dict(type='bool', required=False, default=False),
             user_configs=dict(type='list', elements='dict', required=False, default=[])
@@ -261,8 +243,6 @@ def main():
     base_directory = module.params['base_directory']
     file_count = module.params['file_count']
     faker_seed = module.params['faker_seed']
-    apply_temporal = module.params['apply_temporal']
-    apply_permissions = module.params['apply_permissions']
     verbose = module.params['verbose']
     multi_user = module.params['multi_user']
     user_configs = module.params['user_configs']
@@ -323,13 +303,11 @@ def main():
         
         else:
             # Generate single profile
-            stats = generator.generate_profile(
+            result = profile_generator.generate_profile(
                 profile_type=profile_type,
                 base_directory=base_directory,
                 file_count=file_count,
                 faker_seed=faker_seed,
-                apply_temporal=apply_temporal,
-                apply_permissions=apply_permissions,
                 verbose=verbose
             )
             

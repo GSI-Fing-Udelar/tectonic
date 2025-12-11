@@ -32,6 +32,8 @@ __metaclass__ = type
 
 import os
 import random
+import sys
+import subprocess
 from typing import List, Dict, Tuple, Optional, Any
 from datetime import datetime, timedelta
 
@@ -39,7 +41,13 @@ try:
     from faker import Faker
     FAKER_AVAILABLE = True
 except ImportError:
-    FAKER_AVAILABLE = False
+    # Auto-install faker if not available
+    try:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'faker'])
+        from faker import Faker
+        FAKER_AVAILABLE = True
+    except Exception:
+        FAKER_AVAILABLE = False
 
 
 # ============================================================================
@@ -214,8 +222,6 @@ class Layer3UserProfile:
         base_directory: str,
         file_count: Optional[int] = None,
         faker_seed: int = 42,
-        apply_temporal: bool = True,
-        apply_permissions: bool = True,
         verbose: bool = True
     ) -> Dict[str, Any]:
         """
@@ -232,8 +238,6 @@ class Layer3UserProfile:
             base_directory: Root directory for profile
             file_count: Override default file count
             faker_seed: Seed for reproducible generation
-            apply_temporal: Apply temporal distribution to files
-            apply_permissions: Apply realistic permissions
             verbose: Print progress information
             
         Returns:
@@ -327,7 +331,7 @@ class Layer3UserProfile:
                     print(f"  ERROR in {directory}: {error}")
         
         # Step 5: Apply temporal distribution
-        if apply_temporal and all_created_files:
+        if all_created_files:
             if verbose:
                 print(f"\nApplying temporal distribution ({profile['activity']} activity)...")
             
@@ -349,7 +353,7 @@ class Layer3UserProfile:
                     print(f"  ERROR: {error}")
         
         # Step 6: Apply permissions
-        if apply_permissions and all_created_files:
+        if all_created_files:
             if verbose:
                 print(f"\nApplying realistic permissions...")
             
@@ -391,8 +395,6 @@ class Layer3UserProfile:
             'failed_files': len(all_failed_files),
             'directories_created': len(directories),
             'file_types': extensions,
-            'temporal_applied': apply_temporal,
-            'permissions_applied': apply_permissions,
             'file_size_category': profile['file_sizes'],
             'activity_level': profile['activity']
         }
@@ -456,8 +458,6 @@ class Layer3UserProfile:
                 base_directory=user_dir,
                 file_count=profile_config.get('file_count'),
                 faker_seed=faker_seed + idx * 1000,
-                apply_temporal=profile_config.get('apply_temporal', True),
-                apply_permissions=profile_config.get('apply_permissions', True),
                 verbose=False  # Suppress per-profile verbosity
             )
             

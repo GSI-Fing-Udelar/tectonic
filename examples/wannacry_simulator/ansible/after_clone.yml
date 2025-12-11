@@ -52,33 +52,6 @@
           - "Random Seed: {{ random_seed | default('not set') }}"
           - "=============================================="
     
-    - name: "Update apt cache"
-      apt:
-        update_cache: yes
-        cache_valid_time: 3600
-      when: ansible_os_family == "Debian"
-    
-    - name: "Install forensic tools for post-simulation analysis"
-      apt:
-        name:
-          - ent
-          - osquery
-          - python3
-          - python3-pip
-        state: present
-      when: ansible_os_family == "Debian"
-    
-    - name: "Install Python dependencies for encryption"
-      pip:
-        name:
-          - cryptography
-          - faker
-          - openpyxl
-        state: present
-        executable: pip3
-    
-      when: ansible_virtualization_type != 'docker'  # Skip in Docker containers
-  
   # Main tasks: Execute WannaCry simulation
   tasks:
     - name: "[SETUP] Create target directory"
@@ -203,25 +176,11 @@
   become: yes
   
   tasks:
-    - name: "Install forensic analysis tools"
-      apt:
-        name:
-          - ent
-          - osquery
-          - python3
-          - python3-pip
-          - wireshark-common
-          - tcpdump
-          - binutils
-          - hexedit
-        state: present
-      when: ansible_os_family == "Debian"
-    
-    - name: "Install Python forensic libraries"
-      pip:
-        name:
-          - cryptography
-          - pefile
-        state: present
-        executable: pip3
+    - name: "Display analyst ready message"
+      debug:
+        msg:
+          - "=============================================="
+          - "   ANALYST WORKSTATION READY"
+          - "=============================================="
+          - "Ready for Autopsy forensic analysis"
   

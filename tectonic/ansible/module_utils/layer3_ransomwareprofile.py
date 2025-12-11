@@ -37,6 +37,8 @@ __metaclass__ = type
 
 import os
 import random
+import sys
+import subprocess
 from typing import List, Dict, Tuple, Optional, Any, Union
 from datetime import datetime, timedelta
 
@@ -44,7 +46,13 @@ try:
     from faker import Faker
     FAKER_AVAILABLE = True
 except ImportError:
-    FAKER_AVAILABLE = False
+    # Auto-install faker if not available
+    try:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'faker'])
+        from faker import Faker
+        FAKER_AVAILABLE = True
+    except Exception:
+        FAKER_AVAILABLE = False
 
 
 # ============================================================================

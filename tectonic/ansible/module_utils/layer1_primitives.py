@@ -30,33 +30,59 @@ import struct
 import tempfile
 import zipfile
 import tarfile
+import sys
+import subprocess
 from typing import Optional, Tuple, Dict, Any, Union
 from datetime import datetime
 
-# Try to import optional libraries
+# Try to import optional libraries with auto-installation
 try:
     from PIL import Image, ImageDraw, ImageFont
     PIL_AVAILABLE = True
 except ImportError:
-    PIL_AVAILABLE = False
+    # Auto-install Pillow if not available
+    try:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'Pillow'])
+        from PIL import Image, ImageDraw, ImageFont
+        PIL_AVAILABLE = True
+    except Exception:
+        PIL_AVAILABLE = False
 
 try:
     from docx import Document
     DOCX_AVAILABLE = True
 except ImportError:
-    DOCX_AVAILABLE = False
+    # Auto-install python-docx if not available
+    try:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'python-docx'])
+        from docx import Document
+        DOCX_AVAILABLE = True
+    except Exception:
+        DOCX_AVAILABLE = False
 
 try:
     from openpyxl import Workbook
     OPENPYXL_AVAILABLE = True
 except ImportError:
-    OPENPYXL_AVAILABLE = False
+    # Auto-install openpyxl if not available
+    try:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'openpyxl'])
+        from openpyxl import Workbook
+        OPENPYXL_AVAILABLE = True
+    except Exception:
+        OPENPYXL_AVAILABLE = False
 
 try:
     from faker import Faker
     FAKER_AVAILABLE = True
 except ImportError:
-    FAKER_AVAILABLE = False
+    # Auto-install faker if not available
+    try:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'faker'])
+        from faker import Faker
+        FAKER_AVAILABLE = True
+    except Exception:
+        FAKER_AVAILABLE = False
 
 try:
     from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -1303,33 +1329,24 @@ def delete_file_with_debugfs(
 
 def delete_file(
     filepath: str,
-    backup: bool = False,
-    forensic_recoverable: bool = True
+    backup: bool = False
 ) -> Tuple[bool, str, Optional[str]]:
     """
-    Delete a file with optional backup and forensic recoverability.
+    Delete a file in the standard way with os.remove().
     
     This primitive removes a file from the filesystem. 
-    
-    Deletion modes:
-    - forensic_recoverable=True: "Soft delete" - moves file to hidden directory
-      (.deleted_files). This makes it 100% recoverable by simply moving it back.
-      This simulates ransomware that doesn't immediately overwrite data, allowing
-      for potential forensic recovery or ransom payment.
-      
-    - forensic_recoverable=False: Hard delete using os.remove().
-      File is immediately unrecoverable (production ransomware behavior).
     
     Technical Reality:
       Modern filesystems (ext4, xfs) with journaling clean deleted inodes 
       immediately, making traditional forensic recovery (debugfs, extundelete)
-      impossible. The only reliable "forensic recoverable" deletion is to not
-      actually delete the file - just hide it.
+      impossible. This may correspond also to the hardware that may be running 
+      underneath, in SSD it was tested and the data blocks are cleaned up
+      immediately as well. Therefore, this primitive offers only a basic
+      deletion method without forensic recoverability.
       
     Args:
         filepath: Path to file to delete
         backup: Create backup before deleting
-        forensic_recoverable: Enable forensic recovery (default: True)
         
     Returns:
         Tuple[bool, str, Optional[str]]: (success, error_message, backup_path)
@@ -1346,33 +1363,8 @@ def delete_file(
             import shutil
             shutil.copy2(filepath, backup_path)
         
-        # Forensic-recoverable deletion (soft delete - move to hidden directory)
-        if forensic_recoverable:
-            # Create hidden directory for deleted files
-            dir_path = os.path.dirname(filepath)
-            deleted_dir = os.path.join(dir_path, '.deleted_files')
-            os.makedirs(deleted_dir, exist_ok=True)
-            
-            # Move file to hidden directory (preserves all data and metadata)
-            import shutil
-            filename = os.path.basename(filepath)
-            deleted_path = os.path.join(deleted_dir, filename)
-            
-            # Handle name collision
-            counter = 1
-            while os.path.exists(deleted_path):
-                base, ext = os.path.splitext(filename)
-                deleted_path = os.path.join(deleted_dir, f"{base}_{counter}{ext}")
-                counter += 1
-            
-            shutil.move(filepath, deleted_path)
-            
-            # Return the deleted path as "backup" for potential recovery
-            backup_path = deleted_path
-        
-        # Production deletion (immediate, unrecoverable)
-        else:
-            os.remove(filepath)
+        # Delete the file
+        os.remove(filepath)
         
         return True, "", backup_path
     

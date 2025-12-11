@@ -6,7 +6,7 @@ __metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
-module: delete_file
+module: delete_file_standard
 
 short_description: Delete a file with optional backup (Layer 1)
 
@@ -29,19 +29,6 @@ options:
     required: false
     type: bool
     default: false
-    
-  forensic_recoverable:
-    description: |
-      Enable forensic recoverability (soft delete - moves to hidden .deleted_files directory).
-      When true, file is moved to .deleted_files/ subdirectory and is 100% recoverable.
-      When false, file is permanently deleted (production behavior).
-      
-      IMPORTANT: Modern ext4/xfs filesystems clean deleted inodes immediately, making
-      traditional forensic recovery (debugfs, extundelete) impossible. The only reliable
-      "recoverable deletion" is to not actually delete - just hide the file.
-    required: false
-    type: bool
-    default: true
 
 notes:
   - Uses Layer 1 primitive delete_file() from module_utils.layer1_primitives
@@ -55,26 +42,24 @@ author:
 EXAMPLES = r'''
 # Delete a single file (forensic recoverable by default)
 - name: Delete temporary file
-  delete_file:
+  delete_file_standard:
     path: /tmp/file_to_delete.txt
 
 # Delete with backup
 - name: Delete important file with backup
-  delete_file:
+  delete_file_standard:
     path: /tmp/important_data.xlsx
     backup: true
 
 # Production delete (unrecoverable)
 - name: Remove encrypted file permanently
-  delete_file:
+  delete_file_standard:
     path: /tmp/document.docx.WNCRY
-    forensic_recoverable: false
 
 # Forensic-recoverable deletion (for testing recovery tools)
 - name: Delete file but keep recoverable
-  delete_file:
+  delete_file_standard:
     path: /tmp/test_recovery.txt
-    forensic_recoverable: true
 '''
 
 RETURN = r'''
@@ -108,7 +93,7 @@ from ansible.module_utils.basic import AnsibleModule
 
 def main():
     """
-    Main execution function for delete_file module.
+    Main execution function for delete_file_standard module.
     
     This module acts as an Ansible interface to the Layer 1 primitive
     delete_file() from module_utils.layer1_primitives.
@@ -125,7 +110,6 @@ def main():
         argument_spec=dict(
             path=dict(type='str', required=True),
             backup=dict(type='bool', default=False),
-            forensic_recoverable=dict(type='bool', default=True)
         ),
         supports_check_mode=True
     )
@@ -133,7 +117,6 @@ def main():
     # Extract parameters
     path = module.params['path']
     backup = module.params['backup']
-    forensic_recoverable = module.params['forensic_recoverable']
     
     # Check mode - don't actually delete
     if module.check_mode:
@@ -151,7 +134,7 @@ def main():
     
     # Call Layer 1 primitive to delete file
     try:
-        success, error, backup_path = l1.delete_file(path, backup=backup, forensic_recoverable=forensic_recoverable)
+        success, error, backup_path = l1.delete_file(path, backup=backup)
         
         if not success:
             if "does not exist" in error:
