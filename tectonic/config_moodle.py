@@ -6,7 +6,7 @@ class TectonicConfigMoodle(object):
     def __init__(self):
         self._version = "MOODLE_405_STABLE"
         self._internal_port = 443
-        self._external_port = 8443
+        self._external_port = 8080
         self._site_fullname = "Tectonic Moodle"
         self._site_shortname = "Tectonic"
         self._admin_email = "admin@tectonic.local"

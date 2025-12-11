@@ -13,3 +13,4 @@ caldera_settings:
 moodle_settings:
   enable: true
   enroll_trainees: true
+
