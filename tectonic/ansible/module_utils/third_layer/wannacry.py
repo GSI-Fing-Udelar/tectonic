@@ -303,7 +303,7 @@ def wannacry_attack_simulation(
     exfiltration_messages = [
         {
             "attacker": "uname -a",
-            "victim": "Linux srv-finanzas 5.11.0-46-generic #51~20.04 SMP x86_64 GNU/Linux"
+            "victim": "Linux srv-finance 5.11.0-46-generic #51~20.04 SMP x86_64 GNU/Linux"
         },
         {
             "attacker": "id",
@@ -315,11 +315,11 @@ def wannacry_attack_simulation(
         },
         {
             "attacker": "cat /etc/samba/smb.conf | head -n 5",
-            "victim": "[global]\nworkgroup = EMPRESA\nserver string = Finanzas File Server\nsecurity = user\nmap to guest = bad user"
+            "victim": "[global]\nworkgroup = Company\nserver string = Finance File Server\nsecurity = user\nmap to guest = bad user"
         },
         {
             "attacker": "cat /etc/samba/creds.txt",
-            "victim": "username=juan\npassword=Jd8!f9sQ\nserver=192.168.50.10\nshare=finanzas\npermissions=rw"
+            "victim": "username=juan\npassword=Jd8!f9sQ\nserver=192.168.50.10\nshare=Finance\npermissions=rw"
         },
         {
             "attacker": "grep -i pass /etc/samba/creds.txt",
@@ -335,7 +335,7 @@ def wannacry_attack_simulation(
         },
         {
             "attacker": "cat /var/log/auth.log | tail -n 3",
-            "victim": "Dec  9 10:22 srv-finanzas sshd[5341]: Accepted password for juan\nDec  9 10:22 srv-finanzas sshd[5341]: session opened\nDec  9 10:23 srv-finanzas sudo: juan : TTY=pts/0 ; PWD=/home/juan ; USER=root ; COMMAND=/bin/nano"
+            "victim": "Dec  9 10:22 srv-finance sshd[5341]: Accepted password for juan\nDec  9 10:22 srv-finance sshd[5341]: session opened\nDec  9 10:23 srv-finance sudo: juan : TTY=pts/0 ; PWD=/home/juan ; USER=root ; COMMAND=/bin/nano"
         },
         {
             "attacker": "whoami",
@@ -431,7 +431,7 @@ def wannacry_attack_simulation(
     # Execution command from attacker
     execution_command = generator.add_packet_in_progress(
         previous_packet=last_victim_packet,
-        payload="execute.exec.wcry",
+        payload="start wcry.exe ENCRYPTION_KEY=0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF",
         flags="PA",
         ts=current_time,
         client_mac=attacker_mac,
