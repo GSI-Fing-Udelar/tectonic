@@ -1,359 +1,248 @@
-# DFIR Final Scenario - Unified WannaCry Attack Simulation
+# WannaCry DFIR Training Scenario
 
 ## Overview
 
-Complete Digital Forensics and Incident Response (DFIR) training scenario that simulates a real WannaCry ransomware attack. This scenario combines **network traffic simulation** with **filesystem forensics** to provide comprehensive hands-on training.
+This scenario simulates a complete WannaCry ransomware attack for digital forensics training. It generates:
 
-## Features
-
-### 🌐 Network Attack Simulation
-- **SMB Exploitation**: Realistic EternalBlue-style attack traffic
-- **Malware Download**: HTTP-based payload delivery (5 WannaCry components)
-- **C2 Communication**: Command & Control plain-text communication
-- **Output**: Complete PCAP file for Wireshark analysis
-
-### 💾 Filesystem Forensics
-- **Forensic Disk Image**: 1GB ext4 image with infected filesystem
-- **150 Victim Files**: DOCX, PDF, XLSX, JPG, TXT with realistic content
-- **Real Encryption**: AES-256-CBC encryption (not simulated)
-- **File Deletion**: 25% of files deleted (forensically recoverable)
-- **PE Executables**: WannaCry malware binaries with proper MZ headers
-- **Ransom Notes**: Authentic WannaCry ransom message
-
-### 🎯 Forensic Challenge
-- **Hidden Flag**: `flagsinha.txt.WNCRY` (encrypted + deleted)
-- **Challenge**: Students must recover the deleted file using Autopsy and decrypt it
-- **Skill Practice**: File carving, data recovery, cryptographic analysis
+1. **Network Traffic (PCAP)**: Realistic attack packets showing exploitation, malware download, and Command and Control communication
+2. **Forensic Disk Image**: A complete filesystem with encrypted files and a hidden flag
+3. **Forensic Challenge**: Participants must recover and decrypt a deleted encrypted file to find the flag
 
 ## Architecture
-
-### Tectonic Integration
-
-This scenario is fully integrated with Tectonic's automation framework:
-
 ```
-tectonic deploy
-    ↓
-cli.py → core.py → ansible.py
-    ↓
-ansible.py sets environment variables:
-    - ANSIBLE_LIBRARY = "tectonic/ansible/library"
-    - ANSIBLE_MODULE_UTILS = "tectonic/ansible/module_utils"
-    - ANSIBLE_FILTER_PLUGINS = "tectonic/ansible/filter_plugins"
-    ↓
-ansible_runner.interface.run()
-    ↓
-examples/dfir_final_scenario/ansible/after_clone.yml
-    ↓
-Modules execute with auto-dependency installation
+┌─────────────────────────────────────────────────────────────┐
+│                   WANNACRY DFIR SCENARIO                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  Phase 1: Network Attack (PCAP Generation)                   │
+│  ├─ Reconnaissance & Credential Exfiltration                 │
+│  ├─ Malware Download (5 fake WannaCry components)           │
+│  └─ Remote Execution Commands                                │
+│                                                               │
+│  Phase 2: Disk Image Creation                                │
+│  ├─ Create 1GB ext4 filesystem                              │
+│  ├─ Mount via loop device                                    │
+│  └─ Prepare directory structure                              │
+│                                                               │
+│  Phase 3: Ransomware Simulation                              │
+│  ├─ Generate 150 realistic victim files                      │
+│  ├─ Encrypt all files with AES-256-CBC (.WNCRY extension)   │
+│  ├─ Create ransom note (@Please_Read_Me@.txt)              │
+│  └─ Delete 25% of encrypted files                           │
+│                                                               │
+│  Phase 4: Flag Generation (Forensic Challenge)               │
+│  ├─ Create flag file (flagsinha.txt)                        │
+│  ├─ Encrypt with AES-256-CBC (flagsinha.txt.WNCRY)         │
+│  ├─ Delete original plain-text file                         │
+│  └─ Delete encrypted file using debugfs (recoverable)       │
+│                                                               │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Module Architecture
+## Quick Start
 
-**Network Modules** (Layer 3):
-- `generate_wannacry_attack.py`: Complete attack traffic generation
-  - Uses: `third_layer/wannacry.py`
-  - Uses: `second_layer/http.py`, `tcp_plain_text_communication.py`
-  - Uses: `first_layer/tcp_primitives.py`, `dns.py`
-
-**Filesystem Modules** (Layer 1-3):
-- `execute_ransomware_profile.py`: WannaCry profile orchestrator (Layer 3)
-- `generate_files_bulk.py`: Bulk file generation (Layer 2)
-- `encrypt_files_aes.py`: AES-256-CBC encryption (Layer 1)
-- `delete_file_debugfs.py`: Forensic-style deletion (Layer 1)
-- `generate_file.py`: Single file generation (Layer 1)
-
-**Utility Modules**:
-- `pcap_merger.py`: PCAP file manipulation
-- `utils.py`: Common utilities
-
-## Deployment
-
-### Prerequisites
-
-1. **Tectonic Installed**:
-   ```bash
-   pip install tectonic-cyberrange
-   # OR for development:
-   cd /path/to/tectonic
-   pip install -e .
-   ```
-
-2. **Tectonic Configuration** (`tectonic.ini`):
-   - Platform: libvirt / AWS / Docker
-   - Resources: Minimum 6GB RAM, 4 CPUs, 70GB disk
-
-3. **Python Dependencies** (auto-installed by modules):
-   - scapy (network simulation)
-   - cryptography (encryption)
-   - faker (realistic data generation)
-   - openpyxl (Excel files)
-
-### Quick Start
-
+### 1. Deploy the Scenario
 ```bash
-# Step 1: Create base images (one-time)
-tectonic -c tectonic.ini examples/dfir_final_scenario/edition.yml create-images
+# Create base images
+poetry run tectonic -c ./tectonic.ini ./examples/dfir_final_scenario/edition.yml create-images
 
-# Step 2: Deploy scenario
-tectonic -c tectonic.ini examples/dfir_final_scenario/edition.yml deploy
-
-# Step 3: Get connection info
-tectonic -c tectonic.ini examples/dfir_final_scenario/edition.yml show-info
-
-# Step 4: Connect to victim machine
-ssh ubuntu@<victim-ip>
-
-# Step 5: Verify outputs
-ls -lh /tmp/wannacry_unified_attack.pcap
-ls -lh /tmp/final_forensic.img
+# Deploy the scenario
+poetry run tectonic -c ./tectonic.ini ./examples/dfir_final_scenario/edition.yml deploy
 ```
 
-### Cleanup
+### 2. Extract Forensic Evidence
 
+After the scenario completes, extract all evidence files to your local machine:
 ```bash
-tectonic -c tectonic.ini examples/dfir_final_scenario/edition.yml destroy
+# Create directory for evidence
+mkdir -p ~/forensic_evidence
+
+# Extract network traffic capture
+docker cp udelar-dfirunifiedtraining-1-victim:/tmp/wannacry_unified_attack.pcap ~/forensic_evidence/
+
+# Extract forensic disk image (1GB)
+docker cp udelar-dfirunifiedtraining-1-victim:/tmp/final_forensic.img ~/forensic_evidence/
+
+# Verify extraction
+ls -lh ~/forensic_evidence/
 ```
 
-## Forensic Analysis Workflow
+## Forensic Analysis Guide
 
-### Phase 1: Network Forensics
+### Step 1: Network Traffic Analysis
 
-1. **Copy PCAP to analyst workstation**:
-   ```bash
-   scp victim:/tmp/wannacry_unified_attack.pcap .
-   ```
-
-2. **Wireshark Analysis**:
-   ```bash
-   wireshark wannacry_unified_attack.pcap
-   ```
-   
-   **Look for**:
-   - SMB exploitation attempts (port 445)
-   - HTTP malware downloads (port 80)
-   - Plain-text C2 commands (port 4444)
-
-3. **CLI Analysis with tshark**:
-   ```bash
-   # View SMB traffic
-   tshark -r wannacry_unified_attack.pcap -Y "smb2"
-   
-   # View HTTP downloads
-   tshark -r wannacry_unified_attack.pcap -Y "http.request"
-   
-   # View TCP plain-text
-   tshark -r wannacry_unified_attack.pcap -Y "tcp.port==4444" -T fields -e data.text
-   ```
-
-### Phase 2: Disk Forensics
-
-1. **Copy disk image to analyst workstation**:
-   ```bash
-   scp victim:/tmp/final_forensic.img .
-   ```
-
-2. **Import to Autopsy**:
-   - Open Autopsy
-   - Create New Case
-   - Add Data Source → Disk Image
-   - Select `final_forensic.img`
-
-3. **Navigate filesystem**:
-   - File Tree → `/srv/samba/share/`
-   - Identify `.WNCRY` encrypted files
-   - Check for `@Please_Read_Me@.txt` ransom note
-   - Look for PE executables (wannacry.exe, tasksche.exe, etc.)
-
-4. **Analyze deleted files**:
-   - Deleted Files view in Autopsy
-   - Find `flagsinha.txt.WNCRY`
-   - Export file for decryption
-
-### Phase 3: Flag Recovery Challenge
-
-1. **Find deleted flag**:
-   ```bash
-   # Mount disk image locally
-   sudo losetup -fP final_forensic.img
-   sudo mount /dev/loop0 /mnt/forensic
-   
-   # Use testdisk or photorec
-   sudo photorec /dev/loop0
-   ```
-
-2. **Decrypt flag file**:
-   ```python
-   from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-   from cryptography.hazmat.backends import default_backend
-   import base64
-   
-   # Get key from simulation output
-   key = b"<encryption_key_from_output>"
-   
-   # Read encrypted file
-   with open("flagsinha.txt.WNCRY", "rb") as f:
-       iv = f.read(16)
-       encrypted_data = f.read()
-   
-   # Decrypt
-   cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-   decryptor = cipher.decryptor()
-   decrypted = decryptor.update(encrypted_data) + decryptor.finalize()
-   
-   # Remove padding
-   padding_length = decrypted[-1]
-   plaintext = decrypted[:-padding_length]
-   
-   print(plaintext.decode('utf-8'))
-   # Output: "Encontraste la flag, sos el mejor DFIR user del maldito pais "
-   ```
-
-## File Locations
-
-### Victim Machine
-
-| File | Description | Size |
-|------|-------------|------|
-| `/tmp/wannacry_unified_attack.pcap` | Network traffic capture | ~50KB |
-| `/tmp/final_forensic.img` | Forensic disk image | 1GB |
-| `/mnt/simple_forensic/` | Mounted filesystem (during simulation) | - |
-
-### Inside Disk Image (`/srv/samba/share/`)
-
-| File/Dir | Description | Count |
-|----------|-------------|-------|
-| `*.WNCRY` | Encrypted victim files | ~93 files |
-| `@Please_Read_Me@.txt` | Ransom note | 1 file |
-| `wannacry.exe` | Malware executable | 1 file |
-| `tasksche.exe` | Malware component | 1 file |
-| `mssecsvc.exe` | Malware component | 1 file |
-| `flagsinha.txt.WNCRY` | **Hidden flag (DELETED)** | 1 file |
-| Subdirectories | Faker-generated dirs | ~8 dirs |
-
-## Learning Objectives
-
-### Network Analysis
-- ✅ Identify SMB exploitation patterns
-- ✅ Recognize malware download traffic
-- ✅ Analyze C2 communication protocols
-- ✅ Correlate network events with filesystem changes
-
-### Disk Forensics
-- ✅ Import and analyze forensic disk images
-- ✅ Identify ransomware encryption patterns
-- ✅ Recognize file entropy changes
-- ✅ Recover deleted files
-
-### Incident Response
-- ✅ Build attack timeline from multiple sources
-- ✅ Correlate network and filesystem evidence
-- ✅ Document forensic findings
-- ✅ Practice chain-of-custody procedures
-
-### Cryptanalysis
-- ✅ Understand AES-256-CBC encryption
-- ✅ Decrypt recovered files
-- ✅ Analyze encryption key management
-
-## Troubleshooting
-
-### Issue: Modules not found
-
-**Cause**: `ansible.py` not setting environment variables correctly.
-
-**Solution**: Verify Tectonic installation:
+Analyze the PCAP file to identify attack indicators:
 ```bash
-python3 -c "from importlib import resources; print(resources.files('tectonic') / 'ansible')"
+# Open in Wireshark
+wireshark ~/forensic_evidence/wannacry_unified_attack.pcap
+
+# Or use tshark for command-line analysis
+# View HTTP traffic (malware downloads)
+tshark -r ~/forensic_evidence/wannacry_unified_attack.pcap -Y "http" | head -20
+
+# View TCP SYN packets (reconnaissance)
+tshark -r ~/forensic_evidence/wannacry_unified_attack.pcap -Y "tcp.flags.syn==1 && tcp.flags.ack==0"
 ```
 
-### Issue: Disk image mount fails
+**Key Indicators to Look For:**
+- Plain-text credentials in TCP stream (port 4444)
+- Multiple binary downloads from malicious host (198.51.100.25)
+- Base64-encoded executables in HTTP responses
+- Remote execution commands
+- Files downloaded: `wcry1.exe`, `wcry2.exe`, `wcry3.exe`, `wcry4.exe`, `wcry5.exe`
 
-**Cause**: Loop device already attached.
+### Step 2: Disk Image Analysis with Autopsy
 
-**Solution**: Manually detach:
+#### Mount the disk image in Autopsy
 ```bash
-sudo losetup -D  # Detach all loop devices
+# Launch Autopsy
+autopsy
 ```
 
-### Issue: Python dependencies not installing
+1. Create a new case
+2. Add Data Source → Disk Image or VM File
+3. Select: `~/forensic_evidence/final_forensic.img`
+4. Wait for analysis to complete
 
-**Cause**: Network isolation in `after_clone.yml`.
+#### Navigate the filesystem
+```
+final_forensic.img/
+└── srv/
+    └── samba/
+        └── share/
+            ├── @Please_Read_Me@.txt (Ransom note)
+            ├── *.WNCRY (150+ encrypted files)
+            └── flagsinha.txt.WNCRY (DELETED - forensic challenge)
+```
 
-**Solution**: Dependencies should auto-install. If issues persist, pre-install in `base_config.yml`:
+### Step 3: Recover Deleted Flag File with icat
+
+The flag file was deleted using `debugfs`, making it forensically recoverable:
+```bash
+# Mount the disk image as loop device
+sudo losetup -fP ~/forensic_evidence/final_forensic.img
+sudo losetup -j ~/forensic_evidence/final_forensic.img  # Note the device (e.g., /dev/loop25)
+
+# List deleted files with debugfs
+sudo debugfs /dev/loop25
+debugfs> ls -d /srv/samba/share
+# Look for flagsinha.txt.WNCRY with inode number
+
+# Exit debugfs
+debugfs> quit
+
+# Recover the deleted encrypted flag file using icat
+# Replace <INODE> with the inode number from debugfs output
+sudo icat /dev/loop25 <INODE> > ~/forensic_evidence/flagsinha.txt.WNCRY
+
+# Verify recovery
+file ~/forensic_evidence/flagsinha.txt.WNCRY
+hexdump -C ~/forensic_evidence/flagsinha.txt.WNCRY | head
+```
+
+**Alternative method using Autopsy:**
+1. In Autopsy, navigate to "Deleted Files" view
+2. Find `flagsinha.txt.WNCRY` 
+3. Right-click → Extract File(s)
+4. Save to `~/forensic_evidence/`
+
+### Step 4: Extract Encryption Key and IV
+
+The AES-256-CBC encryption uses a **hardcoded key and IV** stored in the playbook. Extract them:
+
+**From the playbook (`demo_unified_attack.yml`):**
 ```yaml
-- name: "Pre-install Python dependencies"
-  pip:
-    name:
-      - scapy
-      - cryptography
-      - faker
-      - openpyxl
-    executable: pip3
+# Encryption key (64 hex characters = 32 bytes for AES-256)
+key: "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+
+# IV is derived from first 16 bytes of encrypted file
 ```
 
-## Technical Details
-
-### Network Traffic Phases
-
-1. **Phase 1: Reconnaissance** (Packets 1-10)
-   - SMB negotiation
-   - Credential exfiltration
-   - Duration: ~2 seconds
-
-2. **Phase 2: Malware Download** (Packets 11-60)
-   - HTTP GET requests for 5 WannaCry components
-   - Total payload: ~180KB
-   - Duration: ~5 seconds
-
-3. **Phase 3: C2 Communication** (Packets 61-70)
-   - TCP plain-text commands
-   - Kill switch domain check
-   - Duration: ~1 second
-
-### Encryption Details
-
-- **Algorithm**: AES-256-CBC
-- **Key Size**: 256 bits (32 bytes)
-- **IV**: 16 bytes (random per file)
-- **Padding**: PKCS7
-- **Extension**: `.WNCRY`
-
-### Deletion Method
-
-Files deleted with `debugfs` to simulate forensic recovery:
+**Extract IV from the encrypted file:**
 ```bash
-debugfs -w /dev/loop0 -R "rm /srv/samba/share/flagsinha.txt.WNCRY"
+# The IV is stored in the first 16 bytes of the .WNCRY file
+head -c 16 ~/forensic_evidence/flagsinha.txt.WNCRY | xxd -p
+# Example output: a7324dbbcf5...
 ```
 
-This marks inodes as deleted but data remains on disk, recoverable with tools like:
-- Autopsy
-- PhotoRec
-- TestDisk
-- Sleuth Kit
+### Step 5: Decrypt Flag with CyberChef
 
-## Contributing
+1. Open **CyberChef**: https://gchq.github.io/CyberChef/
 
-To add new features or modify the scenario:
+2. **Load the encrypted file:**
+   - Drag `flagsinha.txt.WNCRY` into the Input pane
 
-1. Edit `*/tectonic/ansible/library/` for new modules
-2. Edit `*/tectonic/ansible/module_utils/` for new layers
-3. Edit `after_clone.yml` for new simulation phases
-4. Test with: `tectonic deploy`
+3. **Configure AES Decrypt recipe:**
+   - Search and add: **"AES Decrypt"**
+   - **Key**: `0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF`
+   - **IV**: `a7324dbbcf5...` (from step 4)
+   - **Mode**: `CBC`
+   - **Input**: `Raw`
+   - **Output**: `Raw`
 
-## License
+4. **Bake (execute)** the recipe
 
-GNU General Public License v3.0 or later (GPLv3+)
+5. **Read the flag:**
+```
+   Encontraste la flag, sos el mejor dfir user del pais
+```
 
-## Authors
+## Forensic Challenge Summary
 
-- GSI-Fing-Udelar
-- Rodrigo Aguillón
-- Ignacio Alesina
+**Objective:** Recover and decrypt the hidden flag file
+
+**Required Steps:**
+1. ✅ Extract disk image from container
+2. ✅ Analyze filesystem with Autopsy
+3. ✅ Identify deleted encrypted file (`flagsinha.txt.WNCRY`)
+4. ✅ Recover file using `icat` or Autopsy
+5. ✅ Extract IV from recovered file (first 16 bytes)
+6. ✅ Use hardcoded AES-256 key from playbook
+7. ✅ Decrypt in CyberChef with correct key + IV
+8. ✅ Read the flag message
+
+## Encryption Details
+
+**Algorithm:** AES-256-CBC  
+**Key Size:** 256 bits (32 bytes)  
+**IV Size:** 128 bits (16 bytes)  
+**Key (hex):** `0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF`  
+**File Extension:** `.WNCRY`  
+
+**Encrypted File Structure:**
+```
+[16 bytes IV][Encrypted Content with PKCS7 Padding]
+```
+
+## Cleanup
+```bash
+# Destroy the scenario
+poetry run tectonic -c ./tectonic.ini ./examples/dfir_final_scenario/edition.yml destroy
+
+# Remove loop device (if manually mounted)
+sudo losetup -d /dev/loop25
+
+# Clean extracted evidence (optional)
+rm -rf ~/forensic_evidence/
+```
+
+### Network Overlap Error
+
+If deployment fails with `Pool overlaps with other one`:
+```bash
+# Destroy previous deployment
+poetry run tectonic -c ./tectonic.ini ./examples/dfir_final_scenario/edition.yml destroy
+
+# Force clean networks
+docker network prune -f
+
+# Redeploy
+poetry run tectonic -c ./tectonic.ini ./examples/dfir_final_scenario/edition.yml deploy
+```
 
 ## References
 
-- [Tectonic Documentation](https://github.com/GSI-Fing-Udelar/tectonic)
-- [WannaCry Analysis](https://www.malware-traffic-analysis.net/)
-- [Autopsy Documentation](https://www.sleuthkit.org/autopsy/)
-- [Wireshark User Guide](https://www.wireshark.org/docs/)
+- **Autopsy Documentation:** https://www.autopsy.com/
+- **The Sleuth Kit (icat):** https://wiki.sleuthkit.org/index.php?title=Icat
+- **CyberChef:** https://gchq.github.io/CyberChef/
+- **Wireshark User Guide:** https://www.wireshark.org/docs/wsug_html_chunked/

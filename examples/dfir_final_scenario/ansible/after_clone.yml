@@ -143,6 +143,16 @@
     
     - name: "[DISK] Format image as ext4 filesystem"
       command: "mkfs.ext4 -F {{ image_file }}"
+
+    - name: "[DISK] Detach any orphaned loop devices from previous runs"
+      shell: |
+        losetup -j {{ image_file }} 2>/dev/null | cut -d: -f1 | while read dev; do
+          [ -n "$dev" ] && umount "$dev" 2>/dev/null || true
+          [ -n "$dev" ] && losetup -d "$dev" 2>/dev/null || true
+        done
+        exit 0
+      ignore_errors: yes
+      changed_when: false
     
     - name: "[DISK] Attach image to loop device"
       command: "losetup -fP {{ image_file }}"
@@ -216,7 +226,13 @@
       generate_file:
         path: "{{ mount_point }}/srv/samba/share/flagsinha.txt"
         extension: txt
-        content: "Encontraste la flag, sos el mejor dfir user del maldito pais"
+        content: "Encontraste la flag, sos el mejor dfir user del pais"
+        
+    - name: "created archive"
+      generate_file:
+        path: "/tmp/orco.txt"
+        extension: txt
+        content: "Orco file for testing"
 
     - name: "[FLAG] Encrypt flag file with AES-256-CBC (.WNCRY extension)"
       encrypt_files_aes:
