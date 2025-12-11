@@ -1,0 +1,93 @@
+---
+# ==============================================================================
+# DFIR Final Scenario - Lab Edition Configuration
+# ==============================================================================
+# This file defines a specific deployment of the unified attack scenario.
+# It combines network traffic simulation with filesystem forensics.
+#
+# USAGE:
+#   tectonic -c tectonic.ini examples/dfir_final_scenario/edition.yml create-images
+#   tectonic -c tectonic.ini examples/dfir_final_scenario/edition.yml deploy
+# ==============================================================================
+
+# Base scenario reference
+base_lab: dfir_final_scenario
+
+# Institution offering this lab edition
+institution: udelar
+
+# Edition name (optional, defaults to base_lab name)
+lab_edition_name: dfir_unified_training
+
+# Number of instances to deploy
+# Each instance is an independent copy of the scenario
+# For a class of 20 students working in pairs: instance_number: 10
+instance_number: 1
+
+# Student configuration
+student_prefix: student
+create_students_passwords: true
+
+# Teacher SSH public keys directory (optional)
+# Uncomment and set to allow teacher access to all instances
+# teacher_pubkey_dir: teacher_pubkeys/
+
+# Student SSH public keys directory (optional)
+# Uncomment to provide per-student SSH access
+# student_pubkey_dir: student_pubkeys/
+
+# Random seed for reproducible parameter generation
+# Change this to get different random file contents across runs
+random_seed: 42
+
+# ==============================================================================
+# SERVICE CONFIGURATIONS (Optional)
+# ==============================================================================
+
+# Elastic Stack configuration (optional - for advanced monitoring)
+# Uncomment to enable Elastic Security monitoring
+# elastic_settings:
+#   enable: true
+#   monitor_type: endpoint
+#   deploy_default_policy: true
+#   memory: 4096
+
+# Caldera configuration (optional - for automated attack simulation)
+# Uncomment to enable Caldera C2 framework
+# caldera_settings:
+#   enable: false
+
+# ==============================================================================
+# DEPLOYMENT NOTES
+# ==============================================================================
+# 
+# PRE-DEPLOYMENT CHECKLIST:
+#   1. Verify tectonic.ini is configured for your platform (libvirt/aws/docker)
+#   2. Ensure base images exist or will be created
+#   3. Check available resources (CPU, memory, disk)
+#   4. Prepare SSH keys if using teacher/student key directories
+#
+# DEPLOYMENT COMMANDS:
+#   
+#   # Step 1: Create base images (one-time or when base_config.yml changes)
+#   tectonic -c tectonic.ini examples/dfir_final_scenario/edition.yml create-images
+#   
+#   # Step 2: Deploy instances
+#   tectonic -c tectonic.ini examples/dfir_final_scenario/edition.yml deploy
+#   
+#   # Step 3: Access instances
+#   tectonic -c tectonic.ini examples/dfir_final_scenario/edition.yml show-info
+#   
+#   # Step 4: Connect via SSH (get connection details from show-info)
+#   ssh -i ~/.ssh/id_rsa ubuntu@<victim-ip>
+#
+# ANALYSIS OUTPUTS:
+#   - Network traffic: /tmp/wannacry_unified_attack.pcap (on victim)
+#   - Forensic disk image: /tmp/final_forensic.img (on victim)
+#   - Encrypted files: Inside disk image at /srv/samba/share
+#   - Hidden flag: flagsinha.txt.WNCRY (deleted, recoverable with Autopsy)
+#
+# CLEANUP:
+#   tectonic -c tectonic.ini examples/dfir_final_scenario/edition.yml destroy
+#
+# ==============================================================================
