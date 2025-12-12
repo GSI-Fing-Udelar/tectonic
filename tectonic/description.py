@@ -784,7 +784,9 @@ class MoodleDescription(ServiceDescription):
         self.disk = 20
         self.courses = []
         self.users = []
+        self.groups = []
         self.enroll_trainees = False
+        self.auto_enroll_trainees = True
         self._moosh_commands = []
         self._generated_users = []
 
@@ -794,8 +796,12 @@ class MoodleDescription(ServiceDescription):
             self.courses = data["courses"]
         if "users" in data:
             self.users = data["users"]
+        if "groups" in data:
+            self.groups = data["groups"]
         if "enroll_trainees" in data:
             self.enroll_trainees = data["enroll_trainees"]
+        if "auto_enroll_trainees" in data:
+            self.auto_enroll_trainees = data["auto_enroll_trainees"]
 
     @property
     def moosh_commands(self):
@@ -815,9 +821,10 @@ class MoodleDescription(ServiceDescription):
         self._generated_users = []
         
         course_ids = self._generate_course_commands()
+        group_ids = self._generate_group_commands()
         
         for user in self.users:
-            self._add_user_command(user, course_ids)
+            self._add_user_command(user, course_ids if self.auto_enroll_trainees else [])
             
         if self.enroll_trainees and trainees:
             for username, data in trainees.items():
@@ -828,7 +835,7 @@ class MoodleDescription(ServiceDescription):
                     "role": "student",
                     "is_trainee": True
                 }
-                self._add_user_command(user_data, course_ids)
+                self._add_user_command(user_data, course_ids if self.auto_enroll_trainees else [])
 
     def _generate_course_commands(self):
         course_ids = []
@@ -841,7 +848,29 @@ class MoodleDescription(ServiceDescription):
             
             self._moosh_commands.append(f"course-create --category=1 --fullname='{name}' {shortname}")
             
-            if "scorm_package" in course:
+            # Configure section names if provided
+            if "sections" in course:
+                for section_num, section_name in enumerate(course["sections"]):
+                    self._moosh_commands.append(
+                        f'section-config-set -s {section_num} course {course_id} name "{section_name}"'
+                    )
+            
+            # Support for multiple activities (new format)
+            if "activities" in course:
+                for activity in course["activities"]:
+                    activity_name = activity.get("name", name)
+                    activity_type = activity.get("type", "scorm")
+                    section_num = activity.get("section", 0)
+                    
+                    if activity_type == "scorm" and "scorm_package" in activity:
+                        scorm_file = activity["scorm_package"].split("/")[-1]
+                        self._moosh_commands.append(
+                            f"activity-add --section={section_num} --name='{activity_name}' "
+                            f"--options='packagefilepath={scorm_file}' scorm {course_id}"
+                        )
+            
+            # Support for single SCORM package (backward compatibility)
+            elif "scorm_package" in course:
                 scorm_file = course["scorm_package"].split("/")[-1]
                 self._moosh_commands.append(
                     f"activity-add --section=0 --name='{name}' "
@@ -851,6 +880,19 @@ class MoodleDescription(ServiceDescription):
             course_ids.append(course_id)
             course_id += 1
         return course_ids
+
+    def _generate_group_commands(self):
+        group_ids = []
+        for group in self.groups:
+            name = group.get("name")
+            course_id = group.get("course_id", 2)
+            
+            if name:
+                self._moosh_commands.append(f"group-create -c {course_id} -n '{name}'")
+                # Note: group IDs are sequential but we don't track them here
+                # If needed for group membership, would need to query after creation
+        
+        return group_ids
 
     def _add_user_command(self, user_data, course_ids):
         username = user_data.get("username")

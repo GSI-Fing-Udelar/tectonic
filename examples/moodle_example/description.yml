@@ -4,22 +4,52 @@ lab_name: moodle_example
 default_os: ubuntu22
 
 guest_settings:
-  pc1:
+  workstation:
     base_os: ubuntu22
-    memory: 512
+    memory: 1024
     vcpu: 1
-    disk: 5
+    disk: 10
+    entry_point: yes
     internet_access: false
 
 topology:
-  - name: lan
-    members: [pc1]
+  - name: lab_network
+    members: [workstation]
 
 moodle_settings:
   enable: true
   courses:
-    - name: "Golf Explained"
+    # Curso simple: solo nombre y contenido SCORM
+    - name: "Introducción a Seguridad Web"
+      shortname: "WEBSEC101"
       scorm_package: scorm/golf_explained.zip
+
+    # Curso avanzado: múltiples actividades organizadas en secciones
+    - name: "SQL Injection Avanzado"
+      shortname: "SQLINJ201"
+      sections:
+        - "Material Teórico"
+        - "Laboratorios Prácticos"
+      activities:
+        - name: "Teoría: Fundamentos SQL"
+          type: scorm
+          scorm_package: scorm/golf_explained.zip
+          section: 0
+        - name: "Lab 1: SQL Injection"
+          type: scorm
+          scorm_package: scorm/golf_explained.zip
+          section: 1
+
+    # Curso sin contenido: solo estructura (el instructor lo completa manualmente)
+    - name: "Pentesting con Kali Linux"
+      shortname: "PENTEST401"
+
   users:
-    - email: instructor@example.com
+    - email: instructor@cybersec.edu
       role: editingteacher
+
+  groups:
+    - name: "Grupo A"
+      course_id: 2
+    - name: "Grupo B"
+      course_id: 2
