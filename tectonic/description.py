@@ -879,7 +879,7 @@ class MoodleDescription(ServiceDescription):
             course_id = group.get("course_id", 2)
             
             if name:
-                self._moosh_commands.append(f"group-create -c {course_id} -n '{name}'")
+                self._moosh_commands.append(f"group-create '{name}' {course_id}")
         return group_ids
 
     def _add_user_command(self, user_data, course_ids):
