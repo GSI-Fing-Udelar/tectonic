@@ -302,6 +302,15 @@ class Ansible:
         
         self.description.moodle.generate_moosh_commands(trainees)
         
+        scorm_packages = set()
+        for course in self.description.moodle.courses:
+            if "scorm_package" in course:
+                scorm_packages.add(course["scorm_package"])
+            if "activities" in course:
+                for activity in course["activities"]:
+                    if "scorm_package" in activity:
+                        scorm_packages.add(activity["scorm_package"])
+        
         return {
             "enable": self.description.moodle.enable,
             "ip": self.description.moodle.service_ip,
@@ -314,4 +323,5 @@ class Ansible:
             "admin_email": self.config.moodle.admin_email,
             "courses": self.description.moodle.courses,
             "moosh_commands": self.description.moodle.moosh_commands,
+            "scorm_packages": list(scorm_packages),
         }
