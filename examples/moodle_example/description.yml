@@ -19,14 +19,13 @@ topology:
 moodle_settings:
   enable: true
   courses:
-    # Curso simple: solo nombre y contenido SCORM
+
     - name: "Introducción a Seguridad Web"
       shortname: "WEBSEC101"
       scorm_package: scorm/golf_explained.zip
 
-    # Curso avanzado: múltiples actividades organizadas en secciones
-    - name: "SQL Injection Avanzado"
-      shortname: "SQLINJ201"
+    - name: "Seguridad Avanzada"
+      shortname: "SECURITY101"
       sections:
         - "Material Teórico"
         - "Laboratorios Prácticos"
@@ -40,9 +39,9 @@ moodle_settings:
           scorm_package: scorm/golf_explained.zip
           section: 1
 
-    # Curso sin contenido: solo estructura (el instructor lo completa manualmente)
-    - name: "Pentesting con Kali Linux"
-      shortname: "PENTEST401"
+
+    - name: "Fundamentos de Seguridad"
+      shortname: "FUNDSEC101"
 
   users:
     - email: instructor@cybersec.edu

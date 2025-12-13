@@ -771,12 +771,6 @@ class GuacamoleDescription(ServiceDescription):
         super().load_service(data)
 
 class MoodleDescription(ServiceDescription):
-    """Moodle service configuration.
-    
-    Provides a declarative interface for course and user provisioning.
-    Instructors define courses and users, and the system generates
-    the appropriate Moosh commands automatically.
-    """
     def __init__(self, description):
         super().__init__(description, "moodle", "ubuntu22")
         self.memory = 4096
@@ -848,14 +842,12 @@ class MoodleDescription(ServiceDescription):
             
             self._moosh_commands.append(f"course-create --category=1 --fullname='{name}' {shortname}")
             
-            # Configure section names if provided
             if "sections" in course:
                 for section_num, section_name in enumerate(course["sections"]):
                     self._moosh_commands.append(
                         f'section-config-set -s {section_num} course {course_id} name "{section_name}"'
                     )
             
-            # Support for multiple activities (new format)
             if "activities" in course:
                 for activity in course["activities"]:
                     activity_name = activity.get("name", name)
@@ -869,7 +861,6 @@ class MoodleDescription(ServiceDescription):
                             f"--options='packagefilepath={scorm_file}' scorm {course_id}"
                         )
             
-            # Support for single SCORM package (backward compatibility)
             elif "scorm_package" in course:
                 scorm_file = course["scorm_package"].split("/")[-1]
                 self._moosh_commands.append(
@@ -889,9 +880,6 @@ class MoodleDescription(ServiceDescription):
             
             if name:
                 self._moosh_commands.append(f"group-create -c {course_id} -n '{name}'")
-                # Note: group IDs are sequential but we don't track them here
-                # If needed for group membership, would need to query after creation
-        
         return group_ids
 
     def _add_user_command(self, user_data, course_ids):
