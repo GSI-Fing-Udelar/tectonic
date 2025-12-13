@@ -219,17 +219,32 @@
 
 - name: Provision courses
   block:
-    - name: Copy SCORM packages
-      ansible.builtin.copy:
-        src: "{{ moodle.description_path }}/{{ item.scorm_package }}"
-        dest: "/var/www/html/moodle/{{ item.scorm_package | basename }}"
-        owner: www-data
-        group: www-data
-        mode: "0644"
+    - name: Build SCORM packages list
+      ansible.builtin.set_fact:
+        scorm_packages: "{{ scorm_packages | default([]) + [item.scorm_package] }}"
       loop: "{{ moodle.courses | default([]) }}"
       when: item.scorm_package is defined
       loop_control:
         label: "{{ item.scorm_package | default('no package') }}"
+
+    - name: Build SCORM packages list from activities
+      ansible.builtin.set_fact:
+        scorm_packages: "{{ scorm_packages | default([]) + [activity.scorm_package] }}"
+      loop: "{{ moodle.courses | default([]) | subelements('activities', skip_missing=True) }}"
+      when: item.1.scorm_package is defined
+      loop_control:
+        label: "{{ item.1.scorm_package | default('no package') }}"
+      vars:
+        activity: "{{ item.1 }}"
+
+    - name: Copy SCORM packages
+      ansible.builtin.copy:
+        src: "{{ moodle.description_path }}/{{ item }}"
+        dest: "/var/www/html/moodle/{{ item | basename }}"
+        owner: www-data
+        group: www-data
+        mode: "0644"
+      loop: "{{ scorm_packages | default([]) | unique }}"
       register: scorm_copy_results
       failed_when:
         - scorm_copy_results is failed
