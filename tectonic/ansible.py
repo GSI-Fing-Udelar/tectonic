@@ -297,7 +297,7 @@ class Ansible:
     def _get_moodle_vars(self):
         """Generate Moodle variables including user enrollment."""
         trainees = None
-        if self.description.moodle.enroll_trainees:
+        if self.description.moodle.enable_trainees:
             trainees = self.description.generate_student_access_credentials()
         
         self.description.moodle.generate_moosh_commands(trainees)

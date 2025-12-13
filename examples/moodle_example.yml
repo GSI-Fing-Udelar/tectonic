@@ -15,5 +15,5 @@ caldera_settings:
 
 moodle_settings:
   enable: true
-  enroll_trainees: true
+  enable_trainees: true
   auto_enroll_trainees: true

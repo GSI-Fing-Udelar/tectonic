@@ -779,7 +779,7 @@ class MoodleDescription(ServiceDescription):
         self.courses = []
         self.users = []
         self.groups = []
-        self.enroll_trainees = False
+        self.enable_trainees = False
         self.auto_enroll_trainees = True
         self._moosh_commands = []
         self._generated_users = []
@@ -792,8 +792,8 @@ class MoodleDescription(ServiceDescription):
             self.users = data["users"]
         if "groups" in data:
             self.groups = data["groups"]
-        if "enroll_trainees" in data:
-            self.enroll_trainees = data["enroll_trainees"]
+        if "enable_trainees" in data:
+            self.enable_trainees = data["enable_trainees"]
         if "auto_enroll_trainees" in data:
             self.auto_enroll_trainees = data["auto_enroll_trainees"]
 
@@ -820,7 +820,7 @@ class MoodleDescription(ServiceDescription):
         for user in self.users:
             self._add_user_command(user, course_ids if self.auto_enroll_trainees else [])
             
-        if self.enroll_trainees and trainees:
+        if self.enable_trainees and trainees:
             for username, data in trainees.items():
                 user_data = {
                     "username": username,
