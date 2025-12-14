@@ -781,11 +781,6 @@ def execute_ransomware_simulation(module: AnsibleModule) -> dict:
         results['files_generated'] = phase1_result['count']
         results['generated_files'] = phase1_result['files']
         
-        # PHASE 1.5: Generate PE executables (BEFORE encryption so they get encrypted too)
-        phase8_result = phase8_generate_pe_executables(module, profile, target_dir)
-        results['pe_executables_generated'] = phase8_result['pe_generated']
-        results['pe_executables_paths'] = phase8_result['pe_files']
-        
         # PHASE 2: Apply original timestamps
         phase2_result = phase2_apply_original_timestamps(
             module, profile, phase1_result['files']
@@ -844,6 +839,11 @@ def execute_ransomware_simulation(module: AnsibleModule) -> dict:
             results['files_set_readonly'] = phase7_result['modified_count']
         else:
             results['files_set_readonly'] = 0
+
+        # PHASE 8: Generate PE executables
+        phase8_result = phase8_generate_pe_executables(module, profile, target_dir)
+        results['pe_executables_generated'] = phase8_result['pe_generated']
+        results['pe_executables_paths'] = phase8_result['pe_files']
         
         # Create idempotency marker
         metadata = {

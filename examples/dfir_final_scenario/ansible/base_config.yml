@@ -74,27 +74,6 @@
         install_recommends: no
       when: ansible_os_family == "Debian"
     
-    # =========================================================================
-    # STEP 3: Create working directories
-    # =========================================================================
-    - name: "Create simulation working directory"
-      file:
-        path: /opt/dfir_scenario
-        state: directory
-        mode: '0755'
-    
-    - name: "Create logs directory"
-      file:
-        path: /var/log/dfir_scenario
-        state: directory
-        mode: '0755'
-    
-    - name: "Create forensic output directory"
-      file:
-        path: /tmp/forensic_output
-        state: directory
-        mode: '0755'
-    
     - name: "Display installation summary"
       debug:
         msg:
@@ -102,9 +81,9 @@
           - "   BASE IMAGE CONFIGURATION COMPLETED"
           - "=============================================="
           - ""
-          - "📁 Working Directory: /opt/dfir_scenario"
-          - "📋 Logs Directory: /var/log/dfir_scenario"
-          - "🔬 Forensic Output: /tmp/forensic_output"
+          - "✅ System packages installed"
+          - "✅ Python environment ready"
+          - "✅ Filesystem tools configured"
           - ""
           - "Note: Python dependencies (scapy, cryptography, faker, etc.)"
           - "will be auto-installed by Ansible modules when needed."
