@@ -10,6 +10,7 @@ system_packages:
   - apache2
   - mysql-server
   - python3-pymysql
+  - netfilter-persistent
 
 php_packages:
   - "php{{ php_version }}"
