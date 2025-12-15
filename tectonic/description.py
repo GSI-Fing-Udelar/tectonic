@@ -939,6 +939,8 @@ class Description:
         enable_guacamole = self.guacamole.enable and lab_edition_data.get("guacamole_settings", {}).get("enable", True)
         self.guacamole.load_service(lab_edition_data.get("guacamole_settings", {}))
         self.guacamole.enable = enable_guacamole
+        if enable_guacamole:
+            self.create_students_passwords = True
 
         # Elastic is enabled if it is enabled in the description and
         # not disabled in the lab edition.
@@ -956,9 +958,9 @@ class Description:
 
         # Bastion Host
         self._bastion_host = BastionHostDescription(self)
-        self.bastion_host.enable = self.config.platform == "aws" and ( 
+        self.bastion_host.enable = self.config.platform == "aws" and (
             self.create_students_passwords or
-            self.student_pubkey_dir != None 
+            self.student_pubkey_dir != None
         ) or (
             self.elastic.enable or
             self.caldera.enable or
@@ -1112,7 +1114,7 @@ class Description:
             username = f"{self.student_prefix}{i:0{digits}d}"
             users[username] = {}
             users[username]["instance"] = i
-            if self.create_students_passwords or self.guacamole.enable:
+            if self.create_students_passwords:
                 (password, salt) = self._generate_password()
                 users[username]["password"] = password
                 users[username]["password_hash"] = sha512_crypt.using(salt=salt).hash(password)
