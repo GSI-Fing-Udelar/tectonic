@@ -1,0 +1,19 @@
+---
+base_lab: moodle_example
+instance_number: 3
+random_seed: 42
+create_students_passwords: true
+
+guacamole_settings:
+  enable: false
+
+elastic_settings:
+  enable: false
+
+caldera_settings:
+  enable: false
+
+moodle_settings:
+  enable: true
+  enable_trainees: true
+  auto_enroll_trainees: true

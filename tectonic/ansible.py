@@ -282,13 +282,46 @@ class Ansible:
                     "brute_force_protection_enabled": str(self.config.guacamole.brute_force_protection_enabled),
                     "version": self.config.guacamole.version,
                 },
+                "moodle": self._get_moodle_vars(),
                 "bastion_host":{
                     "enable": self.description.bastion_host.enable,
                     "ip": self.description.bastion_host.service_ip,
-                    "services_enable": self.description.elastic.enable or self.description.caldera.enable or self.description.guacamole.enable,
+                    "services_enable": self.description.elastic.enable or self.description.caldera.enable or self.description.guacamole.enable or self.description.moodle.enable,
                     "domain": "tectonic.cyberrange.com",
                 }
             }
             inventory = self.build_inventory(machine_list=services, extra_vars=extra_vars)
             self.wait_for_connections(inventory=inventory)
             self.run(inventory=inventory, playbook=self.ANSIBLE_SERVICE_PLAYBOOK, quiet=True)
+
+    def _get_moodle_vars(self):
+        """Generate Moodle variables including user enrollment."""
+        trainees = None
+        if self.description.moodle.enable_trainees:
+            trainees = self.description.generate_student_access_credentials()
+        
+        self.description.moodle.generate_moosh_commands(trainees)
+        
+        scorm_packages = set()
+        for course in self.description.moodle.courses:
+            if "scorm_package" in course:
+                scorm_packages.add(course["scorm_package"])
+            if "activities" in course:
+                for activity in course["activities"]:
+                    if "scorm_package" in activity:
+                        scorm_packages.add(activity["scorm_package"])
+        
+        return {
+            "enable": self.description.moodle.enable,
+            "ip": self.description.moodle.service_ip,
+            "internal_port": self.config.moodle.internal_port,
+            "external_port": self.config.moodle.external_port,
+            "description_path": str(self.description.scenario_dir),
+            "version": self.config.moodle.version,
+            "site_fullname": self.config.moodle.site_fullname,
+            "site_shortname": self.config.moodle.site_shortname,
+            "admin_email": self.config.moodle.admin_email,
+            "courses": self.description.moodle.courses,
+            "moosh_commands": self.description.moodle.moosh_commands,
+            "scorm_packages": list(scorm_packages),
+        }

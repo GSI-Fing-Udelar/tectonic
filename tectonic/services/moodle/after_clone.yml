@@ -1,0 +1,250 @@
+---
+- name: Check if Moodle already installed
+  block:
+    - name: Check if credentials file exists
+      ansible.builtin.stat:
+        path: /root/credentials
+      register: credentials
+    - name: End execution if credentials file exists
+      ansible.builtin.meta: end_play
+      when: credentials.stat.exists
+
+- name: Load variables
+  ansible.builtin.include_vars:
+    file: vars/variables.yml
+
+- name: Add hostname to /etc/hosts
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    insertafter: EOF
+    line: "{{ moodle.ip }} {{ ansible_facts['fqdn'] }}"
+  when: platform != "docker"
+
+- name: Generate SSL certificates
+  block:
+    - name: Create certificates directory
+      ansible.builtin.file:
+        path: /etc/apache2/ssl
+        state: directory
+        mode: "0755"
+    - name: Create private key
+      community.crypto.openssl_privatekey:
+        path: /etc/apache2/ssl/moodle.key
+        size: 4096
+    - name: Create CSR
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: /etc/apache2/ssl/moodle.key
+        common_name: "{{ ansible_facts['fqdn'] }}"
+        country_name: UY
+        state_or_province_name: Montevideo
+        locality_name: Montevideo
+        organization_name: Tectonic
+        organizational_unit_name: Moodle
+        subject_alt_name:
+          - "DNS:{{ ansible_facts['fqdn'] }}"
+          - "DNS:{{ moodle.ip }}"
+          - "DNS:127.0.0.1"
+      register: moodle_csr
+    - name: Create self-signed certificate
+      community.crypto.x509_certificate:
+        path: /etc/apache2/ssl/moodle.crt
+        csr_content: "{{ moodle_csr.csr }}"
+        privatekey_path: /etc/apache2/ssl/moodle.key
+        provider: selfsigned
+        selfsigned_not_after: "+3650d"
+
+- name: Configure MySQL
+  block:
+    - name: Wait for MySQL socket
+      ansible.builtin.wait_for:
+        path: /run/mysqld/mysqld.sock
+        state: present
+        timeout: 60
+        delay: 2
+    - name: Ensure MySQL is running
+      ansible.builtin.systemd_service:
+        name: mysql
+        state: started
+        enabled: true
+    - name: Optimize MySQL for installation
+      ansible.builtin.copy:
+        dest: /etc/mysql/mysql.conf.d/99-tectonic-speed.cnf
+        content: |
+          [mysqld]
+          innodb_flush_log_at_trx_commit = 2
+          skip-log-bin
+          innodb_buffer_pool_size = 512M
+          innodb_log_file_size = 128M
+          default-storage-engine = InnoDB
+          innodb_file_per_table = 1
+        mode: "0644"
+      register: mysql_config
+    - name: Restart MySQL if config changed
+      ansible.builtin.systemd_service:
+        name: mysql
+        state: restarted
+      when: mysql_config.changed
+    - name: Wait for MySQL after restart
+      ansible.builtin.wait_for:
+        path: /run/mysqld/mysqld.sock
+        state: present
+        timeout: 60
+        delay: 2
+      when: mysql_config.changed
+
+- name: Setup database
+  block:
+    - name: Generate random passwords
+      ansible.builtin.set_fact:
+        moodle_admin_password: "{{ lookup('community.general.random_string', length=20, special=false) }}"
+        moodle_db_password: "{{ lookup('community.general.random_string', length=30, special=false) }}"
+    - name: Create database
+      community.mysql.mysql_db:
+        name: moodle
+        encoding: utf8mb4
+        collation: utf8mb4_unicode_ci
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+      retries: 3
+      delay: 5
+    - name: Create database user
+      community.mysql.mysql_user:
+        name: moodle
+        password: "{{ moodle_db_password }}"
+        priv: "moodle.*:ALL"
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+      retries: 3
+      delay: 5
+
+- name: Install Moodle
+  block:
+    - name: Set wwwroot host
+      ansible.builtin.set_fact:
+        moodle_host: "{{ '127.0.0.1' if platform == 'docker' else (bastion_host.ip if bastion_host.enable else moodle.ip) }}"
+    - name: Remove existing config.php
+      ansible.builtin.file:
+        path: /var/www/html/moodle/config.php
+        state: absent
+    - name: Run CLI installer
+      ansible.builtin.command:
+        cmd: >
+          /usr/bin/php /var/www/html/moodle/admin/cli/install.php
+          --non-interactive
+          --agree-license
+          --lang=en
+          --wwwroot=https://{{ moodle_host }}:{{ moodle.external_port }}
+          --dataroot=/var/moodledata
+          --dbtype=mysqli
+          --dbhost=localhost
+          --dbname=moodle
+          --dbuser=moodle
+          --dbpass={{ moodle_db_password }}
+          --fullname="{{ moodle.site_fullname }}"
+          --shortname="{{ moodle.site_shortname }}"
+          --adminuser=admin
+          --adminpass={{ moodle_admin_password }}
+          --adminemail={{ moodle.admin_email }}
+      become: true
+      become_user: www-data
+      register: moodle_install_result
+      changed_when: "'already installed' not in moodle_install_result.stdout"
+      failed_when: moodle_install_result.rc != 0 and "already installed" not in moodle_install_result.stdout
+    - name: Secure config.php permissions
+      ansible.builtin.file:
+        path: /var/www/html/moodle/config.php
+        owner: www-data
+        group: www-data
+        mode: "0440"
+    - name: Setup cron job
+      ansible.builtin.cron:
+        name: "Moodle Cron"
+        minute: "*"
+        user: "www-data"
+        job: "/usr/bin/php /var/www/html/moodle/admin/cli/cron.php >/dev/null 2>&1"
+
+- name: Start web services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: true
+  loop:
+    - apache2
+    - "php{{ php_version }}-fpm"
+
+- name: Configure firewall (iptables)
+  block:
+    - name: Set Gateway IP
+      ansible.builtin.set_fact:
+        gateway_ip: "{{ (moodle.ip | split('.'))[0] }}.{{ (moodle.ip | split('.'))[1] }}.{{ (moodle.ip | split('.'))[2] }}.129"
+
+    - name: Configure firewall | Flush existing rules
+      ansible.builtin.iptables:
+        table: filter
+        chain: "{{ item }}"
+        flush: yes
+      loop: [INPUT, FORWARD, OUTPUT]
+
+    - name: Configure firewall | Allow specific traffic
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: "{{ item.proto | default(omit) }}"
+        source: "{{ item.src | default(omit) }}"
+        destination_port: "{{ item.port | default(omit) }}"
+        in_interface: "{{ item.iface | default(omit) }}"
+        ctstate: "{{ item.ctstate | default(omit) }}"
+        jump: ACCEPT
+      loop:
+        - { ctstate: "ESTABLISHED,RELATED" }
+        - { iface: "lo" }
+        - { proto: "tcp", port: 22, src: "{{ gateway_ip }}" }
+        - {
+            proto: "tcp",
+            port: "{{ moodle.internal_port }}",
+            src: "{{ bastion_host.ip }}",
+          }
+
+    - name: Configure firewall | Set default policies
+      ansible.builtin.iptables:
+        chain: "{{ item.chain }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { chain: INPUT, policy: DROP }
+        - { chain: FORWARD, policy: DROP }
+        - { chain: OUTPUT, policy: ACCEPT }
+
+    - name: Configure firewall | Save rules
+      ansible.builtin.command: service netfilter-persistent save
+  when: platform == "libvirt" or platform == "docker"
+
+- name: Provision courses
+  block:
+    - name: Copy SCORM packages
+      ansible.builtin.copy:
+        src: "{{ moodle.description_path }}/{{ item }}"
+        dest: "/var/www/html/moodle/{{ item | basename }}"
+        owner: www-data
+        group: www-data
+        mode: "0644"
+      loop: "{{ moodle.scorm_packages | default([]) }}"
+      register: scorm_copy_results
+      failed_when:
+        - scorm_copy_results is failed
+        - "'does not exist' not in (scorm_copy_results.msg | default(''))"
+    - name: Execute Moosh commands
+      ansible.builtin.shell: |
+        sudo -u www-data php /opt/moosh/moosh.php -n -p /var/www/html/moodle {{ item }}
+      loop: "{{ moodle.moosh_commands | default([]) }}"
+      register: moosh_results
+      failed_when:
+        - moosh_results.rc != 0
+        - "'already exists' not in (moosh_results.stderr | default(''))"
+        - "'already exists' not in (moosh_results.stdout | default(''))"
+  when: (moodle.courses is defined and moodle.courses | length > 0) or (moodle.moosh_commands is defined and moodle.moosh_commands | length > 0)
+
+- name: Write credentials file
+  ansible.builtin.copy:
+    dest: /root/credentials
+    content: |
+      admin {{ moodle_admin_password }}
+    mode: "0640"

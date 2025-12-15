@@ -770,6 +770,145 @@ class GuacamoleDescription(ServiceDescription):
         """Loads the information from the yaml structure in data."""
         super().load_service(data)
 
+class MoodleDescription(ServiceDescription):
+    def __init__(self, description):
+        super().__init__(description, "moodle", "ubuntu22")
+        self.memory = 4096
+        self.vcpu = 2
+        self.disk = 20
+        self.courses = []
+        self.users = []
+        self.groups = []
+        self.enable_trainees = False
+        self.auto_enroll_trainees = True
+        self._moosh_commands = []
+        self._generated_users = []
+
+    def load_service(self, data):
+        super().load_service(data)
+        if "courses" in data:
+            self.courses = data["courses"]
+        if "users" in data:
+            self.users = data["users"]
+        if "groups" in data:
+            self.groups = data["groups"]
+        if "enable_trainees" in data:
+            self.enable_trainees = data["enable_trainees"]
+        if "auto_enroll_trainees" in data:
+            self.auto_enroll_trainees = data["auto_enroll_trainees"]
+
+    @property
+    def moosh_commands(self):
+        return self._moosh_commands
+    
+    @property
+    def generated_users(self):
+        return self._generated_users
+
+    def generate_moosh_commands(self, trainees=None):
+        """Generate Moosh commands for courses and users.
+        
+        Args:
+            trainees: Optional dict of trainee credentials from Tectonic.
+        """
+        self._moosh_commands = []
+        self._generated_users = []
+        
+        course_ids = self._generate_course_commands()
+        group_ids = self._generate_group_commands()
+        
+        for user in self.users:
+            self._add_user_command(user, course_ids if self.auto_enroll_trainees else [])
+            
+        if self.enable_trainees and trainees:
+            for username, data in trainees.items():
+                user_data = {
+                    "username": username,
+                    "password": data.get("password"),
+                    "email": f"{username}@tectonic.local",
+                    "role": "student",
+                    "is_trainee": True
+                }
+                self._add_user_command(user_data, course_ids if self.auto_enroll_trainees else [])
+
+    def _generate_course_commands(self):
+        course_ids = []
+        course_id = 2  # ID 1 is Frontpage
+        
+        for course in self.courses:
+            name = course.get("name", f"Course {course_id}")
+            default_short = re.sub(r'[^A-Z0-9_-]', '', name.upper())[:20]
+            shortname = course.get("shortname", default_short) or f"COURSE{course_id}"
+            
+            self._moosh_commands.append(f"course-create --category=1 --fullname='{name}' {shortname}")
+            
+            if "sections" in course:
+                for section_num, section_name in enumerate(course["sections"]):
+                    self._moosh_commands.append(
+                        f'section-config-set -s {section_num} course {course_id} name "{section_name}"'
+                    )
+            
+            if "activities" in course:
+                for activity in course["activities"]:
+                    activity_name = activity.get("name", name)
+                    activity_type = activity.get("type", "scorm")
+                    section_num = activity.get("section", 0)
+                    
+                    if activity_type == "scorm" and "scorm_package" in activity:
+                        scorm_file = activity["scorm_package"].split("/")[-1]
+                        self._moosh_commands.append(
+                            f"activity-add --section={section_num} --name='{activity_name}' "
+                            f"--options='packagefilepath={scorm_file}' scorm {course_id}"
+                        )
+            
+            elif "scorm_package" in course:
+                scorm_file = course["scorm_package"].split("/")[-1]
+                self._moosh_commands.append(
+                    f"activity-add --section=0 --name='{name}' "
+                    f"--options='packagefilepath={scorm_file}' scorm {course_id}"
+                )
+            
+            course_ids.append(course_id)
+            course_id += 1
+        return course_ids
+
+    def _generate_group_commands(self):
+        group_ids = []
+        for group in self.groups:
+            name = group.get("name")
+            course_id = group.get("course_id", 2)
+            
+            if name:
+                self._moosh_commands.append(f"group-create '{name}' {course_id}")
+        return group_ids
+
+    def _add_user_command(self, user_data, course_ids):
+        username = user_data.get("username")
+        if not username and user_data.get("email"):
+             username = user_data.get("email").split("@")[0]
+        
+        if not username:
+             username = f"user{len(self._generated_users)+1}"
+
+        password = user_data.get("password")
+        if not password:
+            password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+            
+        email = user_data.get("email", "")
+        role = user_data.get("role", "student")
+
+        self._generated_users.append({
+            "username": username,
+            "email": email,
+            "password": password,
+            "role": role,
+            "is_trainee": user_data.get("is_trainee", False)
+        })
+
+        self._moosh_commands.append(f"user-create --password={password} --email={email} {username}")
+        for cid in course_ids:
+            self._moosh_commands.append(f"course-enrol -r {role} {cid} {username}")
+
 class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
         super().__init__(description, "bastion_host", "ubuntu22", True)
@@ -777,6 +916,7 @@ class BastionHostDescription(ServiceDescription):
             "elastic": {"internal_port": description.config.elastic.internal_port, "external_port": description.config.elastic.external_port},
             "caldera": {"internal_port": description.config.caldera.internal_port, "external_port": description.config.caldera.external_port},
             "guacamole": {"internal_port": description.config.guacamole.internal_port, "external_port": description.config.guacamole.external_port},
+            "moodle": {"internal_port": description.config.moodle.external_port, "external_port": description.config.moodle.external_port},
         }
 
     @property
@@ -854,6 +994,8 @@ class Description:
         self.caldera.load_service(description_data.get("caldera_settings", {}))
         self._guacamole = GuacamoleDescription(self)
         self.guacamole.load_service(description_data.get("guacamole_settings", {}))
+        self._moodle = MoodleDescription(self)
+        self.moodle.load_service(description_data.get("moodle_settings", {}))
         self._bastion_host = BastionHostDescription(self)
         self._teacher_access_host = TeacherAccessHostDescription(self)
 
@@ -890,6 +1032,12 @@ class Description:
         self.caldera.load_service(lab_edition_data.get("caldera_settings", {}))
         self.caldera.enable = enable_caldera
 
+        # Moodle is enabled if it is enabled in the description and
+        # not disabled in the lab edition.
+        enable_moodle = self.moodle.enable and lab_edition_data.get("moodle_settings", {}).get("enable", True)
+        self.moodle.load_service(lab_edition_data.get("moodle_settings", {}))
+        self.moodle.enable = enable_moodle
+
         # Bastion Host
         self.bastion_host.enable = self.config.platform == "aws" and ( 
             self.create_students_passwords or
@@ -897,7 +1045,8 @@ class Description:
         ) or (
             self.elastic.enable or
             self.caldera.enable or
-            self.guacamole.enable
+            self.guacamole.enable or
+            self.moodle.enable
         )
 
         # Teacher Access Host
@@ -936,7 +1085,7 @@ class Description:
         self._auxiliary_networks = {}
         services_network_name = f"{self.institution}-{self.lab_name}-services"
         self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
-        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole"]
+        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole", "moodle"]
         if self.config.platform == "aws":
             self._auxiliary_networks[services_network_name].members.append("teacher_access_host")
             if self.elastic.monitor_type == "traffic":
@@ -955,6 +1104,7 @@ class Description:
         self.packetbeat.load_interfaces(self._auxiliary_networks)
         self.caldera.load_interfaces(self._auxiliary_networks)
         self.guacamole.load_interfaces(self.auxiliary_networks)
+        self.moodle.load_interfaces(self.auxiliary_networks)
         self.bastion_host.load_interfaces(self.auxiliary_networks)
         self.teacher_access_host.load_interfaces(self.auxiliary_networks)
 
@@ -1218,6 +1368,8 @@ class Description:
             services[self.caldera.name] = self.caldera
         if self.guacamole.enable:
             services[self.guacamole.name] = self.guacamole
+        if self.moodle.enable:
+            services[self.moodle.name] = self.moodle
         if self.teacher_access_host.enable:
             services[self.teacher_access_host.name] = self.teacher_access_host
         return services
@@ -1237,6 +1389,10 @@ class Description:
     @property
     def guacamole(self):
         return self._guacamole
+    
+    @property
+    def moodle(self):
+        return self._moodle
     
     @property
     def bastion_host(self):
