@@ -135,6 +135,10 @@ to all `attacker` machines in the lab:
     ...
 ```
 
+Optionally, the user can provide a set of parameters to be used in the playbooks. For example, these parameters can be flags to be uniquely configured for each instance. To do this, a `ansible/parameters` directory must be created and files with the .ndjson extension should be placed there, where each line of the file must be a JSON object containing the parameters.
+
+See [ansible](./ansible.md) for more information.
+
 ### Elastic Security artifacts
 
 Elastic Security configuration is done based on artifacts that are automatically imported into the Elasticsearch, Kibana and Fleet components. As part of the scenario specification, these artifacts must be provided. See [Elastic](./elastic.md) for more information.
@@ -162,33 +166,39 @@ The lab edition is a YAML file with the following options:
     will be added.
   + `student_prefix`: The prefix to use in the usernames for the
     students. An instance number is appended at the end. Optional,
-    default: `trainee`.
+    default: `trainee`. The instance number, padded with enough zeros
+    for the total number of instances in the scenario, is appended to
+    this prefix to generate student usernames (so that for 20
+    instances users will go from `trainee01` to `trainee20`)
   + `student_pubkey_dir`: A directory containing a subdirectory for
     each student, with SSH public keys. Optional, defaults to not
-    setting any public key in the users authorized_keys file.
-    For example, if three instances of a scenario are deployed and
-    student_prefix is trainee, then three subdirectories: trainee1, 
-    trainee2, and trianee3 must be created within the student_pubkey_dir directory.
-    Inside each subdirectory, files containing the public keys of the students corresponding
-    to each instance should be placed. In general, this directory should be organized as follows:
+    setting any public key in the users authorized_keys file. For
+    example, if 3 instances of a scenario are deployed and
+    student_prefix is trainee, then three subdirectories: `trainee1`,
+    `trainee2`, and `trainee3` must be created within the
+    `student_pubkey_dir` directory. Inside each subdirectory, files
+    containing the public keys of the students corresponding to each
+    instance should be placed. In general, this directory should be
+    organized as follows:
     ```
     <student_pubkey_dir>/
-            ├── <student_prefix>01/
+            ├── <student_prefix>1/
             │       ├── key1.pub
             │       │
-            │       └── keyN.pub
-            │        
-            └─ <student_prefix>NN/
+            │       └── keyM.pub
+            │      ...
+            └─ <student_prefix>N/
                     ├── key1.pub
                     │
-                    └── keyN.pub
+                    └── keyM.pub
     ```
   + `create_students_passwords`: Whether to create a pseudo-random
     password for the students. These passwords are printed on
     deployment and student-access execution. Optional, defaults to
     `false`. If the guacamole service is enabled then this option
     takes the value `true`.
-  + `random_seed`: Seed used for the random generation of parameters that are used to configure and parameterize the instances.
+  + `random_seed`: Seed used for the random generation of parameters
+    that are used to configure and parameterize the instances.
   + Three optional `elastic_settings`, `caldera_settings` and
     `guacamole_settings` sections with the same options as the scenario
     description. Options here take precedence on the scenario

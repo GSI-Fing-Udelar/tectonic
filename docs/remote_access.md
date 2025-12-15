@@ -79,14 +79,20 @@ Trainees authenticate on **entry points machines** using local users
 of the form `<student_prefix>N`, where `student_prefix` (`trainee` by
 default) is configured in the [lab edition
 file](./description.md#lab-edition-information), and `N` is the
-instance number (padded with enough zeros for the total number of
-instances in the scenario).
+instance number, padded with enough zeros for the total number of
+instances in the scenario (so that for 20 instances users will go from
+`trainee01` to `trainee20`).
 
 These users have maximum privileges (root/administrator). The
 trainee's authentication method will use either a public/private key
-or passwords as defined in the [lab edition
-file](./description.md#lab-edition-information). If passwords are
-used, they can be obtained with the `info` command.
+pair or passwords as defined in the [lab edition
+file](./description.md#lab-edition-information). 
+
+If passwords are used, they can be obtained with the `info` command.
+
+If ssh key pairs are used, a directory with the public key files for
+each trainee user should be created inside `student_pubkey_dir`. More
+than one public key can be added for each trainee.
 
 The available access types for these users are listed below. 
 

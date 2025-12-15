@@ -18,8 +18,6 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-import importlib.resources as tectonic_resources
-
 from tectonic.packer import Packer
 
 class PackerAWSException(Exception):
@@ -62,18 +60,3 @@ class PackerAWS(Packer):
         """
         super().create_service_image(services)
         self.client.delete_security_groups("Temporary group for Packer")
-      
-    def _get_service_machine_variables(self, service):
-        """
-        Return machines for creating services images.
-
-        Parameters:
-            service (ServiceDescription): services for which to create images.
-
-        Returns:
-            dict: machines variables.
-        """
-        result = super()._get_service_machine_variables(service)
-        result["disk"] = service.disk
-        result["instance_type"] = service.instance_type
-        return result

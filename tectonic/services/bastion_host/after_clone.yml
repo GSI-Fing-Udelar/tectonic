@@ -24,15 +24,15 @@
       ansible.builtin.stat:
         path: /etc/apache2/sites-available/tectonic.conf
       register: reverse_proxy
-    - name: End execution if reverse_proxy file exists
+    - name: End execution if reverse_proxy file exists or no need to configure reverse proxy
       ansible.builtin.meta: end_play
-      when: reverse_proxy.stat.exists
+      when: reverse_proxy.stat.exists or not (services.elastic.enable or services.caldera.enable or services.guacamole.enable)
       
 - name: Configure firewall (iptables)
   block:
     - name: Set Gateway IP
       ansible.builtin.set_fact:
-        gateway_ip: "{{ (guacamole.ip | split('.'))[0] }}.{{ (guacamole.ip | split('.'))[1] }}.{{ (guacamole.ip | split('.'))[2] }}.129"
+        gateway_ip: "{{ (services.bastion_host.ip | split('.'))[0] }}.{{ (services.bastion_host.ip | split('.'))[1] }}.{{ (services.bastion_host.ip | split('.'))[2] }}.129"
     - name: Configure firewall | Flush rules
       ansible.builtin.iptables:
         table: filter
@@ -57,9 +57,9 @@
         destination_port: "{{ item }}"
         jump: ACCEPT
       with_items:
-        - "{{ elastic.external_port }}"
-        - "{{ caldera.external_port }}"
-        - "{{ guacamole.external_port }}"
+        - "{{ services.elastic.external_port }}"
+        - "{{ services.caldera.external_port }}"
+        - "{{ services.guacamole.external_port }}"
     - name: Configure firewall | Allow related or established connections
       ansible.builtin.iptables:
         chain: INPUT
@@ -84,23 +84,23 @@
         policy: ACCEPT
     - name: Configure firewall | Save rules
       ansible.builtin.command: service netfilter-persistent save
-  when: platform == "libvirt" or platform == "docker"
+  when: config.platform in ["libvirt", "docker"]
 
 - name: Configure reverse proxy
   block:
     - name: Create directory for certificate
       ansible.builtin.file:
-        path: /etc/letsencrypt/live/{{ bastion_host.domain }}/
+        path: /etc/letsencrypt/live/{{ services.bastion_host.domain }}/
         state: directory
     - name: Create symbolic link
       ansible.builtin.file:
-        src: /etc/letsencrypt/live/{{ bastion_host.domain }}/
+        src: /etc/letsencrypt/live/{{ services.bastion_host.domain }}/
         dest: /etc/letsencrypt/live/active
         force: yes
         state: link
     - name: Create selfsigned certificate
       ansible.builtin.command:
-        cmd: openssl req -x509 -newkey rsa:4096 -keyout /etc/letsencrypt/live/{{ bastion_host.domain }}/privkey.pem -out /etc/letsencrypt/live/{{ bastion_host.domain }}/fullchain.pem -sha256 -days 3650 -nodes -subj "/C=UY/ST=Montevideo/L=Montevideo/O=FING/OU=GSI/CN={{ bastion_host.domain }}"
+        cmd: openssl req -x509 -newkey rsa:4096 -keyout /etc/letsencrypt/live/{{ services.bastion_host.domain }}/privkey.pem -out /etc/letsencrypt/live/{{ services.bastion_host.domain }}/fullchain.pem -sha256 -days 3650 -nodes -subj "/C=UY/ST=Montevideo/L=Montevideo/O=FING/OU=GSI/CN={{ services.bastion_host.domain }}"
     - name: Disable default vhost
       ansible.builtin.command:
         cmd: a2dissite 000-default
@@ -108,13 +108,9 @@
       ansible.builtin.command:
         cmd: a2enmod proxy proxy_http ssl rewrite proxy_wstunnel headers
     - name: Adjust apache ports.conf
-      ansible.builtin.copy:
+      ansible.builtin.template:
+        src: templates/ports.j2
         dest: /etc/apache2/ports.conf
-        content: |
-          Listen 80
-          Listen {{ guacamole.external_port }}
-          Listen {{ elastic.external_port }}
-          Listen {{ caldera.external_port }}
     - name: Copy tectonic virtual host
       ansible.builtin.template:
         src: templates/tectonic.j2
@@ -135,4 +131,4 @@
         name: apache2
         state: started
         enabled: true
-  when: bastion_host.services_enable
+  when: services.elastic.enable or services.caldera.enable or services.guacamole.enable 

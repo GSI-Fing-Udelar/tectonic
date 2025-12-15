@@ -29,7 +29,7 @@
     - name: Set hostname
       ansible.builtin.hostname:
         name: caldera
-      when: platform != "docker"
+      when: config.platform != "docker"
 
     - name: Install node repo
       ansible.builtin.shell: "curl -sL https://rpm.nodesource.com/setup_18.x | bash"
@@ -56,7 +56,7 @@
       ansible.builtin.git:
         repo: https://github.com/mitre/caldera.git
         dest: /opt/caldera/
-        version: "{{ caldera_version }}"
+        version: "{{ services.caldera.version }}"
         recursive: true
 
     - name: Download Caldera OT plugins
@@ -107,4 +107,4 @@
       ansible.posix.selinux:
         policy: targeted
         state: permissive
-      when: platform != "docker"
+      when: config.platform != "docker"
