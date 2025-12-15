@@ -39,23 +39,23 @@
           name: tar
       - name: Linux - Download Elastic Agent
         ansible.builtin.unarchive:
-          src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ elastic_version }}-linux-{{ architecture }}.tar.gz"
+          src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ services['elastic']['version'] }}-linux-{{ architecture }}.tar.gz"
           dest: /opt
           remote_src: yes
       - name: Linux - Rename Elastic agent directory
-        ansible.builtin.command: "mv /opt/elastic-agent-{{ elastic_version }}-linux-{{ architecture }}/ /opt/elastic-agent/"
+        ansible.builtin.command: "mv /opt/elastic-agent-{{ services['elastic']['version'] }}-linux-{{ architecture }}/ /opt/elastic-agent/"
     when: ansible_facts['os_family'] != "Windows"
   - name: Download agent on Windows
     block:
       - name: Windows - Download Elastic agent
         ansible.windows.win_get_url:
-          url: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ elastic_version }}-windows-x86_64.zip"
+          url: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ services['elastic']['version'] }}-windows-x86_64.zip"
           dest: C:\
       - name: Windows - Unzip Elastic agent files 
         ansible.builtin.win_unzip:
-          src: "C:\\elastic-agent{{ elastic_version }}-windows-x86_64.zip"
+          src: "C:\\elastic-agent{{ services['elastic']['version'] }}-windows-x86_64.zip"
           dest: C:\
           delete_archive: yes
       - name: Windows - Rename Elastic agent directory
-        ansible.builtin.win_command: "Rename-Item -path C:\\elastic-agent{{ elastic_version }}-windows-x86_64 -NewName elastic-agent"
+        ansible.builtin.win_command: "Rename-Item -path C:\\elastic-agent{{ services['elastic']['version'] }}-windows-x86_64 -NewName elastic-agent"
     when: ansible_facts['os_family'] == "Windows"

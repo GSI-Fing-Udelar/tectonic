@@ -24,10 +24,10 @@ class TectonicConfigGuacamole(object):
     """Class to store Tectonic guacamole configuration."""
 
     def __init__(self):
-        self._version = "1.6.0"
-        self._brute_force_protection_enabled = False
-        self._internal_port = 10443
-        self._external_port = 443
+        self.version = "1.6.0"
+        self.brute_force_protection_enabled = False
+        self.internal_port = 10443
+        self.external_port = 443
 
     #----------- Getters ----------
     @property
@@ -70,3 +70,11 @@ class TectonicConfigGuacamole(object):
     def external_port(self, value):
         validate.number("Guacamole external port", value)
         self._external_port = value
+
+    def to_dict(self):
+        return {
+            "version": self.version,
+            "brute_force_protection_enabled": self.brute_force_protection_enabled,
+            "internal_port": self.internal_port,
+            "external_port": self.external_port,
+        }

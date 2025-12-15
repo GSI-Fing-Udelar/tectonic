@@ -1,6 +1,6 @@
 <user-mapping>
     <authorize username="{{ trainer.username }}" password="{{ trainer.password | md5 }}" encoding="md5">
-{% for machine_name, machine_data in machines.items() %}
+{% for machine_name, machine_data in instances.items() %}
 {% for access_protocol_name, access_protocol_data in machine_data.access_protocols.items() %}
         <connection name="{{ machine_name }} ({{ access_protocol_name }})">
             <protocol>{{ access_protocol_name }}</protocol>
@@ -24,7 +24,7 @@
 
 {% for user_name, user_data in users.items() %}
     <authorize username="{{ user_name }}" password="{{ user_data.password | md5 }}" encoding="md5">
-{% for machine_name, machine_data in machines.items() %}
+{% for machine_name, machine_data in instances.items() %}
 {% if machine_data.entry_point and user_data.instance == machine_data.instance %}
 {% for access_protocol_name, access_protocol_data in machine_data.access_protocols.items() %}
         <connection name="{{ machine_name }} ({{ access_protocol_name }})">

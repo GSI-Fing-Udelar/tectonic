@@ -214,9 +214,9 @@ def test_config_caldera_latest(test_data_path):
 def test_config_elastic_latest(test_data_path):
     filename = Path(test_data_path).joinpath("config", "tectonic1.ini")
     config = TectonicConfig.load(filename)
-    config.elastic.elastic_stack_version = 'latest'
+    config.elastic.version = 'latest'
 
-    assert re.match(r"\d+.\d+.\d+", config.elastic.elastic_stack_version)
+    assert re.match(r"\d+.\d+.\d+", config.elastic.version)
 
 def test_config_guacamole_latest(test_data_path):
     filename = Path(test_data_path).joinpath("config", "tectonic1.ini")
