@@ -1,0 +1,103 @@
+# DEPENDENCIES INSTALLED:
+#   Python libraries:
+#     - faker: Realistic fake data generation
+#     - Pillow: Image generation (JPG, PNG)
+#     - python-docx: DOCX document generation
+#     - openpyxl: XLSX spreadsheet generation
+#     - cryptography: AES encryption for ransomware simulation
+#     - scapy: Network packet generation (PCAP files)
+#
+#   System packages (build dependencies):
+#     - python3-dev / python3-devel: Python development headers
+#     - build-essential / gcc: C compiler for Python packages with C extensions
+#     - libssl-dev / openssl-devel: SSL library for cryptography
+#     - libffi-dev / libffi-devel: Foreign function interface for cryptography
+#     - pkg-config: Package configuration tool
+#
+#   System tools:
+#     - wireshark-common: Provides mergecap tool for PCAP merging
+#     - pandoc: Document converter for PDF generation
+# ==============================================================================
+
+- name: "Update package cache (Debian)"
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: "Update package cache (RedHat/Fedora)"
+  ansible.builtin.dnf:
+    update_cache: yes
+  when: ansible_facts['os_family'] == 'RedHat' or ansible_facts['os_family'] == 'Fedora'
+
+- name: "Install system build dependencies and tools (Debian)"
+  ansible.builtin.apt:
+    name:
+      - python3-dev
+      - python3-pip
+      - build-essential
+      - libssl-dev
+      - libffi-dev
+      - pkg-config
+      - wireshark-common
+      - pandoc
+    state: present
+    install_recommends: no
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: "Install system build dependencies and tools (RedHat/Fedora)"
+  ansible.builtin.dnf:
+    name:
+      - python3-devel
+      - python3-pip
+      - gcc
+      - openssl-devel
+      - libffi-devel
+      - pkgconfig
+      - wireshark
+      - pandoc
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat' or ansible_facts['os_family'] == 'Fedora'
+
+- name: "Upgrade pip to latest version"
+  ansible.builtin.command: "{{ ansible_python_interpreter | default('python3') }} -m pip install --upgrade pip"
+  args:
+    creates: /tmp/pip_upgrade_done
+  register: pip_upgrade
+  changed_when: pip_upgrade.rc == 0
+
+- name: "Install Python evidence generation dependencies"
+  ansible.builtin.pip:
+    name:
+      - faker
+      - Pillow
+      - python-docx
+      - openpyxl
+      - cryptography
+      - scapy
+    state: present
+    executable: "{{ ansible_python_interpreter | default('python3') }} -m pip"
+
+- name: "Verify Python dependencies installation"
+  ansible.builtin.command: '{{ ansible_python_interpreter | default(''python3'') }} -c ''import faker, PIL, docx, openpyxl, cryptography, scapy; print("All dependencies installed successfully")'''
+  changed_when: false
+  register: verify_deps
+  failed_when: verify_deps.rc != 0
+
+- name: "Verify system tools installation"
+  ansible.builtin.command: "which mergecap pandoc"
+  changed_when: false
+  register: verify_tools
+  failed_when: verify_tools.rc != 0
+
+- name: "Display installation summary"
+  ansible.builtin.debug:
+    msg:
+      - "=============================================="
+      - "  EVIDENCE GENERATION DEPENDENCIES INSTALLED"
+      - "=============================================="
+      - "✅ Python libraries: faker, Pillow, python-docx, openpyxl, cryptography, scapy"
+      - "✅ System build tools: gcc, python3-dev, libssl-dev, libffi-dev"
+      - "✅ System tools: mergecap (wireshark-common), pandoc"
+      - "✅ Ready for evidence generation tasks in after_clone phase"
+      - "=============================================="

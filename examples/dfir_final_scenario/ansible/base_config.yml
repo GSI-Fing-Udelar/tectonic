@@ -12,19 +12,22 @@
 #
 # PURPOSE:
 #   Install minimal system packages needed for the simulation.
-#   Python dependencies are auto-installed by Ansible modules when needed.
+#   IMPORTANT: If you plan to use evidence generation tasks in after_clone.yml,
+#   you MUST include the install_evidence_generation_deps.yml playbook to
+#   install Python dependencies during base_config (when internet is available).
 #
 # INSTALLED COMPONENTS:
 #   1. Python environment (python3, pip)
 #   2. Network tools (tcpdump for PCAP analysis)
 #   3. Filesystem tools (losetup for disk image mounting)
+#   4. Evidence generation Python dependencies (via included playbook)
 # ==============================================================================
 
 - name: "Install DFIR Scenario Dependencies - Base Image"
   hosts: victim
   gather_facts: yes
   become: yes
-  
+
   tasks:
     - name: "Display base configuration message"
       debug:
@@ -32,10 +35,10 @@
           - "=============================================="
           - "  CONFIGURING BASE IMAGE FOR DFIR SCENARIO"
           - "=============================================="
-          - "Installing minimal dependencies"
-          - "Python modules auto-install when needed"
+          - "Installing all dependencies (including Python libraries)"
+          - "Dependencies must be installed here (internet available)"
           - "=============================================="
-    
+
     # =========================================================================
     # STEP 1: Update package cache
     # =========================================================================
@@ -44,7 +47,7 @@
         update_cache: yes
         cache_valid_time: 3600
       when: ansible_os_family == "Debian"
-    
+
     # =========================================================================
     # STEP 2: Install minimal system packages
     # =========================================================================
@@ -56,24 +59,35 @@
           - python3-pip
           - python3-dev
           - python3-venv
-          
+
           # Network analysis tools
-          - tcpdump           # PCAP capture and analysis
-          - tshark            # Command-line Wireshark
-          
+          - tcpdump # PCAP capture and analysis
+          - tshark # Command-line Wireshark
+
           # Filesystem tools
-          - e2fsprogs         # ext4 filesystem utilities (mkfs.ext4)
-          - util-linux        # losetup for loop devices
-          
+          - e2fsprogs # ext4 filesystem utilities (mkfs.ext4)
+          - util-linux # losetup for loop devices
+
           # Build tools (for Python packages with C extensions)
           - build-essential
           - libssl-dev
           - libffi-dev
-          
+
         state: present
         install_recommends: no
       when: ansible_os_family == "Debian"
-    
+
+    # =========================================================================
+    # STEP 3: Install evidence generation Python dependencies
+    # =========================================================================
+    # CRITICAL: This must be done in base_config (when internet is available)
+    # because after_clone runs in an isolated network without internet.
+    # The evidence generation modules (generate_file, generate_wannacry_attack,
+    # execute_ransomware_profile, etc.) require these Python libraries.
+    # =========================================================================
+    - name: "Install evidence generation dependencies"
+      ansible.builtin.include_tasks: ../../../tectonic/ansible/playbooks/install_evidence_generation_deps.yml
+
     - name: "Display installation summary"
       debug:
         msg:
@@ -84,9 +98,7 @@
           - "✅ System packages installed"
           - "✅ Python environment ready"
           - "✅ Filesystem tools configured"
-          - ""
-          - "Note: Python dependencies (scapy, cryptography, faker, etc.)"
-          - "will be auto-installed by Ansible modules when needed."
+          - "✅ Evidence generation Python dependencies installed"
           - ""
           - "🎯 Next Phase: Instance cloning and unified attack simulation"
           - "=============================================="
@@ -98,14 +110,14 @@
   hosts: analyst
   gather_facts: yes
   become: yes
-  
+
   tasks:
     - name: "Update apt cache"
       apt:
         update_cache: yes
         cache_valid_time: 3600
       when: ansible_os_family == "Debian"
-    
+
     - name: "Install network forensic tools"
       apt:
         name:
@@ -118,7 +130,7 @@
           - netcat
         state: present
       when: ansible_os_family == "Debian"
-    
+
     - name: "Display analyst workstation configuration complete"
       debug:
         msg:

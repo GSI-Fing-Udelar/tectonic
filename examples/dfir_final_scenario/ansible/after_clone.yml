@@ -35,47 +35,46 @@
 # NOTES:
 #   - No internet connection available (after_clone runs in isolated network)
 #   - Custom modules loaded from tectonic/ansible/library/ automatically
-#   - Python dependencies auto-install when modules execute
 # ==============================================================================
 
 - name: "Unified WannaCry Attack Simulation (Network + Filesystem)"
   hosts: victim
   gather_facts: yes
   become: yes
-  
+
   # Variables for simulation
   vars:
     # ========================================================================
     # NETWORK SIMULATION PARAMETERS
     # ========================================================================
-    victim_ip: "192.168.1.100"              # Target machine IP address
-    attacker_ip: "203.0.113.50"             # Attacker's public IP address
-    malicious_server_ip: "198.51.100.25"    # Malware distribution server IP
-    pcap_output: "/tmp/wannacry_unified_attack.pcap"  # Output PCAP file path
-    
+    victim_ip: "192.168.1.100" # Target machine IP address
+    attacker_ip: "203.0.113.50" # Attacker's public IP address
+    malicious_server_ip: "198.51.100.25" # Malware distribution server IP
+    pcap_output: "/tmp/wannacry_unified_attack.pcap" # Output PCAP file path
+
     # ========================================================================
     # FILESYSTEM SIMULATION PARAMETERS
     # ========================================================================
-    file_count: 150                         # Number of victim files to generate
-    target_directory: "/srv/samba/share"    # Target directory (inside disk image)
-    faker_seed: 42                          # Seed for reproducible fake data
-    force_rerun: true                       # Ignore idempotency, always re-run
-    deletion_ratio: 25                      # Percentage of files to delete (25%)
-    
+    file_count: 150 # Number of victim files to generate
+    target_directory: "/srv/samba/share" # Target directory (inside disk image)
+    faker_seed: 42 # Seed for reproducible fake data
+    force_rerun: true # Ignore idempotency, always re-run
+    deletion_ratio: 25 # Percentage of files to delete (25%)
+
     # ========================================================================
     # WANNACRY PROFILE (Layer 3 orchestration)
     # ========================================================================
-    profile_name: "wannacry"                # Profile name for ransomware behavior
+    profile_name: "wannacry" # Profile name for ransomware behavior
 
     # ========================================================================
     # FORENSIC DISK IMAGE PARAMETERS
     # ========================================================================
-    image_file: "/tmp/final_forensic.img"  # Disk image file path
-    image_size_mb: 1024                          # Disk image size (1GB)
-    mount_point: "/mnt/simple_forensic"          # Mount point for image
+    image_file: "/tmp/final_forensic.img" # Disk image file path
+    image_size_mb: 1024 # Disk image size (1GB)
+    mount_point: "/mnt/simple_forensic" # Mount point for image
     case_id: "TEST_{{ ansible_date_time.epoch }}" # Case identifier with timestamp
-    loop_device: ""                              # Loop device (auto-detected)
-  
+    loop_device: "" # Loop device (auto-detected)
+
   tasks:
     # ========================================================================
     # PHASE 0: Display simulation start
@@ -96,19 +95,19 @@
           - "Phase 3: Ransomware simulation"
           - "Phase 4: Flag generation"
           - "=============================================="
-    
+
     # ========================================================================
     # PHASE 1: NETWORK ATTACK SIMULATION
     # ========================================================================
     - name: "[PHASE 1] ═══════════════════════════════════════════"
       debug:
         msg: "NETWORK ATTACK SIMULATION"
-    
+
     - name: "[NETWORK] Clean previous PCAP output"
       file:
         path: "{{ pcap_output }}"
         state: absent
-    
+
     - name: "[NETWORK] Generate WannaCry attack traffic (PCAP)"
       generate_wannacry_attack:
         victim_ip: "{{ victim_ip }}"
@@ -116,7 +115,7 @@
         ip_malicious_server: "{{ malicious_server_ip }}"
         output_path: "{{ pcap_output }}"
       register: network_attack
-    
+
     - name: "[NETWORK] Display attack summary"
       debug:
         msg:
@@ -124,23 +123,22 @@
           - "PCAP file: {{ pcap_output }}"
           - "Total packets: {{ network_attack.total_packets | default('N/A') }}"
           - "Phases: Reconnaissance → Malware Download → C2"
-    
+
     # ========================================================================
     # PHASE 2: FILESYSTEM PREPARATION
     # ========================================================================
     - name: "[PHASE 2] ═══════════════════════════════════════════"
       debug:
         msg: "FILESYSTEM PREPARATION"
-    
+
     - name: "[DISK] Clean previous disk image"
       file:
         path: "{{ image_file }}"
         state: absent
-    
+
     - name: "[DISK] Create disk image ({{ image_size_mb }}MB)"
       command: "dd if=/dev/zero of={{ image_file }} bs=1M count={{ image_size_mb }}"
 
-    
     - name: "[DISK] Format image as ext4 filesystem"
       command: "mkfs.ext4 -F {{ image_file }}"
 
@@ -153,24 +151,24 @@
         exit 0
       ignore_errors: yes
       changed_when: false
-    
+
     - name: "[DISK] Attach image to loop device"
       command: "losetup -fP {{ image_file }}"
-    
+
     - name: "[DISK] Detect loop device path"
       shell: "losetup -j {{ image_file }} | cut -d: -f1"
       register: loop_detect
       changed_when: false
-    
+
     - name: "[DISK] Save loop device path"
       set_fact:
         loop_device: "{{ loop_detect.stdout }}"
-    
+
     - name: "[DISK] Create mount point directory"
       file:
         path: "{{ mount_point }}"
         state: directory
-    
+
     - name: "[DISK] Mount filesystem to mount point"
       mount:
         path: "{{ mount_point }}"
@@ -187,7 +185,7 @@
       file:
         path: "{{ mount_point }}/srv/samba/share"
         state: directory
-        mode: '0755'
+        mode: "0755"
 
     # ========================================================================
     # PHASE 4: WANNACRY RANSOMWARE SIMULATION (Layer 3 Profile)
@@ -227,7 +225,7 @@
         path: "{{ mount_point }}/srv/samba/share/flagsinha.txt"
         extension: txt
         content: "Encontraste la flag, sos el mejor dfir user del pais"
-        
+
     - name: "created archive"
       generate_file:
         path: "/tmp/orco.txt"
@@ -238,11 +236,11 @@
       encrypt_files_aes:
         files:
           - "{{ mount_point }}/srv/samba/share/flagsinha.txt"
-        key: "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"  # 32 bytes key for AES-256
+        key: "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF" # 32 bytes key for AES-256
         encrypted_extension: "WNCRY"
         keep_original: false
       register: encrypt_flag_result
-    
+
     - name: "[DISK] Sync filesystem before unmounting (flush buffers)"
       command: sync
       changed_when: false
@@ -288,7 +286,7 @@
   hosts: analyst
   gather_facts: yes
   become: yes
-  
+
   tasks:
     - name: "Display analyst ready message"
       debug:
