@@ -10,7 +10,7 @@
     - name: Set hostname
       ansible.builtin.hostname:
         name: moodle
-      when: platform != "docker"
+      when: config.platform != "docker"
 
     - name: Update apt cache
       ansible.builtin.apt:
@@ -80,7 +80,7 @@
           ansible.builtin.git:
             repo: "https://github.com/moodle/moodle.git"
             dest: /var/www/html/moodle
-            version: "{{ moodle_version }}"
+            version: "{{ services.moodle.version }}"
             depth: 1
             update: yes
             force: yes

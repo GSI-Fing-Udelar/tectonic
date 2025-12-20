@@ -852,7 +852,6 @@ class MoodleDescription(ServiceDescription):
         self._generated_users = []
         
         course_ids = self._generate_course_commands()
-        group_ids = self._generate_group_commands()
         
         for user in self.users:
             self._add_user_command(user, course_ids if self.auto_enroll_trainees else [])
@@ -946,6 +945,25 @@ class MoodleDescription(ServiceDescription):
         for cid in course_ids:
             self._moosh_commands.append(f"course-enrol -r {role} {cid} {username}")
 
+    def to_dict(self):
+        if self.enable_trainees:
+            trainees = self._description.generate_student_access_credentials()
+        self.generate_moosh_commands(trainees)
+        scorm_packages = set()
+        for course in self.courses:
+            if "scorm_package" in course:
+                scorm_packages.add(course["scorm_package"])
+            if "activities" in course:
+                for activity in course["activities"]:
+                    if "scorm_package" in activity:
+                        scorm_packages.add(activity["scorm_package"])
+
+        result = super().to_dict()
+        result["courses"] = self.courses
+        result["moosh_commands"] = self.moosh_commands
+        result["scorm_packages"] = list(scorm_packages)
+        return result | self._description.config.moodle.to_dict()
+
 class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
         super().__init__(description, "bastion_host", "ubuntu22", True)
@@ -956,6 +974,8 @@ class BastionHostDescription(ServiceDescription):
             self.ports["elastic"] = description.config.elastic.external_port
         if description.caldera.enable:
             self.ports["caldera"] = description.config.caldera.external_port
+        if description.moodle.enable:
+            self.ports["moodle"] = description.config.moodle.external_port
 
     @property
     def instance_type(self):
@@ -1622,6 +1642,7 @@ class Description:
         services["packetbeat"] = self.packetbeat.to_dict()
         services["caldera"] = self.caldera.to_dict()
         services["guacamole"] = self.guacamole.to_dict()
+        services["moodle"] = self.moodle.to_dict()
         services["bastion_host"] = self.bastion_host.to_dict()
         services["teacher_access_host"] = self.teacher_access_host.to_dict()
 

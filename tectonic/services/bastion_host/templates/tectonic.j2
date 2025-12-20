@@ -73,9 +73,9 @@
 </VirtualHost>
 {% endif %}
 
-{% if moodle.enable %}
-<VirtualHost *:{{ moodle.external_port }}>
-    ServerName {{ bastion_host.domain }}
+{% if services.moodle.enable %}
+<VirtualHost *:{{ services.moodle.external_port }}>
+    ServerName {{ services.bastion_host.domain }}
 
     ErrorLog ${APACHE_LOG_DIR}/moodle_error.log
     CustomLog ${APACHE_LOG_DIR}/moodle_access.log combined
@@ -91,7 +91,7 @@
     SSLProxyCheckPeerExpire off
 
     ProxyPreserveHost On
-    ProxyPass "/" "https://{{ moodle.ip }}:{{ moodle.internal_port }}/"
-    ProxyPassReverse "/" "https://{{ moodle.ip }}:{{ moodle.internal_port }}/"
+    ProxyPass "/" "https://{{ services.moodle.ip }}:{{ services.moodle.internal_port }}/"
+    ProxyPassReverse "/" "https://{{ services.moodle.ip }}:{{ services.moodle.internal_port }}/"
 </VirtualHost>
 {% endif %}

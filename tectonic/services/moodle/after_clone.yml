@@ -17,8 +17,8 @@
   ansible.builtin.lineinfile:
     dest: /etc/hosts
     insertafter: EOF
-    line: "{{ moodle.ip }} {{ ansible_facts['fqdn'] }}"
-  when: platform != "docker"
+    line: "{{ services.moodle.ip }} {{ ansible_facts['fqdn'] }}"
+  when: config.platform != "docker"
 
 - name: Generate SSL certificates
   block:
@@ -42,7 +42,7 @@
         organizational_unit_name: Moodle
         subject_alt_name:
           - "DNS:{{ ansible_facts['fqdn'] }}"
-          - "DNS:{{ moodle.ip }}"
+          - "DNS:{{ services.moodle.ip }}"
           - "DNS:127.0.0.1"
       register: moodle_csr
     - name: Create self-signed certificate
@@ -121,7 +121,7 @@
   block:
     - name: Set wwwroot host
       ansible.builtin.set_fact:
-        moodle_host: "{{ '127.0.0.1' if platform == 'docker' else (bastion_host.ip if bastion_host.enable else moodle.ip) }}"
+        moodle_host: "{{ '127.0.0.1' if config.platform == 'docker' else (services.bastion_host.ip if config.platform == 'libvirt' else services.bastion_host.domain) }}"
     - name: Remove existing config.php
       ansible.builtin.file:
         path: /var/www/html/moodle/config.php
@@ -133,18 +133,18 @@
           --non-interactive
           --agree-license
           --lang=en
-          --wwwroot=https://{{ moodle_host }}:{{ moodle.external_port }}
+          --wwwroot=https://{{ moodle_host }}:{{ services.moodle.external_port }}
           --dataroot=/var/moodledata
           --dbtype=mysqli
           --dbhost=localhost
           --dbname=moodle
           --dbuser=moodle
           --dbpass={{ moodle_db_password }}
-          --fullname="{{ moodle.site_fullname }}"
-          --shortname="{{ moodle.site_shortname }}"
+          --fullname="{{ services.moodle.site_fullname }}"
+          --shortname="{{ services.moodle.site_shortname }}"
           --adminuser=admin
           --adminpass={{ moodle_admin_password }}
-          --adminemail={{ moodle.admin_email }}
+          --adminemail={{ services.moodle.admin_email }}
       become: true
       become_user: www-data
       register: moodle_install_result
@@ -176,7 +176,7 @@
   block:
     - name: Set Gateway IP
       ansible.builtin.set_fact:
-        gateway_ip: "{{ (moodle.ip | split('.'))[0] }}.{{ (moodle.ip | split('.'))[1] }}.{{ (moodle.ip | split('.'))[2] }}.129"
+        gateway_ip: "{{ (services.moodle.ip | split('.'))[0] }}.{{ (services.moodle.ip | split('.'))[1] }}.{{ (services.moodle.ip | split('.'))[2] }}.129"
 
     - name: Configure firewall | Flush existing rules
       ansible.builtin.iptables:
@@ -200,8 +200,8 @@
         - { proto: "tcp", port: 22, src: "{{ gateway_ip }}" }
         - {
             proto: "tcp",
-            port: "{{ moodle.internal_port }}",
-            src: "{{ bastion_host.ip }}",
+            port: "{{ services.moodle.internal_port }}",
+            src: "{{ services.bastion_host.ip }}",
           }
 
     - name: Configure firewall | Set default policies
@@ -215,18 +215,18 @@
 
     - name: Configure firewall | Save rules
       ansible.builtin.command: service netfilter-persistent save
-  when: platform == "libvirt" or platform == "docker"
+  when: config.platform in ["libvirt", "docker"]
 
 - name: Provision courses
   block:
     - name: Copy SCORM packages
       ansible.builtin.copy:
-        src: "{{ moodle.description_path }}/{{ item }}"
+        src: "{{ scenario_dir }}/{{ item }}"
         dest: "/var/www/html/moodle/{{ item | basename }}"
         owner: www-data
         group: www-data
         mode: "0644"
-      loop: "{{ moodle.scorm_packages | default([]) }}"
+      loop: "{{ services.moodle.scorm_packages | default([]) }}"
       register: scorm_copy_results
       failed_when:
         - scorm_copy_results is failed
@@ -234,13 +234,13 @@
     - name: Execute Moosh commands
       ansible.builtin.shell: |
         sudo -u www-data php /opt/moosh/moosh.php -n -p /var/www/html/moodle {{ item }}
-      loop: "{{ moodle.moosh_commands | default([]) }}"
+      loop: "{{ services.moodle.moosh_commands | default([]) }}"
       register: moosh_results
       failed_when:
         - moosh_results.rc != 0
         - "'already exists' not in (moosh_results.stderr | default(''))"
         - "'already exists' not in (moosh_results.stdout | default(''))"
-  when: (moodle.courses is defined and moodle.courses | length > 0) or (moodle.moosh_commands is defined and moodle.moosh_commands | length > 0)
+  when: (services.moodle.courses is defined and services.moodle.courses | length > 0) or (services.moodle.moosh_commands is defined and services.moodle.moosh_commands | length > 0)
 
 - name: Write credentials file
   ansible.builtin.copy:

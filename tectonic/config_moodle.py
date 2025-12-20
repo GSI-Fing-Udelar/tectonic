@@ -4,12 +4,12 @@ class TectonicConfigMoodle(object):
     """Class to store Tectonic Moodle configuration."""
 
     def __init__(self):
-        self._version = "MOODLE_405_STABLE"
-        self._internal_port = 443
-        self._external_port = 8080
-        self._site_fullname = "Tectonic Moodle"
-        self._site_shortname = "Tectonic"
-        self._admin_email = "admin@tectonic.local"
+        self.version = "5.1.1"
+        self.internal_port = 443
+        self.external_port = 8080
+        self.site_fullname = "Tectonic Moodle"
+        self.site_shortname = "Tectonic"
+        self.admin_email = "admin@tectonic.local"
 
     @property
     def version(self):
@@ -37,6 +37,11 @@ class TectonicConfigMoodle(object):
     
     @version.setter
     def version(self, value):
+        if value != 'latest':
+            validate.version_number("moodle version", value)
+            value = f"v{value}"
+        if value == "latest":
+            value = "main"
         self._version = value
 
     @internal_port.setter
@@ -60,3 +65,13 @@ class TectonicConfigMoodle(object):
     @admin_email.setter
     def admin_email(self, value):
         self._admin_email = value
+
+    def to_dict(self):
+        return {
+            "version": self.version,
+            "internal_port": self.internal_port,
+            "external_port": self.external_port,
+            "site_fullname": self.site_fullname,
+            "site_shortname": self.site_shortname,
+            "admin_email": self.admin_email,
+        }
