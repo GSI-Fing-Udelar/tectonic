@@ -16,3 +16,6 @@ caldera_settings:
 
 guacamole_settings:
   enable: no
+
+moodle_settings:
+  enable: no

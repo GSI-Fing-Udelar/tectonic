@@ -173,7 +173,7 @@ def test_load_config(test_data_path):
 
     default_tectonic_config = TectonicConfig(parser['config']['lab_repo_uri'])
 
-    for section in ["config", "ansible", "aws", "libvirt", "docker", "elastic", "caldera", "guacamole"]:
+    for section in ["config", "ansible", "aws", "libvirt", "docker", "elastic", "caldera", "guacamole", "moodle", "bastion_host"]:
         if section == "config":
             config_obj = config
             default_config = default_tectonic_config
@@ -190,6 +190,8 @@ def test_load_config(test_data_path):
                 # Paths are made absolute, so check that they are changed accordingly.
                 if key in ["lab_repo_uri", "ssh_public_key_file"]:
                     assert str(getattr(config_obj, key)) == absolute_path(config_parser[key], base_dir=config.tectonic_dir)
+                elif key == "version" and section == "moodle":
+                    assert getattr(config_obj, key) == f"v{config_parser[key]}"
                 else:
                     assert_attr_eq(config_obj, config_parser, key)
             else:
@@ -210,6 +212,12 @@ def test_config_caldera_latest(test_data_path):
 
     config.caldera.version = 'master'
     assert config.caldera.version == 'master'
+
+    config.guacamole.version = 'latest'
+    assert config.guacamole.version == '1.6.0'
+
+    config.moodle.version = 'latest'
+    assert config.moodle.version == 'main'
 
 def test_config_elastic_latest(test_data_path):
     filename = Path(test_data_path).joinpath("config", "tectonic1.ini")

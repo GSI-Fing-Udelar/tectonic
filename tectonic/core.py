@@ -470,7 +470,7 @@ class Core:
         Return:
             dic: the password for each user.
         """
-        if self.description.create_students_passwords or self.description.guacamole.enable:
+        if self.description.create_students_passwords:
             credentials = self.description.generate_student_access_credentials()
             return {username: user['password'] for username, user in credentials.items()}
         else:
