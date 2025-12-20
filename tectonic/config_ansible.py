@@ -77,3 +77,9 @@ class TectonicConfigAnsible(object):
     def timeout(self, value):
         validate.number("timeout", value, min_value=1)
         self._timeout = value
+
+    def to_dict(self):
+        return {
+            "ssh_common_args": self.ssh_common_args,
+            "keep_logs": self.keep_logs,
+        }

@@ -65,7 +65,7 @@
 
     - name: Download guacamole
       ansible.builtin.unarchive:
-        src: "https://downloads.apache.org/guacamole/{{ guacamole_version }}/source/guacamole-server-{{ guacamole_version }}.tar.gz"
+        src: "https://downloads.apache.org/guacamole/{{ services.guacamole.version }}/source/guacamole-server-{{ services.guacamole.version }}.tar.gz"
         dest: /root/
         remote_src: yes
 
@@ -74,19 +74,19 @@
         - name: Build guacamole | Configure
           ansible.builtin.command: ./configure --with-systemd-dir=/etc/systemd/system/
           args:
-            chdir: /root/guacamole-server-{{ guacamole_version }}
+            chdir: /root/guacamole-server-{{ services.guacamole.version }}
         - name: Build guacamole | Make
           ansible.builtin.command: make
           args:
-            chdir: /root/guacamole-server-{{ guacamole_version }}
+            chdir: /root/guacamole-server-{{ services.guacamole.version }}
         - name: Build guacamole | Make install
           ansible.builtin.command: make install
           args:
-            chdir: /root/guacamole-server-{{ guacamole_version }}
+            chdir: /root/guacamole-server-{{ services.guacamole.version }}
         - name: Build guacamole | ldconfig
           ansible.builtin.command: ldconfig
           args:
-            chdir: /root/guacamole-server-{{ guacamole_version }}
+            chdir: /root/guacamole-server-{{ services.guacamole.version }}
 
     - name: Create Guacamole user
       block:
@@ -110,7 +110,7 @@
 
     - name: Download guacamole webapp
       ansible.builtin.get_url:
-        url: "https://downloads.apache.org/guacamole/{{ guacamole_version }}/binary/guacamole-{{ guacamole_version }}.war"
+        url: "https://downloads.apache.org/guacamole/{{ services.guacamole.version }}/binary/guacamole-{{ services.guacamole.version }}.war"
         dest: /var/lib/tomcat9/webapps/ROOT.war
     - name: Configure guacamole
       block:
@@ -147,7 +147,7 @@
             mode: '0755'
         - name: Install brute force protection | Download extension
           ansible.builtin.unarchive:
-            src: "https://apache.org/dyn/closer.lua/guacamole/{{ guacamole_version }}/binary/guacamole-auth-ban-{{ guacamole_version }}.tar.gz?action=download"
+            src: "https://apache.org/dyn/closer.lua/guacamole/{{ services.guacamole.version }}/binary/guacamole-auth-ban-{{ services.guacamole.version }}.tar.gz?action=download"
             dest: /root
             remote_src: yes
 
@@ -174,12 +174,12 @@
             remote_src: yes
         - name: Configure database | Download extension
           ansible.builtin.unarchive:
-            src: "https://apache.org/dyn/closer.lua/guacamole/{{ guacamole_version }}/binary/guacamole-auth-jdbc-{{ guacamole_version }}.tar.gz?action=download"
+            src: "https://apache.org/dyn/closer.lua/guacamole/{{ services.guacamole.version }}/binary/guacamole-auth-jdbc-{{ services.guacamole.version }}.tar.gz?action=download"
             dest: /root
             remote_src: yes
         - name: Configure database | Copy database extension
           ansible.builtin.copy:
-            src: "/root/guacamole-auth-jdbc-{{ guacamole_version }}/mysql/guacamole-auth-jdbc-mysql-{{ guacamole_version }}.jar"
+            src: "/root/guacamole-auth-jdbc-{{ services.guacamole.version }}/mysql/guacamole-auth-jdbc-mysql-{{ services.guacamole.version }}.jar"
             dest: /etc/guacamole/extensions/
             remote_src: yes
         - name: Configure database | Start mysql service
@@ -192,7 +192,7 @@
           community.mysql.mysql_db:
             name: guacamole_db
             state: import
-            target: "/root/guacamole-auth-jdbc-{{ guacamole_version }}/mysql/schema/{{ item }}"
+            target: "/root/guacamole-auth-jdbc-{{ services.guacamole.version }}/mysql/schema/{{ item }}"
             login_unix_socket: /run/mysqld/mysqld.sock
           with_items:
             - 001-create-schema.sql
@@ -257,7 +257,7 @@
         path: "/root/{{ item }}"
         state: absent
       with_items:
-        - "guacamole-auth-jdbc-{{ guacamole_version }}"
-        - "guacamole-server-{{ guacamole_version }}"
+        - "guacamole-auth-jdbc-{{ services.guacamole.version }}"
+        - "guacamole-server-{{ services.guacamole.version }}"
         - "mysql-connector-j-{{ mysql_driver_version }}"
         - "mysql-connector-j-{{ mysql_driver_version }}.tar.gz"

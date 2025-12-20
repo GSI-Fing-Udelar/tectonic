@@ -1,10 +1,9 @@
 import pytest
-import re
 import json
 
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, call
 
-from tectonic.packer import Packer, PackerException
+from tectonic.packer import PackerException
 import packerpy
 
 def test_create_instance_image(mocker, packer):
@@ -14,6 +13,9 @@ def test_create_instance_image(mocker, packer):
     m.assert_called_once()
     assert 'image_generation/create_image.pkr.hcl' in str(m.call_args[0][0])
     assert "machines_json" in m.call_args[0][1]
+    assert "tectonic_json" in m.call_args[0][1]
+    assert "guests_json" in m.call_args[0][1]
+    assert "networks_json" in m.call_args[0][1]
     mj = m.call_args[0][1]['machines_json']
     assert "attacker" in mj
 
@@ -26,8 +28,9 @@ def test_create_instance_image_proxy(mocker, packer):
     packer.create_instance_image(["attacker"])
 
     m.assert_called_once()
-    assert "proxy" in m.call_args[0][1]
-    proxy_var = m.call_args[0][1]['proxy']
+    arguments = json.loads(m.call_args[0][1]['tectonic_json'])
+    assert "proxy" in arguments['config']
+    proxy_var = arguments['config']['proxy']
     assert proxy in proxy_var
 
     packer.config.proxy = old_proxy
@@ -40,6 +43,7 @@ def test_create_service_image(mocker, packer):
     m.assert_called_once()
     assert 'services/image_generation/create_image.pkr.hcl' in str(m.call_args[0][0])
     assert "machines_json" in m.call_args[0][1]
+    assert "tectonic_json" in m.call_args[0][1]
     mj = m.call_args[0][1]['machines_json']
     assert "caldera" in mj
 
@@ -57,8 +61,9 @@ def test_create_service_image_proxy(mocker, packer):
     packer.create_service_image(["caldera"])
 
     m.assert_called_once()
-    assert "proxy" in m.call_args[0][1]
-    proxy_var = m.call_args[0][1]['proxy']
+    arguments = json.loads(m.call_args[0][1]['tectonic_json'])
+    assert "proxy" in arguments['config']
+    proxy_var = arguments['config']['proxy']
     assert proxy in proxy_var
 
     packer.config.proxy = old_proxy

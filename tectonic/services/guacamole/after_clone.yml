@@ -30,10 +30,10 @@
 
 - name: Enable guacamole brute force protection
   ansible.builtin.copy:
-    src: "/root/guacamole-auth-ban-{{ guacamole.version }}/guacamole-auth-ban-{{ guacamole.version }}.jar"
+    src: "/root/guacamole-auth-ban-{{ services.guacamole.version }}/guacamole-auth-ban-{{ services.guacamole.version }}.jar"
     dest: /etc/guacamole/extensions/
     remote_src: yes
-  when: guacamole.brute_force_protection_enabled == "True"
+  when: services.guacamole.brute_force_protection_enabled == "True"
 
 - name: Copy Tomcat configuration
   ansible.builtin.template:
@@ -56,7 +56,7 @@
   block:
     - name: Set Gateway IP
       ansible.builtin.set_fact:
-        gateway_ip: "{{ (guacamole.ip | split('.'))[0] }}.{{ (guacamole.ip | split('.'))[1] }}.{{ (guacamole.ip | split('.'))[2] }}.129"
+        gateway_ip: "{{ (services.guacamole.ip | split('.'))[0] }}.{{ (services.guacamole.ip | split('.'))[1] }}.{{ (services.guacamole.ip | split('.'))[2] }}.129"
     - name: Configure firewall | Flush rules
       ansible.builtin.iptables:
         table: filter
@@ -77,8 +77,8 @@
       ansible.builtin.iptables:
         chain: INPUT
         protocol: tcp
-        source: "{{ bastion_host.ip }}"
-        destination_port: "{{ guacamole.internal_port }}"
+        source: "{{ services.bastion_host.ip }}"
+        destination_port: "{{ services.guacamole.internal_port }}"
         jump: ACCEPT
     - name: Configure firewall | Allow related or established connections
       ansible.builtin.iptables:
@@ -104,7 +104,7 @@
         policy: ACCEPT
     - name: Configure firewall | Save rules
       ansible.builtin.command: service netfilter-persistent save
-  when: platform == "libvirt" or platform == "docker"
+  when: config.platform in ["libvirt", "docker"]
 
 - name: Set guacadmin password
   ansible.builtin.set_fact:

@@ -71,9 +71,6 @@ pipelining = no
 timeout = 10
 
 [libvirt]
-# uri="qemu+ssh://gsi@localhost:22222/system?no_verify=1
-# uri=qemu+ssh://gsi@gsi03/system?known_hosts=/home/jdcampo/.ssh/known_hosts
-#uri = qemu+ssh://gsi@tortuga:4446/system?known_hosts=/home/jdcampo/gsi/lasi/repos/tectonic/python/known_hosts
 uri = test:///TEST_DATA_PATH/libvirt_config.xml
 storage_pool = pool-dir
 student_access = bridge
@@ -84,19 +81,32 @@ bridge_base_ip = 10
 [aws]
 region = us-east-1
 teacher_access = host
+packetbeat_vlan_id = 1
+access_host_instance_type = t2.micro
 
 [docker]
 uri = unix:///var/run/docker.sock
 dns = 8.8.8.8
 
 [elastic]
-elastic_stack_version = 8.14.3
+version = 8.14.3
 packetbeat_policy_name = Packetbeat
 endpoint_policy_name = Endpoint
 user_install_packetbeat = gsi
+external_port = 5601
 
 [caldera]
 version = 5.0.0
+ot_enabled = no
+external_port = 8443
+
+[guacamole]
+version = 1.6.0
+brute_force_protection_enabled = no
+external_port = 10443
+
+[bastion_host]
+domain = tectonic.cyberrange.com
 """
 
 @pytest.fixture(scope="session")

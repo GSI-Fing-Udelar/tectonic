@@ -33,23 +33,23 @@
           block:
             - name: "Check if agent binaries already downloaded"
               ansible.builtin.stat:
-                path: "/opt/elastic-agent-{{ elastic_agent_version }}-linux-x86_64/"
+                path: "/opt/elastic-agent-{{ services.elastic.version }}-linux-x86_64/"
               register: result_agent
             - name: "Download agent"
               ansible.builtin.unarchive:
-                src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{elastic_agent_version}}-linux-x86_64.tar.gz"
+                src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ services.elastic.version }}-linux-x86_64.tar.gz"
                 dest: /opt
                 remote_src: yes
               when: result_agent.stat.isdir is undefined
               environment:
-                http_proxy: "{{ proxy | default(omit) }}"
-                https_proxy: "{{ proxy | default(omit) }}"
+                http_proxy: "{{ config.proxy | default(omit) }}"
+                https_proxy: "{{ config.proxy | default(omit) }}"
             - name: "Install agent"
               block: 
               - name: "Install agent"
-                ansible.builtin.shell: "./elastic-agent install --url={{elastic_url}} --enrollment-token={{token}} --base-path=/opt/elastic-agent-{{ institution }}-{{ lab_name }} --insecure --non-interactive --proxy-disabled --delay-enroll"
+                ansible.builtin.shell: "./elastic-agent install --url={{ elastic_url }} --enrollment-token={{ token }} --base-path=/opt/elastic-agent-{{ institution }}-{{ lab_name }} --insecure --non-interactive --proxy-disabled --delay-enroll"
                 args:
-                  chdir: "/opt/elastic-agent-{{elastic_agent_version}}-linux-x86_64/"
+                  chdir: "/opt/elastic-agent-{{ services.elastic.version }}-linux-x86_64/"
             - name: "Move elastic-agent binary"
               block:
                 - name: "Copy binary"

@@ -45,21 +45,6 @@ packer {
 }
 
 
-variable "platform" {
-  type        = string
-  description = "Whether to create images in AWS or use libvirt."
-
-  validation {
-    condition = can(regex("^(aws|libvirt|docker)$", var.platform))
-    error_message = "Supported platforms are 'aws', 'libvirt'."
-  }
-}
-
-variable "ansible_ssh_common_args" {
-  type = string
-  description = "SSH arguments for ansible connection to machine."
-  default = "-o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -x"
-}
 variable "ansible_scp_extra_args" {
   type = string
   description = "SCP extra arguments for ansible connection."
@@ -73,95 +58,33 @@ variable "machines_json" {
   type        = string
   description = "A JSON encoded map of machine information."
 }
+variable "tectonic_json" {
+  type        = string
+  description = "A JSON encoded map of Tectonic description and configuration."
+}
+
 
 locals {
+  tectonic = jsondecode(var.tectonic_json)
   machines = jsondecode(var.machines_json)
   os_data = jsondecode(var.os_data_json)
 
   platform_to_buildtype = { "aws": "amazon-ebs", "libvirt": "libvirt", "docker":"docker" }
 
-  build_type = local.platform_to_buildtype[var.platform]
-  machine_builds = [ for m, _ in local.machines : "${local.build_type}.${m}" ]
+  build_type = local.platform_to_buildtype[local.tectonic["config"]["platform"]]
+  machine_builds = [ for machine, _ in local.machines : "${local.build_type}.${machine}" ]
 
-  python_installed_machines = var.platform != "docker" ? [ for name, m in local.machines :
-    "${local.build_type}.${name}" if m["base_os"] != "rocky8"
+  python_installed_machines = local.tectonic["config"]["platform"] != "docker" ? [ for name, machine in local.machines :
+    "${local.build_type}.${name}" if machine["base_os"] != "rocky8"
   ] : local.machine_builds
+
+  remove_ansible_logs = convert(!local.tectonic["config"]["ansible"]["keep_logs"], string)
 }
 
-
-# AWS configuration
-variable "aws_region" {
-  type    = string
-  default = "us-east-1"
-}
-
-# libvirt configuration
-variable "libvirt_uri" {
-  type        = string
-  default     = "qemu:///system"
-  description = "URI to connect to libvirt daemon."
-}
-variable "libvirt_storage_pool" {
-  type        = string
-  default     = "default"
-  description = "Libvirt Storage pool to store the configured image."
-}
-variable "proxy" {
-  type        = string
-  default     = null
-  description = "Guest machines proxy configuration URI for libvirt."
-}
-
-#Elastic variables
-variable "elastic_version" {
-  type = string
-  description = "Elastic Stack version to install."
-}
-variable "elastic_latest_version" {
-  type = string
-  description = "Use Elastic Stack latest version."
-}
-
-variable "elasticsearch_memory" {
-  type = string
-  description = "Elasticsearch JVM memory to use."
-}
-
-#Caldera variables
-variable "caldera_version" {
-  type = string
-  description = "Caldera version to install."
-}
-
-#Packetbeat variables
-variable "packetbeat_vlan_id" {
-  type = string
-  description = "Packetbeat VLAN ID."
-}
-
-variable "remove_ansible_logs" {
-  type = string
-  description = "Remove Ansible logs on managed host."
-  default = "true"
-}
-
-
-#Guacamole variables
-variable "guacamole_version" {
-  type = string
-  description = "Guacamole version to install."
-}
-
-#Moodle variables
-variable "moodle_version" {
-  type = string
-  description = "Moodle version to install."
-}
 
 source "amazon-ebs" "machine" {
-  region        = var.aws_region
-
-  force_deregister = true
+  region                = local.tectonic["config"]["platforms"]["aws"]["region"]
+  force_deregister      = true
   force_delete_snapshot = true
 }
 
@@ -169,7 +92,7 @@ data "sshkey" "install" {
 }
 
 source "libvirt" "machine" {
-  libvirt_uri = var.libvirt_uri
+  libvirt_uri = local.tectonic["config"]["platforms"]["libvirt"]["uri"]
   # Network interface to connect to machine when building
   network_interface {
     type  = "managed"
@@ -179,7 +102,7 @@ source "libvirt" "machine" {
   network_address_source = "lease"
 
   volume {
-    pool  = var.libvirt_storage_pool
+    pool  = local.tectonic["config"]["platforms"]["libvirt"]["storage_pool"]
     source {
       type = "cloud-init"
       user_data = format("#cloud-config\n%s", jsonencode({
@@ -191,7 +114,7 @@ source "libvirt" "machine" {
     bus        = "sata"
   }
   graphics {
-    type = "sdl"
+    type = "vnc"
   }
   cpu_mode = "host-passthrough"
   shutdown_mode = "acpi"
@@ -208,7 +131,7 @@ source "docker" "machine" {
 
 build {
   dynamic "source" {
-    for_each = { for machine_name, m in local.machines: machine_name => m if var.platform == "aws" }
+    for_each = { for machine_name, machine in local.machines: machine_name => machine if local.tectonic["config"]["platform"] == "aws" }
     labels   = ["amazon-ebs.machine"]
     content {
       name = source.key
@@ -240,7 +163,7 @@ build {
   }
 
   dynamic "source" {
-    for_each = { for machine_name, m in local.machines: machine_name => m if var.platform == "libvirt" }
+    for_each = { for machine_name, machine in local.machines: machine_name => machine if local.tectonic["config"]["platform"] == "libvirt" }
     labels   = ["libvirt.machine"]
     content {
       name = source.key
@@ -254,7 +177,7 @@ build {
       volume {
         name = "${source.key}"
         alias = "artifact"
-        pool  = var.libvirt_storage_pool
+        pool  = local.tectonic["config"]["platforms"]["libvirt"]["storage_pool"]
         source {
           type = "external"
           urls     = [local.os_data[source.value["base_os"]]["cloud_image_url"]]
@@ -268,7 +191,7 @@ build {
   }
 
   dynamic "source" {
-    for_each = { for machine_name, m in local.machines: machine_name => m if var.platform == "docker" }
+    for_each = { for machine_name, serivce in local.machines: machine_name => serivce if local.tectonic["config"]["platform"] == "docker" }
     labels   = [ "docker.machine" ]
     content {
       name = source.key
@@ -280,7 +203,7 @@ build {
 
   provisioner "shell" {
     inline = concat(
-      var.proxy != null ? ["sudo sed -i '/^proxy=/d' /etc/dnf/dnf.conf && echo 'proxy=${var.proxy}' | sudo tee -a /etc/dnf/dnf.conf",
+      lookup(local.tectonic.config, "proxy", "") != "" ? ["sudo sed -i '/^proxy=/d' /etc/dnf/dnf.conf && echo 'proxy=${local.tectonic["config"]["proxy"]}' | sudo tee -a /etc/dnf/dnf.conf",
       ] : [],
       ["sudo dnf install -y python3.12 python3.12-pip"],
     )
@@ -291,43 +214,49 @@ build {
   provisioner "ansible" {
     playbook_file = "${abspath(path.root)}/../../image_generation/initial_configuration.yml"
 
-    use_sftp = var.platform == "docker"
-    use_proxy = var.platform == "docker"
+    use_sftp = local.tectonic["config"]["platform"] == "docker"
+    use_proxy = local.tectonic["config"]["platform"] == "docker"
 
     host_alias = source.name
     user = local.os_data[local.machines[source.name]["base_os"]]["username"]
 
-    extra_arguments = concat(
+    extra_arguments = concat((local.machines[source.name]["base_os"] == "windows_srv_2022" ?
+      # Set powershell and become method for windows
+      ["-vvv","--extra-vars", format("ansible_shell_type=powershell ansible_become_method=runas ansible_become_user=%s",
+                    local.os_data[local.machines[source.name]["base_os"]]["username"])] :
+      # Load environment for sudo in linux (so that the proxy is configured, if necessary)
+      ["--extra-vars", "ansible_become_flags=-i"]),
       var.ansible_scp_extra_args != "" ? ["--scp-extra-args", "${var.ansible_scp_extra_args}"] : [],
-      var.proxy != null ? ["--extra-vars", "proxy=${var.proxy} platform=${var.platform}"] : ["--extra-vars", "platform=${var.platform}"],
-      ["--extra-vars", "ansible_no_target_syslog=${var.remove_ansible_logs}"],
-      ["--extra-vars", "gui=${local.machines[source.name]["gui"]}"],
+      # Common vars for all machines:
+      ["--extra-vars", var.tectonic_json],
+      ["--extra-vars", "ansible_become=true ansible_no_target_syslog=${local.remove_ansible_logs}"]
     )
-    ansible_ssh_extra_args = [var.ansible_ssh_common_args]
+    ansible_ssh_extra_args = [local.tectonic["config"]["ansible"]["ssh_common_args"]]
 
-    except = var.platform == "aws" ? local.machine_builds : []
+    except = local.tectonic["config"]["platform"] == "aws" ? local.machine_builds : []
   }
 
   provisioner "ansible" {
     playbook_file = fileexists("${local.machines[source.name]["ansible_playbook"]}") ? "${local.machines[source.name]["ansible_playbook"]}" : "/dev/null"
     
-    use_sftp = var.platform == "docker"
-    use_proxy = var.platform == "docker"
+    use_sftp = local.tectonic["config"]["platform"] == "docker"
+    use_proxy = local.tectonic["config"]["platform"] == "docker"
     
     host_alias = source.name
     user = local.os_data[local.machines[source.name]["base_os"]]["username"]
     
-    ansible_ssh_extra_args = [var.ansible_ssh_common_args]
-    extra_arguments = concat(
-      ["--extra-vars", "basename=${source.name} platform=${var.platform} ansible_become=true ansible_become_flags=-i ansible_no_target_syslog=${var.remove_ansible_logs}"],
+    ansible_ssh_extra_args = [local.tectonic["config"]["ansible"]["ssh_common_args"]]
+    
+    extra_arguments = concat((local.machines[source.name]["base_os"] == "windows_srv_2022" ?
+      # Set powershell and become method for windows
+      ["-vvv","--extra-vars", format("ansible_shell_type=powershell ansible_become_method=runas ansible_become_user=%s",
+                    local.os_data[local.machines[source.name]["base_os"]]["username"])] :
+      # Load environment for sudo in linux (so that the proxy is configured, if necessary)
+      ["--extra-vars", "ansible_become_flags=-i"]),
       var.ansible_scp_extra_args != "" ? ["--scp-extra-args", "${var.ansible_scp_extra_args}"] : [],
-      ["--extra-vars", "elastic_latest_version=${var.elastic_latest_version}"],
-      ["--extra-vars", "elastic_version=${var.elastic_version}"],
-      ["--extra-vars", "caldera_version=${var.caldera_version}"],
-      ["--extra-vars", "packetbeat_vlan_id=${var.packetbeat_vlan_id}"],
-      ["--extra-vars", "elasticsearch_memory=${var.elasticsearch_memory}"],
-      ["--extra-vars", "guacamole_version=${var.guacamole_version}"],
-      ["--extra-vars", "moodle_version=${var.moodle_version}"],
+      # Common vars for all machines:
+      ["--extra-vars", var.tectonic_json],
+      ["--extra-vars", "ansible_become=true ansible_no_target_syslog=${local.remove_ansible_logs}"]
     )
   }
 
@@ -337,12 +266,12 @@ build {
       "sudo systemctl stop cloud-init",
       "sudo cloud-init clean --logs",
     ]
-    except = var.platform != "docker" ? [] : local.machine_builds 
+    except = local.tectonic["config"]["platform"] != "docker" ? [] : local.machine_builds 
   }
 
   post-processor "docker-tag" {
     repository =  "${source.name}"
     tags = ["latest"]
-    except = var.platform != "docker" ? local.machine_builds : []
+    except = local.tectonic["config"]["platform"] != "docker" ? local.machine_builds : []
   }
 }

@@ -30,7 +30,7 @@
     - name: Set hostname
       ansible.builtin.hostname:
         name: elastic
-      when: platform != "docker"
+      when: config.platform != "docker"
 
     - name: Install packages
       ansible.builtin.package:
@@ -60,23 +60,13 @@
             file: elasticsearch
             state: present
 
-    - name: Install Elastic latest version
-      ansible.builtin.package:
-        name:
-          - elasticsearch
-          - kibana
-          - logstash
-        state: present
-      when: elastic_latest_version == "True"
-
     - name: Install Elastic specific version
       ansible.builtin.package:
         name: 
-          - "elasticsearch-{{ elastic_version }}" 
-          - "kibana-{{ elastic_version }}"
-          - "logstash-{{ elastic_version }}"
+          - "elasticsearch-{{ services.elastic.version }}" 
+          - "kibana-{{ services.elastic.version }}"
+          - "logstash-{{ services.elastic.version }}"
         state: present
-      when: elastic_latest_version == "False"
 
     - name: Gather architecture
       block:
@@ -106,12 +96,12 @@
         name: firewalld
         state: started
         enabled: yes
-      when: platform != "docker"
+      when: config.platform != "docker"
 
     - name: Set elasticsearch memory limit
       ansible.builtin.copy:
         dest: /etc/elasticsearch/jvm.options.d/memory.options
         content: |
-          -Xms{{ elasticsearch_memory }}g
-          -Xmx{{ elasticsearch_memory }}g
-      when: platform == "docker"
+          -Xms{{ services.elastic.memory // 2  // 1000 | round(0, 'ceil') | int }}g
+          -Xmx{{ services.elastic.memory // 2  // 1000 | round(0, 'ceil') | int }}g
+      when: config.platform == "docker"

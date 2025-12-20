@@ -265,7 +265,7 @@ class Core:
                 instances_info["Bastion Host IP"] = bastion_host_ip
             elif self.config.platform == "docker":
                 bastion_host_ip = "127.0.0.1"
-            else:
+            elif self.config.platform == "libvirt":
                 bastion_host_ip = self.description.bastion_host.service_ip
         if self.description.teacher_access_host.enable:
             instances_info["Teacher Access Host IP"] = self.description.teacher_access_host.service_ip
@@ -273,7 +273,7 @@ class Core:
         service_info = {}
         for _, service in self.description.services_guests.items():
             if service.base_name not in ["packetbeat", "bastion_host", "teacher_access_host"]:
-                service_port = self.description.bastion_host.ports[service.base_name]["external_port"]
+                service_port = self.description.bastion_host.ports[service.base_name]
                 service_info[service.base_name] = {
                     "URL": f"https://{bastion_host_ip}:{service_port}",
                     "Credentials": self.terraform_service.get_service_credentials(service, self.ansible),
@@ -422,17 +422,11 @@ class Core:
             copies=None,
             playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
             only_instances=only_instances,
-            extra_vars={"users": users,
-                        "prefix": self.description.student_prefix,
-                        "ssh_password_login": self.description.create_students_passwords or self.description.guacamole.enable},
             quiet=True,
         )
 
         if self.description.guacamole.enable:
-            guacamole_password = ""
-            for _, service in self.description.services_guests.items():
-                if service.base_name == "guacamole":
-                    guacamole_password = self.terraform_service.get_service_credentials(service, self.ansible)['trainer']
+            guacamole_password = self.terraform_service.get_service_credentials(self.description.guacamole, self.ansible)['trainer']
             trainer_credentials = self.description.generate_trainer_access_credentials(guacamole_password)
             self.ansible.run(
                 instances=instances,
@@ -440,7 +434,9 @@ class Core:
                 copies=None,
                 playbook=self.ANSIBLE_TRAINER_PLAYBOOK,
                 only_instances=True,
-                extra_vars=trainer_credentials,
+                extra_vars={
+                    "trainer": trainer_credentials,   
+                },
                 quiet=True,
             )
 
@@ -460,9 +456,7 @@ class Core:
                 playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
                 only_instances=False,
                 extra_vars={
-                    "users": users,
-                    "prefix": self.description.student_prefix,
-                    "machines": machines_data, 
+                    "instances": machines_data, 
                     "trainer": trainer_credentials,   
                 },
                 quiet=True

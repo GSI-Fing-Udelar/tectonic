@@ -1,5 +1,5 @@
-<VirtualHost *:{{ guacamole.external_port }}>
-    ServerName {{ bastion_host.domain }}
+<VirtualHost *:{{ services.guacamole.external_port }}>
+    ServerName {{ services.bastion_host.domain }}
 
     DocumentRoot /var/www/html
     
@@ -16,22 +16,22 @@
     SSLProxyCheckPeerCN off
     SSLProxyCheckPeerExpire off
 
-{% if guacamole.enable %}
+{% if services.guacamole.enable %}
     <Location "/guacamole/">
-        ProxyPass "https://{{ guacamole.ip }}:{{ guacamole.internal_port }}/"
-        ProxyPassReverse "https://{{ guacamole.ip }}:{{ guacamole.internal_port }}/"
+        ProxyPass "https://{{ services.guacamole.ip }}:{{ services.guacamole.internal_port }}/"
+        ProxyPassReverse "https://{{ services.guacamole.ip }}:{{ services.guacamole.internal_port }}/"
     </Location>
 
     <Location "/guacamole/websocket-tunnel/">
-        ProxyPass "wss://{{ guacamole.ip }}:{{ guacamole.internal_port }}/websocket-tunnel"
-        ProxyPassReverse "wss://{{ guacamole.ip }}:{{ guacamole.internal_port }}/websocket-tunnel"
+        ProxyPass "wss://{{ services.guacamole.ip }}:{{ services.guacamole.internal_port }}/websocket-tunnel"
+        ProxyPassReverse "wss://{{ services.guacamole.ip }}:{{ services.guacamole.internal_port }}/websocket-tunnel"
     </Location>
 {% endif %}
 </VirtualHost>
 
-{% if elastic.enable %}
-<VirtualHost *:{{ elastic.external_port }}>
-    ServerName {{ bastion_host.domain }}
+{% if services.elastic.enable %}
+<VirtualHost *:{{ services.elastic.external_port }}>
+    ServerName {{ services.bastion_host.domain }}
 
     ErrorLog ${APACHE_LOG_DIR}/elastic_error.log
     CustomLog ${APACHE_LOG_DIR}/elastic_access.log combined
@@ -46,14 +46,14 @@
     SSLProxyCheckPeerCN off
     SSLProxyCheckPeerExpire off
     
-    ProxyPass "/" "https://{{ elastic.ip }}:{{ elastic.internal_port }}/"
-    ProxyPassReverse "/" "https://{{ elastic.ip }}:{{ elastic.internal_port }}/"
+    ProxyPass "/" "https://{{ services.elastic.ip }}:{{ services.elastic.internal_port }}/"
+    ProxyPassReverse "/" "https://{{ services.elastic.ip }}:{{ services.elastic.internal_port }}/"
 </VirtualHost>
 {% endif %}
 
-{% if caldera.enable %}
-<VirtualHost *:{{ caldera.external_port }}>
-    ServerName {{ bastion_host.domain }}
+{% if services.caldera.enable %}
+<VirtualHost *:{{ services.caldera.external_port }}>
+    ServerName {{ services.bastion_host.domain }}
 
     ErrorLog ${APACHE_LOG_DIR}/caldera_error.log
     CustomLog ${APACHE_LOG_DIR}/caldera_access.log combined
@@ -68,8 +68,8 @@
     SSLProxyCheckPeerCN off
     SSLProxyCheckPeerExpire off
 
-    ProxyPass "/" "https://{{ caldera.ip }}:{{ caldera.internal_port }}/"
-    ProxyPassReverse "/" "https://{{ caldera.ip }}:{{ caldera.internal_port }}/"
+    ProxyPass "/" "https://{{ services.caldera.ip }}:{{ services.caldera.internal_port }}/"
+    ProxyPassReverse "/" "https://{{ services.caldera.ip }}:{{ services.caldera.internal_port }}/"
 </VirtualHost>
 {% endif %}
 
