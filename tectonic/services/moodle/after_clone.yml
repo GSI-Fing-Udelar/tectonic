@@ -121,7 +121,7 @@
   block:
     - name: Set wwwroot host
       ansible.builtin.set_fact:
-        moodle_host: "{{ '127.0.0.1' if config.platform == 'docker' else (services.bastion_host.ip if config.platform == 'libvirt' else services.bastion_host.domain) }}"
+        moodle_host: "{{ '127.0.0.1' if config.platform == 'docker' else services.bastion_host.domain }}"
     - name: Remove existing config.php
       ansible.builtin.file:
         path: /var/www/html/moodle/config.php
