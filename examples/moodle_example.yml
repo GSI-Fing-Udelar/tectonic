@@ -1,6 +1,6 @@
 ---
 base_lab: moodle_example
-instance_number: 3
+instance_number: 2
 random_seed: 42
 create_students_passwords: true
 
