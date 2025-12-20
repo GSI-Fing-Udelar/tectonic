@@ -85,7 +85,7 @@ main `config` section and special sections for different platforms
   user used by Ansible for this task. Keep in mind that this user
   needs to be able to escalate privileges to root without a password.
   To do this you can configure the sudoers file. Default: `tectonic`.
-* `external_port`: port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `5601`.
+* `external_port`: Port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `5601`.
 
 ### [caldera] section:
 * `version`: Caldera version to use. Use `latest` for latest version
@@ -93,7 +93,7 @@ main `config` section and special sections for different platforms
   performed on version 5.3.0 so we recommend using it. However, it may
   also work for older or newer Caldera versions.
 * `ot_enabled`: Enable [OT plugins](https://github.com/mitre/caldera-ot) for Caldera. Default: `no`.
-* `external_port`: port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `8443`.
+* `external_port`: Port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `8443`.
 
 ### [guacamole] section:
 * `version`: Guacamole version to use. Use `latest` for latest version
@@ -101,9 +101,16 @@ main `config` section and special sections for different platforms
   performed on version 1.6.0 so we recommend using it. However, it may
   also work for older or newer Guacamole versions.
 * `brute_force_protection_enabled`: Whether Guacamole's brute force protection should be enabled. See [Guacamole brute force protection](https://guacamole.apache.org/doc/1.6.0/gug/auth-ban.html#securing-guacamole-against-brute-force-attacks). Default: `no`.
-* `external_port`: port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `10443`.
+* `external_port`: Port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `10443`.
 
-## [bastion_host] section
+### [moodle] section:
+* `version`: Moodle version to use. Use `latest` for latest version or assign a specific version. Default: `4.5.8`. All tests were performed on version `4.5.8` so we recommend using it. However, it may also work for older or newer Guacamole versions.
+* `site_fullname`: Moodle site full name. Default: `Tectonic Moodle`.
+* `site_shortname`: Moodle site short name. Default: `Tectonic`.
+* `admin_email`: Email for administrator account. Default: `admin@tectonic.local`
+* `external_port`: Port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `8080`.
+
+### [bastion_host] section
 * `domain`:Domain name used.
 
 
