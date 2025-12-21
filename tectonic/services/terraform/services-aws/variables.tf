@@ -148,3 +148,13 @@ variable "guacamole_external_port" {
   description = "Guacamole external port"
   type        = number
 }
+
+variable "moodle_internal_port" {
+  description = "Moodle internal port"
+  type        = number
+}
+
+variable "moodle_external_port" {
+  description = "Moodle external port"
+  type        = number
+}

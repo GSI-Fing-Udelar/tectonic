@@ -1101,6 +1101,8 @@ class Description:
         enable_guacamole = self.guacamole.enable and lab_edition_data.get("guacamole_settings", {}).get("enable", True)
         self.guacamole.load_service(lab_edition_data.get("guacamole_settings", {}))
         self.guacamole.enable = enable_guacamole
+        if enable_guacamole:
+            self.create_students_passwords = True
 
         # Elastic is enabled if it is enabled in the description and
         # not disabled in the lab edition.
@@ -1137,8 +1139,6 @@ class Description:
         # Teacher Access Host
         self._teacher_access_host = TeacherAccessHostDescription(self)
         self.teacher_access_host.enable = self.config.platform == "aws" and self.config.aws.teacher_access == "host"
-
-        self.create_students_passwords = self.guacamole.enable or (self.moodle.enable and self.moodle.enable_trainees and self.moodle.auto_enroll_trainees)
 
         # Load base guests and topology
         self._required(description_data, "guest_settings")
