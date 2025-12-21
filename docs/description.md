@@ -56,8 +56,8 @@ The scenario description is a YAML file with three main sections:
   list of networks with a `name` and a list of `members` which must be
   one of the defined guests in the previous section. See [network_topology](./network_topology.md) for more details.
 
-+ An `elastic_settings` section to describe the configuration of the Elastic Security service. The following properties can be defined:
-  + `enable`: Wheter to deploy this service. Default: `no`.
++ A `elastic_settings` section to describe the configuration of the Elastic Security service. The following properties can be defined:
+  + `enable`: Whether to deploy this service. Default: `no`.
   + `memory`: Amount of RAM of the machine, in MB. Default: `8192`.
   + `vcpu`: Number of virtual CPUs of the machine. Default: `4`.
   + `disk`: Amount of disk of the machine, in GB. Default: `50`.
@@ -82,16 +82,42 @@ The scenario description is a YAML file with three main sections:
     modifications, among others events. Default: `yes`.
 
 + A `caldera_settings` section to describe the configuration of the Caldera service. The following properties can be defined:
-  + `enable`: Wheter to deploy this service. Default: `no`.
+  + `enable`: Whether to deploy this service. Default: `no`.
   + `memory`: Amount of RAM of the machine, in MB. Default: `2048`.
   + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
   + `disk`: Amount of disk of the machine, in GB. Default: `20`.
 
 + A `guacamole_settings` section to describe the configuration of the Guacamole service. The following properties can be defined:
-  + `enable`: Wheter to deploy this service. Default: `no`.
+  + `enable`: Whether to deploy this service. Default: `no`.
   + `memory`: Amount of RAM of the machine, in MB. Default: `2048`.
   + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
   + `disk`: Amount of disk of the machine, in GB. Default: `20`.
+
++ A `moodle_settings` section to describe the configuration of the Moodle service. The following properties can be defined:
+  + `enable`: Whether to deploy this service. Default: `no`.
+  + `memory`: Amount of RAM of the machine, in MB. Default: `4096`.
+  + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
+  + `disk`: Amount of disk of the machine, in GB. Default: `20`.
+  + `enable_trainees`: Whether student users should be automatically configured. Default: `no`.
+  + `auto_enroll_trainees`: Whether users should be enroll in the courses. Default: `yes`.
+  + `courses`: Courses to configure. This is a list of courses where each item in the list contains the following options:
+    - `name`: Course name.
+    - `shortname`: Course short name.
+    - `sections`: List of course section names.
+    - `activities`: List of course activities names. Each element contains the following options:
+      - `name`: Activity name.
+      - `type`: Activity type. Must be `scorm`. # TODO: supported values?
+      - `scorm_package`: Path to SCORM package to import. SCORM packages must be placed within a moodle directory in the scenario directory.
+      - `section`: Number of the section to which to assign the activity. Sections are numbered starting from 0.
+  + `users`: Users to configure. This is a list of users where each item in the list contains the following options:
+    - `email`: User email.
+    - `role`: User role. supported values ​​are listed in [Moodle roles](https://docs.moodle.org/501/en/Standard_roles).
+    - `username`: User name. Optional. If not assigned, it is inferred from the email.
+    - `password`: User password. Optional. If no password is assigned, a random password is generated.
+  + `groups`: User groups to configure. This is a list of groups where each item in the list contains the following options:
+    - `name`: Group name.
+    - `course_id`: Course identifier in which the group is created. Courses are numbered starting from 0. # TODO: check starting number
+  
 
 A complete example description file with all available options is available in the [example directory](../examples/password_cracking/description.yml).
 
@@ -140,12 +166,13 @@ Optionally, the user can provide a set of parameters to be used in the playbooks
 See [ansible](./ansible.md) for more information.
 
 ### Elastic Security artifacts
-
 Elastic Security configuration is done based on artifacts that are automatically imported into the Elasticsearch, Kibana and Fleet components. As part of the scenario specification, these artifacts must be provided. See [Elastic](./elastic.md) for more information.
 
 ### Caldera artifacts
 Caldera configuration is done based on artifacts that are automatically imported into Caldera. As part of the scenario specification, these artifacts must be provided. See [Caldera](./caldera.md) for more information.
 
+### Moodle artifacts
+Moodle configuration can be done base on scorm packages that are automatically imported into Moodle. As part of the scenario specification, these artifacts must be provided. See [Moodle](./moodle.md) for more information.
 
 ## Lab Edition Information
 The lab edition is a YAML file with the following options:
@@ -193,14 +220,15 @@ The lab edition is a YAML file with the following options:
                     └── keyM.pub
     ```
   + `create_students_passwords`: Whether to create a pseudo-random
-    password for the students. These passwords are printed on
-    deployment and student-access execution. Optional, defaults to
-    `false`. If the guacamole service is enabled then this option
+    password for the students to access machines. These passwords are
+    printed on deployment and student-access execution. Optional, defaults to
+    `false`. If the guacamole service is enabled or the Moodle service is enabled
+    and the option to auto-generate student users was selected, then this option 
     takes the value `true`.
   + `random_seed`: Seed used for the random generation of parameters
     that are used to configure and parameterize the instances.
-  + Three optional `elastic_settings`, `caldera_settings` and
-    `guacamole_settings` sections with the same options as the scenario
+  + Four optional `elastic_settings`, `caldera_settings`, `guacamole_settings` 
+    and `moodle_settings` sections with the same options as the scenario
     description. Options here take precedence on the scenario
     description. For the service to be effectively enabled, it must be
     enabled here and in the scenario description. Ultimately, the
