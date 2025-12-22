@@ -61,8 +61,6 @@
 
 - name: "Upgrade pip to latest version"
   ansible.builtin.command: "{{ ansible_python_interpreter | default('python3') }} -m pip install --upgrade pip"
-  args:
-    creates: /tmp/pip_upgrade_done
   register: pip_upgrade
   changed_when: pip_upgrade.rc == 0
 
@@ -76,7 +74,7 @@
       - cryptography
       - scapy
     state: present
-    executable: "{{ ansible_python_interpreter | default('python3') }} -m pip"
+    executable: pip3
 
 - name: "Verify Python dependencies installation"
   ansible.builtin.command: '{{ ansible_python_interpreter | default(''python3'') }} -c ''import faker, PIL, docx, openpyxl, cryptography, scapy; print("All dependencies installed successfully")'''
