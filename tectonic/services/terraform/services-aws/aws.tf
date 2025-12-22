@@ -20,7 +20,7 @@
 
 module "vpc" {
   source             = "terraform-aws-modules/vpc/aws"
-  version            = "~>5.0"
+  version            = "~> 6.0"
   name               = "vpc"
   cidr               = var.network_cidr_block
   azs                = [data.aws_availability_zones.available.names[0]]
