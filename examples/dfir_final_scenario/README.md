@@ -67,7 +67,7 @@ docker cp udelar-dfirunifiedtraining-1-victim:/tmp/final_forensic.img ~/forensic
 ls -lh ~/forensic_evidence/
 ```
 
-## Forensic Analysis Guide
+## Forensic Analysis Guide (Linux)
 
 ### Step 1: Network Traffic Analysis
 
