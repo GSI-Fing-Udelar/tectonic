@@ -1,3 +1,23 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
 ---
 - name: Check if Moodle already installed
   block:
@@ -217,29 +237,41 @@
       ansible.builtin.command: service netfilter-persistent save
   when: config.platform in ["libvirt", "docker"]
 
-- name: Provision courses
+- name: Import courses
   block:
-    - name: Copy SCORM packages
+    - name: Copy courses backups
       ansible.builtin.copy:
-        src: "{{ scenario_dir }}/{{ item }}"
-        dest: "/var/www/html/moodle/{{ item | basename }}"
-        owner: www-data
-        group: www-data
-        mode: "0644"
-      loop: "{{ services.moodle.scorm_packages | default([]) }}"
-      register: scorm_copy_results
-      failed_when:
-        - scorm_copy_results is failed
-        - "'does not exist' not in (scorm_copy_results.msg | default(''))"
-    - name: Execute Moosh commands
-      ansible.builtin.shell: |
-        sudo -u www-data php /opt/moosh/moosh.php -n -p /var/www/html/moodle {{ item }}
-      loop: "{{ services.moodle.moosh_commands | default([]) }}"
-      register: moosh_results
-      failed_when:
-        - moosh_results.rc != 0
-        - "'already exists' not in (moosh_results.stderr | default(''))"
-        - "'already exists' not in (moosh_results.stdout | default(''))"
+        src: "{{ scenario_dir }}/moodle"
+        dest: /opt/
+    - name: Find all .mbz files in the /opt/moodle
+      ansible.builtin.find:
+        paths: /opt/moodle
+        patterns: "*.mbz"
+        recurse: false
+      register: mbz_find
+    - name: Import courses backups
+      ansible.builtin.command:
+        cmd: |
+          /usr/bin/php /var/www/html/moodle/admin/cli/restore_backup.php 
+          --file={{ item.path }}
+          --categoryid=1
+      become: true
+      become_user: www-data
+      loop: "{{ mbz_find.files }}"
+    - name: Delete courses backups
+      ansible.builtin.file:
+        path: /opt/moodle
+        state: absent
+
+- name: Execute Moosh commands
+  ansible.builtin.shell: |
+    sudo -u www-data php /opt/moosh/moosh.php -n -p /var/www/html/moodle {{ item }}
+  loop: "{{ services.moodle.moosh_commands | default([]) }}"
+  register: moosh_results
+  failed_when:
+    - moosh_results.rc != 0
+    - "'already exists' not in (moosh_results.stderr | default(''))"
+    - "'already exists' not in (moosh_results.stdout | default(''))"
   when: (services.moodle.courses is defined and services.moodle.courses | length > 0) or (services.moodle.moosh_commands is defined and services.moodle.moosh_commands | length > 0)
 
 - name: Write credentials file
