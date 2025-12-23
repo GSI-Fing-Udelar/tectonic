@@ -87,3 +87,11 @@ guacamole_settings:
   memory: 2048
   vpcu: 2
   disk: 20
+
+# Moodle service configuration
+moodle_settings:
+  enable: yes
+  # Default values:
+  memory: 4096
+  vpcu: 2
+  disk: 20
