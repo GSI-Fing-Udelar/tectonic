@@ -26,7 +26,7 @@
       register: reverse_proxy
     - name: End execution if reverse_proxy file exists or no need to configure reverse proxy
       ansible.builtin.meta: end_play
-      when: reverse_proxy.stat.exists or not (services.elastic.enable or services.caldera.enable or services.guacamole.enable)
+      when: reverse_proxy.stat.exists or not (services.elastic.enable or services.caldera.enable or services.guacamole.enable or services.moodle.enable)
       
 - name: Configure firewall (iptables)
   block:
@@ -60,6 +60,7 @@
         - "{{ services.elastic.external_port }}"
         - "{{ services.caldera.external_port }}"
         - "{{ services.guacamole.external_port }}"
+        - "{{ services.moodle.external_port }}"
     - name: Configure firewall | Allow related or established connections
       ansible.builtin.iptables:
         chain: INPUT
@@ -120,7 +121,7 @@
         src: templates/index.j2
         dest: /var/www/html/index.html
     - name: Copy sites files
-      ansible.builtin.copy: 
+      ansible.builtin.copy:
         src: files/
         dest: /var/www/html
     - name: Enable apache site
@@ -131,4 +132,4 @@
         name: apache2
         state: started
         enabled: true
-  when: services.elastic.enable or services.caldera.enable or services.guacamole.enable 
+  when: services.elastic.enable or services.caldera.enable or services.guacamole.enable or services.moodle.enable

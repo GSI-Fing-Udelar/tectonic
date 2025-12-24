@@ -5,7 +5,8 @@ In Tectonic, the concept of services is used. These are special machines that op
 - Elastic: for monitoring participant training
 - Caldera: for adversary emulation
 - Guacamole: for remote access to instances (using protocols such as SSH and RDP)
-- Bastion Host: the single entry point to the services listed above
+- Moodle: learning management system (LMS) for theoretical content
+- Bastion Host: the single entry point to the services listed above. Use `bastion host domain` to access services.
 
 For more details on how the Elastic, Caldera, and Guacamole services
 are enabled, see [description](./description.md) file. For more

@@ -807,6 +807,26 @@ class GuacamoleDescription(ServiceDescription):
         result = super().to_dict()
         return result | self._description.config.guacamole.to_dict()
 
+class MoodleDescription(ServiceDescription):
+    def __init__(self, description):
+        super().__init__(description, "moodle", "ubuntu22")
+        self.memory = 4096
+        self.vcpu = 2
+        self.disk = 20
+        self.enable_trainees = True
+        self.auto_enroll_trainees = True
+
+    def load_service(self, data):
+        super().load_service(data)
+        self.enable_trainees = data.get("enable_trainees", self.enable_trainees)
+        self.auto_enroll_trainees = data.get("auto_enroll_trainees", self.auto_enroll_trainees)
+
+    def to_dict(self):
+        result = super().to_dict()
+        result["enable_trainees"] = self.enable_trainees
+        result["auto_enroll_trainees"] = self.auto_enroll_trainees
+        return result | self._description.config.moodle.to_dict()
+
 class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
         super().__init__(description, "bastion_host", "ubuntu22", True)
@@ -817,6 +837,8 @@ class BastionHostDescription(ServiceDescription):
             self.ports["elastic"] = description.config.elastic.external_port
         if description.caldera.enable:
             self.ports["caldera"] = description.config.caldera.external_port
+        if description.moodle.enable:
+            self.ports["moodle"] = description.config.moodle.external_port
 
     @property
     def instance_type(self):
@@ -920,6 +942,8 @@ class Description:
         self.caldera.load_service(description_data.get("caldera_settings", {}))
         self._guacamole = GuacamoleDescription(self)
         self.guacamole.load_service(description_data.get("guacamole_settings", {}))
+        self._moodle = MoodleDescription(self)
+        self.moodle.load_service(description_data.get("moodle_settings", {}))
 
         # Load lab edition data
         self._required(lab_edition_data, "instance_number")
@@ -956,6 +980,12 @@ class Description:
         self.caldera.load_service(lab_edition_data.get("caldera_settings", {}))
         self.caldera.enable = enable_caldera
 
+        # Moodle is enabled if it is enabled in the description and
+        # not disabled in the lab edition.
+        enable_moodle = self.moodle.enable and lab_edition_data.get("moodle_settings", {}).get("enable", True)
+        self.moodle.load_service(lab_edition_data.get("moodle_settings", {}))
+        self.moodle.enable = enable_moodle
+
         # Bastion Host
         self._bastion_host = BastionHostDescription(self)
         self.bastion_host.enable = self.config.platform == "aws" and (
@@ -964,7 +994,8 @@ class Description:
         ) or (
             self.elastic.enable or
             self.caldera.enable or
-            self.guacamole.enable
+            self.guacamole.enable or
+            self.moodle.enable
         )
 
         # Teacher Access Host
@@ -1004,7 +1035,7 @@ class Description:
         self._auxiliary_networks = {}
         services_network_name = f"{self.institution}-{self.lab_name}-services"
         self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
-        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole"]
+        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole", "moodle"]
         if self.config.platform == "aws":
             self._auxiliary_networks[services_network_name].members.append("teacher_access_host")
             if self.elastic.monitor_type == "traffic":
@@ -1023,6 +1054,7 @@ class Description:
         self.packetbeat.load_interfaces(self._auxiliary_networks)
         self.caldera.load_interfaces(self._auxiliary_networks)
         self.guacamole.load_interfaces(self.auxiliary_networks)
+        self.moodle.load_interfaces(self.auxiliary_networks)
         self.bastion_host.load_interfaces(self.auxiliary_networks)
         self.teacher_access_host.load_interfaces(self.auxiliary_networks)
 
@@ -1286,6 +1318,8 @@ class Description:
             services[self.caldera.name] = self.caldera
         if self.guacamole.enable:
             services[self.guacamole.name] = self.guacamole
+        if self.moodle.enable:
+            services[self.moodle.name] = self.moodle
         if self.teacher_access_host.enable:
             services[self.teacher_access_host.name] = self.teacher_access_host
         return services
@@ -1305,6 +1339,10 @@ class Description:
     @property
     def guacamole(self):
         return self._guacamole
+    
+    @property
+    def moodle(self):
+        return self._moodle
     
     @property
     def bastion_host(self):
@@ -1467,6 +1505,7 @@ class Description:
         services["packetbeat"] = self.packetbeat.to_dict()
         services["caldera"] = self.caldera.to_dict()
         services["guacamole"] = self.guacamole.to_dict()
+        services["moodle"] = self.moodle.to_dict()
         services["bastion_host"] = self.bastion_host.to_dict()
         services["teacher_access_host"] = self.teacher_access_host.to_dict()
 

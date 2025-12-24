@@ -152,6 +152,8 @@ class TerraformServiceAWS(TerraformService):
         result["caldera_external_port"] = self.config.caldera.external_port
         result["guacamole_internal_port"] = self.config.guacamole.internal_port
         result["guacamole_external_port"] = self.config.guacamole.external_port
+        result["moodle_internal_port"] = self.config.moodle.internal_port
+        result["moodle_external_port"] = self.config.moodle.external_port
         return result
     
     def _get_network_interface_variables(self, interface):

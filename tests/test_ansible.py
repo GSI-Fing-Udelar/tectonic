@@ -99,6 +99,7 @@ def test_configure_services_empty(ansible_client):
     ansible_client.description.elastic.enable = False
     ansible_client.description.caldera.enable = False
     ansible_client.description.guacamole.enable = False
+    ansible_client.description.moodle.enable = False
     ansible_client.description.bastion_host.enable = False
     ansible_client.description.teacher_access_host.enable = False
     # should not raise

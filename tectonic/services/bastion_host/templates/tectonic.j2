@@ -72,3 +72,26 @@
     ProxyPassReverse "/" "https://{{ services.caldera.ip }}:{{ services.caldera.internal_port }}/"
 </VirtualHost>
 {% endif %}
+
+{% if services.moodle.enable %}
+<VirtualHost *:{{ services.moodle.external_port }}>
+    ServerName {{ services.bastion_host.domain }}
+
+    ErrorLog ${APACHE_LOG_DIR}/moodle_error.log
+    CustomLog ${APACHE_LOG_DIR}/moodle_access.log combined
+
+    SSLEngine on
+    SSLProtocol All -SSLv2 -SSLv3 -TLSv1
+    SSLCertificateFile /etc/letsencrypt/live/active/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/active/privkey.pem
+
+    SSLProxyEngine on
+    SSLProxyVerify none
+    SSLProxyCheckPeerCN off
+    SSLProxyCheckPeerExpire off
+
+    ProxyPreserveHost On
+    ProxyPass "/" "https://{{ services.moodle.ip }}:{{ services.moodle.internal_port }}/"
+    ProxyPassReverse "/" "https://{{ services.moodle.ip }}:{{ services.moodle.internal_port }}/"
+</VirtualHost>
+{% endif %}
