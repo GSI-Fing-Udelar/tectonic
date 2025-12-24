@@ -461,6 +461,16 @@ class Core:
                 },
                 quiet=True
             )
+
+        if self.description.moodle.enable and self.description.moodle.enable_trainees:
+            self.ansible.run(
+                instances=None,
+                guests=["moodle"],
+                copies=None,
+                playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
+                only_instances=False,
+                quiet=True
+            )
         return users
     
     def _get_students_passwords(self):

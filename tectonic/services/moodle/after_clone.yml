@@ -263,17 +263,6 @@
         path: /opt/moodle
         state: absent
 
-- name: Execute Moosh commands
-  ansible.builtin.shell: |
-    sudo -u www-data php /opt/moosh/moosh.php -n -p /var/www/html/moodle {{ item }}
-  loop: "{{ services.moodle.moosh_commands | default([]) }}"
-  register: moosh_results
-  failed_when:
-    - moosh_results.rc != 0
-    - "'already exists' not in (moosh_results.stderr | default(''))"
-    - "'already exists' not in (moosh_results.stdout | default(''))"
-  when: (services.moodle.courses is defined and services.moodle.courses | length > 0) or (services.moodle.moosh_commands is defined and services.moodle.moosh_commands | length > 0)
-
 - name: Write credentials file
   ansible.builtin.copy:
     dest: /root/credentials
