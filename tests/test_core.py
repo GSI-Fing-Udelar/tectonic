@@ -290,6 +290,7 @@ def test_get_students_passwords(core):
     assert pwds == {"u": "p"}
 
     core.description.create_students_passwords = False
+    core.description.moodle.enable = False
     assert core._get_students_passwords() == {}
 
 
