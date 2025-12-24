@@ -98,26 +98,8 @@ The scenario description is a YAML file with three main sections:
   + `memory`: Amount of RAM of the machine, in MB. Default: `4096`.
   + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
   + `disk`: Amount of disk of the machine, in GB. Default: `20`.
-  + `enable_trainees`: Whether student users should be automatically configured. Default: `no`.
+  + `enable_trainees`: Whether student users should be automatically configured. Default: `yes`.
   + `auto_enroll_trainees`: Whether users should be enroll in the courses. Default: `yes`.
-  + `courses`: Courses to configure. This is a list of courses where each item in the list contains the following options:
-    - `name`: Course name.
-    - `shortname`: Course short name.
-    - `sections`: List of course section names.
-    - `activities`: List of course activities names. Each element contains the following options:
-      - `name`: Activity name.
-      - `type`: Activity type. Must be `scorm`. # TODO: supported values?
-      - `scorm_package`: Path to SCORM package to import. SCORM packages must be placed within a moodle directory in the scenario directory.
-      - `section`: Number of the section to which to assign the activity. Sections are numbered starting from 0.
-  + `users`: Users to configure. This is a list of users where each item in the list contains the following options:
-    - `email`: User email.
-    - `role`: User role. supported values ​​are listed in [Moodle roles](https://docs.moodle.org/501/en/Standard_roles).
-    - `username`: User name. Optional. If not assigned, it is inferred from the email.
-    - `password`: User password. Optional. If no password is assigned, a random password is generated.
-  + `groups`: User groups to configure. This is a list of groups where each item in the list contains the following options:
-    - `name`: Group name.
-    - `course_id`: Course identifier in which the group is created. Courses are numbered starting from 0. # TODO: check starting number
-  
 
 A complete example description file with all available options is available in the [example directory](../examples/password_cracking/description.yml).
 

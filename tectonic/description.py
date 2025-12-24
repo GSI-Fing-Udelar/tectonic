@@ -813,156 +813,18 @@ class MoodleDescription(ServiceDescription):
         self.memory = 4096
         self.vcpu = 2
         self.disk = 20
-        self.courses = []
-        self.users = []
-        self.groups = []
-        self.enable_trainees = False
+        self.enable_trainees = True
         self.auto_enroll_trainees = True
-        self._moosh_commands = []
-        self._generated_users = []
 
     def load_service(self, data):
         super().load_service(data)
-        if "courses" in data:
-            self.courses = data["courses"]
-        if "users" in data:
-            self.users = data["users"]
-        if "groups" in data:
-            self.groups = data["groups"]
-        if "enable_trainees" in data:
-            self.enable_trainees = data["enable_trainees"]
-        if "auto_enroll_trainees" in data:
-            self.auto_enroll_trainees = data["auto_enroll_trainees"]
-
-    @property
-    def moosh_commands(self):
-        return self._moosh_commands
-    
-    @property
-    def generated_users(self):
-        return self._generated_users
-
-    def generate_moosh_commands(self, trainees=None):
-        """Generate Moosh commands for courses and users.
-        
-        Args:
-            trainees: Optional dict of trainee credentials from Tectonic.
-        """
-        self._moosh_commands = []
-        self._generated_users = []
-        
-        course_ids = self._generate_course_commands()
-        
-        for user in self.users:
-            self._add_user_command(user, course_ids if self.auto_enroll_trainees else [])
-            
-        if self.enable_trainees and trainees:
-            for username, data in trainees.items():
-                user_data = {
-                    "username": username,
-                    "password": data.get("password"),
-                    "email": f"{username}@tectonic.local",
-                    "role": "student",
-                    "is_trainee": True
-                }
-                self._add_user_command(user_data, course_ids if self.auto_enroll_trainees else [])
-
-    def _generate_course_commands(self):
-        course_ids = []
-        course_id = 2  # ID 1 is Frontpage
-        
-        for course in self.courses:
-            name = course.get("name", f"Course {course_id}")
-            default_short = re.sub(r'[^A-Z0-9_-]', '', name.upper())[:20]
-            shortname = course.get("shortname", default_short) or f"COURSE{course_id}"
-            
-            self._moosh_commands.append(f"course-create --category=1 --fullname='{name}' {shortname}")
-            
-            if "sections" in course:
-                for section_num, section_name in enumerate(course["sections"]):
-                    self._moosh_commands.append(
-                        f'section-config-set -s {section_num} course {course_id} name "{section_name}"'
-                    )
-            
-            if "activities" in course:
-                for activity in course["activities"]:
-                    activity_name = activity.get("name", name)
-                    activity_type = activity.get("type", "scorm")
-                    section_num = activity.get("section", 0)
-                    
-                    if activity_type == "scorm" and "scorm_package" in activity:
-                        scorm_file = activity["scorm_package"].split("/")[-1]
-                        self._moosh_commands.append(
-                            f"activity-add --section={section_num} --name='{activity_name}' "
-                            f"--options='packagefilepath={scorm_file}' scorm {course_id}"
-                        )
-            
-            elif "scorm_package" in course:
-                scorm_file = course["scorm_package"].split("/")[-1]
-                self._moosh_commands.append(
-                    f"activity-add --section=0 --name='{name}' "
-                    f"--options='packagefilepath={scorm_file}' scorm {course_id}"
-                )
-            
-            course_ids.append(course_id)
-            course_id += 1
-        return course_ids
-
-    def _generate_group_commands(self):
-        group_ids = []
-        for group in self.groups:
-            name = group.get("name")
-            course_id = group.get("course_id", 2)
-            
-            if name:
-                self._moosh_commands.append(f"group-create '{name}' {course_id}")
-        return group_ids
-
-    def _add_user_command(self, user_data, course_ids):
-        username = user_data.get("username")
-        if not username and user_data.get("email"):
-             username = user_data.get("email").split("@")[0]
-        
-        if not username:
-             username = f"user{len(self._generated_users)+1}"
-
-        password = user_data.get("password")
-        if not password:
-            password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
-            
-        email = user_data.get("email", "")
-        role = user_data.get("role", "student")
-
-        self._generated_users.append({
-            "username": username,
-            "email": email,
-            "password": password,
-            "role": role,
-            "is_trainee": user_data.get("is_trainee", False)
-        })
-
-        self._moosh_commands.append(f"user-create --password={password} --email={email} {username}")
-        for cid in course_ids:
-            self._moosh_commands.append(f"course-enrol -r {role} {cid} {username}")
+        self.enable_trainees = data.get("enable_trainees", self.enable_trainees)
+        self.auto_enroll_trainees = data.get("auto_enroll_trainees", self.auto_enroll_trainees)
 
     def to_dict(self):
-        trainees = None
-        if self.enable_trainees:
-            trainees = self._description.generate_student_access_credentials()
-        self.generate_moosh_commands(trainees)
-        scorm_packages = set()
-        for course in self.courses:
-            if "scorm_package" in course:
-                scorm_packages.add(course["scorm_package"])
-            if "activities" in course:
-                for activity in course["activities"]:
-                    if "scorm_package" in activity:
-                        scorm_packages.add(activity["scorm_package"])
-
         result = super().to_dict()
-        result["courses"] = self.courses
-        result["moosh_commands"] = self.moosh_commands
-        result["scorm_packages"] = list(scorm_packages)
+        result["enable_trainees"] = self.enable_trainees
+        result["auto_enroll_trainees"] = self.auto_enroll_trainees
         return result | self._description.config.moodle.to_dict()
 
 class BastionHostDescription(ServiceDescription):
