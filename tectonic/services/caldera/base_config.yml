@@ -19,15 +19,17 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 #
 ---
-- name: "Install Caldera"
+- name: "Install Caldera (Rocky 9)"
   hosts: caldera
   become: true
-  
+  vars_files:
+    - vars/variables.yml
+    
   tasks:
     - name: Set hostname
       ansible.builtin.hostname:
         name: caldera
-      when: platform != "docker"
+      when: config.platform != "docker"
 
     - name: Install node repo
       ansible.builtin.shell: "curl -sL https://rpm.nodesource.com/setup_18.x | bash"
@@ -36,7 +38,9 @@
       ansible.builtin.package:
         name:
           - git
-          - python3.9
+          - python3.12
+          - python3.12-pip
+          - python3.12-cryptography
           - nodejs
           - haproxy
           - gcc
@@ -46,41 +50,34 @@
         state: present
 
     - name: Update pip
-      ansible.builtin.command: python3.9 -m pip install --upgrade pip
+      ansible.builtin.command: python3.12 -m pip install --upgrade pip
 
     - name: Download Caldera
       ansible.builtin.git:
         repo: https://github.com/mitre/caldera.git
         dest: /opt/caldera/
-        version: "{{ caldera_version }}"
+        version: "{{ services.caldera.version }}"
         recursive: true
 
-    - name: Install Caldera OT plugins
+    - name: Download Caldera OT plugins
       block:
         - name: Download Caldera OT plugins
           ansible.builtin.git:
-            repo: https://github.com/mitre/caldera-ot.git
-            dest: /tmp/caldera_ot/
-            version: main #Force to use main because no tags genrated on the repo
-            recursive: true
-        - name: Get Caldera OT plugins
-          ansible.builtin.find:
-            paths: /tmp/caldera_ot/
-            recurse: no
-            file_type: directory
-          register: caldera_ot_plugins
-        - name: Install Caldera OT plugins
-          ansible.builtin.command: "mv {{ item['path'] }} /opt/caldera/plugins/"
-          loop: "{{ caldera_ot_plugins['files'] }}"
-          when: item['path'] != "/tmp/caldera_ot/ot-one-pagers"
-        - name: Remove tmp files
-          ansible.builtin.file:
-            path: /tmp/caldera_ot/
-            state: absent
-      when: caldera_ot_enabled == "True"
+            repo: "https://github.com/mitre/{{ item.name }}.git"
+            dest: "/root/ot_plugins/{{ item.name }}/"
+            version: "v{{ item.version }}"
+          loop: "{{ ot_plugins }}"
+        - name: Download iec61850 payloads
+          ansible.builtin.get_url:
+            url: "https://github.com/mitre/iec61850-payloads/releases/download/v1.0.0/{{ item }}"
+            dest: /root/ot_plugins/iec61850/payloads
+          with_items:
+            - iec61850_actions
+            - iec61850_actions.exe
+            - iec61850_actions_darwin
 
     - name: Install Caldera requirements
-      ansible.builtin.command: python3.9 -m pip install -r /opt/caldera/requirements.txt
+      ansible.builtin.command: python3.12 -m pip install -r /opt/caldera/requirements.txt
 
     - name: Check ig Magma plugin exists
       ansible.builtin.stat:
@@ -110,4 +107,4 @@
       ansible.posix.selinux:
         policy: targeted
         state: permissive
-      when: platform != "docker"
+      when: config.platform != "docker"

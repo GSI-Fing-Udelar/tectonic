@@ -65,9 +65,6 @@ def absolute_path(path, base_dir=None, expand_user=True):
         return path
     return str(p)
 
-
-
-
 def read_files_in_dir(directory):
     contents = ""
     if directory and Path(directory).is_dir():
@@ -78,14 +75,3 @@ def read_files_in_dir(directory):
                     content += "\n"
                 contents += content
     return contents
-
-
-
-
-
-
-
-
-
-
-

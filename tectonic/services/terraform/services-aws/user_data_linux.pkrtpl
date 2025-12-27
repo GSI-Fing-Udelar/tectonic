@@ -2,7 +2,7 @@
 hostnamectl set-hostname ${hostname}
 echo "${authorized_keys}" > ~${username}/.ssh/authorized_keys
 #Resize rocky images
-if [ "${base_os}" == "rocky8" ]
+if [ "${base_os}" == "rocky8" || "${base_os}" == "rocky9" ]
 then
     growpart /dev/xvda 5
     pvresize -y -q /dev/xvda5

@@ -1,6 +1,6 @@
 # Managed by Ansible
 
-server.port: 5601
+server.port: "{{ services.elastic.internal_port }}"
 server.host: 0.0.0.0
 server.ssl.enabled: true
 server.ssl.certificate: /etc/kibana/certs/elk.crt
@@ -21,6 +21,6 @@ logging:
             - file
 pid.file: /run/kibana/kibana.pid
 xpack.encryptedSavedObjects.encryptionKey: "{{ lookup('community.general.random_string', length=33, special=false, numbers=true, upper=true, lower=true) }}"
-{% if elastic.http_proxy != "" and (platform == "libvirt" or platform == "docker") %}
-xpack.fleet.registryProxyUrl: "{{ elastic.http_proxy }}"
+{% if config.proxy is defined and (config.platform in ["docker", "libvirt"] ) %}
+xpack.fleet.registryProxyUrl: "{{ config.proxy }}"
 {% endif %}

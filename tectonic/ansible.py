@@ -19,14 +19,9 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-import math
 from pathlib import Path
 import ansible_runner
 import importlib.resources as tectonic_resources
-
-from tectonic.config import TectonicConfig
-from tectonic.description import MachineDescription, Description, DescriptionException
-from tectonic.client import Client
 
 logger = logging.getLogger(__name__)
 
@@ -81,52 +76,55 @@ class Ansible:
             ssh_args += f' -o ProxyCommand="{proxy_command}"'
 
         networks = {}
+        guests = {}
         for _, guest in self.description.scenario_guests.items():
+            if guest.instance not in guests:
+                guests[guest.instance] = {}
+            if guest.base_name not in guests[guest.instance]:
+                guests[guest.instance][guest.base_name] = {} 
+            guests[guest.instance][guest.base_name][guest.copy] = guest.to_dict()
+
             if guest.instance not in networks:
                 networks[guest.instance] = {}
             for _, interface in guest.interfaces.items():
-                if interface.network.name not in networks[guest.instance]:
-                    networks[guest.instance][interface.network.name] = {}
-                networks[guest.instance][interface.network.name][guest.base_name] = interface.name
+                if interface.network.base_name not in networks[guest.instance]:
+                    networks[guest.instance][interface.network.base_name] = {"members":{},"network_cidr":interface.network.ip_network}
+                if guest.base_name not in networks[guest.instance][interface.network.base_name]["members"]:
+                    networks[guest.instance][interface.network.base_name]["members"][guest.base_name] = {}
+                networks[guest.instance][interface.network.base_name]["members"][guest.base_name][guest.copy] = interface.private_ip
 
         for machine_name in machine_list:
             if machine_name in self.description.services_guests:
                 machine = self.description.services_guests[machine_name]
             elif machine_name in self.description.scenario_guests:
                 machine = self.description.scenario_guests[machine_name]
-            elif machine_name in self.description.extra_guests:
-                machine = self.description.extra_guests[machine_name]
             else:
                 raise AnsibleException(f"Machine name {machine_name} not found.")
-
-            ansible_username = username or machine.admin_username
-            hostname = self.client.get_ssh_hostname(machine_name)
 
             if not inventory.get(machine.base_name):
                 inventory[machine.base_name] = {
                     "hosts": {},
                     "vars": {
-                                "ansible_become": True,
-                                "basename": machine.base_name,
-                                "instances": self.description.instance_number,
-                                "platform": self.config.platform,
-                                "institution": self.description.institution,
-                                "lab_name": self.description.lab_name,
-                                "ansible_connection" : "community.docker.docker_api" if self.config.platform == "docker" else "ssh", #export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES on macos
-                                "docker_host": self.config.docker.uri,
-                            } | extra_vars,
+                        "ansible_become": True,
+                        "ansible_connection" : "community.docker.docker_api" if self.config.platform == "docker" else "ssh", #export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES on macos
+                        "ansible_docker_docker_host": self.config.docker.uri,
+                        "users": self.description.generate_student_access_credentials(),
+                        "ssh_password_login": self.description.create_students_passwords or self.description.guacamole.enable,
+                        "random_seed": self.description.random_seed,
+                        "create_students_password": self.description.create_students_passwords,
+                        "student_prefix": self.description.student_prefix,
+                    } | self.description.to_dict() | extra_vars,
                 }
-
             inventory[machine.base_name]["hosts"][machine.name] = {
-                "ansible_host": hostname if self.config.platform != "docker" else machine.name,
-                "ansible_user": ansible_username,
+                "ansible_host": self.client.get_ssh_hostname(machine_name) if self.config.platform != "docker" else machine.name,
+                "ansible_user": username or machine.admin_username,
                 "ansible_ssh_common_args": ssh_args,
-                "machine_name": machine.name,
+                "guest": machine.base_name,
+                "copy": str(machine.copy),
                 "instance": machine.instance,
-                "copy": machine.copy,
+                "guests": guests[guest.instance], 
                 "networks": networks[machine.instance],
-                "parameter": parameters[machine.instance] if machine.instance else {},
-                "random_seed": self.description.random_seed,
+                "parameters": parameters[machine.instance] if machine.instance else {},
             }
 
             if machine.os == "windows_srv_2022":
@@ -152,12 +150,8 @@ class Ansible:
                     "ansible_become": True,
                     "ansible_user": username or self.config.elastic.user_install_packetbeat,
                     "basename": "localhost",
-                    "instances": self.description.instance_number,
-                    "platform": self.config.platform,
-                    "institution": self.description.institution,
-                    "lab_name": self.description.lab_name,
                     "ansible_connection" : "local",
-                } | extra_vars,
+                } | self.description.to_dict() | extra_vars,
             }
         }
 
@@ -250,24 +244,8 @@ class Ansible:
         )
 
     def configure_services(self):
-        services = [service.name for _, service in self.description.services_guests.items()]
-        if services:
-            extra_vars = {
-                "elastic" : {
-                    "monitor_type": self.description.elastic.monitor_type,
-                    "deploy_policy": self.description.elastic.deploy_default_policy,
-                    "policy_name": self.config.elastic.packetbeat_policy_name if self.description.elastic.monitor_type == "traffic" else self.config.elastic.endpoint_policy_name,
-                    "http_proxy" : self.config.proxy if self.config.proxy is not None else "",
-                    "description_path": str(self.description.scenario_dir),
-                    "ip": self.description.elastic.service_ip,
-                    "elasticsearch_memory": math.floor(self.description.elastic.memory / 1000 / 2)  if self.description.elastic.enable else None,
-                    "dns": self.config.docker.dns,
-                },
-                "caldera":{
-                    "ip": self.description.caldera.service_ip,
-                    "description_path": str(self.description.scenario_dir),
-                },
-            }
-            inventory = self.build_inventory(machine_list=services, extra_vars=extra_vars)
+        enabled_services = [service.name for _, service in self.description.services_guests.items()]
+        if len(enabled_services) > 0:
+            inventory = self.build_inventory(machine_list=enabled_services)
             self.wait_for_connections(inventory=inventory)
             self.run(inventory=inventory, playbook=self.ANSIBLE_SERVICE_PLAYBOOK, quiet=True)

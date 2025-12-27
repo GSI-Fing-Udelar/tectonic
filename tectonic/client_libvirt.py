@@ -115,7 +115,27 @@ class ClientLibvirt(Client):
                 for interface_name, val in interfaces.items():
                     if interface_name != "lo" and val["addrs"]:
                         for ipaddr in val["addrs"]:
-                            if ip_address(ipaddr["addr"]) in ip_network(self.config.network_cidr_block):
+                            if ip_address(ipaddr["addr"]) in ip_network(self.config.network_cidr_block) and not ip_address(ipaddr["addr"]) in ip_network(self.config.services_network_cidr_block):
+                                return ipaddr["addr"]
+                return None
+        except Exception as exception:
+            raise ClientLibvirtException(f"{exception}") from exception
+        
+    def get_machine_ip_in_services_network(self, machine_name):
+        try:
+            domain = self.connection.lookupByName(machine_name)
+        except libvirt.libvirtError:
+            return None
+        try:
+            self._wait_for_agent(domain)
+            if machine_name in self.description.services_guests.keys():
+                return self.description.services_guests[machine_name].service_ip
+            else:
+                interfaces = domain.interfaceAddresses(libvirt.VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT, 0)
+                for interface_name, val in interfaces.items():
+                    if interface_name != "lo" and val["addrs"]:
+                        for ipaddr in val["addrs"]:
+                            if ip_address(ipaddr["addr"]) in ip_network(self.config.services_network_cidr_block):
                                 return ipaddr["addr"]
                 return None
         except Exception as exception:

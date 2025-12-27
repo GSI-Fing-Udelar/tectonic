@@ -1,0 +1,121 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+
+- name: Finish playbook execution if Guacample already installed
+  block:
+    - name: Check if credentials file exists
+      ansible.builtin.stat:
+        path: /root/credentials
+      register: credentials
+    - name: End execution if credentials file exists
+      ansible.builtin.meta: end_play
+      when: credentials.stat.exists
+
+- name: Enable guacamole brute force protection
+  ansible.builtin.copy:
+    src: "/root/guacamole-auth-ban-{{ services.guacamole.version }}/guacamole-auth-ban-{{ services.guacamole.version }}.jar"
+    dest: /etc/guacamole/extensions/
+    remote_src: yes
+  when: services.guacamole.brute_force_protection_enabled == "True"
+
+- name: Copy Tomcat configuration
+  ansible.builtin.template:
+    src: templates/server.j2
+    dest: /etc/tomcat9/server.xml
+    owner: root
+    group: tomcat
+
+- name: Enable and start services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: true
+    daemon_reload : true
+  with_items:
+    - tomcat9
+    - guacd
+
+- name: Configure firewall (iptables)
+  block:
+    - name: Set Gateway IP
+      ansible.builtin.set_fact:
+        gateway_ip: "{{ (services.guacamole.ip | split('.'))[0] }}.{{ (services.guacamole.ip | split('.'))[1] }}.{{ (services.guacamole.ip | split('.'))[2] }}.129"
+    - name: Configure firewall | Flush rules
+      ansible.builtin.iptables:
+        table: filter
+        chain: "{{ item }}"
+        flush: yes
+      loop:
+        - INPUT
+        - FORWARD
+        - OUTPUT
+    - name: Configure firewall | Allow ssh from server
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        source: "{{ gateway_ip }}"
+        destination_port: 22
+        jump: ACCEPT
+    - name: Configure firewall | Allow access to guacamole from bastion_host server
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        source: "{{ services.bastion_host.ip }}"
+        destination_port: "{{ services.guacamole.internal_port }}"
+        jump: ACCEPT
+    - name: Configure firewall | Allow related or established connections
+      ansible.builtin.iptables:
+        chain: INPUT
+        ctstate: ESTABLISHED,RELATED
+        jump: ACCEPT
+    - name: Configure firewall | Allow loopback traffic
+      ansible.builtin.iptables:
+        chain: INPUT
+        in_interface: lo
+        jump: ACCEPT
+    - name: Configure firewall | Drop all input traffic
+      ansible.builtin.iptables:
+        chain: INPUT
+        policy: DROP
+    - name: Configure firewall | Drop al forward traffic
+      ansible.builtin.iptables:
+        chain: FORWARD
+        policy: DROP
+    - name: Configure firewall | Accept all output traffic
+      ansible.builtin.iptables:
+        chain: OUTPUT
+        policy: ACCEPT
+    - name: Configure firewall | Save rules
+      ansible.builtin.command: service netfilter-persistent save
+  when: config.platform in ["libvirt", "docker"]
+
+- name: Set guacadmin password
+  ansible.builtin.set_fact:
+    guacadmin_password: "{{ lookup('community.general.random_string', length=20, special=false) }}"
+
+- name: Update password in database
+  ansible.builtin.command: "mysql -D guacamole_db -e \"SET @new_salt:=UNHEX('FE24ADC5E11E2B25288D1704ABE67A79E342ECC26064CE69C5B3177795A82264'); SET @new_hash:=UNHEX(SHA2(CONCAT('{{ guacadmin_password }}',HEX(@new_salt)),256)); UPDATE guacamole_user SET password_salt=@new_salt,password_hash=@new_hash,password_date=NOW() WHERE user_id='1';\""
+
+- name: Write password to file
+  ansible.builtin.copy:
+    dest: /root/credentials
+    content: |
+      trainer {{ guacadmin_password }}
+    mode: '0640'

@@ -12,9 +12,8 @@ configurations, real-time monitoring and automated attack simulations.
 
 
 ### Scenario Management
-Scenarios are defined using a scenario description yml file (usually
-`description.yml` inside the scenario directory) plus a lab edition
-file (usually `<lab_name>.yml`.
+Scenarios are defined using a [scenario description yml file](./description.md#scenario-specification) (usually
+`description.yml` inside the scenario directory) plus a [lab edition file](./description.md#lab-edition-information) (usually `<lab_name>.yml`).
 
 + Create base images:
   ```
@@ -35,6 +34,12 @@ file (usually `<lab_name>.yml`.
 
 ### Operations on machines
 Operations done on machines in the scenario, after it is deployed.
+Most of these commands accept [machine
+specification](#machine-specification) options, represented as
+`<machine_spec>` below. These options can be a combination of:
+instance number (`-i`), guest (base) name (`-g`), and copy number
+(`-c`). Please see the corresponding [section
+below](#machine-specification) for further details.
 
 + Get a console on a *single* machine:
   ```
@@ -77,7 +82,7 @@ Most commands accept machine specification options, which can be a
 combination of: instance number (`-i`), guest (base) name (`-g`), and
 copy number (`-c`).
 
-For example, to reboot all copies of the machine `victim` of instances 3 and 4, one can run:
+For example, to reboot all copies of the  `victim` machine of instances 3 and 4, one can run:
 ```
   tectonic -c ~/tectonic.ini <lab_edition_file> reboot -g victim -i 3,4
 ```
@@ -88,7 +93,17 @@ as a range: `5-10`, or as a combination: `2,4-6,8`.
 
 
 ### Connectivity to the scenario
-+ Teacher access:  
+#### Guacamole
+If the Guacamole service was deployed as part of the scenario, the
+users will be able to access the instance machines through this
+service using a web browser. The access credentials of students for
+the Guacamole service are the the same as the credentials for the
+scenario machines. The access credentials of the teacher can be
+obtained with the `info` command.
+
+#### Console connections
+
++ Teacher access:
   Use `tectonic console`, or connect through `ssh`:
   ```
   ssh -J ubuntu@<teacher_access_ip> <machine_ip>
@@ -134,7 +149,7 @@ You can then connect to localhost:80443 to access port 443 on machine
 10.0.1.5.
 
   
-## File edition
+#### File edition
 For editing files within a scenario, you can use a console based text
 editor or run locally a text editor that supports remote connections,
 such as [VSCode](https://code.visualstudio.com/). Using the above ssh

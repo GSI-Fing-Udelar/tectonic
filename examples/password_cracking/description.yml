@@ -68,7 +68,7 @@ elastic_settings:
   # How to monitor instances. traffic (only network traffic with
   # packetbeat) or endpoint (monitor processes, network traces, files,
   # logs). Default: traffic.
-  monitor_type: "endpoint"
+  monitor_type: "traffic"
   # Wheter to deploy default policy. Default: yes.
   deploy_default_policy: yes
 
@@ -76,3 +76,22 @@ elastic_settings:
 caldera_settings:
   # Wheter to deploy this service. Default: no.
   enable: no
+  memory: 2048
+  vpcu: 2
+  disk: 20
+
+# Guacamole service configuration
+guacamole_settings:
+  # Default values:
+  enable: no
+  memory: 2048
+  vpcu: 2
+  disk: 20
+
+# Moodle service configuration
+moodle_settings:
+  enable: yes
+  # Default values:
+  memory: 4096
+  vpcu: 2
+  disk: 20

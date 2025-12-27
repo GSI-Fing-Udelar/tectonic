@@ -40,86 +40,34 @@ OS_DATA = {
         "owner": "792107900819",
         "username": "rocky",
         "cloud_image_url": "http://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2",
-        # "cloud_image_url": "file:///data/isos/Rocky-8-GenericCloud.latest.x86_64.qcow2",
+        #"cloud_image_url": "file:///data/isos/Rocky-8-GenericCloud.latest.x86_64.qcow2",
         "cloud_image_checksum": "e56066c58606191e96184de9a9183a3af33c59bcbd8740d8b10ca054a7a89c14",
         "docker_base_image": "gsitectonic/rocky8",
+        "entrypoint": "/usr/sbin/init",
+    },
+    "rocky9": {
+        "ami_filter": "Rocky-9-EC2-Base-9.*x86_64",
+        "owner": "792107900819",
+        "username": "rocky",
+        "cloud_image_url": "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
+        #"cloud_image_url": "file:///data/isos/Rocky-9-GenericCloud.latest.x86_64.qcow2",
+        "cloud_image_checksum": "2c72815bb83cadccbede4704780e9b52033722db8a45c3fb02130aa380690a3d",
+        "docker_base_image": "gsitectonic/rocky9",
         "entrypoint": "/usr/sbin/init",
     },
     "kali": {
         "ami_filter": "kali-last-snapshot-amd64*",
         "owner": "679593333241",  # TODO: Marketplace owner id
         "username": "kali",
-        # cloud-init image not provided by Kali :(
-        # See https://codingpackets.com/blog/kali-linux-cloud-init-image/
-            "cloud_image_url": "file:///data/isos/kali-linux-2023.3-qemu-amd64.qcow2",
-        "cloud_image_checksum": "b48cc396cf91ea1f38de4dca7abfcc0175f07d7af1b7e6df89a76194e7fda3d9",
-        # "cloud_image_url": "https://cdimage.kali.org/kali-2023.3/kali-linux-2023.3-qemu-amd64.7z"
-        # "cloud_image_checksum": "9ebbea4abb545c8e4a56153e2b5fa0ad90658c583af2fa76ad8c0a0b4ba23e20",
+        "cloud_image_url": "https://kali.download/cloud-images/kali-2025.3/kali-linux-2025.3-cloud-genericcloud-amd64.tar.xz",
+        #"cloud_image_url": "file:///data/isos/kali-linux-2025.3-cloud-genericcloud-amd64.qcow2",
+        "cloud_image_checksum": "ef21c5c186a6de18ab3109bd75494a56834b92d04641aa59a7d8f6691d17d2bc",
+        "docker_base_image": "gsitectonic/kali",
+        "entrypoint": "/usr/sbin/init",
         },
     "windows_srv_2022": {
         "ami_filter": "Windows_Server-2022-English-Full-Base*",
         "owner": "amazon",
         "username": "administrator",
     },
-}
-
-SERVICES_SIZE = {
-    "elastic" : {
-        "libvirt" : {
-            "test" : {
-                "vcpu":2,
-                "memory":4096, #MB
-                "disk":10, #GB
-            },
-            "small" : {
-                "vcpu":4,
-                "memory":8192,
-                "disk":60,
-            },
-            "medium": {
-                "vcpu":8,
-                "memory":16384,
-                "disk":110,
-            },
-            "big":{
-                "vcpu":12,
-                "memory":24576,
-                "disk":160,
-            }
-        },
-        "aws" : {
-            "small": "t2.small",
-            "medium": "t2.medium",
-            "big": "t2.big",
-        }
-    },
-    "caldera" : {
-        "libvirt" : {
-            "test" : {
-                "vcpu":1,
-                "memory":2048, #MB
-                "disk":10, #GB
-            },
-            "small" : {
-                "vcpu":2,
-                "memory":2048,
-                "disk":20,
-            },
-            "medium": {
-                "vcpu":3,
-                "memory":4096,
-                "disk":20,
-            },
-            "big":{
-                "vcpu":4,
-                "memory":8192,
-                "disk":50,
-            }
-        },
-        "aws" : {
-            "small": "t2.small",
-            "medium": "t2.medium",
-            "big": "t2.big",
-        }
-    }
 }

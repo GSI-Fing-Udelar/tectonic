@@ -56,13 +56,17 @@ def interactive_shell(
     Parameters:
         hostname (str): The name target host to connect to.
         username (str): The user on the target host to use for the connection.
-        gateway (str, tuple, None):  Can be a string to use as proxy, or a pair of strings of the form: (proxy_hostname, proxy_user), or None.
+        gateway (str, [tuple], None):  Can be a string to use as proxy, or a list of tuples of the form: (proxy_hostname, proxy_user), or None.
     """
     gateway_connection = None
     if isinstance(gateway, str):
         gateway_connection = gateway
-    elif isinstance(gateway, tuple):
-        gateway_connection = fabric.Connection(host=gateway[0], user=gateway[1])
-
+    elif isinstance(gateway, list):
+        if len(gateway) == 2:
+            gateway_connection_jump = fabric.Connection(host=gateway[0][0], user=gateway[0][1])
+            gateway_connection = fabric.Connection(host=gateway[1][0], user=gateway[1][1], gateway=gateway_connection_jump)
+        elif len(gateway) == 1:
+            gateway_connection = fabric.Connection(host=gateway[0][0], user=gateway[0][1])
+        
     connection = fabric.Connection(host=hostname, user=username, gateway=gateway_connection)
     connection.shell()

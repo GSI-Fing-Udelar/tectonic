@@ -32,8 +32,18 @@
   lineinfile:
     dest: /etc/hosts
     insertafter: EOF
-    line: "{{caldera.ip}} {{ ansible_facts['fqdn'] }}"
-  when: platform != "docker"
+    line: "{{services.caldera.ip}} {{ ansible_facts['fqdn'] }}"
+  when: config.platform != "docker"
+
+- name: Enable Caldera OT plugins
+  block:
+    - name: Enable Caldera OT plugins | Load variables
+      ansible.builtin.include_vars:
+        file: vars/variables.yml
+    - name: "Enable Caldera OT plugins: {{ item.name }}"
+      ansible.builtin.command: "mv /root/ot_plugins/{{ item.name }} /opt/caldera/plugins/"
+      loop: "{{ ot_plugins }}"
+  when: services.caldera.ot_enabled == "True"
 
 - name: Create certificates
   block:
@@ -55,7 +65,7 @@
         organization_name: GSI
         subject_alt_name:
           - "DNS:{{ ansible_facts['fqdn'] }}"
-          - "DNS:{{ caldera.ip }}"
+          - "DNS:{{ services.caldera.ip }}"
           - "DNS:127.0.0.1"
       register: csr
     - name: Create self-signed certificate from CSR
@@ -77,7 +87,7 @@
           {{ key['stdout'] }}
           {{ cert['stdout'] }}
   vars:
-    ansible_python_interpreter: /usr/bin/python3.9
+    ansible_python_interpreter: /usr/bin/python3.12
 
 - name: Configure haproxy
   block:
@@ -100,14 +110,14 @@
               option http-server-close
 
           frontend caldera-https-mgmt
-              bind *:8443 ssl crt plugins/ssl/conf/certificate.pem
-              http-request add-header proxy_port 8443
+              bind *:{{ services.caldera.internal_port }} ssl crt plugins/ssl/conf/certificate.pem
+              http-request add-header proxy_port {{ services.caldera.internal_port }}
               http-request set-header X-Forwarded-Proto https
               default_backend caldera_server
 
           frontend caldera-https-agents
               bind *:443 ssl crt plugins/ssl/conf/certificate.pem
-              http-request add-header proxy_port 8443
+              http-request add-header proxy_port 443
               http-request set-header X-Forwarded-Proto https
               acl beacon path_beg /beacon
               acl file_upload path_beg /file/upload
@@ -121,7 +131,7 @@
               server caldera_main 127.0.0.1:8888 cookie caldera_main
     - name: Allow Haproxy connect ports
       ansible.builtin.command: setsebool -P haproxy_connect_any 1
-      when: platform != "docker"
+      when: config.platform != "docker"
 
 - name: Generate password
   ansible.builtin.set_fact:
@@ -131,84 +141,21 @@
     blue_api_key: "{{ lookup('community.general.random_string', length=43, special=false) }}"
 
 - name: Copy Caldera configuration
-  ansible.builtin.copy:
-    dest: /opt/caldera/conf/local.yml
-    content: |
-      ability_refresh: 60
-      api_key_blue: {{ blue_api_key }}
-      api_key_red: {{ red_api_key }}
-      app.contact.dns.domain: {{ansible_facts['fqdn']}}
-      app.contact.dns.socket: {{ caldera.ip }}:8853
-      app.contact.gist: {{ lookup('community.general.random_string', length=43, special=false) }}
-      app.contact.html: /weather
-      app.contact.http: https://{{ caldera.ip }}:443
-      app.contact.slack.api_key: SLACK_TOKEN
-      app.contact.slack.bot_id: SLACK_BOT_ID
-      app.contact.slack.channel_id: SLACK_CHANNEL_ID
-      app.contact.tunnel.ssh.host_key_file: REPLACE_WITH_KEY_FILE_PATH
-      app.contact.tunnel.ssh.host_key_passphrase: REPLACE_WITH_KEY_FILE_PASSPHRASE
-      app.contact.tunnel.ssh.socket: {{ caldera.ip }}:8022
-      app.contact.tunnel.ssh.user_name: sandcat
-      app.contact.tunnel.ssh.user_password: s4ndc4t!
-      app.contact.ftp.host: {{ caldera.ip }}
-      app.contact.ftp.port: 2222
-      app.contact.ftp.pword: caldera
-      app.contact.ftp.server.dir: ftp_dir
-      app.contact.ftp.user: caldera_user
-      app.contact.tcp: {{ caldera.ip }}:7010
-      app.contact.udp: {{ caldera.ip }}:7011
-      app.contact.websocket: {{ caldera.ip }}:7012
-      objects.planners.default: atomic
-      crypt_salt: {{ lookup('community.general.random_string', length=43, special=false) }}
-      encryption_key: {{ lookup('community.general.random_string', length=43, special=false) }}
-      exfil_dir: /tmp/caldera
-      reachable_host_traits:
-      - remote.host.fqdn
-      - remote.host.ip
-      host: 127.0.0.1
-      plugins:
-      - access
-      - atomic
-      - compass
-      - debrief
-      - fieldmanual
-      - manx
-      - response
-      - sandcat
-      - stockpile
-      - training
-      - ssl
-      - bacnet
-      - dnp3
-      - modbus
-      - profinet
-      - iec61850
-      - gems
-      port: 8888
-      reports_dir: /tmp
-      auth.login.handler.module: default
-      requirements:
-        go:
-          command: go version
-          type: installed_program
-          version: 1.19
-        python:
-          attr: version
-          module: sys
-          type: python_module
-          version: 3.8.0
-      users:
-        blue:
-          blue: {{ blue_password }}
-        red:
-          red: {{ red_password }}
+  block:
+    - name: Copy Caldera configuration | Load variables
+      ansible.builtin.include_vars:
+        file: vars/variables.yml
+    - name: Copy Caldera configuration | Copy config
+      ansible.builtin.template:
+        src: templates/config.j2
+        dest: /opt/caldera/conf/local.yml
 
 - name: Create Caldera launch script
   ansible.builtin.copy:
     dest: /opt/caldera/script.sh
     content: |
       #!/bin/bash
-      nohup python3.9 server.py &
+      nohup python3.12 server.py --build &
 
 - name: Create Caldera service 
   ansible.builtin.copy: 
@@ -238,16 +185,8 @@
 
 - name: Set Gateway IP
   ansible.builtin.set_fact:
-    gateway_ip: "{{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.129"
-  # block:
-    # - name: Set gateway_ip for Docker
-    #   ansible.builtin.set_fact:
-    #     gateway_ip: "{{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.1"
-    #   when: platform == "docker"
-    # - name: Set gateway_ip for Libvirt
-    #   ansible.builtin.set_fact:
-    #     gateway_ip: "{{ (caldera.ip | split('.'))[0] }}.{{ (caldera.ip | split('.'))[1] }}.{{ (caldera.ip | split('.'))[2] }}.129"
-    #   when: platform == "libvirt"
+    gateway_ip: "{{ (services.caldera.ip | split('.'))[0] }}.{{ (services.caldera.ip | split('.'))[1] }}.{{ (services.caldera.ip | split('.'))[2] }}.129"
+  when: config.platform in ["libvirt", "docker"]
 
 - name: Configure firewalld
   block:
@@ -261,34 +200,34 @@
         - 443/tcp
         - 7010/tcp
         - 7011/udp
-    - name: Configure firewalld - Remove service from default zone
+    - name: Configure firewalld | Docker or Libvirt
+      block:
+        - name: Configure firewalld | Docker or Libvirt - Remove service from default zone
+          ansible.posix.firewalld:
+            zone: public
+            service: ssh
+            permanent: true
+            state: disabled
+        - name: Configure firewalld | Docker or Libvirt - Allow ssh from server
+          ansible.posix.firewalld:
+            zone: public
+            permanent: true
+            state: enabled
+            rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port=22 protocol=tcp accept"
+        - name: Configure firewalld | Docker or Libvirt - Allow access to caldera from bastion_host server
+          ansible.posix.firewalld:
+            zone: public
+            permanent: true
+            state: enabled
+            rich_rule: "rule family=ipv4 source address={{ services.bastion_host.ip }}/32 port port={{ services.caldera.internal_port }} protocol=tcp accept"
+      when: config.platform in ["libvirt", "docker"]
+    - name: Configure firewalld | AWS - Add port to default zone
       ansible.posix.firewalld:
         zone: public
-        service: ssh
-        permanent: true
-        state: disabled
-      when: platform == "libvirt" or platform == "docker"
-    - name: Configure firewalld - Allow ssh from server
-      ansible.posix.firewalld:
-        zone: public
+        port: "{{ services.caldera.internal_port }}/tcp"
         permanent: true
         state: enabled
-        rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port=22 protocol=tcp accept"
-      when: platform == "libvirt" or platform == "docker"
-    - name: Configure firewalld - Allow access to caldera from server
-      ansible.posix.firewalld:
-        zone: public
-        permanent: true
-        state: enabled
-        rich_rule: "rule family=ipv4 source address={{ gateway_ip }}/32 port port=8443 protocol=tcp accept"
-      when: platform == "libvirt" or platform == "docker"
-    - name: Configure firewalld - Add port to default zone
-      ansible.posix.firewalld:
-        zone: public
-        port: "8443/tcp"
-        permanent: true
-        state: enabled
-      when: platform == "aws"
+      when: config.platform == "aws"
     - name: Configure firewalld - Reload rules
       ansible.builtin.command: firewall-cmd --reload
 

@@ -109,10 +109,13 @@ def test_deploy(core):
     core.ansible.configure_services = MagicMock()
     core.ansible.wait_for_connections = MagicMock()
     core.ansible.run = MagicMock()
-    core.configure_students_access = MagicMock(return_value={})
+    core.configure_access = MagicMock(return_value={})
     core.description.elastic.enable = True
     core.description.elastic.monitor_type = "traffic"
     core.description.caldera.enable = True
+    core.description.guacamole.enable = True
+    core.description.moodle.enable = True
+    core.description.bastion_host.enable = True
     core.terraform_service.deploy_packetbeat = MagicMock()
     core.terraform_service.install_elastic_agent = MagicMock()
     core.terraform_service.install_caldera_agent = MagicMock()
@@ -121,7 +124,7 @@ def test_deploy(core):
 
     core.ansible.wait_for_connections.assert_called_once()
     core.ansible.run.assert_called_once()
-    core.configure_students_access.assert_called_once()
+    core.configure_access.assert_called_once()
 
 
 def test_destroy(core):
@@ -134,6 +137,9 @@ def test_destroy(core):
     core.description.elastic.monitor_type = "traffic"
     core.description._base_guests = {"guest": MagicMock(base_name="g", entry_point=True)}
     core.description.caldera.enable = True
+    core.description.guacamole.enable = True
+    core.description.moodle.enable = True
+    core.description.bastion_host.enable = True
 
 
     core.destroy(None, True, ["svc"], True)
@@ -146,10 +152,13 @@ def test_recreate(core):
     core.terraform.recreate = MagicMock()
     core.ansible.wait_for_connections = MagicMock()
     core.ansible.run = MagicMock()
-    core.configure_students_access = MagicMock()
+    core.configure_access = MagicMock()
     core.description.elastic.enable = True
     core.description.elastic.monitor_type = "endpoint"
     core.description.caldera.enable = True
+    core.description.guacamole.enable = True
+    core.description.moodle.enable = True
+    core.description.bastion_host.enable = True
     core.terraform_service.install_elastic_agent = MagicMock()
     core.terraform_service.install_caldera_agent = MagicMock()
 
@@ -186,6 +195,9 @@ def test_info(core):
     svc.port = 1234
     core.description.elastic.enabled = True
     core.description.caldera.enabled = True
+    core.description.guacamole.enable = True
+    core.description.moodle.enable = True
+    core.description.bastion_host.enable = True
     core.terraform_service.get_service_credentials = MagicMock(return_value="creds")
     core._get_students_passwords = MagicMock(return_value={"u": "p"})
 
@@ -206,7 +218,7 @@ def test_list_instances_with_elastic(core, monitor_type):
     core.terraform_service.get_service_info =  MagicMock(return_value=[{'agents_status': agents_status}])
 
     status = core.list_instances([1], ["attacker"], [1])
-    assert "instances_status" in status
+    assert "instances_info" in status
     assert "services_status" in status
 
 def test_list_instances_with_caldera(core):
@@ -220,7 +232,7 @@ def test_list_instances_with_caldera(core):
     core.terraform_service.get_service_info =  MagicMock(return_value=[{'agents_status': agents_status}])
 
     status = core.list_instances([1], ["attacker"], [1])
-    assert "instances_status" in status
+    assert "instances_info" in status
     assert "services_status" in status
     
 
@@ -261,11 +273,13 @@ def test_console_invalid(core):
         core.console(1, "g", 1)
 
 
-def test_configure_students_access(core):
+def test_configure_access(core):
     core.description._base_guests = {"g": MagicMock(base_name="g", entry_point=True)}
+    core.description.guacamole.enable = True
+    core.terraform_service.get_service_credentials = MagicMock(return_value={"trainer": "password"})
     core.description.generate_student_access_credentials = MagicMock(return_value={"u": {"password": "p"}})
     core.ansible.run = MagicMock()
-    users = core.configure_students_access([1])
+    users = core.configure_access([1])
     assert "u" in users
 
 
@@ -276,6 +290,7 @@ def test_get_students_passwords(core):
     assert pwds == {"u": "p"}
 
     core.description.create_students_passwords = False
+    core.description.moodle.enable = False
     assert core._get_students_passwords() == {}
 
 

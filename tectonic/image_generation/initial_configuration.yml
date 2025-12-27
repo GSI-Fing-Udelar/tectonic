@@ -1,0 +1,124 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+- name: "Initial Configuration"
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Proxy configuration
+      block:
+        - name: "Profile proxy"
+          ansible.builtin.copy:
+            dest: /etc/profile.d/proxy.sh
+            content: | 
+              export http_proxy={{ config.proxy }}
+              export https_proxy={{ config.proxy }}
+          when: ansible_facts['os_family'] != "Windows"
+
+        - name: "Apt proxy"
+          ansible.builtin.copy:
+            dest: /etc/apt/apt.conf.d/proxy.conf
+            content: | 
+              Acquire::http::Proxy "{{ config.proxy }}";
+              Acquire::https::Proxy "{{ config.proxy }}";
+          when: ansible_facts['os_family'] in ['Debian', 'Ubuntu']
+
+        - name: "Dnf proxy"
+          ansible.builtin.lineinfile:
+            path: /etc/dnf/dnf.conf
+            regexp: '^proxy='
+            line: "proxy={{ config.proxy }}"
+          when: ansible_facts['os_family'] in ['RedHat', 'Fedora', 'Rocky']
+      when: config.proxy is defined
+
+    - name: Install qemu-guest-agent in libvirt
+      block:
+        - name: "Update repos"
+          ansible.builtin.apt:
+            update_cache: yes
+        - name: "Install packages"
+          ansible.builtin.package:
+            name: 
+              - qemu-guest-agent
+              - acpid
+        - name: "Start qemu guest agent"
+          ansible.builtin.service:
+            name: qemu-guest-agent
+            enabled: yes
+            state: started
+        - name: "Start acpid service"
+          ansible.builtin.service:
+            name: acpid
+            enabled: yes
+            state: started
+      when: ansible_facts['os_family'] in ['Debian', 'Ubuntu'] and config.platform == "libvirt"
+
+    - name: Install RDP and GUI
+      block:
+        - name: Install RDP and GUI | Debian like
+          block:
+            - name: Install RDP and GUI | Debian like | Install packages
+              ansible.builtin.package:
+                name:
+                  - xfce4
+                  - xfce4-goodies
+                  - xorg 
+                  - xrdp 
+                  - xorgxrdp
+            - name: Install RDP and GUI | Debian like | Start and enable XRDP
+              ansible.builtin.service:
+                state: started
+                enabled: yes
+                name: xrdp
+          when: ansible_facts['os_family'] in ['Debian', 'Ubuntu']
+        - name: Install RDP and GUI | RedHat
+          block:
+            - name: Install RDP and GUI | RedHat like | Uninstall conflicting packages
+              ansible.builtin.dnf:
+                name:
+                  - curl-minimal
+                  - coreutils-single
+                state: absent
+            - name: Install RDP and GUI | RedHat like | Install packages
+              ansible.builtin.dnf:
+                name:
+                  - '@Server with GUI'
+                  - epel-release
+            - name: Install RDP and GUI | RedHat like | Install xrdp
+              ansible.builtin.dnf:
+                name:
+                  - xrdp
+            - name: Install RDP and GUI | RedHat like | Set default target to graphical.target
+              ansible.builtin.command: systemctl set-default graphical.target
+            - name: Install RDP and GUI | RedHat like | Start and enable XRDP
+              ansible.builtin.service:
+                state: started
+                enabled: yes
+                name: xrdp
+            - name: Install RDP and GUI | RedHat like | Permit RDP traffic
+              ansible.posix.firewalld:
+                port: 3389/tcp
+                permanent: true
+                state: enabled
+                immediate: true
+          when: ansible_facts['os_family'] in ['RedHat', 'Rocky', 'Fedora']
+      when: guests is defined and guests[guest]["gui"]
+

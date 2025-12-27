@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en-EN" prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb# article: http://ogp.me/ns/article#">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>Tectonic</title>
+        <meta name="author" content="Tectonic cyberrange">
+        <meta name="description" content="Tectonic cyberrange training">
+        <meta name="keywords" content="">
+        <meta content="Copyright Tectonic 2024" name="copyright">
+        <meta property="og:locale" content="en_EN">
+        <meta property="og:title" content="Tectonic">
+        <meta property="og:url" content="http://tectonic.com/">
+        <meta property="og:site_name" content="Tectonic">
+        <meta property="og:description" content="Tectonic cyberrange training">
+        <meta property="og:site_name" content="Tectonic">
+        <meta property="og:image" content="/img/tectonic.jpg">
+        <meta property="og:type" content="website">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+        <link rel="icon" type="image/vnd.microsoft.icon" href="/img/icon/favicon.png">
+        <link rel="apple-touch-icon-precomposed" size="144x144" href="/img/icon/favicon.png">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css" rel="stylesheet" type="text/css" media="screen">
+        <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet" type="text/css" media="screen">
+        <link href="/style.css" rel="stylesheet" type="text/css" media="screen">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+        <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;700;800;900&amp;display=swap" rel="stylesheet">
+        <script type="text/javascript"></script>
+    </head>
+
+    <body class="home" id="up" data-spy="scroll" data-target=".fixed-top">
+
+        <button class="d-block d-lg-none d-xl-none menu-toggle"></button>
+        <nav class="mobile">
+            <ul class="p-0 menu">
+            <li data-text="Training">
+                <a class="px-0 nav-link" href="#train">Train</a>
+            </li>
+            </ul>
+        </nav>
+
+        <nav class="navbar navbar-default fixed-top navbar-expand-sm">
+            <div class="container">
+                <div class="navbar-header">
+                <a class="navbar-brand" href="#up">Tectonic</a>
+                </div>
+                <ul class="navbar-nav d-none d-lg-block d-xl-block">
+                    <li class="nav-item">
+                    <a class="nav-link" href="#train">Train</a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <main>
+            <section>
+                <div class="container py-0" style="border-top: 0;">
+                    <div class="row">
+                        <div class="col-12">
+                            <h1>An Academic Cyber Range</h1>
+                            <p>Tectonic is a cyber range designed to provide realistic cybersecurity scenarios for education and training 
+                            through the deployment of networks, systems and applications that can be used to train users on cybersecurity 
+                            topics. Key functionalities include customizable network configurations, real-time monitoring and automated 
+                            attack simulations.</p>
+
+                            <p>More info available at: <a href="https://www.fing.edu.uy/inco/proyectos/tectonic">Tectonic Academic Cyberrange</a></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="train">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-12">
+                            <h2>Train</h2>
+{% if services.guacamole.enable %}
+                            <a href="./guacamole/">Start training</a>
+{% endif %}
+{% if not services.guacamole.enable %}
+                            <p>To access the training, contact your trainer.</p>
+{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        <footer>
+            <div class="container">
+                <div class="row">
+                    <div class="col-6 logo">
+                        <img src="/img/icon/favicon.png" alt="Tectonic" title="Tectonic">
+                    </div>
+                    <div class="col-6 copyright">
+                        <p class="align-middle mb-0">Copyright © 2024</p>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        <a href="#up" class="cd-top">Up</a>
+    </body>
+</html>

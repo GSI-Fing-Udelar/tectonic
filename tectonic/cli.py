@@ -383,18 +383,36 @@ def tectonic(
     help="Whether to create the base image for Caldera.",
 )
 @click.option(
+    "--guacamole_image/--no-guacamole_image",
+    default=False,
+    show_default=True,
+    help="Whether to create the base image for Guacamole.",
+)
+@click.option(
+    "--moodle_image/--no-moodle_image",
+    default=False,
+    show_default=True,
+    help="Whether to create the base image for Moodle.",
+)
+@click.option(
+    "--bastion_host_image/--no-bastion_host_image",
+    default=False,
+    show_default=True,
+    help="Whether to create the base image for Bastion host.",
+)
+@click.option(
     "--force",
     "-f",
     help="Force the deployment of instances without a confirmation prompt.",
     is_flag=True,
 )
-def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_image, force):
+def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_image, guacamole_image, moodle_image, bastion_host_image, force):
     """Deploy the cyber range."""
     if not force:
         confirm_machines(ctx, instances, guest_names=None, copies=None, action="Deploying")
 
     if images:
-        _create_images(ctx, packetbeat_image, elastic_image, caldera_image, True)
+        _create_images(ctx, packetbeat_image, elastic_image, caldera_image, guacamole_image, moodle_image, bastion_host_image, True)
 
     ctx.obj["core"].deploy(instances, images, False)
 
@@ -434,6 +452,24 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     help="Whether to destroy the Caldera machine.",
 )
 @click.option(
+    "--guacamole/--no-guacamole",
+    default=False,
+    show_default=True,
+    help="Whether to destroy the Guacamole machine.",
+)
+@click.option(
+    "--moodle/--no-moodle",
+    default=False,
+    show_default=True,
+    help="Whether to destroy the Moodle machine.",
+)
+@click.option(
+    "--bastion_host/--no-bastion_host",
+    default=False,
+    show_default=True,
+    help="Whether to destroy the Bastion Host machine.",
+)
+@click.option(
     "--instances", "-i", help="Range of instances to destroy.", type=NUMBER_RANGE
 )
 @click.option(
@@ -442,7 +478,7 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     help="Force the destruction of instances without a confirmation prompt.",
     is_flag=True,
 )
-def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, force):
+def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, guacamole, moodle, bastion_host, force):
     """Delete and destroy all resources of the cyber range. 
 
     If instances are specified only destroys running guests for those instances.
@@ -454,7 +490,7 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, forc
 
     if (instances and not machines):
         raise TectonicException("If you specify a list of instances, machines must be true.")
-    if (instances and (images or caldera or elastic or packetbeat)):
+    if (instances and (images or caldera or elastic or packetbeat or moodle)):
         raise TectonicException("You cannot specify a list of instances and image or service destruction at the same time.")
 
     services = []
@@ -464,6 +500,12 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, forc
         services.append("elastic")
     if caldera:
         services.append("caldera")
+    if guacamole:
+        services.append("guacamole")
+    if moodle:
+        services.append("moodle")
+    if bastion_host:
+        services.append("bastion_host")
 
     ctx.obj["core"].destroy(instances, machines, services, images)
 
@@ -479,7 +521,7 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, forc
     "--elastic/--no-elastic",
     default=True,
     show_default=True,
-    help="Whether to create the base image for Elastic on-prem.",
+    help="Whether to create the base image for Elastic.",
 )
 @click.option(
     "--machines/--no-machines",
@@ -491,7 +533,25 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, forc
     "--caldera/--no-caldera",
     default=True,
     show_default=True,
-    help="Whether to create the base image for Caldera on-prem.",
+    help="Whether to create the base image for Caldera.",
+)
+@click.option(
+    "--guacamole/--no-guacamole",
+    default=True,
+    show_default=True,
+    help="Whether to create the base image for Guacamole.",
+)
+@click.option(
+    "--moodle/--no-moodle",
+    default=True,
+    show_default=True,
+    help="Whether to create the base image for Moodle.",
+)
+@click.option(
+    "--bastion_host/--no-bastion_host",
+    default=True,
+    show_default=True,
+    help="Whether to create the base image for Bastion host.",
 )
 @click.option(
     "--guests",
@@ -500,13 +560,13 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, forc
     type=click.STRING,
     help="Name of guests to list.",
 )
-def create_images(ctx, packetbeat, elastic, caldera, machines, guests):
+def create_images(ctx, packetbeat, elastic, caldera, guacamole, moodle, bastion_host, machines, guests):
     """Create lab base images."""
     ctx.obj["description"].parse_machines(instances=None, guests=guests, copies=None, only_instances=True)
-    _create_images(ctx, packetbeat, elastic, caldera, machines, guests)
+    _create_images(ctx, packetbeat, elastic, caldera, guacamole, moodle, bastion_host, machines, guests)
 
 
-def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
+def _create_images(ctx, packetbeat, elastic, caldera, guacamole, moodle, bastion_host, machines, guests=None):
     services = []
     if elastic and ctx.obj["description"].elastic.enable:
         services.append("elastic")
@@ -514,6 +574,12 @@ def _create_images(ctx, packetbeat, elastic, caldera, machines, guests=None):
         services.append("packetbeat")
     if caldera and ctx.obj["description"].caldera.enable:
         services.append("caldera")
+    if guacamole and ctx.obj["description"].guacamole.enable:
+        services.append("guacamole")
+    if moodle and ctx.obj["description"].moodle.enable:
+        services.append("moodle")
+    if bastion_host and ctx.obj["description"].bastion_host.enable:
+        services.append("bastion_host")
     if services:
         click.echo("Creating services images ...")
         ctx.obj["core"].create_services_images(services)
@@ -537,11 +603,11 @@ def list_instances(ctx, instances, guests, copies):
     click.echo("Getting Cyber Range status...")
     result = ctx.obj["core"].list_instances(instances, guests, copies)
 
-    if result.get("instances_status"):
-        headers = ["Name", "Status"]
+    if result.get("instances_info"):
+        headers = ["Name", "IP", "Status"]
         rows = []
-        for machine, status in result.get("instances_status", []).items():
-            rows.append([machine, status])
+        for machine, info in result.get("instances_info", []).items():
+            rows.append([machine, info[0], info[1]])
         click.echo(utils.create_table(headers,rows))
 
     if result.get("services_status"):
@@ -721,13 +787,14 @@ def run_ansible(ctx, instances, guests, copies, username, playbook, force):
     is_flag=True,
 )
 def student_access(ctx, instances, force):
-    """Create users for the students.
-    Users are created on all entry points (and the student access
-    host, if appropriate). Credentials can be public SSH keys and/or
-    autogenerated passwords.
+    """Create users for access
+    Students users are created on all entry points (and the student access
+    host, if appropriate). Credentials can be public SSH keys and/or autogenerated passwords.
+
+    Trainers users are created on all machines.
     """
     click.echo("Configuring student access...")
-    users = ctx.obj["core"].configure_students_access(instances)
+    users = ctx.obj["core"].configure_access(instances)
 
     rows = []
     headers = ["Username", "Password"]
@@ -747,14 +814,14 @@ def _info(ctx):
     result = ctx.obj["core"].info()
 
     if result.get("instances_info"):
-        headers = ["Name", "Status"]
+        headers = ["Description", "Info"]
         rows = []
         for key, value in result.get("instances_info", []).items():
             rows.append([key, value])
         click.echo(utils.create_table(headers,rows))
 
     if result.get("services_info"):
-        headers = ["Name", "Status"]
+        headers = ["Description", "Info"]
         rows = []
         for service, service_value in result.get("services_info", []).items():
             for key, value in service_value.items():

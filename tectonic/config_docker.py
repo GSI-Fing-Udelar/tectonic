@@ -47,3 +47,8 @@ class TectonicConfigDocker(object):
     def dns(self, value):
         validate.ip_address_or_hostname("dns", value)
         self._dns = value
+
+    def to_dict(self):
+        return {
+            "dns": self.dns,
+        }

@@ -18,38 +18,12 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-module "vpc" {
-  source             = "terraform-aws-modules/vpc/aws"
-  version            = "~>5.0"
-  name               = "vpc"
-  cidr               = var.network_cidr_block
-  azs                = [data.aws_availability_zones.available.names[0]]
-  public_subnets     = [var.internet_network_cidr_block]
-  private_subnets    = [var.services_network_cidr_block]
-  enable_nat_gateway = local.internet_access || var.services_internet_access
-  single_nat_gateway = true
-  enable_vpn_gateway = false
-
-  tags = {
-    Name = "${var.institution}-${var.lab_name}"
-  }
-}
-
-resource "aws_key_pair" "admin_pubkey" {
-  key_name   = "${var.institution}-${var.lab_name}-pubkey"
-  public_key = file("${var.ssh_public_key_file}")
-
-  tags = {
-    Name = "${var.institution}-${var.lab_name}"
-  }
-}
 
 resource "aws_subnet" "instance_subnets" {
   for_each = local.subnetworks
 
-  vpc_id                  = module.vpc.vpc_id
+  vpc_id                  = data.aws_vpc.vpc.id
   map_public_ip_on_launch = false
-  availability_zone       = module.vpc.azs[0]
   cidr_block              = lookup(each.value, "ip_network")
 
   tags = {
@@ -57,140 +31,73 @@ resource "aws_subnet" "instance_subnets" {
   }
 }
 
-resource "aws_ec2_instance_connect_endpoint" "teacher_access" {
-  count = var.teacher_access == "endpoint" ? 1 : 0
+resource "aws_security_group" "student_entry_point_sg" {
+  description = "[Sudent Access] Allow inbound traffic from bastion host to lab entry points for student access."
 
-  subnet_id = module.vpc.private_subnets[0]
-
-  security_group_ids = [aws_security_group.teacher_access_sg.id]
-
-  tags = {
-    Name = format("%s-%s", var.institution, var.lab_name)
-  }
-}
-
-resource "aws_instance" "teacher_access_host" {
-  count = var.teacher_access == "host" ? 1 : 0
-
-  ami           = data.aws_ami.student_access_host.id
-  instance_type = var.access_host_instance_type
-
-  key_name = aws_key_pair.admin_pubkey.key_name
-
-  subnet_id                   = module.vpc.public_subnets[0]
-  vpc_security_group_ids      = [aws_security_group.teacher_access_sg.id, aws_security_group.student_access_sg.id]
-  associate_public_ip_address = true
-
-  user_data = <<EOF
-#!/bin/bash
-hostnamectl set-hostname ${var.institution}-${var.lab_name}-teacher
-echo "${var.authorized_keys}" > ~${local.os_data[var.default_os]["username"]}/.ssh/authorized_keys
-EOF
-
-  tags = {
-    Name = "${var.institution}-${var.lab_name}-teacher_access"
-  }
-}
-
-resource "aws_security_group" "teacher_access_sg" {
-  description = "Allow outbound SSH and RDP traffic from the teacher access host/EIC endpoint to the whole VPC and access to services."
-
-  vpc_id = module.vpc.vpc_id
-  egress {
-    description = "Allow outbound SSH traffic to the VPC."
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.network_cidr_block]
-  }
-  egress {
-    description = "Allow outbound RDP traffic to the VPC."
-    from_port   = 3389
-    to_port     = 3389
-    protocol    = "tcp"
-    cidr_blocks = [var.network_cidr_block]
-  }
-  egress {
-    description = "Allow outbound caldera traffic to services network."
-    from_port   = 8443
-    to_port     = 8443
-    protocol    = "tcp"
-    cidr_blocks = [var.services_network_cidr_block]
-  }
-  egress {
-    description = "Allow outbound kibana traffic to the services network."
-    from_port   = 5601
-    to_port     = 5601
-    protocol    = "tcp"
-    cidr_blocks = [var.services_network_cidr_block]
-  }
-  tags = {
-    Name = format("%s-%s-teacher_access", var.institution, var.lab_name)
-  }
-}
-
-resource "aws_security_group" "student_access_sg" {
-  description = "[Student Access Host] Allow all SSH traffic to the student access host. Allow SSH and RDP traffic to the whole VPC."
-
-  vpc_id = module.vpc.vpc_id
-  egress {
-    description = "Allow outbound SSH traffic to the VPC."
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.network_cidr_block]
-  }
-  egress {
-    description = "Allow outbound RDP traffic to the VPC."
-    from_port   = 3389
-    to_port     = 3389
-    protocol    = "tcp"
-    cidr_blocks = [var.network_cidr_block]
-  }
-
+  vpc_id = data.aws_vpc.vpc.id
   ingress {
-    description = "Allow ingress SSH traffic."
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = format("%s-%s-student_access_host", var.institution, var.lab_name)
-  }
-}
-
-resource "aws_security_group" "entry_point_sg" {
-  description = "[Entry Point Machines] Allow inbound SSH traffic from student access host to lab entry points."
-
-  vpc_id = module.vpc.vpc_id
-  ingress {
-    description     = "Allow inbound SSH traffic from student access host to lab entry points."
+    description     = "Allow inbound SSH traffic from guacamole/bastion host to lab entry points."
     from_port       = 22
     to_port         = 22
     protocol        = "tcp"
-    security_groups = [aws_security_group.student_access_sg.id]
+    security_groups = [ data.aws_security_group.bastion_host_scenario_sg.id ]
   }
-
-  tags = {
-    Name = format("%s-%s-entry_point", var.institution, var.lab_name)
-  }
-}
-resource "aws_security_group" "windows_entry_point_sg" {
-  description = "[Entry Point Machines] Allow inbound RDP traffic from student access host to windows entry points."
-
-  vpc_id = module.vpc.vpc_id
   ingress {
-    description     = "Allow inbound RDP traffic from student access host to windows entry points."
+    description     = "Allow inbound RDP traffic from guacamole/bastion host to lab entry points."
     from_port       = 3389
     to_port         = 3389
     protocol        = "tcp"
-    security_groups = [aws_security_group.student_access_sg.id]
+    security_groups = [ data.aws_security_group.bastion_host_scenario_sg.id ]
+  }
+  ingress {
+    description     = "Allow inbound VNC traffic from guacamole/bastion host to lab entry points."
+    from_port       = 5900
+    to_port         = 5900
+    protocol        = "tcp"
+    security_groups = [ data.aws_security_group.bastion_host_scenario_sg.id ]
   }
 
   tags = {
-    Name = format("%s-%s-windows_entry_point", var.institution, var.lab_name)
+    Name = format("%s-%s-student_entry_point", var.institution, var.lab_name)
+  }
+}
+
+resource "aws_security_group" "teacher_entry_point_sg" {
+  description = "[Teacher Access] Allow inbound traffic from teacher access host."
+
+  vpc_id = data.aws_vpc.vpc.id
+  ingress {
+    description     = "Allow inbound SSH traffic from teacher access host."
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [ data.aws_security_group.teacher_access_host_scenario_sg.id ]
+  }
+
+  ingress {
+    description = "Allow inbound SSH traffic from guacamole."
+    from_port   = "22"
+    to_port     = "22"
+    protocol    = "tcp"
+    cidr_blocks = [var.guacamole_ip]
+  }
+  ingress {
+    description = "Allow inbound RDP traffic from guacamole."
+    from_port   = "3389"
+    to_port     = "3389"
+    protocol    = "tcp"
+    cidr_blocks = [var.guacamole_ip]
+  }
+  ingress {
+    description = "Allow inbound VNC traffic from guacamole."
+    from_port   = "5900"
+    to_port     = "5900"
+    protocol    = "tcp"
+    cidr_blocks = [var.guacamole_ip]
+  }
+
+  tags = {
+    Name = format("%s-%s-teacher_entry_point", var.institution, var.lab_name)
   }
 }
 
@@ -198,7 +105,7 @@ resource "aws_security_group" "internet_access_sg" {
   count       = local.internet_access ? 1 : 0
   description = "[Machines] Allow outbound internet traffic for enabled machines."
 
-  vpc_id = module.vpc.vpc_id
+  vpc_id = data.aws_vpc.vpc.id
   egress {
     description = "Allow outbound internet traffic for enabled machines."
     from_port   = 0
@@ -216,22 +123,7 @@ resource "aws_security_group" "interface_traffic" {
   for_each = local.network_interfaces
 
   description = "Traffic to interface ${each.key}"
-  vpc_id   = module.vpc.vpc_id
-
-  ingress {
-    description     = "Allow inbound SSH traffic from teacher access host."
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [aws_security_group.teacher_access_sg.id]
-  }
-  ingress {
-    description     = "Allow inbound RDP traffic from teacher access host."
-    from_port       = 3389
-    to_port         = 3389
-    protocol        = "tcp"
-    security_groups = [aws_security_group.teacher_access_sg.id]
-  }
+  vpc_id   = data.aws_vpc.vpc.id
 
   dynamic "ingress" {
     for_each = lookup(each.value, "traffic_rules")
@@ -262,48 +154,48 @@ resource "aws_security_group" "interface_traffic" {
 
 resource "aws_security_group" "services_subnet_sg" {
   description = "[Machines] Allow traffic to services from subnet."
-  vpc_id   = module.vpc.vpc_id
+  vpc_id   = data.aws_vpc.vpc.id
   ingress {
     description = "Allow inbound traffic from services subnets."
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = module.vpc.private_subnets_cidr_blocks
+    cidr_blocks = [var.services_network_cidr_block]
   }
   egress {
     description   = "Allow outbound traffic to Fleet"
     from_port     = 8220
     to_port       = 8220
     protocol      = "tcp"
-    cidr_blocks   = module.vpc.private_subnets_cidr_blocks
+    cidr_blocks   = [var.services_network_cidr_block]
   }
   egress {
     description   = "Allow outbound traffic to Logstash."
     from_port     = 5044
     to_port       = 5044
     protocol      = "tcp"
-    cidr_blocks   = module.vpc.private_subnets_cidr_blocks
+    cidr_blocks   = [var.services_network_cidr_block]
   }
   egress {
     description   = "Allow outbound traffic to Caldera"
     from_port     = 443
     to_port       = 443
     protocol      = "tcp"
-    cidr_blocks   = module.vpc.private_subnets_cidr_blocks
+    cidr_blocks   = [var.services_network_cidr_block]
   }
   egress {
-    description   = "Caldera: Allow agent traffic from scenario instances."
+    description   = "Allow outbound traffic to Caldera"
     from_port     = 7010
     to_port       = 7010
     protocol      = "tcp"
-    cidr_blocks   = module.vpc.private_subnets_cidr_blocks
+    cidr_blocks   = [var.services_network_cidr_block]
   }
   egress {
-    description   = "Caldera: Allow agent traffic from scenario instances."
+    description   = "Allow outbound traffic to Caldera"
     from_port     = 7011
     to_port       = 7011
     protocol      = "udp"
-    cidr_blocks   = module.vpc.private_subnets_cidr_blocks
+    cidr_blocks   = [var.services_network_cidr_block]
   }
   tags = {
     Name = "${var.institution}-${var.lab_name}-services-subnet"
@@ -312,10 +204,10 @@ resource "aws_security_group" "services_subnet_sg" {
 
 resource "aws_route_table" "scenario_internet_access" {
   count = local.internet_access ? 1 : 0
-  vpc_id = module.vpc.vpc_id
+  vpc_id = data.aws_vpc.vpc.id
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = module.vpc.natgw_ids[0]
+    gateway_id = data.aws_nat_gateway.ngw.id
   }
   tags = {
     Name = "${var.institution}-${var.lab_name}-scenario_internet_access"
@@ -335,9 +227,8 @@ resource "aws_network_interface" "interfaces" {
 
   source_dest_check = false
 
-  security_groups = concat([aws_security_group.interface_traffic[each.key].id],
-    local.guest_data[each.value.guest_name].entry_point ? [aws_security_group.entry_point_sg.id] : [],
-    local.guest_data[each.value.guest_name].base_os == "windows_srv_2022" && local.guest_data[each.value.guest_name].entry_point ? [aws_security_group.windows_entry_point_sg.id] : [],
+  security_groups = concat([aws_security_group.interface_traffic[each.key].id, aws_security_group.teacher_entry_point_sg.id],
+    local.guest_data[each.value.guest_name].entry_point ? [aws_security_group.student_entry_point_sg.id] : [],
     local.guest_data[each.value.guest_name].internet_access ? [aws_security_group.internet_access_sg[0].id] : [],
     local.guest_data[each.value.guest_name].is_in_services_network ? [aws_security_group.services_subnet_sg.id] : [],
   )
@@ -354,7 +245,7 @@ resource "aws_instance" "machines" {
 
   instance_type = each.value.instance_type
 
-  key_name = aws_key_pair.admin_pubkey.key_name
+  key_name = data.aws_key_pair.pub_key.key_name
 
   dynamic "network_interface" {
     for_each = each.value.interfaces
@@ -398,31 +289,6 @@ resource "null_resource" "wait_for_machines" {
   }
 }
 
-resource "aws_instance" "student_access" {
-  count = local.student_access ? 1 : 0
-  ami = data.aws_ami.student_access_host.id
-
-  instance_type = var.access_host_instance_type
-
-  key_name = aws_key_pair.admin_pubkey.key_name
-
-  subnet_id                   = module.vpc.public_subnets[0]
-  vpc_security_group_ids      = [aws_security_group.student_access_sg.id]
-  associate_public_ip_address = true
-
-  user_data = <<EOF
-#!/bin/bash
-hostnamectl set-hostname ${var.institution}-${var.lab_name}
-echo "${var.authorized_keys}" > ~${local.os_data[var.default_os]["username"]}/.ssh/authorized_keys
-EOF
-
-  tags = {
-    Name = "${var.institution}-${var.lab_name}-student_access"
-  }
-
-}
-
-
 # DNS Configuration
 
 resource "aws_route53_zone" "zones" {
@@ -430,24 +296,11 @@ resource "aws_route53_zone" "zones" {
   name     = each.key
 
   vpc {
-    vpc_id = module.vpc.vpc_id
+    vpc_id = data.aws_vpc.vpc.id
   }
 
   tags = {
     Name = format("%s-%s-%s", var.institution, var.lab_name, each.key)
-  }
-}
-
-resource "aws_route53_zone" "reverse" {
-  count = var.configure_dns ? 1 : 0
-  name  = "in-addr.arpa"
-
-  vpc {
-    vpc_id = module.vpc.vpc_id
-  }
-
-  tags = {
-    Name = format("%s-%s-reverse", var.institution, var.lab_name)
   }
 }
 
@@ -462,9 +315,60 @@ resource "aws_route53_record" "records" {
 
 resource "aws_route53_record" "records_reverse" {
   for_each = var.configure_dns ? local.dns_data : {}
-  zone_id  = aws_route53_zone.reverse[0].zone_id
+  zone_id  = data.aws_route53_zone.reverse[0].zone_id
   name     = join(".", reverse(split(".", each.value.ip)))
   type     = "PTR"
   ttl      = 300
   records  = [format("%s.%s", each.value.name, each.value.network)]
+}
+
+# Traffic mirroring
+
+resource "aws_ec2_traffic_mirror_target" "packetbeat" {
+  count = var.monitor && var.monitor_type == "traffic" ? 1 : 0
+  description          = "Packetbeat target mirror traffic."
+  network_interface_id = data.aws_instance.packetbeat[0].network_interface_id
+
+  tags = {
+    Name = "${var.institution}-${var.lab_name}"
+  }
+}
+resource "aws_ec2_traffic_mirror_filter" "filter" {
+  count = var.monitor && var.monitor_type == "traffic" ? 1 : 0
+  tags = {
+    Name = "${var.institution}-${var.lab_name}"
+  }
+}
+resource "aws_ec2_traffic_mirror_filter_rule" "filter_all_inbound" {
+  count = var.monitor && var.monitor_type == "traffic" ? 1 : 0
+  traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.filter[0].id
+  source_cidr_block        = "0.0.0.0/0"
+  destination_cidr_block   = "0.0.0.0/0"
+  rule_number              = 1
+  rule_action              = "accept"
+  traffic_direction        = "ingress"
+}
+resource "aws_ec2_traffic_mirror_filter_rule" "filter_all_outbound" {
+  count = var.monitor && var.monitor_type == "traffic" ? 1 : 0
+  traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.filter[0].id
+  source_cidr_block        = "0.0.0.0/0"
+  destination_cidr_block   = "0.0.0.0/0"
+  rule_number              = 2
+  rule_action              = "accept"
+  traffic_direction        = "egress"
+}
+
+resource "aws_ec2_traffic_mirror_session" "session" {
+  for_each = local.interfaces_to_mirror
+  network_interface_id     = aws_network_interface.interfaces[each.key].id
+  session_number           = 1
+  traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.filter[0].id
+  traffic_mirror_target_id = aws_ec2_traffic_mirror_target.packetbeat[0].id
+  virtual_network_id       = var.packetbeat_vlan_id
+  tags = {
+    Name = "${each.key}"
+  }
+  depends_on = [
+    aws_instance.machines
+  ]
 }
