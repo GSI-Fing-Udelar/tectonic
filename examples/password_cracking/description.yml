@@ -47,6 +47,8 @@ guest_settings:
     # Whether a Caldera agent will be installed in the guest for
     # defensive actions simulation. Default: no.
     blue_team_agent: no
+    # Configure GUI. Default: no.
+    gui: yes
 
   # The victim that must be attacked.
   victim:
@@ -83,7 +85,7 @@ caldera_settings:
 # Guacamole service configuration
 guacamole_settings:
   # Default values:
-  enable: no
+  enable: yes
   memory: 2048
   vpcu: 2
   disk: 20
