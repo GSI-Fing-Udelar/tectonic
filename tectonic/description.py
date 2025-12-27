@@ -657,6 +657,7 @@ class ServiceDescription(MachineDescription):
         self.entry_point = False
         self.internet_access = internet_access
         self.ansible_playbook = str(tectonic_resources.files('tectonic') / 'services' / self.base_name / 'base_config.yml')
+        self.ports = {}
 
     @property
     def base_name(self):
@@ -681,6 +682,10 @@ class ServiceDescription(MachineDescription):
     @property
     def ansible_playbook(self):
         return self._ansible_playbook
+    
+    @property
+    def ports(self):
+        return self._ports
 
     @base_name.setter
     def base_name(self, value):
@@ -699,6 +704,10 @@ class ServiceDescription(MachineDescription):
     @ansible_playbook.setter
     def ansible_playbook(self, value):
         self._ansible_playbook = value
+
+    @ports.setter
+    def ports(self, value):
+        self._ports = value
 
     def load_service(self, data):
         """Loads the information from the yaml structure in data."""
@@ -737,6 +746,7 @@ class ServiceDescription(MachineDescription):
         result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
         result["ip"] = self.service_ip
         result["ansible_playbook"] = self.ansible_playbook
+        result["ports"] = self.ports
         return result
 
 class ElasticDescription(ServiceDescription):
@@ -862,14 +872,6 @@ class BastionHostDescription(ServiceDescription):
                 False,
                 "endpoint"
             )
-    
-    @property
-    def ports(self):
-        return self._ports
-    
-    @ports.setter
-    def ports(self, value):
-        self._ports = value
 
     @property
     def domain(self):
@@ -887,7 +889,6 @@ class BastionHostDescription(ServiceDescription):
     def to_dict(self):
         result = super().to_dict()
         result["instance_type"] = self.instance_type
-        result["ports"] = self.ports
         return result | self._description.config.bastion_host.to_dict()
 
 class TeacherAccessHostDescription(ServiceDescription):
@@ -1730,4 +1731,6 @@ class Description:
             "ansible_dir": self.ansible_dir,
             "services": services,
             "config": self.config.to_dict(),
+            "authorized_keys": self.authorized_keys,
+            "default_os": self.default_os,
         }

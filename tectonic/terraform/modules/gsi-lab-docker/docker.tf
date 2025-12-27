@@ -50,7 +50,7 @@ resource "docker_container" "machines" {
 
   upload {
     file = "/home/${local.os_data[each.value.base_os]["username"]}/.ssh/authorized_keys"
-    content = var.authorized_keys
+    content = local.tectonic.authorized_keys
   }
   
   privileged = true
@@ -68,7 +68,7 @@ resource "docker_container" "machines" {
   dynamic "networks_advanced" { 
     for_each = each.value.is_in_services_network ? ["services-nic"] : []
     content { 
-      name = "${var.institution}-${var.lab_name}-services"
+      name = "${local.tectonic.institution}-${local.tectonic.lab_name}-services"
     }
   }
 

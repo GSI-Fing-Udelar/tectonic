@@ -19,9 +19,7 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
-
 from abc import abstractmethod
-
 from tectonic.terraform import Terraform
 from tectonic.constants import OS_DATA
 import importlib.resources as tectonic_resources
@@ -306,13 +304,9 @@ class TerraformService(Terraform):
         Return:
             dict: variables.
         """
-        machines = [service for _, service in self.description.services_guests.items()]
         return {
-            "institution": self.description.institution,
-            "lab_name": self.description.lab_name,
-            "ssh_public_key_file": self.config.ssh_public_key_file,
-            "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps({name: network.to_dict() for name, network in self.description.auxiliary_networks.items()}),
-            "guest_data_json": json.dumps({service.name: self._get_service_machine_variables(service) for service in machines}),
+            "tectonic_json": json.dumps(self.description.to_dict()),
+            "subnets_json": json.dumps({network.name: network.to_dict() for network in self.description.auxiliary_networks.values()}),
+            "guest_data_json": json.dumps({service.name: service.to_dict() for service in self.description.services_guests.values()}),
             "os_data_json": json.dumps(OS_DATA),
         }

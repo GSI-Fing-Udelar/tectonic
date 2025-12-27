@@ -43,7 +43,7 @@ resource "docker_container" "machines" {
   
   memory = lookup(each.value, "memory", "1024")
   
-  hostname = each.value.hostname
+  hostname = each.value.base_name
 
   dynamic "ports" {
     for_each = each.value.ports
@@ -57,7 +57,7 @@ resource "docker_container" "machines" {
 
   upload {
     file = "/home/${local.os_data[each.value.base_os]["username"]}/.ssh/authorized_keys"
-    content = var.authorized_keys
+    content = local.tectonic.authorized_keys
   }
   
   privileged = true
