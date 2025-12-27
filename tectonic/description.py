@@ -421,7 +421,7 @@ class NetworkInterface():
     def __init__(self, description, guest, network, interface_num, private_ip=None):
         self.name = f"{guest.name}-{interface_num+1}"
         self.index = interface_num + self._get_interface_index_to_sum(description, guest)
-        self._guest_name = f"{guest.name}"
+        self.guest_name = guest.name
         self.network = network
         self.private_ip = self._get_guest_ip_address(guest, network) if private_ip is None else private_ip
         self.mask = ipaddress.ip_network(network.ip_network).prefixlen
@@ -463,9 +463,9 @@ class NetworkInterface():
     def index(self, value):
         self._index = value
 
-    # @index.setter
-    # def guest_name(self, value):
-    #     self._guest_name = value
+    @guest_name.setter
+    def guest_name(self, value):
+        self._guest_name = value
 
     @network.setter
     def network(self, value):
@@ -486,7 +486,11 @@ class NetworkInterface():
             "private_ip" : self.private_ip,
             "subnetwork_name" : self.network.name,
             "subnetwork_base_name" : self.network.base_name,
-            "subnetwork_cidr" : self.network.ip_network
+            "subnetwork_cidr" : self.network.ip_network,
+            "index": self.index,
+            "instance": self.network.instance,
+            "guest_name": self.guest_name,
+            "traffic_rules": [traffic_rule.to_dict() for traffic_rule in self.traffic_rules]
         }
         
     def _get_interface_index_to_sum(self, description, guest):
@@ -721,7 +725,7 @@ class ServiceDescription(MachineDescription):
     def load_interfaces(self, auxiliary_networks):
         interface_num = 1
         for _, network in auxiliary_networks.items():
-            if self._base_name in network.members:
+            if self.base_name in network.members:
                 ip_network = ipaddress.ip_network(network.ip_network)
                 private_ip = str(list(ip_network.hosts())[network.members.index(self._base_name)+4])
                 interface = NetworkInterface(self._description, self, network, interface_num, private_ip)
@@ -741,12 +745,13 @@ class ServiceDescription(MachineDescription):
     def to_dict(self):
         """Convert a ServiceDescription object to the dictionary expected by packer."""
         result = super().to_dict()
-        result["enable"] = self.enable,
+        result["enable"] = self.enable
         result["name"] = self.name
         result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
         result["ip"] = self.service_ip
         result["ansible_playbook"] = self.ansible_playbook
         result["ports"] = self.ports
+        result["internet_access"] = self.internet_access
         return result
 
 class ElasticDescription(ServiceDescription):
@@ -1034,6 +1039,16 @@ class TrafficRule():
     @to_port.setter
     def to_port(self, value):
         self._to_port = value
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "description": self.description,
+            "network_cidr": self.source_cidr,
+            "from_port": self.from_port,
+            "to_port": self.to_port,
+            "protocol": self.protocol,
+        }
 
 class Description:
 

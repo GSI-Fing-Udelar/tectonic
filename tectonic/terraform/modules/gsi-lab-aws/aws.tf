@@ -58,7 +58,7 @@ resource "aws_security_group" "student_entry_point_sg" {
   }
 
   tags = {
-    Name = format("%s-%s-student_entry_point", var.institution, var.lab_name)
+    Name = format("%s-%s-student_entry_point", local.tectonic.institution, local.tectonic.lab_name)
   }
 }
 
@@ -79,25 +79,25 @@ resource "aws_security_group" "teacher_entry_point_sg" {
     from_port   = "22"
     to_port     = "22"
     protocol    = "tcp"
-    cidr_blocks = [var.guacamole_ip]
+    cidr_blocks = [ "${local.tectonic.services.guacamole.ip}/32" ]
   }
   ingress {
     description = "Allow inbound RDP traffic from guacamole."
     from_port   = "3389"
     to_port     = "3389"
     protocol    = "tcp"
-    cidr_blocks = [var.guacamole_ip]
+    cidr_blocks = [ "${local.tectonic.services.guacamole.ip}/32" ]
   }
   ingress {
     description = "Allow inbound VNC traffic from guacamole."
     from_port   = "5900"
     to_port     = "5900"
     protocol    = "tcp"
-    cidr_blocks = [var.guacamole_ip]
+    cidr_blocks = [ "${local.tectonic.services.guacamole.ip}/32" ]
   }
 
   tags = {
-    Name = format("%s-%s-teacher_entry_point", var.institution, var.lab_name)
+    Name = format("%s-%s-teacher_entry_point", local.tectonic.institution, local.tectonic.lab_name)
   }
 }
 
@@ -115,7 +115,7 @@ resource "aws_security_group" "internet_access_sg" {
   }
 
   tags = {
-    Name = format("%s-%s-internet_acecss", var.institution, var.lab_name)
+    Name = format("%s-%s-internet_acecss", local.tectonic.institution, local.tectonic.lab_name)
   }
 }
 
@@ -160,45 +160,45 @@ resource "aws_security_group" "services_subnet_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = [var.services_network_cidr_block]
+    cidr_blocks = [local.tectonic.config.services_network_cidr_block]
   }
   egress {
     description   = "Allow outbound traffic to Fleet"
     from_port     = 8220
     to_port       = 8220
     protocol      = "tcp"
-    cidr_blocks   = [var.services_network_cidr_block]
+    cidr_blocks   = [local.tectonic.config.services_network_cidr_block]
   }
   egress {
     description   = "Allow outbound traffic to Logstash."
     from_port     = 5044
     to_port       = 5044
     protocol      = "tcp"
-    cidr_blocks   = [var.services_network_cidr_block]
+    cidr_blocks   = [local.tectonic.config.services_network_cidr_block]
   }
   egress {
     description   = "Allow outbound traffic to Caldera"
     from_port     = 443
     to_port       = 443
     protocol      = "tcp"
-    cidr_blocks   = [var.services_network_cidr_block]
+    cidr_blocks   = [local.tectonic.config.services_network_cidr_block]
   }
   egress {
     description   = "Allow outbound traffic to Caldera"
     from_port     = 7010
     to_port       = 7010
     protocol      = "tcp"
-    cidr_blocks   = [var.services_network_cidr_block]
+    cidr_blocks   = [local.tectonic.config.services_network_cidr_block]
   }
   egress {
     description   = "Allow outbound traffic to Caldera"
     from_port     = 7011
     to_port       = 7011
     protocol      = "udp"
-    cidr_blocks   = [var.services_network_cidr_block]
+    cidr_blocks   = [local.tectonic.config.services_network_cidr_block]
   }
   tags = {
-    Name = "${var.institution}-${var.lab_name}-services-subnet"
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}-services-subnet"
   }
 }
 
@@ -210,7 +210,7 @@ resource "aws_route_table" "scenario_internet_access" {
     gateway_id = data.aws_nat_gateway.ngw.id
   }
   tags = {
-    Name = "${var.institution}-${var.lab_name}-scenario_internet_access"
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}-scenario_internet_access"
   }
 }
 
@@ -258,7 +258,7 @@ resource "aws_instance" "machines" {
   user_data = templatefile(format("%s/%s", abspath(path.root), 
     (each.value.base_os == "windows_srv_2022" ? "user_data_win.pkrtpl" : "user_data_linux.pkrtpl")),
     { 
-      authorized_keys = var.authorized_keys, 
+      authorized_keys = local.tectonic.authorized_keys, 
       hostname = each.value.hostname,
       username = local.os_data[each.value.base_os]["username"],
       base_os = each.value.base_os,
@@ -285,14 +285,14 @@ resource "null_resource" "wait_for_machines" {
   }
 
   provisioner "local-exec" {
-    command = "aws --region=${var.aws_region} ec2 wait instance-status-ok --instance-ids ${aws_instance.machines[each.key].id}"
+    command = "aws --region=${local.tectonic.config.platforms.aws.region} ec2 wait instance-status-ok --instance-ids ${aws_instance.machines[each.key].id}"
   }
 }
 
 # DNS Configuration
 
 resource "aws_route53_zone" "zones" {
-  for_each = toset(var.configure_dns ? local.network_names : [])
+  for_each = toset(local.tectonic.config.configure_dns ? local.network_names : [])
   name     = each.key
 
   vpc {
@@ -300,12 +300,12 @@ resource "aws_route53_zone" "zones" {
   }
 
   tags = {
-    Name = format("%s-%s-%s", var.institution, var.lab_name, each.key)
+    Name = format("%s-%s-%s", local.tectonic.institution, local.tectonic.lab_name, each.key)
   }
 }
 
 resource "aws_route53_record" "records" {
-  for_each = var.configure_dns ? local.dns_data : {}
+  for_each = local.tectonic.config.configure_dns ? local.dns_data : {}
   zone_id  = aws_route53_zone.zones[each.value.network].zone_id
   name     = each.value.name #<guest_name>-(<guest_copy_number>)?-<instance_number>.<network_name>
   type     = "A"
@@ -314,7 +314,7 @@ resource "aws_route53_record" "records" {
 }
 
 resource "aws_route53_record" "records_reverse" {
-  for_each = var.configure_dns ? local.dns_data : {}
+  for_each = local.tectonic.config.configure_dns ? local.dns_data : {}
   zone_id  = data.aws_route53_zone.reverse[0].zone_id
   name     = join(".", reverse(split(".", each.value.ip)))
   type     = "PTR"
@@ -325,22 +325,22 @@ resource "aws_route53_record" "records_reverse" {
 # Traffic mirroring
 
 resource "aws_ec2_traffic_mirror_target" "packetbeat" {
-  count = var.monitor && var.monitor_type == "traffic" ? 1 : 0
+  count = local.tectonic.services.elastic.enable && local.tectonic.services.elastic.monitor_type == "traffic" ? 1 : 0
   description          = "Packetbeat target mirror traffic."
   network_interface_id = data.aws_instance.packetbeat[0].network_interface_id
 
   tags = {
-    Name = "${var.institution}-${var.lab_name}"
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}"
   }
 }
 resource "aws_ec2_traffic_mirror_filter" "filter" {
-  count = var.monitor && var.monitor_type == "traffic" ? 1 : 0
+  count = local.tectonic.services.elastic.enable && local.tectonic.services.elastic.monitor_type == "traffic" ? 1 : 0
   tags = {
-    Name = "${var.institution}-${var.lab_name}"
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}"
   }
 }
 resource "aws_ec2_traffic_mirror_filter_rule" "filter_all_inbound" {
-  count = var.monitor && var.monitor_type == "traffic" ? 1 : 0
+  count = local.tectonic.services.elastic.enable && local.tectonic.services.elastic.monitor_type == "traffic" ? 1 : 0
   traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.filter[0].id
   source_cidr_block        = "0.0.0.0/0"
   destination_cidr_block   = "0.0.0.0/0"
@@ -349,7 +349,7 @@ resource "aws_ec2_traffic_mirror_filter_rule" "filter_all_inbound" {
   traffic_direction        = "ingress"
 }
 resource "aws_ec2_traffic_mirror_filter_rule" "filter_all_outbound" {
-  count = var.monitor && var.monitor_type == "traffic" ? 1 : 0
+  count = local.tectonic.services.elastic.enable && local.tectonic.services.elastic.monitor_type == "traffic" ? 1 : 0
   traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.filter[0].id
   source_cidr_block        = "0.0.0.0/0"
   destination_cidr_block   = "0.0.0.0/0"
@@ -364,7 +364,7 @@ resource "aws_ec2_traffic_mirror_session" "session" {
   session_number           = 1
   traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.filter[0].id
   traffic_mirror_target_id = aws_ec2_traffic_mirror_target.packetbeat[0].id
-  virtual_network_id       = var.packetbeat_vlan_id
+  virtual_network_id       = local.tectonic.config.platforms.aws.packetbeat_vlan_id
   tags = {
     Name = "${each.key}"
   }

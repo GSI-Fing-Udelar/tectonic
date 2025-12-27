@@ -19,7 +19,6 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 from tectonic.terraform import Terraform
-import json
 
 class TerraformAWSException(Exception):
     pass
@@ -277,75 +276,3 @@ class TerraformAWS(Terraform):
         """
         resources = self._get_machine_resources_name(instances, guests, copies)
         return resources
-    
-    def _get_terraform_variables(self):
-        """
-        Get variables to use in Terraform.
-
-        Return:
-            dict: variables.
-        """
-        result = super()._get_terraform_variables()
-        result["aws_region"] = self.config.aws.region
-        result["network_cidr_block"] = self.config.network_cidr_block
-        result["services_network_cidr_block"] = self.config.services_network_cidr_block
-        result["monitor"] = self.description.elastic.enable
-        result["monitor_type"] = self.description.elastic.monitor_type
-        result["packetbeat_vlan_id"] = self.config.aws.packetbeat_vlan_id
-        result["monitor"] = self.description.elastic.enable
-        result["guacamole_ip"] = f"{self.description.guacamole.service_ip}/32"
-        return result
-    
-    def _get_guest_variables(self, guest):
-        """
-        Return guest variables for terraform.
-
-        Parameters:
-          guest (GuestDescription): guest to get variables.
-
-        Returns:
-          dict: variables.
-        """
-        result = super()._get_guest_variables(guest)
-        result["entry_point"] = guest.entry_point
-        result["instance_type"] = guest.instance_type
-        result["internet_access"] = guest.internet_access
-        result["instance"] = guest.instance
-        return result
-
-    def _get_network_interface_variables(self, interface):
-        """
-        Return network interface variables for terraform.
-
-        Parameters:
-          interface (NetworkInterface): interface to get variables.
-
-        Returns:
-          dict: variables.
-        """
-        result = super()._get_network_interface_variables(interface)
-        result["network_name"] = interface.network.name
-        result["guest_name"] = interface.guest_name
-        result["index"] = interface.index
-        result["traffic_rules"] = [self._get_traffic_rules(rule) for rule in interface.traffic_rules]
-        result["instance"] = interface.network.instance
-        return result
-    
-    def _get_traffic_rules(self, traffic_rule):
-        """
-        Return rule of security group for terraform.
-
-        Parameters:
-          fw_rule (TrafficRule): traffic rule to get variables.
-
-        Returns:
-          dict: variables.
-        """
-        result = {}
-        result["name"] = traffic_rule.name
-        result["description"] = traffic_rule.description
-        result["network_cidr"] = traffic_rule.source_cidr
-        result["from_port"] = traffic_rule.from_port
-        result["to_port"] = traffic_rule.to_port
-        result["protocol"] = traffic_rule.protocol
-        return result

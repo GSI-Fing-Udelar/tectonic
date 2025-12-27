@@ -20,7 +20,7 @@
 
 data "aws_vpc" "vpc" {
   tags = {
-    Name = "${var.institution}-${var.lab_name}"
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}"
   }
 }
 
@@ -29,14 +29,14 @@ data "aws_availability_zones" "available" {
 }
 
 data "aws_key_pair" "pub_key" {
-  key_name           = "${var.institution}-${var.lab_name}-pubkey"
+  key_name           = "${local.tectonic.institution}-${local.tectonic.lab_name}-pubkey"
   include_public_key = true
 }
 
 data "aws_nat_gateway" "ngw" {
   state = "available" 
   tags  = {
-    Name = "${var.institution}-${var.lab_name}"
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}"
   }
 }
 
@@ -48,25 +48,25 @@ data "aws_ami" "base_images" {
 
   filter {
     name   = "name"
-    values = ["${var.institution}-${var.lab_name}-${each.key}"]
+    values = ["${local.tectonic.institution}-${local.tectonic.lab_name}-${each.key}"]
   }
 }
 
 data "aws_route53_zone" "reverse" {
-  count         = var.configure_dns ? 1 : 0
+  count         = local.tectonic.config.configure_dns ? 1 : 0
   name          = "in-addr.arpa"
   private_zone  = true
   vpc_id        = data.aws_vpc.vpc.id
   tags = {
-    Institution = var.institution
-    Lab         = var.lab_name
+    Institution = local.tectonic.institution
+    Lab         = local.tectonic.lab_name
   }
 }
 
 data "aws_instance" "packetbeat" {
-  count         = var.monitor && var.monitor_type == "traffic" ? 1 : 0
+  count         = local.tectonic.services.elastic.enable && local.tectonic.services.elastic.monitor_type == "traffic" ? 1 : 0
   instance_tags = {
-    Name = ""
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}-packetbeat"
   }
   filter {
     name   = "instance-state-name"
@@ -76,12 +76,12 @@ data "aws_instance" "packetbeat" {
 
 data "aws_security_group" "bastion_host_scenario_sg" {
   tags = {
-    Name = "${var.institution}-${var.lab_name}-bastion_host"
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}-bastion_host"
   }
 }
 
 data "aws_security_group" "teacher_access_host_scenario_sg" {
   tags = {
-    Name = "${var.institution}-${var.lab_name}-teacher_access_host"
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}-teacher_access_host"
   }
 }

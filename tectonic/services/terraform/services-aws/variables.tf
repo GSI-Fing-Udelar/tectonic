@@ -18,32 +18,6 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-variable "institution" {
-  type        = string
-  description = "The institution that created the lab."
-
-  validation {
-    condition     = !strcontains(var.institution, "-")
-    error_message = "Names cannot contain the '-' symbol."
-  }
-}
-
-variable "lab_name" {
-  type        = string
-  description = "The name of the lab"
-
-  validation {
-    condition     = !strcontains(var.lab_name, "-")
-    error_message = "Names cannot contain the '-' symbol."
-  }
-}
-
-variable "aws_region" {
-  type        = string
-  default     = "us-east-1"
-  description = "The region to use for the aws provider"
-}
-
 variable "subnets_json" {
   type        = string
   default     = "{}"
@@ -67,44 +41,9 @@ variable "os_data_json" {
   description = "A JSON encoded map of operating system information."
 }
 
-variable "ssh_public_key_file" {
-  description = "ssh public key"
-  default     = "~/.ssh/id_rsa.pub"
-}
-
-variable "authorized_keys" {
+variable "tectonic_json" {
   type        = string
-  description = "Admin user authorized_keys file contents."
-}
-
-variable "configure_dns" {
-  description = "Whether to configure DNS hostnames for instances."
-  type        = bool
-  default     = true
-}
-
-variable "services_network_cidr_block" {
-  description = "CIDR block for services subnet"
-  type        = string
-  default     = "10.0.0.128/25"
-}
-
-variable "internet_network_cidr_block" {
-  description = "CIDR block for internet subnet"
-  type        = string
-  default     = "10.0.0.0/25"
-}
-
-variable "network_cidr_block" {
-  description = "CIDR block for lab VPC"
-  type        = string
-  default     = "10.0.0.0/16"
-}
-
-variable "monitor_type" {
-  type        = string
-  default     = "traffic"
-  description = "How to monitor instances using Elastic."
+  description = "A JSON encoded map of tectonic configuration."
 }
 
 variable "teacher_access_type" {
@@ -116,45 +55,4 @@ variable "teacher_access_type" {
     condition     = can(regex("^(endpoint|host)$", var.teacher_access_type))
     error_message = "Supported type of teacher access is 'endpoint', 'host'."
   }
-}
-
-
-variable "elastic_internal_port" {
-  description = "Elastic internal port"
-  type        = number
-}
-
-variable "elastic_external_port" {
-  description = "Elastic external port"
-  type        = number
-}
-
-variable "caldera_internal_port" {
-  description = "Caldera internal port"
-  type        = number
-}
-
-variable "caldera_external_port" {
-  description = "Caldera external port"
-  type        = number
-}
-
-variable "guacamole_internal_port" {
-  description = "Guacamole internal port"
-  type        = number
-}
-
-variable "guacamole_external_port" {
-  description = "Guacamole external port"
-  type        = number
-}
-
-variable "moodle_internal_port" {
-  description = "Moodle internal port"
-  type        = number
-}
-
-variable "moodle_external_port" {
-  description = "Moodle external port"
-  type        = number
 }

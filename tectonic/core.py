@@ -278,8 +278,6 @@ class Core:
             elif self.config.platform == "libvirt":
                 bastion_host_ip = self.description.bastion_host.service_ip
             instances_info["Bastion Host domain - IP"] = f"{self.config.bastion_host.domain} - {bastion_host_ip}"
-        if self.description.teacher_access_host.enable:
-            instances_info["Teacher Access Host IP"] = self.description.teacher_access_host.service_ip
 
         service_info = {}
         for _, service in self.description.services_guests.items():

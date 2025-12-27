@@ -172,21 +172,6 @@ class TerraformServiceAWS(TerraformService):
         result["index"] = interface.index
         return result
     
-    def _get_service_machine_variables(self, service):
-        """
-        Return machines variables deploy services.
-
-        Parameters:
-            service (ServiceDescription): services to deploy.
-
-        Returns:
-            dict: machines variables.
-        """
-        result = super()._get_service_machine_variables(service)
-        result["instance_type"] = service.instance_type
-        result["internet_access"] = service.internet_access
-        return result
-    
     def _build_packetbeat_inventory(self, ansible, variables):
         """
         Build inventory for Ansible when installing Packetbeat.
