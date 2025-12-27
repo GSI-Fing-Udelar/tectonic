@@ -52,7 +52,7 @@
       loop: "{{ users | dict2items }}"
       when: 
         - item.value.authorized_keys is defined
-        - config.platform == aws
+        - config.platform == "aws"
 
     - name: "Enable SSH login with password"
       block:
