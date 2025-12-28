@@ -6,11 +6,17 @@ instance_number: 1
 teacher_pubkey_dir: ./teacher_pubkeys
 student_prefix: trainee
 student_pubkey_dir: ./student_pubkeys
-create_students_passwords: no
+create_students_passwords: yes
 random_seed: Yjfz1mwpCISi868b329da9893e34099c7d8ad5cb9c941
 
 caldera_settings:
   enable: no
 
 elastic_settings:
+  enable: no
+
+guacamole_settings:
+  enable: no
+
+moodle_settings:
   enable: no

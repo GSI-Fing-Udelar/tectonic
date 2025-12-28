@@ -56,4 +56,9 @@ caldera_settings:
 elastic_settings:
   enable: no
 
+guacamole_settings:
+  enable: no
+
+moodle_settings:
+  enable: no
 

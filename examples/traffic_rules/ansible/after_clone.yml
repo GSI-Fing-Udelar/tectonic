@@ -1,0 +1,17 @@
+# The after-clone ansible playbook for the Password Cracking scenario.
+# This playbook is applied to each machine in each instance, after it
+# was cloned. Internet connection is not available by default.
+
+- name: "Test"
+  hosts: machine1
+  tasks:
+    - name: "Test"
+      ansible.builtin.debug:
+        msg: "Test"
+    
+- name: "Test"
+  hosts: machine2
+  tasks:
+    - name: "Test"
+      ansible.builtin.debug:
+        msg: "Test"
