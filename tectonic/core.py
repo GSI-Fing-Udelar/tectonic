@@ -316,19 +316,22 @@ class Core:
 
         services_status = {}
         for service_name in self.description.services_guests.keys():
-            services_status[service_name] = self.client.get_machine_status(service_name)
+            services_status[service_name] = [self.description.services_guests[service_name].service_ip, self.client.get_machine_status(service_name)]
         if self.description.elastic.enable and services_status[self.description.elastic.name] == "RUNNING":
             if self.description.elastic.monitor_type == "traffic":
+                packetbeat_ip = "-"
+                if self.description.platfrom == "aws":
+                    packetbeat_ip = self.description.packetbeat.service_ip
                 packetbeat_status = self.terraform_service.manage_packetbeat(self.ansible, "status")
                 if packetbeat_status is not None:
-                    services_status[f"{self.description.institution}-{self.description.lab_name}-packetbeat"] = packetbeat_status
+                    services_status[f"{self.description.institution}-{self.description.lab_name}-packetbeat"] = [packetbeat_ip, packetbeat_status]
             else:
                 # TODO: move this somewhere else?
                 playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml'
                 result = self.terraform_service.get_service_info(self.description.elastic, self.ansible, playbook, {"action":"agents_status"})
                 agents_status = result[0]['agents_status']
                 for key in agents_status:
-                    services_status[f"elastic-agents-{key}"] = agents_status[key]
+                    services_status[f"elastic-agents-{key}"] = ["-", agents_status[key]]
         if self.description.caldera.enable and services_status[self.description.caldera.name] == "RUNNING":
             # TODO: move this somewhere else?
             playbook = tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'get_info.yml'
@@ -348,7 +351,7 @@ class Core:
                     else:
                         agents_status["dead"] = agents_status["dead"] + 1
             for key in agents_status:
-                services_status[f"caldera-agents-{key}"] = agents_status[key]
+                services_status[f"caldera-agents-{key}"] = ["-", agents_status[key]]
         return {
             "instances_info" : instances_info,
             "services_status" : services_status
