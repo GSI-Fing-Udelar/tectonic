@@ -239,7 +239,7 @@ resource "aws_security_group" "moodle_scenario_sg" {
     cidr_blocks       = [local.tectonic.config.internet_network_cidr_block]
   }
   tags = {
-    Name = format("%s-%s-guacamole", local.tectonic.institution, local.tectonic.lab_name)
+    Name = format("%s-%s-moodle", local.tectonic.institution, local.tectonic.lab_name)
   }
 }
 

@@ -333,12 +333,14 @@ resource "aws_ec2_traffic_mirror_target" "packetbeat" {
     Name = "${local.tectonic.institution}-${local.tectonic.lab_name}"
   }
 }
+
 resource "aws_ec2_traffic_mirror_filter" "filter" {
   count = local.tectonic.services.elastic.enable && local.tectonic.services.elastic.monitor_type == "traffic" ? 1 : 0
   tags = {
     Name = "${local.tectonic.institution}-${local.tectonic.lab_name}"
   }
 }
+
 resource "aws_ec2_traffic_mirror_filter_rule" "filter_all_inbound" {
   count = local.tectonic.services.elastic.enable && local.tectonic.services.elastic.monitor_type == "traffic" ? 1 : 0
   traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.filter[0].id
@@ -348,6 +350,7 @@ resource "aws_ec2_traffic_mirror_filter_rule" "filter_all_inbound" {
   rule_action              = "accept"
   traffic_direction        = "ingress"
 }
+
 resource "aws_ec2_traffic_mirror_filter_rule" "filter_all_outbound" {
   count = local.tectonic.services.elastic.enable && local.tectonic.services.elastic.monitor_type == "traffic" ? 1 : 0
   traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.filter[0].id
