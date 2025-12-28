@@ -24,7 +24,7 @@ class TectonicConfigMoodle(object):
     """Class to store Tectonic Moodle configuration."""
 
     def __init__(self):
-        self.version = "5.1.1"
+        self.version = "4.5.8"
         self.internal_port = 443
         self.external_port = 8080
         self.site_fullname = "Tectonic Moodle"
