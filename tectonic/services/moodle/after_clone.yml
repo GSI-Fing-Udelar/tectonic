@@ -1,0 +1,271 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+---
+- name: Check if Moodle already installed
+  block:
+    - name: Check if credentials file exists
+      ansible.builtin.stat:
+        path: /root/credentials
+      register: credentials
+    - name: End execution if credentials file exists
+      ansible.builtin.meta: end_play
+      when: credentials.stat.exists
+
+- name: Load variables
+  ansible.builtin.include_vars:
+    file: vars/variables.yml
+
+- name: Add hostname to /etc/hosts
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    insertafter: EOF
+    line: "{{ services.moodle.ip }} {{ ansible_facts['fqdn'] }}"
+  when: config.platform != "docker"
+
+- name: Generate SSL certificates
+  block:
+    - name: Create certificates directory
+      ansible.builtin.file:
+        path: /etc/apache2/ssl
+        state: directory
+        mode: "0755"
+    - name: Create private key
+      community.crypto.openssl_privatekey:
+        path: /etc/apache2/ssl/moodle.key
+        size: 4096
+    - name: Create CSR
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: /etc/apache2/ssl/moodle.key
+        common_name: "{{ ansible_facts['fqdn'] }}"
+        country_name: UY
+        state_or_province_name: Montevideo
+        locality_name: Montevideo
+        organization_name: Tectonic
+        organizational_unit_name: Moodle
+        subject_alt_name:
+          - "DNS:{{ ansible_facts['fqdn'] }}"
+          - "DNS:{{ services.moodle.ip }}"
+          - "DNS:127.0.0.1"
+      register: moodle_csr
+    - name: Create self-signed certificate
+      community.crypto.x509_certificate:
+        path: /etc/apache2/ssl/moodle.crt
+        csr_content: "{{ moodle_csr.csr }}"
+        privatekey_path: /etc/apache2/ssl/moodle.key
+        provider: selfsigned
+        selfsigned_not_after: "+3650d"
+
+- name: Configure MySQL
+  block:
+    - name: Wait for MySQL socket
+      ansible.builtin.wait_for:
+        path: /run/mysqld/mysqld.sock
+        state: present
+        timeout: 60
+        delay: 2
+    - name: Ensure MySQL is running
+      ansible.builtin.systemd_service:
+        name: mysql
+        state: started
+        enabled: true
+    - name: Optimize MySQL for installation
+      ansible.builtin.copy:
+        dest: /etc/mysql/mysql.conf.d/99-tectonic-speed.cnf
+        content: |
+          [mysqld]
+          innodb_flush_log_at_trx_commit = 2
+          skip-log-bin
+          innodb_buffer_pool_size = 512M
+          innodb_log_file_size = 128M
+          default-storage-engine = InnoDB
+          innodb_file_per_table = 1
+        mode: "0644"
+      register: mysql_config
+    - name: Restart MySQL if config changed
+      ansible.builtin.systemd_service:
+        name: mysql
+        state: restarted
+      when: mysql_config.changed
+    - name: Wait for MySQL after restart
+      ansible.builtin.wait_for:
+        path: /run/mysqld/mysqld.sock
+        state: present
+        timeout: 60
+        delay: 2
+      when: mysql_config.changed
+
+- name: Setup database
+  block:
+    - name: Generate random passwords
+      ansible.builtin.set_fact:
+        moodle_admin_password: "{{ lookup('community.general.random_string', length=20, special=false) }}"
+        moodle_db_password: "{{ lookup('community.general.random_string', length=30, special=false) }}"
+    - name: Create database
+      community.mysql.mysql_db:
+        name: moodle
+        encoding: utf8mb4
+        collation: utf8mb4_unicode_ci
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+      retries: 3
+      delay: 5
+    - name: Create database user
+      community.mysql.mysql_user:
+        name: moodle
+        password: "{{ moodle_db_password }}"
+        priv: "moodle.*:ALL"
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+      retries: 3
+      delay: 5
+
+- name: Install Moodle
+  block:
+    - name: Set wwwroot host
+      ansible.builtin.set_fact:
+        moodle_host: "{{ '127.0.0.1' if config.platform == 'docker' else services.bastion_host.domain }}"
+    - name: Remove existing config.php
+      ansible.builtin.file:
+        path: /var/www/html/moodle/config.php
+        state: absent
+    - name: Run CLI installer
+      ansible.builtin.command:
+        cmd: >
+          /usr/bin/php /var/www/html/moodle/admin/cli/install.php
+          --non-interactive
+          --agree-license
+          --lang=en
+          --wwwroot=https://{{ moodle_host }}:{{ services.moodle.external_port }}
+          --dataroot=/var/moodledata
+          --dbtype=mysqli
+          --dbhost=localhost
+          --dbname=moodle
+          --dbuser=moodle
+          --dbpass={{ moodle_db_password }}
+          --fullname="{{ services.moodle.site_fullname }}"
+          --shortname="{{ services.moodle.site_shortname }}"
+          --adminuser=admin
+          --adminpass={{ moodle_admin_password }}
+          --adminemail={{ services.moodle.admin_email }}
+      become: true
+      become_user: www-data
+      register: moodle_install_result
+      changed_when: "'already installed' not in moodle_install_result.stdout"
+      failed_when: moodle_install_result.rc != 0 and "already installed" not in moodle_install_result.stdout
+    - name: Secure config.php permissions
+      ansible.builtin.file:
+        path: /var/www/html/moodle/config.php
+        owner: www-data
+        group: www-data
+        mode: "0440"
+    - name: Setup cron job
+      ansible.builtin.cron:
+        name: "Moodle Cron"
+        minute: "*"
+        user: "www-data"
+        job: "/usr/bin/php /var/www/html/moodle/admin/cli/cron.php >/dev/null 2>&1"
+
+- name: Start web services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: true
+  loop:
+    - apache2
+    - "php{{ php_version }}-fpm"
+
+- name: Configure firewall (iptables)
+  block:
+    - name: Set Gateway IP
+      ansible.builtin.set_fact:
+        gateway_ip: "{{ (services.moodle.ip | split('.'))[0] }}.{{ (services.moodle.ip | split('.'))[1] }}.{{ (services.moodle.ip | split('.'))[2] }}.129"
+
+    - name: Configure firewall | Flush existing rules
+      ansible.builtin.iptables:
+        table: filter
+        chain: "{{ item }}"
+        flush: yes
+      loop: [INPUT, FORWARD, OUTPUT]
+
+    - name: Configure firewall | Allow specific traffic
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: "{{ item.proto | default(omit) }}"
+        source: "{{ item.src | default(omit) }}"
+        destination_port: "{{ item.port | default(omit) }}"
+        in_interface: "{{ item.iface | default(omit) }}"
+        ctstate: "{{ item.ctstate | default(omit) }}"
+        jump: ACCEPT
+      loop:
+        - { ctstate: "ESTABLISHED,RELATED" }
+        - { iface: "lo" }
+        - { proto: "tcp", port: 22, src: "{{ gateway_ip }}" }
+        - {
+            proto: "tcp",
+            port: "{{ services.moodle.internal_port }}",
+            src: "{{ services.bastion_host.ip }}",
+          }
+
+    - name: Configure firewall | Set default policies
+      ansible.builtin.iptables:
+        chain: "{{ item.chain }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { chain: INPUT, policy: DROP }
+        - { chain: FORWARD, policy: DROP }
+        - { chain: OUTPUT, policy: ACCEPT }
+
+    - name: Configure firewall | Save rules
+      ansible.builtin.command: service netfilter-persistent save
+  when: config.platform in ["libvirt", "docker"]
+
+- name: Import courses
+  block:
+    - name: Copy courses backups
+      ansible.builtin.copy:
+        src: "{{ scenario_dir }}/moodle"
+        dest: /opt/
+    - name: Find all .mbz files in the /opt/moodle
+      ansible.builtin.find:
+        paths: /opt/moodle
+        patterns: "*.mbz"
+        recurse: false
+      register: mbz_find
+    - name: Import courses backups
+      ansible.builtin.command:
+        cmd: |
+          /usr/bin/php /var/www/html/moodle/admin/cli/restore_backup.php 
+          --file={{ item.path }}
+          --categoryid=1
+      become: true
+      become_user: www-data
+      loop: "{{ mbz_find.files }}"
+    - name: Delete courses backups
+      ansible.builtin.file:
+        path: /opt/moodle
+        state: absent
+
+- name: Write credentials file
+  ansible.builtin.copy:
+    dest: /root/credentials
+    content: |
+      admin {{ moodle_admin_password }}
+    mode: "0640"

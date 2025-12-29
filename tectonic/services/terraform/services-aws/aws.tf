@@ -165,13 +165,6 @@ resource "aws_security_group" "elastic_traffic_scenario_sg" {
     protocol          = "tcp"
     cidr_blocks       = [var.internet_network_cidr_block]
   }
-  ingress {
-    description       = "Elastic: Allow traffic from bastion host."
-    from_port         = 22
-    to_port           = 22
-    protocol          = "tcp"
-    cidr_blocks       = [var.internet_network_cidr_block]
-  }
   tags = {
     Name = format("%s-%s-elastic_traffic", var.institution, var.lab_name)
   }
@@ -235,6 +228,21 @@ resource "aws_security_group" "guacamole_scenario_sg" {
   }
 }
 
+resource "aws_security_group" "moodle_scenario_sg" {
+  description = "[Services] Allow traffic for Moodle."
+  vpc_id   = module.vpc.vpc_id
+  ingress {
+    description       = "Moodle: Allow traffic from bastion host"
+    from_port         = var.moodle_internal_port
+    to_port           = var.moodle_internal_port
+    protocol          = "tcp"
+    cidr_blocks       = [var.internet_network_cidr_block]
+  }
+  tags = {
+    Name = format("%s-%s-guacamole", var.institution, var.lab_name)
+  }
+}
+
 resource "aws_security_group" "bastion_host_scenario_sg" {
   description = "[Service] Allow traffic for Bastion Host."
   vpc_id   = module.vpc.vpc_id
@@ -270,6 +278,13 @@ resource "aws_security_group" "bastion_host_scenario_sg" {
     description = "Bastion Host: Allow ingress HTTP traffic from internet to caldera virtualhost."
     from_port   = var.caldera_external_port
     to_port     = var.caldera_external_port
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    description = "Bastion Host: Allow ingress HTTP traffic from internet to moodle virtualhost."
+    from_port   = var.moodle_external_port
+    to_port     = var.moodle_external_port
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -318,6 +333,7 @@ resource "aws_network_interface" "interfaces" {
     local.guest_data[each.value.guest_name].base_name == "elastic" && var.monitor_type == "endpoint" ? [aws_security_group.elastic_endpoint_scenario_sg.id] : [aws_security_group.elastic_traffic_scenario_sg.id],
     local.guest_data[each.value.guest_name].base_name == "packetbeat" ? [aws_security_group.packetbeat_scenario_sg.id ] : [],
     local.guest_data[each.value.guest_name].base_name == "guacamole" ? [aws_security_group.guacamole_scenario_sg.id] : [],
+    local.guest_data[each.value.guest_name].base_name == "moodle" ? [aws_security_group.moodle_scenario_sg.id] : [],
     local.guest_data[each.value.guest_name].base_name == "bastion_host" ? [aws_security_group.bastion_host_scenario_sg.id] : [],
     local.guest_data[each.value.guest_name].base_name == "teacher_access_host" ? [aws_security_group.teacher_access_host_scenario_sg.id] : [],
   )

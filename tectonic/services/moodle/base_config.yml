@@ -1,0 +1,137 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+---
+- name: "Install Moodle Base Image (Ubuntu 22.04)"
+  hosts: moodle
+  become: true
+  gather_facts: true
+  vars_files:
+    - vars/variables.yml
+
+  tasks:
+    - name: Set hostname
+      ansible.builtin.hostname:
+        name: moodle
+      when: config.platform != "docker"
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install dependencies
+      ansible.builtin.package:
+        name: "{{ system_packages + php_packages }}"
+        state: present
+
+    - name: Configure Apache
+      block:
+        - name: Enable Apache modules
+          ansible.builtin.command: "a2enmod {{ item }}"
+          loop: [rewrite, proxy, proxy_fcgi, headers, setenvif, ssl]
+          changed_when: false
+        - name: Enable PHP-FPM
+          ansible.builtin.command: "a2enconf php{{ php_version }}-fpm"
+          changed_when: false
+        - name: Configure VirtualHost
+          ansible.builtin.copy:
+            dest: /etc/apache2/sites-available/000-default.conf
+            content: |
+              <VirtualHost *:443>
+                  DocumentRoot /var/www/html/moodle
+                  DirectoryIndex index.php index.html
+                  SSLEngine on
+                  SSLCertificateFile /etc/apache2/ssl/moodle.crt
+                  SSLCertificateKeyFile /etc/apache2/ssl/moodle.key
+                  <Directory /var/www/html/moodle>
+                      AllowOverride All
+                      Require all granted
+                  </Directory>
+                  <FilesMatch \.php$>
+                      SetHandler "proxy:unix:/run/php/php{{ php_version }}-fpm.sock|fcgi://localhost"
+                  </FilesMatch>
+              </VirtualHost>
+        - name: Configure ports
+          ansible.builtin.copy:
+            dest: /etc/apache2/ports.conf
+            content: "Listen 443\n"
+
+    - name: Configure PHP
+      ansible.builtin.lineinfile:
+        path: "{{ item }}"
+        regexp: '^;?max_input_vars\s*='
+        line: "max_input_vars = 5000"
+      loop:
+        - "/etc/php/{{ php_version }}/fpm/php.ini"
+        - "/etc/php/{{ php_version }}/cli/php.ini"
+
+    - name: Create Moodle data directory
+      ansible.builtin.file:
+        path: /var/moodledata
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: "0770"
+
+    - name: Download Moodle
+      block:
+        - name: Configure git safe directory
+          ansible.builtin.command: git config --global --add safe.directory /var/www/html/moodle
+          changed_when: false
+          failed_when: false
+        - name: Clone Moodle repository
+          ansible.builtin.git:
+            repo: "https://github.com/moodle/moodle.git"
+            dest: /var/www/html/moodle
+            version: "{{ services.moodle.version }}"
+            depth: 1
+            update: yes
+            force: yes
+        - name: Set Moodle permissions
+          ansible.builtin.file:
+            path: /var/www/html/moodle
+            owner: www-data
+            group: www-data
+            recurse: yes
+            mode: "0755"
+
+    - name: Install Moosh
+      block:
+        - name: Download Moosh
+          ansible.builtin.get_url:
+            url: "{{ moosh_download_url }}"
+            dest: /tmp/moosh.zip
+            mode: "0644"
+        - name: Extract Moosh
+          ansible.builtin.unarchive:
+            src: /tmp/moosh.zip
+            dest: /opt
+            remote_src: yes
+        - name: Create symlink
+          ansible.builtin.file:
+            src: /opt/moosh/moosh.php
+            dest: /usr/local/bin/moosh
+            state: link
+        - name: Set permissions
+          ansible.builtin.file:
+            path: /opt/moosh
+            owner: www-data
+            group: www-data
+            recurse: yes

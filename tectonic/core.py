@@ -262,11 +262,11 @@ class Core:
         if self.description.bastion_host.enable:
             if self.config.platform == "aws":
                 bastion_host_ip = self.client.get_machine_public_ip(self.description.bastion_host.name)
-                instances_info["Bastion Host IP"] = bastion_host_ip
             elif self.config.platform == "docker":
                 bastion_host_ip = "127.0.0.1"
             elif self.config.platform == "libvirt":
                 bastion_host_ip = self.description.bastion_host.service_ip
+            instances_info["Bastion Host domain - IP"] = f"{self.config.bastion_host.domain} - {bastion_host_ip}"
         if self.description.teacher_access_host.enable:
             instances_info["Teacher Access Host IP"] = self.description.teacher_access_host.service_ip
 
@@ -275,7 +275,7 @@ class Core:
             if service.base_name not in ["packetbeat", "bastion_host", "teacher_access_host"]:
                 service_port = self.description.bastion_host.ports[service.base_name]
                 service_info[service.base_name] = {
-                    "URL": f"https://{bastion_host_ip}:{service_port}",
+                    "URL": f"https://{self.config.bastion_host.domain}:{service_port}",
                     "Credentials": self.terraform_service.get_service_credentials(service, self.ansible),
                 }    
         return {
@@ -461,6 +461,16 @@ class Core:
                 },
                 quiet=True
             )
+
+        if self.description.moodle.enable and self.description.moodle.enable_trainees:
+            self.ansible.run(
+                instances=None,
+                guests=["moodle"],
+                copies=None,
+                playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
+                only_instances=False,
+                quiet=True
+            )
         return users
     
     def _get_students_passwords(self):
@@ -470,7 +480,7 @@ class Core:
         Return:
             dic: the password for each user.
         """
-        if self.description.create_students_passwords or self.description.guacamole.enable:
+        if self.description.create_students_passwords or (self.description.moodle.enable and self.description.moodle.enable_trainees):
             credentials = self.description.generate_student_access_credentials()
             return {username: user['password'] for username, user in credentials.items()}
         else:

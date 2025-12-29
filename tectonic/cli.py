@@ -389,6 +389,12 @@ def tectonic(
     help="Whether to create the base image for Guacamole.",
 )
 @click.option(
+    "--moodle_image/--no-moodle_image",
+    default=False,
+    show_default=True,
+    help="Whether to create the base image for Moodle.",
+)
+@click.option(
     "--bastion_host_image/--no-bastion_host_image",
     default=False,
     show_default=True,
@@ -400,13 +406,13 @@ def tectonic(
     help="Force the deployment of instances without a confirmation prompt.",
     is_flag=True,
 )
-def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_image, guacamole_image, bastion_host_image, force):
+def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_image, guacamole_image, moodle_image, bastion_host_image, force):
     """Deploy the cyber range."""
     if not force:
         confirm_machines(ctx, instances, guest_names=None, copies=None, action="Deploying")
 
     if images:
-        _create_images(ctx, packetbeat_image, elastic_image, caldera_image, guacamole_image, bastion_host_image, True)
+        _create_images(ctx, packetbeat_image, elastic_image, caldera_image, guacamole_image, moodle_image, bastion_host_image, True)
 
     ctx.obj["core"].deploy(instances, images, False)
 
@@ -452,6 +458,12 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     help="Whether to destroy the Guacamole machine.",
 )
 @click.option(
+    "--moodle/--no-moodle",
+    default=False,
+    show_default=True,
+    help="Whether to destroy the Moodle machine.",
+)
+@click.option(
     "--bastion_host/--no-bastion_host",
     default=False,
     show_default=True,
@@ -466,7 +478,7 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     help="Force the destruction of instances without a confirmation prompt.",
     is_flag=True,
 )
-def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, guacamole, bastion_host, force):
+def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, guacamole, moodle, bastion_host, force):
     """Delete and destroy all resources of the cyber range. 
 
     If instances are specified only destroys running guests for those instances.
@@ -478,7 +490,7 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, guac
 
     if (instances and not machines):
         raise TectonicException("If you specify a list of instances, machines must be true.")
-    if (instances and (images or caldera or elastic or packetbeat)):
+    if (instances and (images or caldera or elastic or packetbeat or moodle)):
         raise TectonicException("You cannot specify a list of instances and image or service destruction at the same time.")
 
     services = []
@@ -490,6 +502,8 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, guac
         services.append("caldera")
     if guacamole:
         services.append("guacamole")
+    if moodle:
+        services.append("moodle")
     if bastion_host:
         services.append("bastion_host")
 
@@ -528,6 +542,12 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, guac
     help="Whether to create the base image for Guacamole.",
 )
 @click.option(
+    "--moodle/--no-moodle",
+    default=True,
+    show_default=True,
+    help="Whether to create the base image for Moodle.",
+)
+@click.option(
     "--bastion_host/--no-bastion_host",
     default=True,
     show_default=True,
@@ -540,13 +560,13 @@ def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, guac
     type=click.STRING,
     help="Name of guests to list.",
 )
-def create_images(ctx, packetbeat, elastic, caldera, guacamole, bastion_host, machines, guests):
+def create_images(ctx, packetbeat, elastic, caldera, guacamole, moodle, bastion_host, machines, guests):
     """Create lab base images."""
     ctx.obj["description"].parse_machines(instances=None, guests=guests, copies=None, only_instances=True)
-    _create_images(ctx, packetbeat, elastic, caldera, guacamole, bastion_host, machines, guests)
+    _create_images(ctx, packetbeat, elastic, caldera, guacamole, moodle, bastion_host, machines, guests)
 
 
-def _create_images(ctx, packetbeat, elastic, caldera, guacamole, bastion_host, machines, guests=None):
+def _create_images(ctx, packetbeat, elastic, caldera, guacamole, moodle, bastion_host, machines, guests=None):
     services = []
     if elastic and ctx.obj["description"].elastic.enable:
         services.append("elastic")
@@ -556,6 +576,8 @@ def _create_images(ctx, packetbeat, elastic, caldera, guacamole, bastion_host, m
         services.append("caldera")
     if guacamole and ctx.obj["description"].guacamole.enable:
         services.append("guacamole")
+    if moodle and ctx.obj["description"].moodle.enable:
+        services.append("moodle")
     if bastion_host and ctx.obj["description"].bastion_host.enable:
         services.append("bastion_host")
     if services:

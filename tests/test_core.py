@@ -113,6 +113,9 @@ def test_deploy(core):
     core.description.elastic.enable = True
     core.description.elastic.monitor_type = "traffic"
     core.description.caldera.enable = True
+    core.description.guacamole.enable = True
+    core.description.moodle.enable = True
+    core.description.bastion_host.enable = True
     core.terraform_service.deploy_packetbeat = MagicMock()
     core.terraform_service.install_elastic_agent = MagicMock()
     core.terraform_service.install_caldera_agent = MagicMock()
@@ -134,6 +137,9 @@ def test_destroy(core):
     core.description.elastic.monitor_type = "traffic"
     core.description._base_guests = {"guest": MagicMock(base_name="g", entry_point=True)}
     core.description.caldera.enable = True
+    core.description.guacamole.enable = True
+    core.description.moodle.enable = True
+    core.description.bastion_host.enable = True
 
 
     core.destroy(None, True, ["svc"], True)
@@ -150,6 +156,9 @@ def test_recreate(core):
     core.description.elastic.enable = True
     core.description.elastic.monitor_type = "endpoint"
     core.description.caldera.enable = True
+    core.description.guacamole.enable = True
+    core.description.moodle.enable = True
+    core.description.bastion_host.enable = True
     core.terraform_service.install_elastic_agent = MagicMock()
     core.terraform_service.install_caldera_agent = MagicMock()
 
@@ -186,6 +195,9 @@ def test_info(core):
     svc.port = 1234
     core.description.elastic.enabled = True
     core.description.caldera.enabled = True
+    core.description.guacamole.enable = True
+    core.description.moodle.enable = True
+    core.description.bastion_host.enable = True
     core.terraform_service.get_service_credentials = MagicMock(return_value="creds")
     core._get_students_passwords = MagicMock(return_value={"u": "p"})
 
@@ -278,6 +290,7 @@ def test_get_students_passwords(core):
     assert pwds == {"u": "p"}
 
     core.description.create_students_passwords = False
+    core.description.moodle.enable = False
     assert core._get_students_passwords() == {}
 
 

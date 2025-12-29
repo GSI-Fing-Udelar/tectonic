@@ -106,7 +106,7 @@
         - config.platform == "aws"
 
 - name: "Create student users on the rest of the machines."
-  hosts: all:!bastion_host:!guacamole
+  hosts: all:!bastion_host:!guacamole:!moodle
   gather_facts: true
   vars:
     digit_count: "{{ instances | string | length }}"
@@ -218,3 +218,41 @@
         name: tomcat9
         state: restarted
 
+- name: Create student users on moodle
+  hosts: moodle
+  gather_facts: false
+  tasks:
+    - name: Create user
+      ansible.builtin.command:
+        cmd: |
+          /usr/bin/php /opt/moosh/moosh.php -n -p /var/www/html/moodle user-create
+          --password={{ item.value.password }}
+          --email={{ item.key }}@{{ services.bastion_host.domain }}
+          {{ item.key }}
+      become: true
+      become_user: www-data
+      register: moosh_results
+      failed_when:
+      - moosh_results.rc != 0
+      - "'Duplicate entry' not in (moosh_results.stderr | default(''))"
+      loop: "{{ users | dict2items }}"
+    - name: Enroll users to courses
+      block:
+        - name: Get all courses
+          ansible.builtin.command:
+            cmd: |
+              /usr/bin/php /opt/moosh/moosh.php -n -p /var/www/html/moodle course-list -i
+          become: true
+          become_user: www-data
+          register: moosh_results
+        - name: Enroll user in course
+          ansible.builtin.command:
+            cmd: |
+              /usr/bin/php /opt/moosh/moosh.php -n -p /var/www/html/moodle course-enrol
+              -r student
+              {{ item.1 }}
+              {{ item.0.key }}
+          become: true
+          become_user: www-data
+          loop: "{{ users | dict2items | product(moosh_results.stdout_lines[1:]) | list }}"
+      when: services.moodle.auto_enroll_trainees
