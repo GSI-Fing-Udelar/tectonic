@@ -1,0 +1,314 @@
+---
+# ==============================================================================
+# DFIR Final Scenario - Unified WannaCry Attack Simulation (after_clone.yml)
+# ==============================================================================
+# This playbook runs AFTER the instances are cloned from the base image.
+# It executes a complete WannaCry attack simulation combining:
+#   1. NETWORK: Generates realistic PCAP traffic
+#   2. FILESYSTEM: Creates forensic disk image with encrypted/deleted files
+#
+# ARCHITECTURE:
+#   NETWORK Layer 3: generate_wannacry_attack (PCAP generation)
+#   FILESYSTEM Layer 3: execute_ransomware_profile (file operations)
+#   FILESYSTEM Layer 1: Disk image creation, encryption, deletion
+#
+# EXECUTION CONTEXT (provided by Tectonic):
+#   - instances: Total number of instances
+#   - instance: Current instance number (1, 2, 3, ...)
+#   - copy: Copy number within instance
+#   - basename: Base name of the guest (e.g., "victim")
+#   - random_seed: Seed for reproducible randomization
+#
+# PLAYBOOK FLOW:
+#   Phase 1: Network attack simulation (PCAP generation)
+#   Phase 2: Filesystem preparation (disk image creation)
+#   Phase 3: Directory structure creation
+#   Phase 4: WannaCry ransomware simulation (Layer 3)
+#   Phase 5: Flag file generation (forensic challenge)
+#   Phase 6: Cleanup (unmount disk image)
+#
+# OUTPUTS:
+#   - /tmp/wannacry_unified_attack.pcap (network traffic)
+#   - /tmp/final_forensic.img (forensic disk image)
+#   - Hidden flag inside disk image (deleted, recoverable)
+#
+# NOTES:
+#   - No internet connection available (after_clone runs in isolated network)
+#   - Custom modules loaded from tectonic/ansible/library/ automatically
+# ==============================================================================
+
+- name: "Unified WannaCry Attack Simulation (Network + Filesystem)"
+  hosts: victim
+  gather_facts: yes
+  become: yes
+
+  # Variables for simulation
+  vars:
+    # ========================================================================
+    # NETWORK SIMULATION PARAMETERS
+    # ========================================================================
+    victim_ip: "192.168.1.100" # Target machine IP address
+    attacker_ip: "203.0.113.50" # Attacker's public IP address
+    malicious_server_ip: "198.51.100.25" # Malware distribution server IP
+    pcap_output: "/tmp/wannacry_unified_attack.pcap" # Output PCAP file path
+
+    # ========================================================================
+    # FILESYSTEM SIMULATION PARAMETERS
+    # ========================================================================
+    file_count: 150 # Number of victim files to generate
+    target_directory: "/srv/samba/share" # Target directory (inside disk image)
+    faker_seed: 42 # Seed for reproducible fake data
+    force_rerun: true # Ignore idempotency, always re-run
+    deletion_ratio: 25 # Percentage of files to delete (25%)
+
+    # ========================================================================
+    # WANNACRY PROFILE (Layer 3 orchestration)
+    # ========================================================================
+    profile_name: "wannacry" # Profile name for ransomware behavior
+
+    # ========================================================================
+    # FORENSIC DISK IMAGE PARAMETERS
+    # ========================================================================
+    image_file: "/tmp/final_forensic.img" # Disk image file path
+    image_size_mb: 1024 # Disk image size (1GB)
+    mount_point: "/mnt/simple_forensic" # Mount point for image
+    case_id: "TEST_{{ ansible_date_time.epoch }}" # Case identifier with timestamp
+    loop_device: "" # Loop device (auto-detected)
+
+  tasks:
+    # ========================================================================
+    # PHASE 0: Display simulation start
+    # ========================================================================
+    - name: "Display simulation start message"
+      debug:
+        msg:
+          - "=============================================="
+          - "  UNIFIED WANNACRY ATTACK SIMULATION"
+          - "=============================================="
+          - "Instance: {{ instance }}"
+          - "Copy: {{ copy }}"
+          - "Target: {{ basename }}"
+          - "Random Seed: {{ random_seed | default('not set') }}"
+          - ""
+          - "Phase 1: Network attack (PCAP generation)"
+          - "Phase 2: Disk image creation"
+          - "Phase 3: Ransomware simulation"
+          - "Phase 4: Flag generation"
+          - "=============================================="
+
+    # ========================================================================
+    # PHASE 1: NETWORK ATTACK SIMULATION
+    # ========================================================================
+    - name: "[PHASE 1] ═══════════════════════════════════════════"
+      debug:
+        msg: "NETWORK ATTACK SIMULATION"
+
+    - name: "[NETWORK] Clean previous PCAP output"
+      file:
+        path: "{{ pcap_output }}"
+        state: absent
+
+    - name: "[NETWORK] Generate WannaCry attack traffic (PCAP)"
+      generate_wannacry_attack:
+        victim_ip: "{{ victim_ip }}"
+        attacker_ip: "{{ attacker_ip }}"
+        ip_malicious_server: "{{ malicious_server_ip }}"
+        output_path: "{{ pcap_output }}"
+      register: network_attack
+
+    - name: "[NETWORK] Display attack summary"
+      debug:
+        msg:
+          - "Network attack simulation completed"
+          - "PCAP file: {{ pcap_output }}"
+          - "Total packets: {{ network_attack.total_packets | default('N/A') }}"
+          - "Phases: Reconnaissance → Malware Download → C2"
+
+    # ========================================================================
+    # PHASE 2: FILESYSTEM PREPARATION
+    # ========================================================================
+    - name: "[PHASE 2] ═══════════════════════════════════════════"
+      debug:
+        msg: "FILESYSTEM PREPARATION"
+
+    - name: "[DISK] Clean previous disk image"
+      file:
+        path: "{{ image_file }}"
+        state: absent
+
+    - name: "[DISK] Create disk image ({{ image_size_mb }}MB)"
+      command: "dd if=/dev/zero of={{ image_file }} bs=1M count={{ image_size_mb }}"
+
+    - name: "[DISK] Format image as ext4 filesystem"
+      command: "mkfs.ext4 -F {{ image_file }}"
+
+    - name: "[DISK] Detach any orphaned loop devices from previous runs"
+      shell: |
+        losetup -j {{ image_file }} 2>/dev/null | cut -d: -f1 | while read dev; do
+          [ -n "$dev" ] && umount "$dev" 2>/dev/null || true
+          [ -n "$dev" ] && losetup -d "$dev" 2>/dev/null || true
+        done
+        exit 0
+      ignore_errors: yes
+      changed_when: false
+
+    - name: "[DISK] Attach image to loop device"
+      command: "losetup -fP {{ image_file }}"
+
+    - name: "[DISK] Detect loop device path"
+      shell: "losetup -j {{ image_file }} | cut -d: -f1"
+      register: loop_detect
+      changed_when: false
+
+    - name: "[DISK] Save loop device path"
+      set_fact:
+        loop_device: "{{ loop_detect.stdout }}"
+
+    - name: "[DISK] Create mount point directory"
+      file:
+        path: "{{ mount_point }}"
+        state: directory
+
+    - name: "[DISK] Mount filesystem to mount point"
+      mount:
+        path: "{{ mount_point }}"
+        src: "{{ loop_device }}"
+        fstype: ext4
+        state: mounted
+
+    # ========================================================================
+    # PHASE 3: DIRECTORY STRUCTURE CREATION
+    # ========================================================================
+    # Create realistic victim directory structure inside mounted disk image
+    # ========================================================================
+    - name: "[FS] Create target directory /srv/samba/share inside disk image"
+      file:
+        path: "{{ mount_point }}/srv/samba/share"
+        state: directory
+        mode: "0755"
+
+    # ========================================================================
+    # PHASE 4: WANNACRY RANSOMWARE SIMULATION (Layer 3 Profile)
+    # ========================================================================
+    # Execute complete WannaCry ransomware behavior:
+    #   1. Generate 150 realistic victim files (DOCX, PDF, TXT, JPG, XLSX)
+    #   2. Encrypt all files with AES-256-CBC (add .WNCRY extension)
+    #   3. Create ransom note (@Please_Read_Me@.txt)
+    #   4. Delete 25% of encrypted files (forensically recoverable)
+    # ========================================================================
+    - name: "[LAYER 3] Execute WannaCry ransomware profile"
+      execute_ransomware_profile:
+        profile: "{{ profile_name }}"
+        target_directory: "{{ mount_point }}/srv/samba/share"
+        file_count: "{{ file_count }}"
+        faker_seed: "{{ faker_seed }}"
+        force_rerun: "{{ force_rerun }}"
+        deletion_ratio: "{{ deletion_ratio }}"
+      register: wannacry_result
+
+    # ========================================================================
+    # PHASE 5: FLAG FILE GENERATION (Forensic Challenge)
+    # ========================================================================
+    # Create a hidden flag file for DFIR training:
+    #   1. Generate plain-text flag file (flagsinha.txt)
+    #   2. Encrypt with AES-256-CBC (flagsinha.txt.WNCRY)
+    #   3. Delete original plain-text file
+    #   4. Delete encrypted file using debugfs (forensically recoverable)
+    #
+    # FORENSIC CHALLENGE:
+    #   Participants must recover the deleted encrypted file and decrypt it
+    #   to find the flag message inside.
+    # ========================================================================
+
+    - name: "[FLAG] Create flag file with secret message"
+      generate_file:
+        path: "{{ mount_point }}/srv/samba/share/flagsinha.txt"
+        extension: txt
+        content: "Encontraste la flag, sos el mejor dfir user del pais"
+
+    - name: "created archive"
+      generate_file:
+        path: "/tmp/orco.txt"
+        extension: txt
+        content: "Orco file for testing"
+
+    - name: "[FLAG] Encrypt flag file with AES-256-CBC (.WNCRY extension)"
+      encrypt_files_aes:
+        files:
+          - "{{ mount_point }}/srv/samba/share/flagsinha.txt"
+        key: "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF" # 32 bytes key for AES-256
+        encrypted_extension: "WNCRY"
+        keep_original: false
+      register: encrypt_flag_result
+
+    - name: "[DISK] Sync filesystem before unmounting (flush buffers)"
+      command: sync
+      changed_when: false
+
+    - name: "[DISK] Unmount filesystem and remove fstab entry"
+      mount:
+        path: "{{ mount_point }}"
+        state: absent
+
+    - name: "[FLAG] Delete encrypted flag file with debugfs (forensically recoverable)"
+      delete_file_debugfs:
+        filename: "flagsinha.txt.WNCRY"
+        device: "{{ loop_device }}"
+        directory: "/srv/samba/share"
+
+    # ========================================================================
+    # PHASE 6: CLEANUP - Detach Loop Device
+    # ========================================================================
+    # Properly disconnect loop device to release disk image:
+    #   1. Detach loop device with losetup -d
+    #   2. Verify loop device is no longer attached
+    #   3. Display cleanup status
+    # ========================================================================
+    - name: "[CLEANUP] Detach loop device from disk image"
+      command: "losetup -d {{ loop_device }}"
+      when: loop_device != ""
+      ignore_errors: yes
+
+    - name: "[CLEANUP] Verify loop device is disconnected"
+      shell: "losetup -j {{ image_file }}"
+      register: loop_check
+      changed_when: false
+      failed_when: false
+
+    - name: "[CLEANUP] Display loop device status"
+      debug:
+        msg: "{{ 'Loop device disconnected successfully' if loop_check.stdout == '' else 'Warning: Loop device still attached' }}"
+
+# ==============================================================================
+# FORENSIC ANALYST WORKSTATION CONFIGURATION
+# ==============================================================================
+- name: "Forensic Analysis Workstation Setup"
+  hosts: analyst
+  gather_facts: yes
+  become: yes
+
+  tasks:
+    - name: "Display analyst ready message"
+      debug:
+        msg:
+          - "=============================================="
+          - "   ANALYST WORKSTATION READY"
+          - "=============================================="
+          - ""
+          - "🔬 Ready for forensic analysis:"
+          - "   - Wireshark (network analysis)"
+          - "   - Autopsy (disk forensics)"
+          - "   - Python (custom analysis scripts)"
+          - ""
+          - "📁 Copy artifacts from victim machine:"
+          - "   scp victim:/tmp/wannacry_unified_attack.pcap ."
+          - "   scp victim:/tmp/final_forensic.img ."
+          - ""
+          - "🎯 Analysis tools available:"
+          - "   - wireshark"
+          - "   - tshark"
+          - "   - tcpdump"
+          - ""
+          - "🔓 Decryption key for flag:"
+          - "   0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+          - "=============================================="
