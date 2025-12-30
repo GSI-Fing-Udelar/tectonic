@@ -531,7 +531,6 @@ def apply_shared_characteristics(
     default_owners: Optional[List[Dict[str, Any]]] = None,
     deleted_ratio: float = 0.0,
     deleted_count: Optional[int] = None,
-    deletion_mode: str = 'soft',
     minimum_size: Optional[Union[int, str]] = None,
     maximum_size: Optional[Union[int, str]] = None,
     average_size: Optional[Union[int, str]] = None,
@@ -554,7 +553,6 @@ def apply_shared_characteristics(
                        [{'owner': 'user1', 'percentage': 50}, ...]
         deleted_ratio: Percentage of files to delete (0.0-1.0)
         deleted_count: Exact number of files to delete (overrides ratio)
-        deletion_mode: 'hard' = unrecoverable deletion, 'soft' = forensic recoverable
         minimum_size: Minimum file size (e.g., \"50KB\" or 51200)
         maximum_size: Maximum file size (e.g., \"100KB\" or 102400)
         average_size: Target average size (e.g., \"75KB\" with ±20% variance)

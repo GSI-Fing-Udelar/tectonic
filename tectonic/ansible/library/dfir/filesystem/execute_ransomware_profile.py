@@ -578,13 +578,10 @@ def phase6_delete_files(module: AnsibleModule, profile: dict, target_dir: str) -
     except ImportError as e:
         module.fail_json(msg=f"Failed to import layer2_orchestrators: {str(e)}")
     
-    # Get deletion mode (hard = unrecoverable, soft = forensic recoverable)
-    deletion_mode = profile.get('deletion_mode', 'hard')
     
     success, stats, failed_files, error = l2.apply_shared_characteristics(
         base_directory=target_dir,
         deleted_ratio=profile['deletion_ratio'] / 100.0,  # Convert percentage to ratio
-        deletion_mode=deletion_mode,
         name_pattern=f"*.{profile['encrypted_extension']}"
     )
     

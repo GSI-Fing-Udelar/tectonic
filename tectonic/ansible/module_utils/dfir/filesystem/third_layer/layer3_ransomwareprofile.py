@@ -86,7 +86,6 @@ PROFILE_WANNACRY = {
     
     # Post-encryption behavior
     'deletion_ratio': 12,  # 12% of files deleted (logs, backups)
-    'deletion_mode': 'hard',  # 'hard' = unrecoverable, 'soft' = forensic recoverable
     'set_readonly': True,
     'readonly_permissions': '0444',
     
