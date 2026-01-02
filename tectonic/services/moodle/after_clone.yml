@@ -197,14 +197,12 @@
     - name: Set Gateway IP
       ansible.builtin.set_fact:
         gateway_ip: "{{ (services.moodle.ip | split('.'))[0] }}.{{ (services.moodle.ip | split('.'))[1] }}.{{ (services.moodle.ip | split('.'))[2] }}.129"
-
     - name: Configure firewall | Flush existing rules
       ansible.builtin.iptables:
         table: filter
         chain: "{{ item }}"
         flush: yes
       loop: [INPUT, FORWARD, OUTPUT]
-
     - name: Configure firewall | Allow specific traffic
       ansible.builtin.iptables:
         chain: INPUT
@@ -223,7 +221,6 @@
             port: "{{ services.moodle.internal_port }}",
             src: "{{ services.bastion_host.ip }}",
           }
-
     - name: Configure firewall | Set default policies
       ansible.builtin.iptables:
         chain: "{{ item.chain }}"
@@ -232,7 +229,6 @@
         - { chain: INPUT, policy: DROP }
         - { chain: FORWARD, policy: DROP }
         - { chain: OUTPUT, policy: ACCEPT }
-
     - name: Configure firewall | Save rules
       ansible.builtin.command: service netfilter-persistent save
   when: config.platform in ["libvirt", "docker"]
