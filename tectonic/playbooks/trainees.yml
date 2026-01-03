@@ -228,7 +228,7 @@
     - name: Create user
       ansible.builtin.command:
         cmd: |
-          /usr/bin/php /opt/moosh/moosh.php -n -p /var/www/html/moodle user-create
+          moosh -n -p /var/www/html/moodle/public user-create
           --password={{ item.value.password }}
           --email={{ item.key }}@{{ services.bastion_host.domain }}
           {{ item.key }}
@@ -244,14 +244,14 @@
         - name: Get all courses
           ansible.builtin.command:
             cmd: |
-              /usr/bin/php /opt/moosh/moosh.php -n -p /var/www/html/moodle course-list -i
+              moosh -n -p /var/www/html/moodle/public course-list -i
           become: true
           become_user: www-data
           register: moosh_results
         - name: Enroll user in course
           ansible.builtin.command:
             cmd: |
-              /usr/bin/php /opt/moosh/moosh.php -n -p /var/www/html/moodle course-enrol
+              moosh -n -p /var/www/html/moodle/public course-enrol
               -r student
               {{ item.1 }}
               {{ item.0.key }}

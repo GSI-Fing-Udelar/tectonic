@@ -49,15 +49,29 @@
             deb: "/tmp/mysql-apt-config.deb"
             state: present
 
+    - name: Add PHP repo
+      ansible.builtin.command: add-apt-repository -y ppa:ondrej/php
+      environment:
+        http_proxy: "{{ config.proxy | default(omit) }}"
+        https_proxy: "{{ config.proxy | default(omit) }}"
+      # ansible.builtin.apt_repository: #Not working when proxy is set
+      #   repo: 'ppa:ondrej/php'
+      #   state: present
+      #   update_cache: yes
+    
+    - name: Add Mosh repo
+      ansible.builtin.command: add-apt-repository -y ppa:zabuch/ppa
+      environment:
+        http_proxy: "{{ config.proxy | default(omit) }}"
+        https_proxy: "{{ config.proxy | default(omit) }}"
+      # ansible.builtin.apt_repository: #Not working when proxy is set
+      #   repo: 'ppa:zabuch/ppa'
+      #   state: present
+      #   update_cache: yes
+
     - name: Update apt cache
       ansible.builtin.apt:
         update_cache: yes
-
-    - name: Add PHP repo
-      ansible.builtin.apt_repository:
-        repo: 'ppa:ondrej/php'
-        state: present
-        update_cache: true
 
     - name: Install packages
       ansible.builtin.package:
@@ -78,12 +92,12 @@
             dest: /etc/apache2/sites-available/000-default.conf
             content: |
               <VirtualHost *:443>
-                  DocumentRoot /var/www/html/moodle
+                  DocumentRoot /var/www/html/moodle/public
                   DirectoryIndex index.php index.html
                   SSLEngine on
                   SSLCertificateFile /etc/apache2/ssl/moodle.crt
                   SSLCertificateKeyFile /etc/apache2/ssl/moodle.key
-                  <Directory /var/www/html/moodle>
+                  <Directory /var/www/html/moodle/public>
                       AllowOverride All
                       Require all granted
                   </Directory>
@@ -134,37 +148,3 @@
             group: www-data
             recurse: yes
             mode: "0755"
-
-    - name: Install Moosh
-      block:
-        - name: Add Moosh repo
-          ansible.builtin.apt_repository:
-            repo: 'ppa:zabuch/ppa'
-            state: present
-            update_cache: true
-        - name: Install Noosh
-          ansible.builtin.package:
-            name: mosh
-            state: present
-           
-        # - name: Download Moosh
-        #   ansible.builtin.get_url:
-        #     url: "{{ moosh_download_url }}"
-        #     dest: /tmp/moosh.zip
-        #     mode: "0644"
-        # - name: Extract Moosh
-        #   ansible.builtin.unarchive:
-        #     src: /tmp/moosh.zip
-        #     dest: /opt
-        #     remote_src: yes
-        # - name: Create symlink
-        #   ansible.builtin.file:
-        #     src: /opt/moosh/moosh.php
-        #     dest: /usr/local/bin/moosh
-        #     state: link
-        # - name: Set permissions
-        #   ansible.builtin.file:
-        #     path: /opt/moosh
-        #     owner: www-data
-        #     group: www-data
-        #     recurse: yes

@@ -75,17 +75,11 @@
 
 - name: Configure MySQL
   block:
-    - name: Wait for MySQL socket
-      ansible.builtin.wait_for:
-        path: /run/mysqld/mysqld.sock
-        state: present
-        timeout: 60
-        delay: 2
-    - name: Ensure MySQL is running
-      ansible.builtin.systemd_service:
-        name: mysql
-        state: started
-        enabled: true
+    - name: Adjust auth plugin
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/system/multi-user.target.wants/mysql.service
+        search_string: "ExecStart=/usr/sbin/mysqld"
+        line: ExecStart=/usr/sbin/mysqld --mysql-native-password=ON
     - name: Optimize MySQL for installation
       ansible.builtin.copy:
         dest: /etc/mysql/mysql.conf.d/99-tectonic-speed.cnf
@@ -99,18 +93,12 @@
           innodb_file_per_table = 1
         mode: "0644"
       register: mysql_config
-    - name: Restart MySQL if config changed
+    - name: Restart MySQL
       ansible.builtin.systemd_service:
         name: mysql
         state: restarted
-      when: mysql_config.changed
-    - name: Wait for MySQL after restart
-      ansible.builtin.wait_for:
-        path: /run/mysqld/mysqld.sock
-        state: present
-        timeout: 60
-        delay: 2
-      when: mysql_config.changed
+        enabled: true
+        daemon_reload: true
 
 - name: Setup database
   block:
@@ -125,8 +113,6 @@
         collation: utf8mb4_unicode_ci
         state: present
         login_unix_socket: /run/mysqld/mysqld.sock
-      retries: 3
-      delay: 5
     - name: Create database user
       community.mysql.mysql_user:
         name: moodle
@@ -134,14 +120,10 @@
         priv: "moodle.*:ALL"
         state: present
         login_unix_socket: /run/mysqld/mysqld.sock
-      retries: 3
-      delay: 5
+        plugin: caching_sha2_password
 
 - name: Install Moodle
   block:
-    - name: Set wwwroot host
-      ansible.builtin.set_fact:
-        moodle_host: "{{ '127.0.0.1' if config.platform == 'docker' else services.bastion_host.domain }}"
     - name: Remove existing config.php
       ansible.builtin.file:
         path: /var/www/html/moodle/config.php
@@ -149,11 +131,11 @@
     - name: Run CLI installer
       ansible.builtin.command:
         cmd: >
-          /usr/bin/php /var/www/html/moodle/admin/cli/install.php
+          /usr/bin/php{{ php_version }} /var/www/html/moodle/admin/cli/install.php
           --non-interactive
           --agree-license
           --lang=en
-          --wwwroot=https://{{ moodle_host }}:{{ services.moodle.external_port }}
+          --wwwroot=https://{{ services.bastion_host.domain }}:{{ services.moodle.external_port }}
           --dataroot=/var/moodledata
           --dbtype=mysqli
           --dbhost=localhost
@@ -181,7 +163,7 @@
         name: "Moodle Cron"
         minute: "*"
         user: "www-data"
-        job: "/usr/bin/php /var/www/html/moodle/admin/cli/cron.php >/dev/null 2>&1"
+        job: "/usr/bin/php{{ php_version }} /var/www/html/moodle/admin/cli/cron.php >/dev/null 2>&1"
 
 - name: Start web services
   ansible.builtin.systemd_service:
@@ -248,7 +230,7 @@
     - name: Import courses backups
       ansible.builtin.command:
         cmd: |
-          /usr/bin/php /var/www/html/moodle/admin/cli/restore_backup.php 
+          /usr/bin/php{{ php_version }} /var/www/html/moodle/admin/cli/restore_backup.php 
           --file={{ item.path }}
           --categoryid=1
       become: true
