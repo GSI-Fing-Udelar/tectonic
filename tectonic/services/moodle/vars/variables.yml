@@ -20,16 +20,17 @@
 #
 ---
 php_version: "8.4"
+postgresql_version: "16"
 
 mysql_apt_repository: "https://dev.mysql.com/get/mysql-apt-config_0.8.36-1_all.deb"
 
 system_packages:
   - git
-  - unzip
   - acl
   - apache2
-  - mysql-server
-  - python3-pymysql
+  - "postgresql-{{ postgresql_version }}"
+  - "postgresql-client-{{ postgresql_version }}"
+  - python3-psycopg2
   - netfilter-persistent
   - moosh
 
@@ -40,7 +41,7 @@ php_packages:
   - "php{{ php_version }}-curl"
   - "php{{ php_version }}-xml"
   - "php{{ php_version }}-mbstring"
-  - "php{{ php_version }}-mysql"
+  - "php{{ php_version }}-pgsql"
   - "php{{ php_version }}-zip"
   - "php{{ php_version }}-intl"
   - "php{{ php_version }}-soap"

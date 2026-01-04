@@ -40,15 +40,6 @@
         state: present
         update_cache: true
 
-    - name: Add MySQL repo # Not working on arm64 (macos + docker)
-      block:
-        - name: Add MySQL repo | Download the MySQL APT repository setup package
-          ansible.builtin.command: "curl -L {{ mysql_apt_repository }} -o /tmp/mysql-apt-config.deb"
-        - name: Add MySQL repo | Install the MySQL APT repository setup package
-          ansible.builtin.apt:
-            deb: "/tmp/mysql-apt-config.deb"
-            state: present
-
     - name: Add PHP repo
       ansible.builtin.command: add-apt-repository -y ppa:ondrej/php
       environment:

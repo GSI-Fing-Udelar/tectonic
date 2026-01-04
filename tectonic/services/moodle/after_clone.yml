@@ -73,32 +73,11 @@
         provider: selfsigned
         selfsigned_not_after: "+3650d"
 
-- name: Configure MySQL
-  block:
-    - name: Adjust auth plugin
-      ansible.builtin.lineinfile:
-        path: /etc/systemd/system/multi-user.target.wants/mysql.service
-        search_string: "ExecStart=/usr/sbin/mysqld"
-        line: ExecStart=/usr/sbin/mysqld --mysql-native-password=ON
-    - name: Optimize MySQL for installation
-      ansible.builtin.copy:
-        dest: /etc/mysql/mysql.conf.d/99-tectonic-speed.cnf
-        content: |
-          [mysqld]
-          innodb_flush_log_at_trx_commit = 2
-          skip-log-bin
-          innodb_buffer_pool_size = 512M
-          innodb_log_file_size = 128M
-          default-storage-engine = InnoDB
-          innodb_file_per_table = 1
-        mode: "0644"
-      register: mysql_config
-    - name: Restart MySQL
-      ansible.builtin.systemd_service:
-        name: mysql
-        state: restarted
-        enabled: true
-        daemon_reload: true
+- name: Start postgresql
+  ansible.builtin.systemd_service:
+    name: postgresql
+    state: started
+    enabled: true
 
 - name: Setup database
   block:
@@ -106,21 +85,30 @@
       ansible.builtin.set_fact:
         moodle_admin_password: "{{ lookup('community.general.random_string', length=20, special=false) }}"
         moodle_db_password: "{{ lookup('community.general.random_string', length=30, special=false) }}"
-    - name: Create database
-      community.mysql.mysql_db:
-        name: moodle
-        encoding: utf8mb4
-        collation: utf8mb4_unicode_ci
-        state: present
-        login_unix_socket: /run/mysqld/mysqld.sock
     - name: Create database user
-      community.mysql.mysql_user:
+      community.postgresql.postgresql_user:
         name: moodle
         password: "{{ moodle_db_password }}"
-        priv: "moodle.*:ALL"
+        role_attr_flags: LOGIN
         state: present
-        login_unix_socket: /run/mysqld/mysqld.sock
-        plugin: caching_sha2_password
+    - name: Create database
+      community.postgresql.postgresql_db:
+        name: moodle
+        owner: moodle
+        encoding: UTF8
+        lc_collate: C.utf8
+        lc_ctype: C.utf8
+        template: template0
+        state: present
+    - name: Assing privileges
+      community.postgresql.postgresql_privs:
+        database: moodle
+        roles: moodle
+        type: database
+        privs: ALL
+        state: present
+  become: yes
+  become_user: postgres
 
 - name: Install Moodle
   block:
@@ -137,7 +125,7 @@
           --lang=en
           --wwwroot=https://{{ services.bastion_host.domain }}:{{ services.moodle.external_port }}
           --dataroot=/var/moodledata
-          --dbtype=mysqli
+          --dbtype=pgsql
           --dbhost=localhost
           --dbname=moodle
           --dbuser=moodle
