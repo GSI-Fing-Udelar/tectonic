@@ -35,6 +35,8 @@
 - name: "Create student users on bastion host."
   hosts: bastion_host
   gather_facts: true
+  vars:
+    ssh_service_name: "{{ 'ssh' if ansible_facts.os_family == 'Debian' else 'sshd' }}"
 
   tasks:
     - name: "Create trainee users (optionally with password)"
@@ -52,7 +54,7 @@
       loop: "{{ users | dict2items }}"
       when: 
         - item.value.authorized_keys is defined
-        - config.platform == aws
+        - config.platform == "aws"
 
     - name: "Enable SSH login with password"
       block:
@@ -72,7 +74,7 @@
           register: sshd_conf
         - name: "Restart SSH service"
           ansible.builtin.service:
-            name: sshd
+            name: "{{ ssh_service_name }}"
             state: restarted
           when: sshd_conf.changed
       when: 
@@ -111,6 +113,7 @@
   vars:
     digit_count: "{{ instances | string | length }}"
     username: "{{ '%s%0{}d'.format(digit_count) | format(student_prefix, instance ) }}"
+    ssh_service_name: "{{ 'ssh' if ansible_facts.os_family == 'Debian' else 'sshd' }}"
 
   tasks:
     - name: "Create the trainee user (optionally with password)"
@@ -167,7 +170,7 @@
           register: sshd_conf
         - name: "Restart SSH service"
           ansible.builtin.service:
-            name: sshd
+            name: "{{ ssh_service_name }}"
             state: restarted
           when: sshd_conf.changed
       when: 
