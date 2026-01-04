@@ -24,7 +24,7 @@ The scenario description is a YAML file with three main sections:
   + `institution`: The institution that created the lab. Must be alphanumeric. Required.
   + `lab_name`: The lab name. Must be alphanumeric. Required.
   + `default_os`: The default operating system to use for guests. Must
-    be one of `ubuntu22`, `rocky8`, `rocky9` or `kali`. Optional, default:
+    be one of `ubuntu22`, `ubuntu24`, `rocky8`, `rocky9` or `kali`. Optional, default:
     `ubuntu22`.
 
 * A `guest_settings` section in which all guest machines of the lab
@@ -40,7 +40,7 @@ The scenario description is a YAML file with three main sections:
     `no`.
   + `gui`: Whether to install GUI on the machine to allow access via graphical interface (RDP/VNC) if using Guacamole. Default: `no`.
   + `base_os`: The operating system of the guest. Must be one of
-    `ubuntu22`, `rocky8`, `rocky9`, `kali` or `windows_srv_2022`.
+    `ubuntu22`, `ubuntu24`, `rocky8`, `rocky9`, `kali` or `windows_srv_2022`.
     Default is taken from the global `default_os` description
     attribute mentioned above.
   + `internet_access`: Whether the guest has internet access. Note

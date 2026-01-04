@@ -809,7 +809,7 @@ class GuacamoleDescription(ServiceDescription):
 
 class MoodleDescription(ServiceDescription):
     def __init__(self, description):
-        super().__init__(description, "moodle", "ubuntu22")
+        super().__init__(description, "moodle", "ubuntu24")
         self.memory = 4096
         self.vcpu = 2
         self.disk = 20

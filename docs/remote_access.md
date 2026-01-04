@@ -11,6 +11,7 @@ depends on the operating system:
 | **SO**           | **Admin username** |
 |:----------------:|:------------------:|
 | ubuntu22         | ubuntu             |
+| ubuntu24         | ubuntu             |
 | kali             | kali               |
 | rocky8           | rocky              |
 | rocky9           | rocky              |
