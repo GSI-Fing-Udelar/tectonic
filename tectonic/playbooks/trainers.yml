@@ -23,6 +23,8 @@
   hosts: all
   become: true
   gather_facts: true
+  vars:
+    ssh_service_name: "{{ 'ssh' if ansible_facts.os_family == 'Debian' else 'sshd' }}"
   tasks:
     - name: Configure trainer user in Linux
       block:
@@ -53,7 +55,7 @@
               register: sshd_conf
             - name: Configure trainer user in Linux | Enable SSH login with password | Restart SSH service
               ansible.builtin.service:
-                name: sshd
+                name: "{{ ssh_service_name }}"
                 state: restarted
               when: sshd_conf.changed
       when: ansible_facts['os_family'] != "Windows"
