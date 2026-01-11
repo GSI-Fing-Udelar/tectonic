@@ -35,6 +35,15 @@ OS_DATA = {
         "owner": "898082745236",
         "username": "ubuntu",
     },
+    "ubuntu24": {
+        "ami_filter": "ubuntu/images/*/ubuntu-*-24.04-amd64-server*",
+        "owner": "099720109477",
+        "username": "ubuntu",
+        "cloud_image_url": "https://cloud-images.ubuntu.com/releases/noble/release-20251213/ubuntu-24.04-server-cloudimg-amd64.img",
+        "cloud_image_checksum": "2b5f90ffe8180def601c021c874e55d8303e8bcbfc66fee2b94414f43ac5eb1f",
+        "docker_base_image": "gsitectonic/ubuntu24",
+        "entrypoint": "/usr/bin/systemd",
+    },
     "rocky8": {
         "ami_filter": "Rocky-8-EC2-Base-8.*x86_64",
         "owner": "792107900819",

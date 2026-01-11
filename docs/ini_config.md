@@ -105,7 +105,7 @@ main `config` section and special sections for different platforms
 * `external_port`: Port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `10443`.
 
 ### [moodle] section:
-* `version`: Moodle version to use. Use `latest` for latest version or assign a specific version. Default: `4.5.8`. All tests were performed on version `4.5.8` so we recommend using it. However, it may also work for older or newer Guacamole versions.
+* `version`: Moodle version to use. Use `latest` for latest version or assign a specific version. Default: `5.1.0`. All tests were performed on version `5.1.0` so we recommend using it. However, it may also work for older or newer Moodle versions.
 * `site_fullname`: Moodle site full name. Default: `Tectonic Moodle`.
 * `site_shortname`: Moodle site short name. Default: `Tectonic`.
 * `admin_email`: Email for administrator account. Default: `admin@tectonic.local`

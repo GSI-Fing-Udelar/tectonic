@@ -35,6 +35,8 @@
 - name: "Create student users on bastion host."
   hosts: bastion_host
   gather_facts: true
+  vars:
+    ssh_service_name: "{{ 'ssh' if ansible_facts.os_family == 'Debian' else 'sshd' }}"
 
   tasks:
     - name: "Create trainee users (optionally with password)"
@@ -72,7 +74,7 @@
           register: sshd_conf
         - name: "Restart SSH service"
           ansible.builtin.service:
-            name: sshd
+            name: "{{ ssh_service_name }}"
             state: restarted
           when: sshd_conf.changed
       when: 
@@ -111,6 +113,7 @@
   vars:
     digit_count: "{{ instances | string | length }}"
     username: "{{ '%s%0{}d'.format(digit_count) | format(student_prefix, instance ) }}"
+    ssh_service_name: "{{ 'ssh' if ansible_facts.os_family == 'Debian' else 'sshd' }}"
 
   tasks:
     - name: "Create the trainee user (optionally with password)"
@@ -167,7 +170,7 @@
           register: sshd_conf
         - name: "Restart SSH service"
           ansible.builtin.service:
-            name: sshd
+            name: "{{ ssh_service_name }}"
             state: restarted
           when: sshd_conf.changed
       when: 
@@ -225,7 +228,7 @@
     - name: Create user
       ansible.builtin.command:
         cmd: |
-          /usr/bin/php /opt/moosh/moosh.php -n -p /var/www/html/moodle user-create
+          moosh -n -p /var/www/html/moodle/public user-create
           --password={{ item.value.password }}
           --email={{ item.key }}@{{ services.bastion_host.domain }}
           {{ item.key }}
@@ -241,14 +244,14 @@
         - name: Get all courses
           ansible.builtin.command:
             cmd: |
-              /usr/bin/php /opt/moosh/moosh.php -n -p /var/www/html/moodle course-list -i
+              moosh -n -p /var/www/html/moodle/public course-list -i
           become: true
           become_user: www-data
           register: moosh_results
         - name: Enroll user in course
           ansible.builtin.command:
             cmd: |
-              /usr/bin/php /opt/moosh/moosh.php -n -p /var/www/html/moodle course-enrol
+              moosh -n -p /var/www/html/moodle/public course-enrol
               -r student
               {{ item.1 }}
               {{ item.0.key }}

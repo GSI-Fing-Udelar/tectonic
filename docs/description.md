@@ -24,7 +24,7 @@ The scenario description is a YAML file with the following sections:
   + `institution`: The institution that created the lab. Must be alphanumeric. Required.
   + `lab_name`: The lab name. Must be alphanumeric. Required.
   + `default_os`: The default operating system to use for guests. Must
-    be one of `ubuntu22`, `rocky8`, `rocky9` or `kali`. Optional, default:
+    be one of `ubuntu22`, `ubuntu24`, `rocky8`, `rocky9` or `kali`. Optional, default:
     `ubuntu22`.
 
 * A `guest_settings` section in which all guest machines of the lab
@@ -40,7 +40,7 @@ The scenario description is a YAML file with the following sections:
     `no`.
   + `gui`: Whether to install GUI on the machine to allow access via graphical interface (RDP/VNC) if using Guacamole. Default: `no`.
   + `base_os`: The operating system of the guest. Must be one of
-    `ubuntu22`, `rocky8`, `rocky9`, `kali` or `windows_srv_2022`.
+    `ubuntu22`, `ubuntu24`, `rocky8`, `rocky9`, `kali` or `windows_srv_2022`.
     Default is taken from the global `default_os` description
     attribute mentioned above.
   + `internet_access`: Whether the guest has internet access. Note
@@ -100,7 +100,7 @@ The scenario description is a YAML file with the following sections:
   + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
   + `disk`: Amount of disk of the machine, in GB. Default: `20`.
 
-+ A `moodle_settings` section to describe the configuration of the Moodle service. The following properties can be defined:
++ A `moodle_settings` section to describe the configuration of the [Moodle service](./moodle.md). The following properties can be defined:
   + `enable`: Whether to deploy this service. Default: `no`.
   + `memory`: Amount of RAM of the machine, in MB. Default: `4096`.
   + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
@@ -155,13 +155,13 @@ Optionally, the user can provide a set of parameters to be used in the playbooks
 See [ansible](./ansible.md) for more information.
 
 ### Elastic Security artifacts
-Elastic Security configuration is done based on artifacts that are automatically imported into the Elasticsearch, Kibana and Fleet components. As part of the scenario specification, these artifacts must be provided. See [Elastic](./elastic.md) for more information.
+Elastic Security configuration is done based on artifacts that are automatically imported into the Elasticsearch, Kibana and Fleet components. These artifacts must be provided as part of the scenario specification in the `elastic` directory. See [Elastic](./elastic.md) for more information.
 
 ### Caldera artifacts
-Caldera configuration is done based on artifacts that are automatically imported into Caldera. As part of the scenario specification, these artifacts must be provided. See [Caldera](./caldera.md) for more information.
+Caldera configuration is done based on artifacts that are automatically imported into Caldera. These artifacts must be provided as part of the scenario specification in the `caldera` directory. See [Caldera](./caldera.md) for more information.
 
 ### Moodle artifacts
-Moodle configuration can be done base on scorm packages that are automatically imported into Moodle. As part of the scenario specification, these artifacts must be provided. See [Moodle](./moodle.md) for more information.
+Moodle configuration can be done based on course backup files that are automatically imported into Moodle. These artifacts must be provided as part of the scenario specification in the `moodle` directory . See [Moodle](./moodle.md) for more information.
 
 ## Lab Edition Information
 The lab edition is a YAML file with the following options:
