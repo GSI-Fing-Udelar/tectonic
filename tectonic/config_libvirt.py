@@ -95,5 +95,6 @@ class TectonicConfigLibvirt(object):
             "uri": self.uri,
             "storage_pool" : self.storage_pool,
             "external_network": self.external_network,
+            "bridge": self.bridge,
             "bridge_base_ip": self.bridge_base_ip,
         }

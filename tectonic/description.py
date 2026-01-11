@@ -646,6 +646,7 @@ class GuestDescription(BaseGuestDescription):
         result["hostname"] = self.hostname
         result["is_in_services_network"] = self.is_in_services_network
         result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
+        result["entry_point_index"] = self.entry_point_index
         return result
 
 class ServiceDescription(MachineDescription):
@@ -966,6 +967,7 @@ class TrafficRule():
         self.base_traffic_rule = rule_data 
         self.source_cidr = source_cidr
         self.copy = copy
+        self.interface_attached = None
 
         port_split = str(rule_data.port_range).split("-")
         self.from_port = port_split[0]
@@ -1748,4 +1750,5 @@ class Description:
             "config": self.config.to_dict(),
             "authorized_keys": self.authorized_keys,
             "default_os": self.default_os,
+            "enable_ssh_access": self.enable_ssh_access
         }

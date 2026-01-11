@@ -19,5 +19,5 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 provider "libvirt" {
-  uri = var.libvirt_uri
+  uri = local.tectonic.config.platforms.libvirt.uri
 }

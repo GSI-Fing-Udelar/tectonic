@@ -19,6 +19,7 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 locals {
+  tectonic = jsondecode(var.tectonic_json)
   guest_data  = jsondecode(var.guest_data_json)
   subnetworks = jsondecode(var.subnets_json)
 
@@ -31,14 +32,14 @@ locals {
   # the necessary internal interfaces with dhcp.
   network_config = { for k, g in local.guest_data :
     k => join("\n", flatten(["version: 2", "ethernets:",
-      g.entry_point && var.enable_ssh_access ? [
+      g.entry_point && local.tectonic.enable_ssh_access ? [
 	"  ens3:", 
-	format("    addresses: [%s/%s]", cidrhost(var.libvirt_external_network, var.libvirt_bridge_base_ip+g.entry_point_index), split("/", var.libvirt_external_network)[1]),
-	format("    gateway4: %s", cidrhost(var.libvirt_external_network, 1)),
+	format("    addresses: [%s/%s]", cidrhost(local.tectonic.config.platforms.libvirt.external_network, local.tectonic.config.platforms.libvirt.bridge_base_ip+g.entry_point_index), split("/", local.tectonic.config.platforms.libvirt.external_network)[1]),
+	format("    gateway4: %s", cidrhost(local.tectonic.config.platforms.libvirt.external_network, 1)),
       ] : [],
       g.is_in_services_network ? [
-  "  ens${g.entry_point && var.enable_ssh_access ? 4 : 3}:", 
-	format("    addresses: [%s/%s]", cidrhost(var.services_network, var.services_network_base_ip+g.services_network_index), split("/", var.services_network)[1])
+  "  ens${g.entry_point && local.tectonic.enable_ssh_access ? 4 : 3}:", 
+	format("    addresses: [%s/%s]", cidrhost(local.tectonic.config.services_network_cidr_block, local.tectonic.config.services_network_cidr_block_base_ip+g.services_network_index), split("/", local.tectonic.config.services_network_cidr_block)[1])
       ] : [],
       [ for interface in g.interfaces:
 	[ "  ens${interface.index}:",
@@ -55,7 +56,7 @@ locals {
       [for network_interface in guest.interfaces :
         {
           name    = guest.hostname
-          network = network_interface.network_name
+          network = network_interface.subnetwork_name
           ip      = network_interface.private_ip
         }
       ]

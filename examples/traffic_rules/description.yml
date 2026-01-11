@@ -60,5 +60,5 @@ guacamole_settings:
   enable: no
 
 moodle_settings:
-  enable: no
+  enable: yes
 
