@@ -203,6 +203,11 @@
       ansible.builtin.command: service netfilter-persistent save
   when: config.platform in ["libvirt", "docker"]
 
+
+- name: Check if courses directory exists
+  ansible.builtin.stat:
+    path: "{{ scenario_dir }}/moodle"
+  register: courses
 - name: Import courses
   block:
     - name: Copy courses backups
@@ -228,6 +233,8 @@
       ansible.builtin.file:
         path: /opt/moodle
         state: absent
+  when:
+    courses.stat.isdir is defined and courses.stat.isdir
 
 - name: Write credentials file
   ansible.builtin.copy:
