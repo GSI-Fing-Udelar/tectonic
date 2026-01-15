@@ -6,7 +6,7 @@ main `config` section and special sections for different platforms
 
 ### [config] section:
 * `platform`: The underlying platform to deploy the Cyber Range in.
-  Can be `aws`, `libvirt` or `docker`. Default: `aws`.
+  Can be `aws`, `libvirt` or `docker`. Default: `docker`.
 * `lab_repo_uri`: The URI of a repository of labs to use in the Cyber
   Range. Must be a local directory that contains either a subdirectory
   or a .ctf package file for each lab. Relative paths will be assumed
