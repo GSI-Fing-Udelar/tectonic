@@ -36,7 +36,7 @@ from tectonic.config_bastion_host import TectonicConfigBastionHost
 class TectonicConfig(object):
     """Class to store Tectonic configuration."""
 
-    supported_platforms = ["aws", "libvirt", "docker"]
+    supported_platforms = ["docker", "aws", "libvirt"]
 
     def __init__(self, lab_repo_uri):
         self._tectonic_dir = os.path.realpath(
