@@ -207,3 +207,25 @@ def test_info(mock_core, base_cli_args, runner, mock_ctx):
         assert "TABLE" in result.output
     mock_ctx["core"].info.assert_called_once()
 
+@patch("tectonic.cli.Core")
+@patch("tectonic.cli.Description")
+def test_cli_invalid_default_pubkey(mock_core, mock_desc, monkeypatch, runner, mock_ctx, test_data_path, labs_path):
+    default_pubkey = Path('~/.ssh/id_rsa.pub').expanduser()
+    test_pubkey = Path('~/.ssh/id_rsa_test_config.pub').expanduser()
+
+    def fake_is_file(self):
+        if self == default_pubkey:
+            return False
+        else:
+            return True
+    
+    monkeypatch.setattr(Path, "is_file", fake_is_file)
+
+    ini_file = Path(test_data_path) / 'config' / 'tectonic_test_config1.ini'
+    lab_edition_file = Path(labs_path) / "test.yml"
+    args = ['-c', str(ini_file), str(lab_edition_file)]
+
+    result = run_cli(runner, args, ["info"], obj=mock_ctx)
+    assert result.exit_code == 0
+    mock_ctx["core"].info.assert_called_once()
+    
