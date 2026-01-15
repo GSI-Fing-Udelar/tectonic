@@ -49,9 +49,10 @@ class TectonicConfig(object):
         self.network_cidr_block = "10.0.0.0/16"
         self.internet_network_cidr_block = "192.168.4.0/24"
         self.services_network_cidr_block = "192.168.5.0/24"
-        # Set private attribute directly to avoid validation during initialization
-        # Validation will happen when config file values are loaded
-        self._ssh_public_key_file = "~/.ssh/id_rsa.pub"
+        try:
+            self.ssh_public_key_file = "~/.ssh/id_rsa.pub"
+        except ValueError:
+            self._ssh_public_key_file = None
         self.configure_dns = False
         self.debug = False
         self.proxy = None
@@ -230,13 +231,13 @@ class TectonicConfig(object):
 
     @packer_executable_path.setter
     def packer_executable_path(self, value):
-        # validate.path_to_file("packer_executable_path", value)
         self._packer_executable_path = value
 
 
     @classmethod
     def _assign_attributes(cls, config_obj, config_parser, section):
-        """Assign the values of all parameters in the parser object in the given section to the corresponding config attribute."""
+        """Assign the values of all parameters in the parser object in
+        the given section to the corresponding config attribute."""
         params = {}
         if config_parser.has_section(section):
             params = config_parser[section].keys()
