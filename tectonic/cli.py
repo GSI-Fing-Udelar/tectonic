@@ -200,7 +200,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     required=True,
 )
 @click.option(
-    "--debug/--no-debug", default=False, help="Show debug messages during execution."
+    "--debug/--no-debug", help="Show debug messages during execution."
 )
 @click.option(
     "--lab_repo_uri",
@@ -211,15 +211,11 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     "--ssh_public_key_file",
     "-p",
     type=click.Path(dir_okay=False),
-    default="~/.ssh/id_rsa.pub",
-    show_default=True,
-    help="SSH pubkey to be used to connect to machines for configuration.",
+    help="SSH pubkey to be used to connect to machines for configuration. [default: ~/.ssh/id_rsa.pub]",
 )
 @click.option(
     "--configure_dns",
-    default=False,
-    show_default=True,
-    help="Configure internal DNS for instances.",
+    help="Configure internal DNS for instances. [default: False]",
 )
 @click.option(
     "--gitlab_backend_url",
@@ -238,13 +234,10 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 @click.option(
     "--packer_executable_path",
     help="Packer executable path",
-    default="packer",
 )
 @click.option(
     "--libvirt_uri",
-    default="qemu:///system",
-    show_default=True,
-    help="URI to connect to server, if using libvirt",
+    help="URI to connect to server, if using libvirt. [default: qemu:///system]",
 )
 @click.option(
     "--proxy",
@@ -252,36 +245,26 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 )
 @click.option(
     "--keep_ansible_logs/--no-keep_ansible_logs",
-    default="False",
-    help="Keep Ansible logs on managed hosts.",
+    help="Keep Ansible logs on managed hosts. [default: False]",
 )
 @click.option(
     "--docker_uri",
-    default="unix:///var/run/docker.sock",
-    show_default=True,
-    help="URI to connect to server, if using docker",
+    help="URI to connect to server, if using docker. [default: unix:///var/run/docker.sock]",
 )
 @click.option(
     "--docker_dns",
-    default="8.8.8.8",
-    required=False,
-    help="DNS to use for internet networks on Docker",
+    help="DNS to use for internet networks on Docker.",
 )
 @click.option(
     "--ansible_forks",
-    default="10",
-    required=False,
-    help="Number of parallel connection for Ansible",
+    help="Number of parallel connection for Ansible.",
 )
 @click.option(
     "--ansible_pipelining/--no-ansible_pipelining",
-    default="False",
     help="Enable pipelining for Ansible",
 )
 @click.option(
     "--ansible_timeout",
-    default="10",
-    required=False,
     help="Timeout for Ansible connection.",
 )
 @click.argument("lab_edition_file", type=click.Path(exists=True, dir_okay=False))
@@ -348,6 +331,9 @@ def tectonic(
         config.ansible.pipelining = ansible_pipelining
     if ansible_timeout:
         config.ansible.timeout = ansible_timeout
+
+    if config.ssh_public_key_file is None:
+        raise ValueError("Invalid ssh_public_key_file ~/.ssh/id_rsa.pub. Must be a path to a file.")
 
     ctx.obj["config"] = config
     ctx.obj["description"] = Description(config, lab_edition_file)
