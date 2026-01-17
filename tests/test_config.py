@@ -233,3 +233,24 @@ def test_config_guacamole_latest(test_data_path):
 
     assert re.match(r"\d+.\d+.\d+", config.guacamole.version)
     
+
+def test_config_invalid_default_pubkey(monkeypatch, test_data_path):
+    """Test whether the default pubkey is correctly overwritten by ini
+    options, when the default pubkey file does not exist.
+
+    """
+    default_pubkey = Path('~/.ssh/id_rsa.pub').expanduser()
+    test_pubkey = Path('~/.ssh/id_rsa_test_config.pub').expanduser()
+
+    def fake_is_file(self):
+        if self == default_pubkey:
+            return False
+        else:
+            return True
+    
+    monkeypatch.setattr(Path, "is_file", fake_is_file)
+
+    filename = Path(test_data_path) / 'config' / 'tectonic_test_config1.ini'
+    config = TectonicConfig.load(filename)
+    assert config.ssh_public_key_file == str(test_pubkey)
+
