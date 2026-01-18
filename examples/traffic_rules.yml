@@ -19,4 +19,4 @@ guacamole_settings:
   enable: no
 
 moodle_settings:
-  enable: yes
+  enable: no

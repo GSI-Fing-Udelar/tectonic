@@ -1,10 +1,9 @@
-- name: Install machine1
-  hosts: machine1
+- name: Install workstation
+  hosts: workstation
   tasks:
     - name: Update repos
       ansible.builtin.apt:
         update_cache: true
-
     - name: Install tools
       ansible.builtin.package:
         state: present
@@ -14,37 +13,53 @@
           - tcpdump
           - nmap
           - iputils-ping
+          - curl
+          - ftp
 
-- name: Install machine2
-  hosts: machine2
+- name: Install webserver
+  hosts: webserver
   tasks:
     - name: Update repos
       ansible.builtin.apt:
         update_cache: true
-
     - name: Install tools
       ansible.builtin.package:
         state: present
         name:
           - netcat-traditional
           - net-tools
-          - tcpdump
-          - nmap
           - iputils-ping
+          - curl
+          - apache2
 
-- name: Install machine3
-  hosts: machine3
+- name: Install ftpserver
+  hosts: ftpserver
   tasks:
     - name: Update repos
       ansible.builtin.apt:
         update_cache: true
-
     - name: Install tools
       ansible.builtin.package:
         state: present
         name:
           - netcat-traditional
           - net-tools
-          - tcpdump
-          - nmap
           - iputils-ping
+          - curl
+          - vsftpd
+
+- name: Install waf
+  hosts: waf
+  tasks:
+    - name: Update repos
+      ansible.builtin.apt:
+        update_cache: true
+    - name: Install tools
+      ansible.builtin.package:
+        state: present
+        name:
+          - netcat-traditional
+          - net-tools
+          - iputils-ping
+          - curl
+          - apache2
