@@ -647,6 +647,7 @@ class GuestDescription(BaseGuestDescription):
         result["is_in_services_network"] = self.is_in_services_network
         result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
         result["entry_point_index"] = self.entry_point_index
+        result["advanced_options_file"] = self.advanced_options_file
         return result
 
 class ServiceDescription(MachineDescription):
