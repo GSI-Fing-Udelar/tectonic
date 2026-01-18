@@ -129,7 +129,7 @@ class Core:
         if self.config.platform == "libvirt":
             for _, guest in self.description.scenario_guests.items():
                 for _, interface in guest.interfaces.items():
-                    self.client.create_nwfilter(f"{guest.name}-{interface.network.name}", interface.traffic_rules)
+                    self.client.create_nwfilter(f"{guest.name}-{interface.network.name}", interface.private_ip, interface.traffic_rules)
 
         self.terraform.deploy(instances)
 

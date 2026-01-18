@@ -236,36 +236,38 @@ class ClientLibvirt(Client):
     def _generate_uuid(self, name):
         return 
 
-    def _add_rule_to_nwfilter(self, parent, protocol, cidr, from_port, to_port, priority, direction, action, state):
+    def _add_rule_to_nwfilter(self, parent, protocol, src_cidr, dest_ip, from_port, to_port, priority, direction, action, state):
         rule_elem = ET.SubElement(parent, "rule")
         rule_elem.set("direction", direction)
         rule_elem.set("priority", str(priority))
         rule_elem.set("action", action)
         traffic_elem = ET.SubElement(rule_elem, protocol)
-        traffic_elem.set("state", state)
+        if state != None:
+            traffic_elem.set("state", state)
         if protocol in ["tcp", "udp"]:
             traffic_elem.set("dstportstart", from_port)
             traffic_elem.set("dstportend", to_port)
         if direction == "in":
-            traffic_elem.set("srcipaddr", cidr.split("/")[0])
-            traffic_elem.set("srcipmask", cidr.split("/")[1])
-        elif direction == "out":
-            traffic_elem.set("dstipaddr", cidr.split("/")[0])
-            traffic_elem.set("dstipmask", cidr.split("/")[1])
+            if src_cidr != None:
+                traffic_elem.set("srcipaddr", src_cidr.split("/")[0])
+                traffic_elem.set("srcipmask", src_cidr.split("/")[1])
+            if dest_ip != None:
+                traffic_elem.set("dstipaddr", dest_ip)
+                traffic_elem.set("dstipmask", "32")
 
-    def create_nwfilter(self, nwfilter_name, rules):
+    def create_nwfilter(self, nwfilter_name, interface_ip, rules):
         try:
             root = ET.Element('filter', name=nwfilter_name, chain='root')
             ET.SubElement(root, 'uuid').text = str(uuid.uuid5(uuid.NAMESPACE_URL, nwfilter_name))
+            filterref_elem = ET.SubElement(root, "filterref")
+            filterref_elem.set("filter", "qemu-announce-self") #Necessary to assign IP address to vms
+            self._add_rule_to_nwfilter(root, "all", None, None, None, None, 100, "out", "accept", None) #Allow all outbound traffic
             priority = 500
             # Inblund rules
             for rule in rules:
-                self._add_rule_to_nwfilter(root, rule.protocol, rule.source_cidr, rule.from_port, rule.to_port, priority, "in", "accept", "NEW")
-                priority = priority - 1
-            # Outbound rule: allow all outbound traffic and deny all other traffic
-            self._add_rule_to_nwfilter(root, "all", self.config.network_cidr_block, None, None, 3, "out", "accept", "NEW")
-            self._add_rule_to_nwfilter(root, "all", self.config.network_cidr_block, None, None , 2, "inout", "accept", "RELATED,ESTABLISHED")
-            #self._add_rule_to_nwfilter(root, "all", None, None, None, 1, "inout", "drop", "NEW") #TODO: arreglar esto. Si lo habilito qemuagent no anda
+                self._add_rule_to_nwfilter(root, rule.protocol, rule.source_cidr, interface_ip, rule.from_port, rule.to_port, priority, "in", "accept", None)
+                priority = priority + 1
+            self._add_rule_to_nwfilter(root, "all", None, None, None, None, 1000, "in", "drop", None) #Drop all other inbound traffic
             self.connection.nwfilterDefineXML(ET.tostring(root, encoding='unicode'))
         except Exception as exception:
             raise ClientLibvirtException(f"{exception}") from exception

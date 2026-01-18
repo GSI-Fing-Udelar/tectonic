@@ -299,7 +299,8 @@ class TectonicConfig(object):
                 "libvirt": self.libvirt.to_dict(),
                 "docker": self.docker.to_dict(),
             },
-            "ssh_public_key_file": self.ssh_public_key_file
+            "ssh_public_key_file": self.ssh_public_key_file,
+            "routing": self.routing,
         }
         if self.proxy:
             result["proxy"] = self.proxy
