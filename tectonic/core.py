@@ -122,14 +122,17 @@ class Core:
         if create_services_images:
             self.create_services_images()
 
-        self.terraform_service.deploy(instances)
-
-        self.ansible.configure_services()
-
-        if self.config.platform == "libvirt":
+        if self.config.routing and self.config.platform == "libvirt":
+            for _, service in self.description.services_guests.items():
+                for _, interface in service.interfaces.items():
+                    self.client.create_nwfilter(f"{service.name}-{interface.network.name}", interface.private_ip, interface.traffic_rules)
             for _, guest in self.description.scenario_guests.items():
                 for _, interface in guest.interfaces.items():
                     self.client.create_nwfilter(f"{guest.name}-{interface.network.name}", interface.private_ip, interface.traffic_rules)
+
+        self.terraform_service.deploy(instances)
+
+        self.ansible.configure_services()
 
         self.terraform.deploy(instances)
 
@@ -162,7 +165,10 @@ class Core:
         self.terraform.destroy(instances)
         self.terraform_service.destroy(instances)
 
-        if self.config.platform == "libvirt":
+        if self.config.routing and self.config.platform == "libvirt":
+            for _, service in self.description.services_guests.items():
+                for _, interface in service.interfaces.items():
+                    self.client.destroy_nwfilter(f"{service.name}-{interface.network.name}")
             for _, guest in self.description.scenario_guests.items():
                 for _, interface in guest.interfaces.items():
                     self.client.destroy_nwfilter(f"{guest.name}-{interface.network.name}")
@@ -455,11 +461,15 @@ class Core:
             machines_data = {}
             for _, guest in self.description.scenario_guests.items():
                 machine_name = f"{guest.base_name}-{guest.instance}" if guest.copy == 1 else f"{guest.base_name}-{guest.instance}-{guest.copy}"
+                if self.config.platform == "aws" or self.config.routing:
+                    connection_ip = self.client.get_machine_private_ip(guest.name) 
+                else: 
+                    connection_ip = self.client.get_machine_ip_in_services_network(guest.name)
                 machines_data[machine_name] = {
                     "instance": guest.instance,
                     "access_protocols": guest.access_protocols,
                     "entry_point": guest.entry_point,
-                    "ip": self.client.get_machine_private_ip(guest.name) if self.config.platform == "aws" else self.client.get_machine_ip_in_services_network(guest.name),
+                    "ip": connection_ip,
                 }
             self.ansible.run( #TODO: change user-mapping for database and assign guacadmin connections?
                 instances=None,

@@ -29,11 +29,13 @@ OS_DATA = {
         "cloud_image_checksum": "fe102bfb3d3d917d31068dd9a4bd8fcaeb1f529edda86783f8524fdc1477ee29",
         "docker_base_image": "gsitectonic/ubuntu22",
         "entrypoint": "/usr/bin/systemd",
+        "interface_base_name": "ens"
     },
     "ubuntu22_deep_learning": {
         "ami_filter": "*Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*",
         "owner": "898082745236",
         "username": "ubuntu",
+        "interface_base_name": "ens"
     },
     "ubuntu24": {
         "ami_filter": "ubuntu/images/*/ubuntu-*-24.04-amd64-server*",
@@ -43,6 +45,7 @@ OS_DATA = {
         "cloud_image_checksum": "2b5f90ffe8180def601c021c874e55d8303e8bcbfc66fee2b94414f43ac5eb1f",
         "docker_base_image": "gsitectonic/ubuntu24",
         "entrypoint": "/usr/bin/systemd",
+        "interface_base_name": "ens"
     },
     "rocky8": {
         "ami_filter": "Rocky-8-EC2-Base-8.*x86_64",
@@ -53,6 +56,7 @@ OS_DATA = {
         "cloud_image_checksum": "e56066c58606191e96184de9a9183a3af33c59bcbd8740d8b10ca054a7a89c14",
         "docker_base_image": "gsitectonic/rocky8",
         "entrypoint": "/usr/sbin/init",
+        "interface_base_name": "eth"
     },
     "rocky9": {
         "ami_filter": "Rocky-9-EC2-Base-9.*x86_64",
@@ -63,6 +67,7 @@ OS_DATA = {
         "cloud_image_checksum": "2c72815bb83cadccbede4704780e9b52033722db8a45c3fb02130aa380690a3d",
         "docker_base_image": "gsitectonic/rocky9",
         "entrypoint": "/usr/sbin/init",
+        "interface_base_name": "eth"
     },
     "kali": {
         "ami_filter": "kali-last-snapshot-amd64*",
@@ -73,6 +78,7 @@ OS_DATA = {
         "cloud_image_checksum": "ef21c5c186a6de18ab3109bd75494a56834b92d04641aa59a7d8f6691d17d2bc",
         "docker_base_image": "gsitectonic/kali",
         "entrypoint": "/usr/sbin/init",
+        "interface_base_name": "ens"
         },
     "windows_srv_2022": {
         "ami_filter": "Windows_Server-2022-English-Full-Base*",

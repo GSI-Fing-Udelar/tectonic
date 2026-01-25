@@ -95,4 +95,8 @@ resource "libvirt_domain" "machines" {
     autoport    = true
   }
   autostart = true
+
+  xml {
+    xslt = file("${path.module}/xslt/nw_filter.xslt")
+  }
 }
