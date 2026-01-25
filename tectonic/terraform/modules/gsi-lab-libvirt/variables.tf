@@ -30,12 +30,6 @@ variable "guest_data_json" {
   description = "The map with all guest data, in JSON format."
 }
 
-variable "default_os" {
-  type        = string
-  description = "Default base VM operating system to use. Can be ubuntu22 (the default) or rocky8."
-  default     = "ubuntu22"
-}
-
 variable "os_data_json" {
   type        = string
   description = "A JSON encoded map of operating system information."
