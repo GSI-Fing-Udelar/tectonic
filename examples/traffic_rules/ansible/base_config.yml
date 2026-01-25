@@ -16,6 +16,15 @@
           - curl
           - ftp
 
+# - name: Install workstation2
+#   hosts: workstation2
+#   tasks:
+#     - name: Install tools
+#       ansible.builtin.package:
+#         state: present
+#         name:
+#           - nmap
+
 - name: Install webserver
   hosts: webserver
   tasks:

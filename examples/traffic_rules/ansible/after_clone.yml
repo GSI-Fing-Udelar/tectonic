@@ -10,6 +10,15 @@
         path: /etc/hosts
         insertafter: EOF
         line: "{{ networks['dmz']['members']['waf']['1'] }} service-waf.local"
+
+# - name: Configure workstation2
+#   hosts: workstation2
+#   tasks:
+#     - name: Add entry to host file
+#       ansible.builtin.lineinfile:
+#         path: /etc/hosts
+#         insertafter: EOF
+#         line: "{{ networks['dmz']['members']['waf']['1'] }} service-waf.local"
     
 - name: Configure webserver
   hosts: webserver

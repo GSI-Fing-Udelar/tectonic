@@ -6,31 +6,47 @@ default_os: ubuntu22
 guest_settings:
   workstation:
     entry_point: yes
-    memory: 512
-    cpu: 1
-    disk: 10
+    memory: 2048
+    cpu: 2
+    disk: 20
     copies: 1
+    red_team_agent: yes
+    monitor: yes
+    gui: yes
+  workstation2:
+    entry_point: yes
+    memory: 1024
+    cpu: 1
+    disk: 20
+    copies: 1
+    red_team_agent: yes
+    monitor: yes
+    base_os: rocky9
   webserver:
-    memory: 512
+    memory: 1024
     cpu: 1
     disk: 10
     copies: 1
+    monitor: yes
   ftpserver:
-    memory: 512
+    memory: 1024
     cpu: 1
     disk: 10
     copies: 1
+    red_team_agent: yes
   waf:
     memory: 512
     cpu: 1
     disk: 10
     internet_access: yes
     copies: 1
+    monitor: no
 
 topology:
   - name: lan
     members:
       - workstation
+      - workstation2
   - name: servers
     members:
       - webserver
@@ -73,9 +89,11 @@ caldera_settings:
 
 elastic_settings:
   enable: yes
+  monitor_type: endpoint
+  deploy_default_policy: yes
 
 guacamole_settings:
-  enable: yes
+  enable: no
 
 moodle_settings:
   enable: yes
