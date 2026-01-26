@@ -737,6 +737,9 @@ class ServiceDescription(MachineDescription):
                 if network.base_name == "services":
                     for rule_data in self.base_traffic_rules():
                         interface.traffic_rules.append(TrafficRule(rule_data, rule_data.source, 1))
+                elif network.base_name == "internet" and self._description.config.platform == "aws" and self.base_name == "bastion_host":
+                    for rule_data in self.base_traffic_rules():
+                        interface.traffic_rules.append(TrafficRule(rule_data, rule_data.source, 1))
 
     @property
     def service_ip(self):
@@ -804,8 +807,8 @@ class ElasticDescription(ServiceDescription):
     def base_traffic_rules(self):
         base_traffic_rules = []
         base_traffic_rules.append(BaseTrafficRule("service-elastic-kibana", "Allow incoming kibana traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", f"{self._description.config.elastic.internal_port}"))
-        base_traffic_rules.append(BaseTrafficRule("service-elastic-fleet", "Allow incoming fleet traffic", f"{self._description.config.network_cidr_block}/32", self.service_ip, "tcp", "8220"))
-        base_traffic_rules.append(BaseTrafficRule("service-elastic-agent", "Allow incoming agent traffic", f"{self._description.config.network_cidr_block}/32", self.service_ip, "tcp", "5044"))
+        base_traffic_rules.append(BaseTrafficRule("service-elastic-fleet", "Allow incoming fleet traffic", self._description.config.network_cidr_block, self.service_ip, "tcp", "8220"))
+        base_traffic_rules.append(BaseTrafficRule("service-elastic-agent", "Allow incoming agent traffic", self._description.config.network_cidr_block, self.service_ip, "tcp", "5044"))
         source_ssh = None
         if self._description.config.platform == "libvirt":
             source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
@@ -832,9 +835,9 @@ class CalderaDescription(ServiceDescription):
     def base_traffic_rules(self):
         base_traffic_rules = []
         base_traffic_rules.append(BaseTrafficRule("service-caldera-web", "Allow incoming web interface traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", f"{self._description.config.caldera.internal_port}"))
-        base_traffic_rules.append(BaseTrafficRule("service-caldera-agent-1", "Allow incoming agent traffic to port 443", f"{self._description.config.network_cidr_block}/32", self.service_ip, "tcp", "443"))
-        base_traffic_rules.append(BaseTrafficRule("service-caldera-agent-2", "Allow incoming agent traffic to port 7010", f"{self._description.config.network_cidr_block}/32", self.service_ip, "tcp", "7010"))
-        base_traffic_rules.append(BaseTrafficRule("service-caldera-agent-3", "Allow incoming agent traffic to port 7011", f"{self._description.config.network_cidr_block}/32", self.service_ip, "udp", "7011"))
+        base_traffic_rules.append(BaseTrafficRule("service-caldera-agent-1", "Allow incoming agent traffic to port 443", self._description.config.network_cidr_block, self.service_ip, "tcp", "443"))
+        base_traffic_rules.append(BaseTrafficRule("service-caldera-agent-2", "Allow incoming agent traffic to port 7010", self._description.config.network_cidr_block, self.service_ip, "tcp", "7010"))
+        base_traffic_rules.append(BaseTrafficRule("service-caldera-agent-3", "Allow incoming agent traffic to port 7011", self._description.config.network_cidr_block, self.service_ip, "udp", "7011"))
         source_ssh = None
         if self._description.config.platform == "libvirt":
             source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
@@ -853,6 +856,7 @@ class PacketbeatDescription(ServiceDescription):
     def base_traffic_rules(self):
         base_traffic_rules = []
         source_ssh = None
+        base_traffic_rules.append(BaseTrafficRule("service-packetbeat-vxlan", "Allow incoming VXLAN interface traffic", self._description.config.network_cidr_block, self.service_ip, "udp", "4789"))
         if self._description.config.platform == "libvirt":
             source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block.hosts()))[0]}/32"
         elif self._description.config.platform == "aws":
@@ -877,7 +881,7 @@ class GuacamoleDescription(ServiceDescription):
     
     def base_traffic_rules(self):
         base_traffic_rules = []
-        base_traffic_rules.append(BaseTrafficRule("service-guacamole-web", "Allow incoming web interface traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", f"{self._description.config.guacamole.internal_port}"))
+        base_traffic_rules.append(BaseTrafficRule("service-guacamole-web", "Allow incoming web interface traffic", f"{self._description._bastion_host.service_ip}/32", self.service_ip, "tcp", f"{self._description.config.guacamole.internal_port}"))
         source_ssh = None
         if self._description.config.platform == "libvirt":
             source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
@@ -1204,33 +1208,35 @@ class Description:
         self._required(lab_edition_data, "random_seed")
         self.random_seed = lab_edition_data["random_seed"]
 
-        # Guacamole is enabled if it is enabled in the description and
-        # not disabled in the lab edition.
+        ##### Start load services #####
+
+        # Guacamole is enabled if it is enabled in the description and not disabled in the lab edition.
         enable_guacamole = self.guacamole.enable and lab_edition_data.get("guacamole_settings", {}).get("enable", True)
         self.guacamole.load_service(lab_edition_data.get("guacamole_settings", {}))
         self.guacamole.enable = enable_guacamole
         if enable_guacamole:
             self.create_students_passwords = True
 
-        # Elastic is enabled if it is enabled in the description and
-        # not disabled in the lab edition.
+        # Elastic is enabled if it is enabled in the description and not disabled in the lab edition.
         enable_elastic = self.elastic.enable and lab_edition_data.get("elastic_settings", {}).get("enable", True)
         self.elastic.load_service(lab_edition_data.get("elastic_settings", {}))
         self.elastic.enable = enable_elastic
+        
         if enable_elastic and config.platform == "aws" and self.elastic.monitor_type == "traffic":
             self.packetbeat.enable = True
+            
 
-        # Caldera is enabled if it is enabled in the description and
-        # not disabled in the lab edition.
+        # Caldera is enabled if it is enabled in the description and not disabled in the lab edition.
         enable_caldera = self.caldera.enable and lab_edition_data.get("caldera_settings", {}).get("enable", True)
         self.caldera.load_service(lab_edition_data.get("caldera_settings", {}))
         self.caldera.enable = enable_caldera
+        
 
-        # Moodle is enabled if it is enabled in the description and
-        # not disabled in the lab edition.
+        # Moodle is enabled if it is enabled in the description and not disabled in the lab edition.
         enable_moodle = self.moodle.enable and lab_edition_data.get("moodle_settings", {}).get("enable", True)
         self.moodle.load_service(lab_edition_data.get("moodle_settings", {}))
         self.moodle.enable = enable_moodle
+        
 
         # Bastion Host
         self._bastion_host = BastionHostDescription(self)
@@ -1247,6 +1253,37 @@ class Description:
         # Teacher Access Host
         self._teacher_access_host = TeacherAccessHostDescription(self)
         self.teacher_access_host.enable = self.config.platform == "aws" and self.config.aws.teacher_access == "host"
+
+        # Load auxiliary networks
+        self._auxiliary_networks = {}
+        internet_network_name = f"{self.institution}-{self.lab_name}-internet"
+        self._auxiliary_networks[internet_network_name] = AuxiliaryNetwork(self, "internet", self.config.internet_network_cidr_block, "nat")
+        if self.config.platform == "aws":
+            self._auxiliary_networks[internet_network_name].members = ["bastion_host"]
+        if self.config.platform != "aws":
+            self._auxiliary_networks[internet_network_name].members = ["elastic"]
+        services_network_name = f"{self.institution}-{self.lab_name}-services"
+        self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "route" if self.config.routing else "none" )
+        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole", "moodle"]
+        if self.config.platform == "aws":
+            self._auxiliary_networks[services_network_name].members.append("teacher_access_host")
+            if self.elastic.monitor_type == "traffic":
+                self._auxiliary_networks[services_network_name].members.append("packetbeat")
+        else:
+            self._auxiliary_networks[services_network_name].members.append("bastion_host")
+
+        # Load services interfaces
+        self.bastion_host.load_interfaces(self.auxiliary_networks)
+        self.teacher_access_host.load_interfaces(self.auxiliary_networks)
+        self.elastic.load_interfaces(self._auxiliary_networks)
+        self.packetbeat.load_interfaces(self._auxiliary_networks)
+        self.caldera.load_interfaces(self._auxiliary_networks)
+        self.moodle.load_interfaces(self.auxiliary_networks)
+        self.guacamole.load_interfaces(self.auxiliary_networks)
+
+        ##### End load services #####
+
+
 
         # Load base guests and topology
         self._required(description_data, "guest_settings")
@@ -1276,33 +1313,6 @@ class Description:
 
         self._scenario_networks = self._compute_scenario_networks()
         self._parameters_files = tectonic.utils.list_files_in_directory(Path(self._scenario_dir) / "ansible" / "parameters")
-
-        # Load auxiliary networks
-        self._auxiliary_networks = {}
-        internet_network_name = f"{self.institution}-{self.lab_name}-internet"
-        self._auxiliary_networks[internet_network_name] = AuxiliaryNetwork(self, "internet", self.config.internet_network_cidr_block, "nat")
-        if self.config.platform == "aws":
-            self._auxiliary_networks[internet_network_name].members = ["bastion_host"]
-        if self.config.platform != "aws":
-            self._auxiliary_networks[internet_network_name].members = ["elastic"]
-        services_network_name = f"{self.institution}-{self.lab_name}-services"
-        self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "route" if self.config.routing else "none" )
-        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole", "moodle"]
-        if self.config.platform == "aws":
-            self._auxiliary_networks[services_network_name].members.append("teacher_access_host")
-            if self.elastic.monitor_type == "traffic":
-                self._auxiliary_networks[services_network_name].members.append("packetbeat")
-        else:
-            self._auxiliary_networks[services_network_name].members.append("bastion_host")
-
-        #Load services interfaces
-        self.teacher_access_host.load_interfaces(self.auxiliary_networks)
-        self.bastion_host.load_interfaces(self.auxiliary_networks)
-        self.packetbeat.load_interfaces(self._auxiliary_networks)
-        self.elastic.load_interfaces(self._auxiliary_networks)
-        self.caldera.load_interfaces(self._auxiliary_networks)
-        self.guacamole.load_interfaces(self.auxiliary_networks)
-        self.moodle.load_interfaces(self.auxiliary_networks)
         
         #Load base traffic rules of guests from description
         self._base_traffic_rules = {}

@@ -12,16 +12,7 @@ guest_settings:
     copies: 1
     red_team_agent: yes
     monitor: yes
-    gui: yes
-  workstation2:
-    entry_point: yes
-    memory: 1024
-    cpu: 1
-    disk: 20
-    copies: 1
-    red_team_agent: yes
-    monitor: yes
-    base_os: rocky9
+    gui: no
   webserver:
     memory: 1024
     cpu: 1
@@ -46,7 +37,6 @@ topology:
   - name: lan
     members:
       - workstation
-      - workstation2
   - name: servers
     members:
       - webserver
@@ -89,11 +79,11 @@ caldera_settings:
 
 elastic_settings:
   enable: yes
-  monitor_type: endpoint
+  monitor_type: traffic
   deploy_default_policy: yes
 
 guacamole_settings:
-  enable: no
+  enable: yes
 
 moodle_settings:
   enable: yes

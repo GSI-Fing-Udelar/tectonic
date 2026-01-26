@@ -60,60 +60,23 @@ resource "aws_security_group" "services_internet_access_sg" {
   }
 }
 
-resource "aws_security_group" "subnet_sg" {
-  for_each = local.subnetworks
-  description = "[Services] Allow all traffic within the services subnet. Drop everything else."
-  vpc_id   = module.vpc.vpc_id
-  ingress {
-    description = "Allow inbound traffic from all services subnets."
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [lookup(each.value, "cidr")]
-  }
-  egress {
-    description = "Allow outbound traffic to all services subnets."
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [lookup(each.value, "cidr")]
-  }
-  tags = {
-    Name = each.key
-  }
-}
+resource "aws_security_group" "interface_traffic" {
+  for_each = local.network_interfaces
 
-resource "aws_security_group" "caldera_scenario_sg" {
-  description = "[Services] Allow traffic for Caldera."
+  description = "Traffic to interface ${each.key}"
   vpc_id   = module.vpc.vpc_id
-  ingress {
-    description   = "Caldera: Allow agent traffic from scenario instances."
-    from_port     = 443
-    to_port       = 443
-    protocol      = "tcp"
-    cidr_blocks   = [local.tectonic.config.network_cidr_block]
+
+  dynamic "ingress" {
+    for_each = lookup(each.value, "traffic_rules")
+    content {
+      description = ingress.value.description
+      from_port   = ingress.value.from_port
+      to_port     = ingress.value.to_port
+      protocol    = ingress.value.protocol == "all" ? "-1" : ingress.value.protocol
+      cidr_blocks = [ingress.value.network_cidr]
+    }
   }
-  ingress {
-    description   = "Caldera: Allow agent traffic from scenario instances."
-    from_port     = 7010
-    to_port       = 7010
-    protocol      = "tcp"
-    cidr_blocks   = [local.tectonic.config.network_cidr_block]
-  }
-  ingress {
-    description   = "Caldera: Allow agent traffic from scenario instances."
-    from_port     = 7011
-    to_port       = 7011
-    protocol      = "udp"
-    cidr_blocks   = [local.tectonic.config.network_cidr_block]
-  }
-  ingress {
-    description       = "Caldera: Allow traffic from bastion host."
-    from_port         = local.tectonic.services.caldera.internal_port
-    to_port           = local.tectonic.services.caldera.internal_port
-    protocol          = "tcp"
-    cidr_blocks       = [local.tectonic.config.internet_network_cidr_block]
-  }
+
   egress {
     description = "Allow outbound traffic to all scenario instances."
     from_port   = 0
@@ -121,204 +84,9 @@ resource "aws_security_group" "caldera_scenario_sg" {
     protocol    = "-1"
     cidr_blocks = [local.tectonic.config.network_cidr_block]
   }
-  tags = {
-    Name = format("%s-%s-caldera", local.tectonic.institution, local.tectonic.lab_name)
-  }
-}
 
-resource "aws_security_group" "elastic_endpoint_scenario_sg" {
-  description = "[Services] Allow traffic for Elastic in endpoint mode."
-  vpc_id   = module.vpc.vpc_id
-  ingress {
-    description   = "Elastic: Allow fleet traffic from scenario instances."
-    from_port     = 8220
-    to_port       = 8220
-    protocol      = "tcp"
-    cidr_blocks   = [local.tectonic.config.network_cidr_block]
-  }
-  ingress {
-    description   = "Elastic: Allow logstash traffic from scenario instances."
-    from_port     = 5044
-    to_port       = 5044
-    protocol      = "tcp"
-    cidr_blocks   = [local.tectonic.config.network_cidr_block]
-  }
-  ingress {
-    description       = "Elastic: Allow traffic from bastion host."
-    from_port         = local.tectonic.services.elastic.internal_port
-    to_port           = local.tectonic.services.elastic.internal_port
-    protocol          = "tcp"
-    cidr_blocks       = [local.tectonic.config.internet_network_cidr_block]
-  }
   tags = {
-    Name = format("%s-%s-elastic_endpoint", local.tectonic.institution, local.tectonic.lab_name)
-  }
-}
-
-resource "aws_security_group" "elastic_traffic_scenario_sg" {
-  description = "[Services] Allow traffic for Elastic in traffic mode."
-  vpc_id   = module.vpc.vpc_id
-  ingress {
-    description       = "Elastic: Allow traffic from bastion host."
-    from_port         = local.tectonic.services.elastic.internal_port
-    to_port           = local.tectonic.services.elastic.internal_port
-    protocol          = "tcp"
-    cidr_blocks       = [local.tectonic.config.internet_network_cidr_block]
-  }
-  tags = {
-    Name = format("%s-%s-elastic_traffic", local.tectonic.institution, local.tectonic.lab_name)
-  }
-}
-
-resource "aws_security_group" "packetbeat_scenario_sg" {
-  description = "[Services] Allow traffic for packetbeat."
-  vpc_id   = module.vpc.vpc_id
-  ingress {
-    description = "Allow VXLAN encapsulation for traffic mirroring"
-    from_port   = 4789
-    to_port     = 4789
-    protocol    = "udp"
-    cidr_blocks = [local.tectonic.config.network_cidr_block]
-  }
-  egress {
-    description = "Allow all outbound traffic to all scenario instances."
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [local.tectonic.config.network_cidr_block]
-  }
-  tags = {
-    Name = format("%s-%s-packetbeat", local.tectonic.institution, local.tectonic.lab_name)
-  }
-}
-
-resource "aws_security_group" "guacamole_scenario_sg" {
-  description = "[Services] Allow traffic for Guacamole."
-  vpc_id   = module.vpc.vpc_id
-  ingress {
-    description       = "Guacamole: Allow traffic from bastion host"
-    from_port         = local.tectonic.services.guacamole.internal_port
-    to_port           = local.tectonic.services.guacamole.internal_port
-    protocol          = "tcp"
-    cidr_blocks       = [local.tectonic.config.internet_network_cidr_block]
-  }
-  egress {
-    description = "Guacamole: Allow SSH outbound traffic to all scenario instances."
-    from_port   = "22"
-    to_port     = "22"
-    protocol    = "tcp"
-    cidr_blocks = [local.tectonic.config.network_cidr_block]
-  }
-  egress {
-    description = "Guacamole: Allow RDP outbound traffic to all scenario instances."
-    from_port   = "3389"
-    to_port     = "3389"
-    protocol    = "tcp"
-    cidr_blocks = [local.tectonic.config.network_cidr_block]
-  }
-  egress {
-    description = "Guacamole: Allow VNC outbound traffic to all scenario instances."
-    from_port   = "5900"
-    to_port     = "5900"
-    protocol    = "tcp"
-    cidr_blocks = [local.tectonic.config.network_cidr_block]
-  }
-  tags = {
-    Name = format("%s-%s-guacamole", local.tectonic.institution, local.tectonic.lab_name)
-  }
-}
-
-resource "aws_security_group" "moodle_scenario_sg" {
-  description = "[Services] Allow traffic for Moodle."
-  vpc_id   = module.vpc.vpc_id
-  ingress {
-    description       = "Moodle: Allow traffic from bastion host"
-    from_port         = local.tectonic.services.moodle.internal_port
-    to_port           = local.tectonic.services.moodle.internal_port
-    protocol          = "tcp"
-    cidr_blocks       = [local.tectonic.config.internet_network_cidr_block]
-  }
-  tags = {
-    Name = format("%s-%s-moodle", local.tectonic.institution, local.tectonic.lab_name)
-  }
-}
-
-resource "aws_security_group" "bastion_host_scenario_sg" {
-  description = "[Service] Allow traffic for Bastion Host."
-  vpc_id   = module.vpc.vpc_id
-  ingress {
-    description = "Bastion Host: Allow ingress SSH traffic from internet."
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    description = "Bastion Host: Allow ingress HTTP traffic from internet to default virtualhost."
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    description = "Bastion Host: Allow ingress HTTP traffic from internet to bastion_host/guacamole virtualhost."
-    from_port   = local.tectonic.services.guacamole.external_port
-    to_port     = local.tectonic.services.guacamole.external_port
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    description = "Bastion Host: Allow ingress HTTP traffic from internet to elastic virtualhost."
-    from_port   = local.tectonic.services.elastic.external_port
-    to_port     = local.tectonic.services.elastic.external_port
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    description = "Bastion Host: Allow ingress HTTP traffic from internet to caldera virtualhost."
-    from_port   = local.tectonic.services.caldera.external_port
-    to_port     = local.tectonic.services.caldera.external_port
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    description = "Bastion Host: Allow ingress HTTP traffic from internet to moodle virtualhost."
-    from_port   = local.tectonic.services.moodle.external_port
-    to_port     = local.tectonic.services.moodle.external_port
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  egress {
-    description = "Bastion Host: Allow SSH outbound traffic to all scenario instances."
-    from_port   = "22"
-    to_port     = "22"
-    protocol    = "tcp"
-    cidr_blocks = [local.tectonic.config.network_cidr_block]
-  }
-  tags = {
-    Name = format("%s-%s-bastion_host", local.tectonic.institution, local.tectonic.lab_name)
-  }
-}
-
-resource "aws_security_group" "teacher_access_host_scenario_sg" {
-  description = "[Service] Allow traffic for Teacher Access Host."
-  vpc_id   = module.vpc.vpc_id
-  ingress {
-    description = "Teacher Access Host: Allow ingress SSH traffic bastion host."
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [local.tectonic.config.internet_network_cidr_block]
-  }
-  egress {
-    description = "Teacher Access Host: Allow SSH outbound traffic to all scenario instances."
-    from_port   = "22"
-    to_port     = "22"
-    protocol    = "tcp"
-    cidr_blocks = [local.tectonic.config.network_cidr_block]
-  }
-  tags = {
-    Name = format("%s-%s-teacher_access_host", local.tectonic.institution, local.tectonic.lab_name)
+    Name = each.key
   }
 }
 
@@ -327,15 +95,8 @@ resource "aws_network_interface" "interfaces" {
   subnet_id   = local.guest_data[each.value.guest_name].base_name == "bastion_host" ? module.vpc.public_subnets[0] : module.vpc.private_subnets[0]
   private_ips = [each.value.private_ip]
   source_dest_check = false
-  security_groups = concat([aws_security_group.subnet_sg[each.value.subnetwork_name].id],
+  security_groups = concat([aws_security_group.interface_traffic[each.key].id],
     local.guest_data[each.value.guest_name].internet_access ? [aws_security_group.services_internet_access_sg[0].id] : [],
-    local.guest_data[each.value.guest_name].base_name == "caldera" ? [aws_security_group.caldera_scenario_sg.id] : [],
-    local.guest_data[each.value.guest_name].base_name == "elastic" && local.tectonic.services.elastic.monitor_type == "endpoint" ? [aws_security_group.elastic_endpoint_scenario_sg.id] : [aws_security_group.elastic_traffic_scenario_sg.id],
-    local.guest_data[each.value.guest_name].base_name == "packetbeat" ? [aws_security_group.packetbeat_scenario_sg.id ] : [],
-    local.guest_data[each.value.guest_name].base_name == "guacamole" ? [aws_security_group.guacamole_scenario_sg.id] : [],
-    local.guest_data[each.value.guest_name].base_name == "moodle" ? [aws_security_group.moodle_scenario_sg.id] : [],
-    local.guest_data[each.value.guest_name].base_name == "bastion_host" ? [aws_security_group.bastion_host_scenario_sg.id] : [],
-    local.guest_data[each.value.guest_name].base_name == "teacher_access_host" ? [aws_security_group.teacher_access_host_scenario_sg.id] : [],
   )
   tags = {
     Name = each.key
@@ -442,7 +203,7 @@ resource "aws_ec2_instance_connect_endpoint" "teacher_access" {
 
   subnet_id = module.vpc.private_subnets[0]
 
-  security_group_ids = [aws_security_group.bastion_host_scenario_sg.id]
+  security_group_ids = [aws_security_group.interface_traffic["${local.tectonic.institution}-${local.tectonic.lab_name}-bastion_host-2"].id]
 
   tags = {
     Name = format("%s-%s", local.tectonic.institution, local.tectonic.lab_name)

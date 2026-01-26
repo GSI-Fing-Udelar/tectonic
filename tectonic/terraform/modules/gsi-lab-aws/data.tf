@@ -73,15 +73,3 @@ data "aws_instance" "packetbeat" {
     values = ["running"]
   }
 }
-
-data "aws_security_group" "bastion_host_scenario_sg" {
-  tags = {
-    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}-bastion_host"
-  }
-}
-
-data "aws_security_group" "teacher_access_host_scenario_sg" {
-  tags = {
-    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}-teacher_access_host"
-  }
-}

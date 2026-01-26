@@ -31,76 +31,6 @@ resource "aws_subnet" "instance_subnets" {
   }
 }
 
-resource "aws_security_group" "student_entry_point_sg" {
-  description = "[Sudent Access] Allow inbound traffic from bastion host to lab entry points for student access."
-
-  vpc_id = data.aws_vpc.vpc.id
-  ingress {
-    description     = "Allow inbound SSH traffic from guacamole/bastion host to lab entry points."
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [ data.aws_security_group.bastion_host_scenario_sg.id ]
-  }
-  ingress {
-    description     = "Allow inbound RDP traffic from guacamole/bastion host to lab entry points."
-    from_port       = 3389
-    to_port         = 3389
-    protocol        = "tcp"
-    security_groups = [ data.aws_security_group.bastion_host_scenario_sg.id ]
-  }
-  ingress {
-    description     = "Allow inbound VNC traffic from guacamole/bastion host to lab entry points."
-    from_port       = 5900
-    to_port         = 5900
-    protocol        = "tcp"
-    security_groups = [ data.aws_security_group.bastion_host_scenario_sg.id ]
-  }
-
-  tags = {
-    Name = format("%s-%s-student_entry_point", local.tectonic.institution, local.tectonic.lab_name)
-  }
-}
-
-resource "aws_security_group" "teacher_entry_point_sg" {
-  description = "[Teacher Access] Allow inbound traffic from teacher access host."
-
-  vpc_id = data.aws_vpc.vpc.id
-  ingress {
-    description     = "Allow inbound SSH traffic from teacher access host."
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [ data.aws_security_group.teacher_access_host_scenario_sg.id ]
-  }
-
-  ingress {
-    description = "Allow inbound SSH traffic from guacamole."
-    from_port   = "22"
-    to_port     = "22"
-    protocol    = "tcp"
-    cidr_blocks = [ "${local.tectonic.services.guacamole.ip}/32" ]
-  }
-  ingress {
-    description = "Allow inbound RDP traffic from guacamole."
-    from_port   = "3389"
-    to_port     = "3389"
-    protocol    = "tcp"
-    cidr_blocks = [ "${local.tectonic.services.guacamole.ip}/32" ]
-  }
-  ingress {
-    description = "Allow inbound VNC traffic from guacamole."
-    from_port   = "5900"
-    to_port     = "5900"
-    protocol    = "tcp"
-    cidr_blocks = [ "${local.tectonic.services.guacamole.ip}/32" ]
-  }
-
-  tags = {
-    Name = format("%s-%s-teacher_entry_point", local.tectonic.institution, local.tectonic.lab_name)
-  }
-}
-
 resource "aws_security_group" "internet_access_sg" {
   count       = local.internet_access ? 1 : 0
   description = "[Machines] Allow outbound internet traffic for enabled machines."
@@ -152,53 +82,20 @@ resource "aws_security_group" "interface_traffic" {
   }
 }
 
-resource "aws_security_group" "services_subnet_sg" {
-  description = "[Machines] Allow traffic to services from subnet."
+resource "aws_security_group" "services_traffic" {
+  description = "Traffic to services subnetwork"
   vpc_id   = data.aws_vpc.vpc.id
-  ingress {
-    description = "Allow inbound traffic from services subnets."
+
+  egress {
+    description = "Allow all outbound traffic to services network."
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = [local.tectonic.config.services_network_cidr_block]
+    cidr_blocks = [ local.tectonic.config.services_network_cidr_block ]
   }
-  egress {
-    description   = "Allow outbound traffic to Fleet"
-    from_port     = 8220
-    to_port       = 8220
-    protocol      = "tcp"
-    cidr_blocks   = [local.tectonic.config.services_network_cidr_block]
-  }
-  egress {
-    description   = "Allow outbound traffic to Logstash."
-    from_port     = 5044
-    to_port       = 5044
-    protocol      = "tcp"
-    cidr_blocks   = [local.tectonic.config.services_network_cidr_block]
-  }
-  egress {
-    description   = "Allow outbound traffic to Caldera"
-    from_port     = 443
-    to_port       = 443
-    protocol      = "tcp"
-    cidr_blocks   = [local.tectonic.config.services_network_cidr_block]
-  }
-  egress {
-    description   = "Allow outbound traffic to Caldera"
-    from_port     = 7010
-    to_port       = 7010
-    protocol      = "tcp"
-    cidr_blocks   = [local.tectonic.config.services_network_cidr_block]
-  }
-  egress {
-    description   = "Allow outbound traffic to Caldera"
-    from_port     = 7011
-    to_port       = 7011
-    protocol      = "udp"
-    cidr_blocks   = [local.tectonic.config.services_network_cidr_block]
-  }
+
   tags = {
-    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}-services-subnet"
+    Name = format("%s-%s-services_acecss", local.tectonic.institution, local.tectonic.lab_name)
   }
 }
 
@@ -227,10 +124,13 @@ resource "aws_network_interface" "interfaces" {
 
   source_dest_check = false
 
-  security_groups = concat([aws_security_group.interface_traffic[each.key].id, aws_security_group.teacher_entry_point_sg.id],
-    local.guest_data[each.value.guest_name].entry_point ? [aws_security_group.student_entry_point_sg.id] : [],
+  security_groups = concat([aws_security_group.interface_traffic[each.key].id],
     local.guest_data[each.value.guest_name].internet_access ? [aws_security_group.internet_access_sg[0].id] : [],
-    local.guest_data[each.value.guest_name].is_in_services_network ? [aws_security_group.services_subnet_sg.id] : [],
+    (
+      local.guest_data[each.value.guest_name].monitor || 
+      local.guest_data[each.value.guest_name].red_team_agent || 
+      local.guest_data[each.value.guest_name].blue_team_agent
+    ) ? [aws_security_group.services_traffic.id] : [],
   )
 
   tags = {
