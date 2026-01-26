@@ -127,7 +127,7 @@ def test_description_traffic_rules(labs_path, tectonic_config):
         elif service.base_name == "caldera":
             assert len(rules) == 5
         elif service.base_name == "packetbeat":
-            assert len(rules) == 1
+            assert len(rules) == 2
         elif service.base_name == "guacamole":
             assert len(rules) == 2
         elif service.base_name == "moodle":
