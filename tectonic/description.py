@@ -806,6 +806,7 @@ class ElasticDescription(ServiceDescription):
         base_traffic_rules.append(BaseTrafficRule("service-elastic-kibana", "Allow incoming kibana traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", f"{self._description.config.elastic.internal_port}"))
         base_traffic_rules.append(BaseTrafficRule("service-elastic-fleet", "Allow incoming fleet traffic", f"{self._description.config.network_cidr_block}/32", self.service_ip, "tcp", "8220"))
         base_traffic_rules.append(BaseTrafficRule("service-elastic-agent", "Allow incoming agent traffic", f"{self._description.config.network_cidr_block}/32", self.service_ip, "tcp", "5044"))
+        source_ssh = None
         if self._description.config.platform == "libvirt":
             source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
         elif self._description.config.platform == "aws":
@@ -834,6 +835,7 @@ class CalderaDescription(ServiceDescription):
         base_traffic_rules.append(BaseTrafficRule("service-caldera-agent-1", "Allow incoming agent traffic to port 443", f"{self._description.config.network_cidr_block}/32", self.service_ip, "tcp", "443"))
         base_traffic_rules.append(BaseTrafficRule("service-caldera-agent-2", "Allow incoming agent traffic to port 7010", f"{self._description.config.network_cidr_block}/32", self.service_ip, "tcp", "7010"))
         base_traffic_rules.append(BaseTrafficRule("service-caldera-agent-3", "Allow incoming agent traffic to port 7011", f"{self._description.config.network_cidr_block}/32", self.service_ip, "udp", "7011"))
+        source_ssh = None
         if self._description.config.platform == "libvirt":
             source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
         elif self._description.config.platform == "aws":
@@ -850,6 +852,7 @@ class PacketbeatDescription(ServiceDescription):
 
     def base_traffic_rules(self):
         base_traffic_rules = []
+        source_ssh = None
         if self._description.config.platform == "libvirt":
             source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block.hosts()))[0]}/32"
         elif self._description.config.platform == "aws":
@@ -875,6 +878,7 @@ class GuacamoleDescription(ServiceDescription):
     def base_traffic_rules(self):
         base_traffic_rules = []
         base_traffic_rules.append(BaseTrafficRule("service-guacamole-web", "Allow incoming web interface traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", f"{self._description.config.guacamole.internal_port}"))
+        source_ssh = None
         if self._description.config.platform == "libvirt":
             source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
         elif self._description.config.platform == "aws":
@@ -905,6 +909,7 @@ class MoodleDescription(ServiceDescription):
     def base_traffic_rules(self):
         base_traffic_rules = []
         base_traffic_rules.append(BaseTrafficRule("service-moodle-web", "Allow incoming web interface traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", f"{self._description.config.moodle.internal_port}"))
+        source_ssh = None
         if self._description.config.platform == "libvirt":
             source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
         elif self._description.config.platform == "aws":
@@ -958,6 +963,7 @@ class BastionHostDescription(ServiceDescription):
     
     def base_traffic_rules(self):
         base_traffic_rules = []
+        source = None
         if self._description.config.platform == "libvirt":
             source = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
         elif self._description.config.platform == "aws":
@@ -976,8 +982,7 @@ class TeacherAccessHostDescription(ServiceDescription):
 
     def base_traffic_rules(self):
         base_traffic_rules = []
-        if self._description.config.platform == "aws":
-            base_traffic_rules.append(BaseTrafficRule("service-bastion_host-ssh", "Allow incoming ssh traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", "22"))
+        base_traffic_rules.append(BaseTrafficRule("service-bastion_host-ssh", "Allow incoming ssh traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", "22"))
         return base_traffic_rules
 
 class BaseTrafficRule():
@@ -1623,13 +1628,14 @@ class Description:
                         interface._add_traffic_rule(rule)
             elif self.config.platform == "aws":
                 if self.bastion_host.enable:
-                    if guest.entry_point:
-                        for _, interface in guest.interfaces.items():
-                            if ipaddress.ip_address(interface.private_ip) in ipaddress.ip_network(self.config.network_cidr_block, strict=False):
-                                rule_data = BaseTrafficRule(f"rule-bastion_host-entry_point", f"Allow ssh traffic from bastion_host", "services", f"{guest.name}.{interface.network.name}-bastion_host-ssh", "tcp", "22")
-                                rule = TrafficRule(rule_data, f"{self.bastion_host.service_ip}/32", guest.copy)
-                                rule.interface_attached = interface.name
-                                interface._add_traffic_rule(rule)
+                    for _, guest in guests.items():
+                        if guest.entry_point:
+                            for _, interface in guest.interfaces.items():
+                                if ipaddress.ip_address(interface.private_ip) in ipaddress.ip_network(self.config.network_cidr_block, strict=False):
+                                    rule_data = BaseTrafficRule(f"rule-bastion_host-entry_point", f"Allow ssh traffic from bastion_host", "services", f"{guest.name}.{interface.network.name}-bastion_host-ssh", "tcp", "22")
+                                    rule = TrafficRule(rule_data, f"{self.bastion_host.service_ip}/32", guest.copy)
+                                    rule.interface_attached = interface.name
+                                    interface._add_traffic_rule(rule)
         return guests
         
     @property

@@ -233,9 +233,6 @@ class ClientLibvirt(Client):
             raise ClientLibvirtException(f"Instance {machine_name} not found.")
         interactive_shell(hostname, username)
 
-    def _generate_uuid(self, name):
-        return 
-
     def _add_rule_to_nwfilter(self, parent, protocol, src_cidr, dest_ip, from_port, to_port, priority, direction, action, state):
         rule_elem = ET.SubElement(parent, "rule")
         rule_elem.set("direction", direction)

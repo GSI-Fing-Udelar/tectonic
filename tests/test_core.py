@@ -19,25 +19,9 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import pytest
-import json
-import builtins
 import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from tectonic.core import Core, CoreException
-
-
-import tectonic.terraform_aws
-import tectonic.terraform_libvirt
-import tectonic.terraform_docker
-import tectonic.terraform_service_aws
-import tectonic.terraform_service_libvirt
-import tectonic.terraform_service_docker
-import tectonic.client_aws
-import tectonic.client_libvirt
-import tectonic.client_docker
-import tectonic.packer_aws
-import tectonic.packer_libvirt
-import tectonic.packer_docker
 import tectonic.ansible
 
 
@@ -119,6 +103,7 @@ def test_deploy(core):
     core.terraform_service.deploy_packetbeat = MagicMock()
     core.terraform_service.install_elastic_agent = MagicMock()
     core.terraform_service.install_caldera_agent = MagicMock()
+    core.client.create_nwfilter = MagicMock()
 
     core.deploy([1], True, True)
 
@@ -140,6 +125,7 @@ def test_destroy(core):
     core.description.guacamole.enable = True
     core.description.moodle.enable = True
     core.description.bastion_host.enable = True
+    core.client.destroy_nwfilter = MagicMock()
 
 
     core.destroy(None, True, ["svc"], True)
