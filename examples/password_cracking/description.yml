@@ -75,7 +75,7 @@ elastic_settings:
 # Caldera service configuration
 caldera_settings:
   # Wheter to deploy this service. Default: no.
-  enable: no
+  enable: yes
   memory: 2048
   vpcu: 2
   disk: 20
@@ -83,7 +83,7 @@ caldera_settings:
 # Guacamole service configuration
 guacamole_settings:
   # Default values:
-  enable: no
+  enable: yes
   memory: 2048
   vpcu: 2
   disk: 20

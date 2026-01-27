@@ -24,6 +24,7 @@
 
 import re
 import logging
+import sys
 import traceback
 from pathlib import Path
 from collections import OrderedDict
@@ -37,12 +38,8 @@ from tectonic.instance_type import InstanceType
 from tectonic.instance_type_aws import InstanceTypeAWS
 from tectonic.core import Core
 
-def log(msg):
-    click.echo(msg)
+logger = logging.getLogger()
 
-def debug(msg):
-    if DEBUG:
-        click.echo(msg)
 
 # The instances can be specified as a list, a range, or a combination of both:
 #    --instances=1,3,8
@@ -74,9 +71,58 @@ class NumberRangeParamType(click.ParamType):
                         pass
                     else:
                         self.fail(f"Cannot parse {i}.", param, ctx)
+
+            max_instances = ctx.obj["description"].instance_number
+            if max(values or [], default=0) > max_instances:
+                if max_instances > 1:
+                    self.fail("Instances must be in the range from 1 to {max_instances}.")
+                else:
+                    self.fail("Scenario has only one instance.")
             return sorted(set(values))
         except Exception as e:
-            self.fail(f"{value!r} is not a valid range. {str(e)}", param, ctx)
+            self.fail(f"{value!r}. {e}", param, ctx)
+
+def split_and_validate_list_of_options(ctx, param, value, allowed):
+    """Validate a list of strings and split them by commas."""
+    if len(value) == 0:
+        return None
+    values = []
+    for item in value:
+        values.extend(v.strip().lower() for v in item.split(",") if v.strip())
+
+    if set(values) & {'all', 'none'}:
+        if len(values) > 1:
+            raise click.BadParameter(
+                "'all' or 'none' cannot be combined with other names."
+            )
+        return allowed if 'all' in values else []
+        
+    invalid = sorted(set(values) - set(allowed))
+    if invalid:
+        raise click.BadParameter(
+            f"{', '.join(invalid)}. Allowed values are: {allowed}"
+        )
+
+    # Preserve order, remove duplicates
+    seen = []
+    for v in values:
+        if v not in seen:
+            seen.append(v)
+    return seen
+
+def split_guests(ctx, param, value):
+    allowed_guests = []
+    for _, guest in ctx.obj["description"].base_guests.items():
+        allowed_guests.append(guest.base_name)
+    for _, service in ctx.obj["description"].services_guests.items():
+        allowed_guests.append(service.base_name)
+    return split_and_validate_list_of_options(ctx, param, value, allowed_guests)
+
+def split_services(ctx, param, value):
+    allowed_services = []
+    for _, service in ctx.obj["description"].services_guests.items():
+        allowed_services.append(service.base_name)
+    return split_and_validate_list_of_options(ctx, param, value, allowed_services)
 
 
 class TectonicException(Exception):
@@ -85,7 +131,6 @@ class TectonicException(Exception):
 
 NUMBER_RANGE = NumberRangeParamType()
 CONTEXT_SETTINGS = {"help_option_names": ['-h', '--help']}
-
 
 def range_to_str(r):
     """Returns an appropriate text describing the range."""
@@ -117,16 +162,14 @@ def range_to_str(r):
     return s[0]
 
 
-def confirm_machines(ctx, instances, guest_names, copies, action):
+def confirm_machines(ctx, instances, guest_names, copies, action, print_instances=True):
     """Prompt the user for confirmation to perform ACTION to machines."""
-    print_instances = True
+    # if instances:
+    #     instances = list(
+    #         filter(lambda i: i <= ctx.obj["description"].instance_number, instances)
+    #     )
 
-    if instances:
-        instances = list(
-            filter(lambda i: i <= ctx.obj["description"].instance_number, instances)
-        )
-
-    if not instances or len(instances) == ctx.obj["description"].instance_number:
+    if not instances or set(instances) == set(range(1, ctx.obj["description"].instance_number+1)):
         instances_msg = "all instances"
     elif len(instances) == 1:
         instances_msg = f"instance {instances[0]}"
@@ -134,7 +177,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
         instances_msg = f"instances {range_to_str(instances)}"
 
     if not guest_names:
-        machines_msg = "all machines"
+        machines_msg = "all scenario machines"
         spec_guests = False
     else:
         machines = []
@@ -142,41 +185,53 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
 
         # Remove duplicates
         guest_names = list(OrderedDict.fromkeys(guest_names))
-        if "teacher_access" in guest_names:
-            machines += ["the teacher access"]
-            guest_names.remove("teacher_access")
-        if "student_access" in guest_names:
-            machines += ["the student access"]
-            guest_names.remove("student_access")
+        if "elastic" in guest_names:
+            machines += ["the elastic server"]
+            guest_names.remove("elastic")
         if "packetbeat" in guest_names:
             machines += ["the packetbeat"]
             guest_names.remove("packetbeat")
+        if "caldera" in guest_names:
+            machines += ["the caldera server"]
+            guest_names.remove("caldera")
+        if "guacamole" in guest_names:
+            machines += ["the guacamole server"]
+            guest_names.remove("guacamole")
+        if "moodle" in guest_names:
+            machines += ["the moodle server"]
+            guest_names.remove("moodle")
+        if "teacher_access" in guest_names:
+            machines += ["the teacher access"]
+            guest_names.remove("teacher_access")
 
         if not guest_names:
             print_instances = False
 
         guests = [guest for _, guest in ctx.obj["description"].base_guests.items() if not spec_guests or guest.base_name in guest_names]
-        for guest in guests:
-            if guest.copies == 1:
-                if not copies or 1 in copies:
-                    machines += [f"the {guest.base_name}"]
-            else:
-                if not copies:
-                    machines += [f"all copies of the {guest.base_name}"]
+        if len(guests) == len(ctx.obj["description"].base_guests) and copies is None:
+            machines += ["all scenario machines"]
+        else:
+            for guest in guests:
+                if guest.copies == 1:
+                    if not copies or 1 in copies:
+                        machines += [f"the {guest.base_name}"]
                 else:
-                    guest_copies = list(
-                        filter(
-                            lambda c: c
-                            <= guest.copies,
-                            copies,
-                        )
-                    )
-                    if len(guest_copies) == 1:
-                        machines += [f"copy {guest_copies[0]} of the {guest.base_name}"]
+                    if not copies:
+                        machines += [f"all copies of the {guest.base_name}"]
                     else:
-                        machines += [
-                            f"copies {range_to_str(guest_copies)} of the {guest.base_name}"
-                        ]
+                        guest_copies = list(
+                            filter(
+                                lambda c: c
+                                <= guest.copies,
+                                copies,
+                            )
+                        )
+                        if len(guest_copies) == 1:
+                            machines += [f"copy {guest_copies[0]} of the {guest.base_name}"]
+                        else:
+                            machines += [
+                                f"copies {range_to_str(guest_copies)} of the {guest.base_name}"
+                            ]
         if len(machines) > 1:
             machines_msg = ", ".join(machines[:-1]) + " and " + machines[-1]
         elif len(machines) == 1:
@@ -185,11 +240,30 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
             return
 
     if print_instances:
-        click.echo(f"{action} {machines_msg}, on {instances_msg}.")
+        logger.info(f"{action} {machines_msg} on {instances_msg}.")
     else:
-        click.echo(f"{action} {machines_msg}.")
-    click.confirm("Continue?", abort=True)
+        logger.info(f"{action} {machines_msg}.")
+    if not click.confirm("Continue?"):
+        logger.debug("Aborted!")
+        raise click.Abort()
 
+
+def init_logging(logfile, loglevel):
+    logger.setLevel(logging.DEBUG)
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(loglevel)
+    # console_handler.setFormatter(formatter)
+
+    formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)s]: %(message)s"
+    )
+    file_handler = logging.FileHandler(logfile, encoding="utf-8")
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
 
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.option(
@@ -200,7 +274,7 @@ def confirm_machines(ctx, instances, guest_names, copies, action):
     required=True,
 )
 @click.option(
-    "--debug/--no-debug", help="Show debug messages during execution."
+    "--debug/--no-debug", default=None, help="Show debug messages during execution."
 )
 @click.option(
     "--lab_repo_uri",
@@ -292,12 +366,11 @@ def tectonic(
     """Deploy or manage a cyber range according to LAB_EDITION_FILE."""
     logfile = Path(lab_edition_file).parent / "tectonic.log"
     loglevel = logging.DEBUG if debug else logging.INFO
-    logging.basicConfig(filename=logfile, encoding="utf-8", level=loglevel)
+    init_logging(logfile, loglevel)
 
     ctx.ensure_object(dict)
-
     config = TectonicConfig.load(config)
-    if debug:
+    if debug is not None:
         config.debug = debug
     if lab_repo_uri:
         config.lab_repo_uri = lab_repo_uri
@@ -342,49 +415,21 @@ def tectonic(
 @tectonic.command()
 @click.pass_context
 @click.option(
-    "--images/--no-images",
+    "--guest_images/--no-guest_images",
     default=False,
     show_default=True,
-    help="Whether to create base images for each guest in the lab.",
+    help="Whether to create base images for the scenario guests.",
 )
 @click.option(
-    "--instances", "-i", help="Range of instances to list.", type=NUMBER_RANGE
+    "--instances", "-i", help="Range of instances to deploy.", type=NUMBER_RANGE
 )
 @click.option(
-    "--packetbeat_image/--no-packetbeat_image",
-    default=False,
-    show_default=True,
-    help="Whether to create the base image for packetbeat.",
-)
-@click.option(
-    "--elastic_image/--no-elastic_image",
-    default=False,
-    show_default=True,
-    help="Whether to create the base image for ELK.",
-)
-@click.option(
-    "--caldera_image/--no-caldera_image",
-    default=False,
-    show_default=True,
-    help="Whether to create the base image for Caldera.",
-)
-@click.option(
-    "--guacamole_image/--no-guacamole_image",
-    default=False,
-    show_default=True,
-    help="Whether to create the base image for Guacamole.",
-)
-@click.option(
-    "--moodle_image/--no-moodle_image",
-    default=False,
-    show_default=True,
-    help="Whether to create the base image for Moodle.",
-)
-@click.option(
-    "--bastion_host_image/--no-bastion_host_image",
-    default=False,
-    show_default=True,
-    help="Whether to create the base image for Bastion host.",
+    "--service_image_list",
+    multiple=True,
+    default=['none'],
+    callback=split_services,
+    type=click.STRING,
+    help="List of service base images to create. Use 'all' for all services, or 'none' for no machines. [default: none]",
 )
 @click.option(
     "--force",
@@ -392,27 +437,17 @@ def tectonic(
     help="Force the deployment of instances without a confirmation prompt.",
     is_flag=True,
 )
-def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_image, guacamole_image, moodle_image, bastion_host_image, force):
+def deploy(ctx, guest_images, instances, service_image_list, force):
     """Deploy the cyber range."""
     if not force:
         confirm_machines(ctx, instances, guest_names=None, copies=None, action="Deploying")
 
-    if images:
-        _create_images(ctx, packetbeat_image, elastic_image, caldera_image, guacamole_image, moodle_image, bastion_host_image, True)
-
-    ctx.obj["core"].deploy(instances, images, False)
-
+    ctx.obj["core"].deploy(instances, guest_images, service_image_list)
     _info(ctx)
 
 
 @tectonic.command()
 @click.pass_context
-@click.option(
-    "--machines/--no-machines",
-    default=True,
-    show_default=True,
-    help="Whether to destroy running guests in the lab.",
-)
 @click.option(
     "--images/--no-images",
     default=False,
@@ -420,40 +455,17 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     help="Whether to destroy the base images of guests and services in the lab.",
 )
 @click.option(
-    "--packetbeat/--no-packetbeat",
-    default=False,
-    show_default=True,
-    help="Whether to destroy the packetbeat service machine.",
+    "--services/--no-services",
+    default=None,
+    help="Whether to also destroy the services. [default: True if no instance is specified, False otherwise]",
 )
 @click.option(
-    "--elastic/--no-elastic",
-    default=False,
-    show_default=True,
-    help="Whether to destroy the ELK service machine.",
-)
-@click.option(
-    "--caldera/--no-caldera",
-    default=False,
-    show_default=True,
-    help="Whether to destroy the Caldera machine.",
-)
-@click.option(
-    "--guacamole/--no-guacamole",
-    default=False,
-    show_default=True,
-    help="Whether to destroy the Guacamole machine.",
-)
-@click.option(
-    "--moodle/--no-moodle",
-    default=False,
-    show_default=True,
-    help="Whether to destroy the Moodle machine.",
-)
-@click.option(
-    "--bastion_host/--no-bastion_host",
-    default=False,
-    show_default=True,
-    help="Whether to destroy the Bastion Host machine.",
+    "--service_image_list",
+    multiple=True,
+    default=['none'],
+    callback=split_services,
+    type=click.STRING,
+    help="List of service base images to destroy. Use 'all' for all services, or 'none' for no machines. [default: none]",
 )
 @click.option(
     "--instances", "-i", help="Range of instances to destroy.", type=NUMBER_RANGE
@@ -464,115 +476,85 @@ def deploy(ctx, images, instances, packetbeat_image, elastic_image, caldera_imag
     help="Force the destruction of instances without a confirmation prompt.",
     is_flag=True,
 )
-def destroy(ctx, machines, images, instances, packetbeat, elastic, caldera, guacamole, moodle, bastion_host, force):
-    """Delete and destroy all resources of the cyber range. 
+def destroy(ctx, images, services, service_image_list, instances, force):
+    """Delete and destroy resources in the cyber range. 
 
-    If instances are specified only destroys running guests for those instances.
-    Otherwise, destroys all running guests (if machines is true), and each specified service.
+    If instances are specified only destroys running guests for those
+    instances.
+
+    If no instances are specified, destroys all running guests (and
+    optionally the corresponding base images), plus all services if
+    the --services option is set.
+
+    Since service images can be shared between scenarios, they are
+    only removed if --images and --services is true, and explicitly
+    set with --service_image_list.
     """
 
+    if services is None:
+        # default: True if no instance is specified, False otherwise
+        services = not instances
+        
+    if instances:
+        if images or services or len(service_image_list) > 0:
+            raise click.BadParameter("Only running scenario guests can be destroyed when specifiying a list of instances.")
+    else:
+        if len(service_image_list) > 0 and (not services or not images):
+            raise click.BadParameter("Please make sure services and images are set to be destroyed, if specifying a list of service images to delete.")
+
     if not force:
-        confirm_machines(ctx, instances, guest_names=None, copies=None, action="Destroying")
-
-    if (instances and not machines):
-        raise TectonicException("If you specify a list of instances, machines must be true.")
-    if (instances and (images or caldera or elastic or packetbeat or moodle)):
-        raise TectonicException("You cannot specify a list of instances and image or service destruction at the same time.")
-
-    services = []
-    if packetbeat:
-        services.append("packetbeat")
-    if elastic:
-        services.append("elastic")
-    if caldera:
-        services.append("caldera")
-    if guacamole:
-        services.append("guacamole")
-    if moodle:
-        services.append("moodle")
-    if bastion_host:
-        services.append("bastion_host")
-
-    ctx.obj["core"].destroy(instances, machines, services, images)
+        if instances:
+            confirm_machines(ctx, instances, guest_names=None, copies=None, action="Destroying")
+        else:
+            message = "Destroying all machines on all instances"
+            if images:
+                message += " (and their base images)"
+            if services:
+                message += ", plus all running services"
+            if len(service_image_list) > 0:
+                message += f". Also, the following service images will be deleted: {", ".join(service_image_list)}"
+            message += "."
+            logger.info(message)
+            click.confirm("Continue?", abort=True)
+                            
+    ctx.obj["core"].destroy(instances, images, services, service_image_list)
 
 @tectonic.command()
 @click.pass_context
-@click.option(
-    "--packetbeat/--no-packetbeat",
-    default=True,
-    show_default=True,
-    help="Whether to create the base image for packetbeat.",
-)
-@click.option(
-    "--elastic/--no-elastic",
-    default=True,
-    show_default=True,
-    help="Whether to create the base image for Elastic.",
-)
-@click.option(
-    "--machines/--no-machines",
-    default=True,
-    show_default=True,
-    help="Whether to create the scenario base images.",
-)
-@click.option(
-    "--caldera/--no-caldera",
-    default=True,
-    show_default=True,
-    help="Whether to create the base image for Caldera.",
-)
-@click.option(
-    "--guacamole/--no-guacamole",
-    default=True,
-    show_default=True,
-    help="Whether to create the base image for Guacamole.",
-)
-@click.option(
-    "--moodle/--no-moodle",
-    default=True,
-    show_default=True,
-    help="Whether to create the base image for Moodle.",
-)
-@click.option(
-    "--bastion_host/--no-bastion_host",
-    default=True,
-    show_default=True,
-    help="Whether to create the base image for Bastion host.",
-)
 @click.option(
     "--guests",
     "-g",
     multiple=True,
     type=click.STRING,
-    help="Name of guests to list.",
+    callback=split_guests,
+    help="Guest or service names (repeatable or comma-separated) for which to create their base images. Use 'all' for all guests and services or 'none' for no machines. [default: only scenario guests]",
 )
-def create_images(ctx, packetbeat, elastic, caldera, guacamole, moodle, bastion_host, machines, guests):
-    """Create lab base images."""
-    ctx.obj["description"].parse_machines(instances=None, guests=guests, copies=None, only_instances=True)
-    _create_images(ctx, packetbeat, elastic, caldera, guacamole, moodle, bastion_host, machines, guests)
+@click.option(
+    "--force",
+    "-f",
+    help="Force the destruction of instances without a confirmation prompt.",
+    is_flag=True,
+)
+def create_images(ctx, guests, force):
+    """Create lab base images.
 
+    Note that existing images will be destroyed. No guests using these
+    images can be running.
 
-def _create_images(ctx, packetbeat, elastic, caldera, guacamole, moodle, bastion_host, machines, guests=None):
-    services = []
-    if elastic and ctx.obj["description"].elastic.enable:
-        services.append("elastic")
-    if packetbeat and ctx.obj["description"].packetbeat.enable:
-        services.append("packetbeat")
-    if caldera and ctx.obj["description"].caldera.enable:
-        services.append("caldera")
-    if guacamole and ctx.obj["description"].guacamole.enable:
-        services.append("guacamole")
-    if moodle and ctx.obj["description"].moodle.enable:
-        services.append("moodle")
-    if bastion_host and ctx.obj["description"].bastion_host.enable:
-        services.append("bastion_host")
-    if services:
-        click.echo("Creating services images ...")
-        ctx.obj["core"].create_services_images(services)
+    """
+    if guests is not None:
+        services = [service.base_name for _, service in ctx.obj["description"].services_guests.items() if service.base_name in guests]
+    else:
+        # Default is to not create service images
+        services = []
 
-    if machines:
-        click.echo("Creating base images...")
-        ctx.obj["core"].create_instances_images(guests)
+    scenario_guests = [guest.base_name for _, guest in ctx.obj["description"].scenario_guests.items() if guests is None or guest.base_name in guests]
+
+    if not force:
+        confirm_machines(ctx, instances=None, guest_names=guests, copies=None, action="Creating images for", print_instances=False)
+
+    ctx.obj["core"].create_services_images(services)
+    ctx.obj["core"].create_instances_images(scenario_guests)
 
 
 @tectonic.command(name="list")
@@ -581,12 +563,18 @@ def _create_images(ctx, packetbeat, elastic, caldera, guacamole, moodle, bastion
     "--instances", "-i", help="Range of instances to list.", type=NUMBER_RANGE
 )
 @click.option(
-    "--guests", "-g", help="Name of guests to list.", multiple=True, type=click.STRING
+    "--guests",
+    "-g",
+    multiple=True,
+    default=["all"],
+    type=click.STRING,
+    callback=split_guests,
+    help="Guest or service names (repeatable or comma-separated) to list. Use 'all' for all guests and services or 'none' for no machines. [default: all]",
 )
 @click.option("--copies", "-c", help="Number of copy to list.", type=NUMBER_RANGE)
 def list_instances(ctx, instances, guests, copies):
     """Print information and state of the cyber range resources."""
-    click.echo("Getting Cyber Range status...")
+    logger.info("Getting Cyber Range status...")
     result = ctx.obj["core"].list_instances(instances, guests, copies)
 
     if result.get("instances_info"):
@@ -594,22 +582,27 @@ def list_instances(ctx, instances, guests, copies):
         rows = []
         for machine, info in result.get("instances_info", []).items():
             rows.append([machine, info[0], info[1]])
-        click.echo(utils.create_table(headers,rows))
+        logger.info(utils.create_table(headers,rows))
 
     if result.get("services_status"):
         headers = ["Name", "Status"]
         rows = []
         for machine, status in result.get("services_status", []).items():
             rows.append([machine, status])
-        click.echo(utils.create_table(headers,rows))
-
+        logger.info(utils.create_table(headers,rows))
+        
 @tectonic.command()
 @click.pass_context
 @click.option(
     "--instances", "-i", help="Range of instances to start.", type=NUMBER_RANGE
 )
 @click.option(
-    "--guests", "-g", help="Name of guests to start.", multiple=True, type=click.STRING
+    "--guests",
+    "-g",
+    multiple=True,
+    type=click.STRING,
+    callback=split_guests,
+    help="Guest or service names (repeatable or comma-separated) to start. Use 'all' for all guests and services or 'none' for no machines. [default: all scenario guests]",
 )
 @click.option("--copies", "-c", help="Number of copy to start.", type=NUMBER_RANGE)
 @click.option(
@@ -618,17 +611,14 @@ def list_instances(ctx, instances, guests, copies):
     help="Force the start of instances without a confirmation prompt.",
     is_flag=True,
 )
-@click.option(
-    "--services",
-    "-s",
-    help="Start services components.",
-    is_flag=True,
-)
-def start(ctx, instances, guests, copies, force, services):
+def start(ctx, instances, guests, copies, force):
     """Start (boot up) machines in the cyber range."""
+    if guests is None:
+        guests = [guest.base_name for _, guest in ctx.obj["description"].scenario_guests.items()]
+
     if not force:
-        confirm_machines(ctx, instances, guests, copies, "Start")
-    ctx.obj["core"].start(instances, guests, copies, services)
+        confirm_machines(ctx, instances, guests, copies, "Starting")
+    ctx.obj["core"].start(instances, guests, copies)
 
 
 @tectonic.command()
@@ -639,9 +629,10 @@ def start(ctx, instances, guests, copies, force, services):
 @click.option(
     "--guests",
     "-g",
-    help="Name of guests to shutdown.",
     multiple=True,
     type=click.STRING,
+    callback=split_guests,
+    help="Guest or service names (repeatable or comma-separated) to shutdown. Use 'all' for all guests and services or 'none' for no machines. [default: all]",
 )
 @click.option(
     "--copies", "-c", help="Number of copy to shutdown.", multiple=True, type=click.INT
@@ -652,17 +643,14 @@ def start(ctx, instances, guests, copies, force, services):
     help="Force the shut down of instances without a confirmation prompt.",
     is_flag=True,
 )
-@click.option(
-    "--services",
-    "-s",
-    help="Shut down services components.",
-    is_flag=True,
-)
-def shutdown(ctx, instances, guests, copies, force, services):
+def shutdown(ctx, instances, guests, copies, force):
     """Shutdown machines in the cyber range."""
+    if guests is None:
+        guests = [guest.base_name for _, guest in ctx.obj["description"].scenario_guests.items()]
+
     if not force:
-        confirm_machines(ctx, instances, guests, copies, "Shut down")
-    ctx.obj["core"].stop(instances, guests, copies, services)
+        confirm_machines(ctx, instances, guests, copies, "Shuting down")
+    ctx.obj["core"].stop(instances, guests, copies)
 
 @tectonic.command()
 @click.pass_context
@@ -670,7 +658,12 @@ def shutdown(ctx, instances, guests, copies, force, services):
     "--instances", "-i", help="Range of instances to reboot.", type=NUMBER_RANGE
 )
 @click.option(
-    "--guests", "-g", help="Name of guests to reboot.", multiple=True, type=click.STRING
+    "--guests",
+    "-g",
+    multiple=True,
+    type=click.STRING,
+    callback=split_guests,
+    help="Guest or service names (repeatable or comma-separated) to reboot. Use 'all' for all guests and services or 'none' for no machines. [default: all scenario guests]",
 )
 @click.option("--copies", "-c", help="Number of copy to reboot.", type=NUMBER_RANGE)
 @click.option(
@@ -679,17 +672,14 @@ def shutdown(ctx, instances, guests, copies, force, services):
     help="Force the reboot of instances without a confirmation prompt.",
     is_flag=True,
 )
-@click.option(
-    "--services",
-    "-s",
-    help="Reboot services components.",
-    is_flag=True,
-)
-def reboot(ctx, instances, guests, copies, force, services):
+def reboot(ctx, instances, guests, copies, force):
     """Reboot machines in the cyber range."""
+    if guests is None:
+        guests = [guest.base_name for _, guest in ctx.obj["description"].scenario_guests.items()]
+
     if not force:
-        confirm_machines(ctx, instances, guests, copies, "Reboot")
-    ctx.obj["core"].restart(instances, guests, copies, services)
+        confirm_machines(ctx, instances, guests, copies, "Rebooting")
+    ctx.obj["core"].restart(instances, guests, copies)
 
 
 @tectonic.command()
@@ -698,7 +688,7 @@ def reboot(ctx, instances, guests, copies, force, services):
     "--instance", "-i", help="Number of instance to connect.", type=NUMBER_RANGE
 )
 @click.option(
-    "--guest", "-g", help="Name of guest to connect.", multiple=True, type=click.STRING
+    "--guest", "-g", help="Name of guest to connect.", type=click.STRING
 )
 @click.option("--copy", "-c", help="Number of copy to connect.", type=NUMBER_RANGE)
 @click.option(
@@ -709,6 +699,8 @@ def reboot(ctx, instances, guests, copies, force, services):
 )
 def console(ctx, instance, guest, copy, username):
     """Connect to a machine in the cyber range and get a console."""
+    if guest is not None:
+        guest = [guest]
     ctx.obj["core"].console(instance, guest, copy, username)
 
 
@@ -723,9 +715,10 @@ def console(ctx, instance, guest, copy, username):
 @click.option(
     "--guests",
     "-g",
-    help="Run ansible only on these guests with this base name.",
     multiple=True,
     type=click.STRING,
+    callback=split_guests,
+    help="Guest or service names (repeatable or comma-separated) to run ansible on. Use 'all' for all guests and services or 'none' for no machines. [default: all scenario guests]",
 )
 @click.option(
     "--copies",
@@ -752,10 +745,11 @@ def console(ctx, instance, guest, copy, username):
     is_flag=True,
 )
 def run_ansible(ctx, instances, guests, copies, username, playbook, force):
-    """Run an ansible playbook in the selected INSTANCE."""
-    ctx.obj["description"].parse_machines(
-        instances, guests, copies, only_instances=False
-    )
+    """Run an ansible playbook in the selected machines."""
+
+    if guests is None:
+        guests = [guest.base_name for _, guest in ctx.obj["description"].scenario_guests.items()]
+
     if not force:
         confirm_machines(ctx, instances, guests, copies, "Applying ansible playbook to")
     ctx.obj["core"].run_automation(instances, guests, copies, username, playbook)
@@ -779,15 +773,14 @@ def student_access(ctx, instances, force):
 
     Trainers users are created on all machines.
     """
-    click.echo("Configuring student access...")
+    logger.info("Configuring student access...")
     users = ctx.obj["core"].configure_access(instances)
 
     rows = []
     headers = ["Username", "Password"]
     for username, users in users.items():
         rows.append([username, users['password']])
-    table = utils.create_table(headers, rows)
-    click.echo(table)
+    logger.info(utils.create_table(headers,rows))
 
 @tectonic.command()
 @click.pass_context
@@ -796,7 +789,7 @@ def info(ctx):
     _info(ctx)
 
 def _info(ctx):
-    click.echo("Getting Cyber Range information...")
+    logger.info("Getting Cyber Range information...")
     result = ctx.obj["core"].info()
 
     if result.get("instances_info"):
@@ -804,25 +797,25 @@ def _info(ctx):
         rows = []
         for key, value in result.get("instances_info", []).items():
             rows.append([key, value])
-        click.echo(utils.create_table(headers,rows))
+        logger.info(utils.create_table(headers,rows))
 
     if result.get("services_info"):
         headers = ["Description", "Info"]
         rows = []
         for service, service_value in result.get("services_info", []).items():
             for key, value in service_value.items():
-                if key == "Credentials":
+                if key == "Credentials" and value:
                     for creds_key, creds_value in value.items():
                         rows.append([f"{service.capitalize()} {key}", f"{creds_key} {creds_value}"])
                 else:
                     rows.append([f"{service.capitalize()} {key}", value])
-        click.echo(utils.create_table(headers,rows))
+        logger.info(utils.create_table(headers,rows))
     if result.get("student_access_password"):
         headers = ["Username", "Password"]
         rows = []
         for key, value in result.get("student_access_password", {}).items():
             rows.append([key, value])
-        click.echo(utils.create_table(headers,rows))
+        logger.info(utils.create_table(headers,rows))
 
 @tectonic.command()
 @click.pass_context
@@ -832,9 +825,10 @@ def _info(ctx):
 @click.option(
     "--guests",
     "-g",
-    help="Name of guests to recreate.",
     multiple=True,
     type=click.STRING,
+    callback=split_guests,
+    help="Guest names (repeatable or comma-separated) to recreate. Use 'all' for all guests (but no services) or 'none' for no machines. [default: all scenario guests]",
 )
 @click.option(
     "--copies",
@@ -850,19 +844,15 @@ def _info(ctx):
 )
 def recreate(ctx, instances, guests, copies, force):
     """Recreate instances."""
+    if guests is None:
+        guests = [guest.base_name for _, guest in ctx.obj["description"].scenario_guests.items()]
+    if set(guests) & set([service.base_name for _, service in ctx.obj["description"].services_guests.items()]):
+        raise click.BadParameter("Services cannot be recreated.")
+    
     if not force:
-        confirm_machines(ctx, instances, guests, copies, "Recreate")
+        confirm_machines(ctx, instances, guests, copies, "Recreating")
     ctx.obj["core"].recreate(instances, guests, copies)
 
-if __name__ == "__main__":
-    obj = {}
-    try:
-        tectonic(obj)
-    except Exception as e:
-        if obj["debug"]:
-            traceback.print_exc()
-        else:
-            click.echo(f"Error: {e}")
 
 @tectonic.command()
 @click.pass_context
@@ -877,15 +867,25 @@ if __name__ == "__main__":
 )
 def show_parameters(ctx, instances, directory):
     """Generate parameters for instances"""
-    click.echo("Getting parameters")
+    logger.info("Getting parameters...")
     parameters = ctx.obj["core"].get_parameters(instances, directory)
     if directory:
-        click.echo(parameters)
+        logger.info(parameters)
     else:
         rows = []
         headers = ["Instances", "Parameters"]
         for instance, parameter in parameters.items():
             rows.append([instance, parameter])
-        table = utils.create_table(headers, rows)
-        click.echo(table)
+        logger.info(utils.create_table(headers, rows))
+        
 
+def main():
+    obj = {}
+    try:
+        tectonic.main(obj=obj)
+    except Exception as e:
+        logger.debug(traceback.format_exc())
+        if obj["config"].debug:
+            raise
+        else:
+            click.echo(str(e))

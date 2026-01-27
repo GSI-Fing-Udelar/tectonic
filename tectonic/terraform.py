@@ -120,8 +120,12 @@ class Terraform(ABC):
         Parameters:
             terraform_dir (str): path to the terraform module.
             variables (dict): variables of the terraform module.
-            resources (list(str)): name of terraform resources for target destroy. Default: None.
+            resources (list(str)): name of terraform resources for target destroy. Default: None (deletes everything). 
         """
+        if resources is not None and len(resources) == 0:
+            # Do nothing
+            return
+
         t = python_terraform.Terraform(working_dir=terraform_dir)
         self._run_terraform_cmd(t, "init", [], reconfigure=python_terraform.IsFlagged, backend_config=self._generate_backend_config(terraform_dir))
         self._run_terraform_cmd(t, "destroy", variables, auto_approve=True, input=False, target=resources)

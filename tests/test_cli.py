@@ -160,8 +160,7 @@ def test_deploy_images(mock_core, runner, base_cli_args,  mock_ctx):
     mock_ctx["core"].deploy.assert_called_once()
     
     
-
-
+# TODO: Test destroy command option combinations
 
 @patch("tectonic.cli.Core")
 def test_destroy_invalid(mock_core, runner, base_cli_args,  mock_ctx):
@@ -229,3 +228,4 @@ def test_cli_invalid_default_pubkey(mock_core, mock_desc, monkeypatch, runner, m
     assert result.exit_code == 0
     mock_ctx["core"].info.assert_called_once()
     
+

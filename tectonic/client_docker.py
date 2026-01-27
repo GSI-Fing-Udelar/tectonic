@@ -20,6 +20,7 @@
 
 from tectonic.client import Client, ClientException
 
+import logging
 import docker
 import subprocess
 from ipaddress import ip_network, ip_address
@@ -53,6 +54,8 @@ class ClientDocker(Client):
             description (Description): Tectonic description object.
         """
         super().__init__(config, description)
+        logging.getLogger("docker").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
         try:
             self.connection = docker.DockerClient(base_url=config.docker.uri)
         except Exception as e:
