@@ -75,7 +75,7 @@ class NumberRangeParamType(click.ParamType):
             max_instances = ctx.obj["description"].instance_number
             if max(values or [], default=0) > max_instances:
                 if max_instances > 1:
-                    self.fail("Instances must be in the range from 1 to {max_instances}.")
+                    self.fail(f"Instances must be in the range from 1 to {max_instances}.")
                 else:
                     self.fail("Scenario has only one instance.")
             return sorted(set(values))
@@ -254,7 +254,9 @@ class ClickEchoHandler(logging.Handler):
             msg = self.format(record)
 
             if record.levelno >= logging.ERROR:
-                click.echo(msg, err=True)
+                click.secho(msg, err=True, fg='red')
+            elif record.levelno >= logging.INFO:
+                click.secho(msg, err=True, fg='blue')
             else:
                 click.echo(msg)
 
@@ -264,13 +266,14 @@ class ClickEchoHandler(logging.Handler):
 def init_logging(logfile, loglevel):
     logger.setLevel(logging.DEBUG)
 
-    console_handler = ClickEchoHandler()
-    console_handler.setLevel(loglevel)
-    # console_handler.setFormatter(formatter)
-
     formatter = logging.Formatter(
         "%(asctime)s [%(levelname)s]: %(message)s"
     )
+
+    console_handler = ClickEchoHandler()
+    console_handler.setLevel(loglevel)
+    console_handler.setFormatter(formatter)
+
     file_handler = logging.FileHandler(logfile, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)

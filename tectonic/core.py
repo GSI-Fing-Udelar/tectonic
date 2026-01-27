@@ -81,17 +81,6 @@ class Core:
             raise CoreException("Unknown platform.")
         self.ansible = Ansible(self.config, self.description, self.client)
 
-
-        # TODO: remove
-        # class NoOp:
-        #     def __getattr__(self, name):
-        #         return lambda *args, **kwargs: None
-
-        # self.terraform = NoOp()
-        # self.client = NoOp()
-        # self.packer = NoOp()
-        # self.terraform_service = NoOp()
-        # self.ansible = NoOp()
         
     # def __del__(self):
     #     del self.terraform_service
