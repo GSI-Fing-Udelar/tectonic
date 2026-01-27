@@ -126,9 +126,11 @@ class Core:
             for _, service in self.description.services_guests.items():
                 for _, interface in service.interfaces.items():
                     self.client.create_nwfilter(f"{service.name}-{interface.network.name}", interface.private_ip, interface.traffic_rules)
+            machines_to_create_nwfilter = self.description.parse_machines(instances)
             for _, guest in self.description.scenario_guests.items():
-                for _, interface in guest.interfaces.items():
-                    self.client.create_nwfilter(f"{guest.name}-{interface.network.name}", interface.private_ip, interface.traffic_rules)
+                if guest.name in machines_to_create_nwfilter:
+                    for _, interface in guest.interfaces.items():
+                        self.client.create_nwfilter(f"{guest.name}-{interface.network.name}", interface.private_ip, interface.traffic_rules)
 
         self.terraform_service.deploy(instances)
 
@@ -166,12 +168,15 @@ class Core:
         self.terraform_service.destroy(instances)
 
         if self.config.routing and self.config.platform == "libvirt":
-            for _, service in self.description.services_guests.items():
-                for _, interface in service.interfaces.items():
-                    self.client.destroy_nwfilter(f"{service.name}-{interface.network.name}")
+            if instances == None:
+                for _, service in self.description.services_guests.items():
+                    for _, interface in service.interfaces.items():
+                        self.client.destroy_nwfilter(f"{service.name}-{interface.network.name}")
+            machines_to_delete_nwfilter = self.description.parse_machines(instances)
             for _, guest in self.description.scenario_guests.items():
-                for _, interface in guest.interfaces.items():
-                    self.client.destroy_nwfilter(f"{guest.name}-{interface.network.name}")
+                if guest.name in machines_to_delete_nwfilter:
+                    for _, interface in guest.interfaces.items():
+                        self.client.destroy_nwfilter(f"{guest.name}-{interface.network.name}")
         
         if instances is None:
             # Destroy Packetbeat
