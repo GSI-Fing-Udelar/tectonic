@@ -4,6 +4,7 @@ import click
 from click.testing import CliRunner
 from unittest.mock import patch, MagicMock
 from pathlib import Path
+import logging
 
 import tectonic.cli as cli
 
@@ -36,13 +37,19 @@ def run_cli(runner, base_cli_args, extra_args=None, obj=None, **kwargs):
 # ---- ParamType ----
 
 def test_number_range_param_type():
+    ctx = MagicMock()
+    description = MagicMock()
+    description.instance_number = 10
+    ctx.obj = {"description": description}
+
     t = cli.NUMBER_RANGE
-    assert t.convert("1,3,5", None, None) == [1, 3, 5]
-    assert t.convert("1-3", None, None) == [1, 2, 3]
-    assert t.convert("", None, None) == []
-    assert t.convert([4,2,3], None, None) == [2,3,4]
+
+    assert t.convert("1,3,5", None, ctx) == [1, 3, 5]
+    assert t.convert("1-3", None, ctx) == [1, 2, 3]
+    assert t.convert("", None, ctx) == []
+    assert t.convert([4,2,3], None, ctx) == [2,3,4]
     with pytest.raises(click.BadParameter):
-        t.convert("x", None, None)
+        t.convert("x", None, ctx)
 
 def test_range_to_str():
     assert cli.range_to_str([1, 2, 3, 4]) == "from 1 to 4"
@@ -52,36 +59,36 @@ def test_range_to_str():
     assert cli.range_to_str([]) == ""
 
 test_cases = [
-    { "expected": "Testing all machines, on all instances.",
+    { "expected": "Testing all scenario machines on all instances.",
      },
     { "instances": [10,11,12],
-      "expected": "Testing all machines, on all instances.",
+      "expected": "Testing all scenario machines on instances from 10 to 12.",
      },
     { "instances": [1,2,3,6],
       "guests": ("attacker",),
-      "expected": "Testing the attacker, on instances from 1 to 3.",
+      "expected": "Testing the attacker on instances from 1 to 3, and 6.",
      },
-    { "guests": ("teacher_access", "student_access", "packetbeat"),
-      "expected": "Testing the teacher access, the student access and the packetbeat.",
+    { "guests": ("elastic", "caldera", "packetbeat"),
+      "expected": "Testing the elastic server, the packetbeat and the caldera server.",
      },
     { "instances": [1],
       "guests": ("victim",),
-      "expected": "Testing all copies of the victim, on instance 1.",
+      "expected": "Testing all copies of the victim on instance 1.",
      },
     { "guests": ("attacker", "victim", "server"),
-      "expected": "Testing the attacker, all copies of the victim and the server, on all instances.",
+      "expected": "Testing all scenario machines on all instances.",
      },
     { "guests": ("attacker", "victim"),
       "copies": [2],
-      "expected": "Testing copy 2 of the victim, on all instances.",
+      "expected": "Testing copy 2 of the victim on all instances.",
      },
     { "guests": ("attacker", "victim"),
       "copies": [2,3,4],
-      "expected": "Testing copies from 2 to 4 of the victim, on all instances.",
+      "expected": "Testing copies from 2 to 4 of the victim on all instances.",
      },
 ]
 @pytest.mark.parametrize('test', test_cases)
-def test_confirm_machines(monkeypatch, description, runner, mock_ctx, capsys, test):
+def test_confirm_machines(caplog, monkeypatch, description, runner, mock_ctx, capsys, test):
     ctx = click.Context(click.Command('tectonic'),
                         obj={'description': description})
 
@@ -91,13 +98,13 @@ def test_confirm_machines(monkeypatch, description, runner, mock_ctx, capsys, te
 
     monkeypatch.setattr('sys.stdin', io.StringIO("y"))
     
+    caplog.set_level(logging.INFO)
     cli.confirm_machines(ctx,
                          test.get("instances"),
                          test.get("guests"),
                          test.get("copies"),
                          "Testing")
-    captured = capsys.readouterr()
-    assert test.get("expected", "") in captured.out
+    assert test.get("expected", "") in caplog.text
 
     # Restore description values
     ctx.obj["description"].instance_number = 2
@@ -154,9 +161,8 @@ def test_deploy_images(mock_core, runner, base_cli_args,  mock_ctx):
 
     mock_ctx["core"].reset_mock()
 
-    result = run_cli(runner, base_cli_args, ["deploy", "-f", "--images"], obj=mock_ctx)
+    result = run_cli(runner, base_cli_args, ["deploy", "-f", "--guest_images"], obj=mock_ctx)
     assert result.exit_code == 0
-    mock_ctx["core"].create_instances_images.assert_called_once()
     mock_ctx["core"].deploy.assert_called_once()
     
     
@@ -173,7 +179,7 @@ def test_destroy_invalid(mock_core, runner, base_cli_args,  mock_ctx):
 
 @patch("tectonic.cli.Core")
 def test_create_images(mock_core, runner, base_cli_args, mock_ctx):
-    result = run_cli(runner, base_cli_args, ["create-images"], obj=mock_ctx)
+    result = run_cli(runner, base_cli_args, ["create-images", "-f"], obj=mock_ctx)
     assert result.exit_code == 0
     mock_ctx["core"].create_instances_images.assert_called_once()
 

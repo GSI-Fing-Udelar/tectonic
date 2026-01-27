@@ -265,7 +265,9 @@ class TerraformService(Terraform):
             resources_to_destroy = None
         else:
             resources_to_destroy = self._get_resources_to_target_destroy(instances)
-        self._destroy(self.terraform_services_module, self._get_terraform_variables(), resources_to_destroy)
+
+        if resources_to_destroy is None or len(resources_to_destroy) > 0: 
+            self._destroy(self.terraform_services_module, self._get_terraform_variables(), resources_to_destroy)
 
     def recreate(self, instances, guests, copies): 
         """

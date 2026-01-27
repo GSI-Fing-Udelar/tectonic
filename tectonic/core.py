@@ -83,15 +83,15 @@ class Core:
 
 
         # TODO: remove
-        class NoOp:
-            def __getattr__(self, name):
-                return lambda *args, **kwargs: None
+        # class NoOp:
+        #     def __getattr__(self, name):
+        #         return lambda *args, **kwargs: None
 
-        self.terraform = NoOp()
-        self.client = NoOp()
-        self.packer = NoOp()
-        self.terraform_service = NoOp()
-        self.ansible = NoOp()
+        # self.terraform = NoOp()
+        # self.client = NoOp()
+        # self.packer = NoOp()
+        # self.terraform_service = NoOp()
+        # self.ansible = NoOp()
         
     # def __del__(self):
     #     del self.terraform_service
@@ -338,7 +338,9 @@ class Core:
                 ip = self.client.get_machine_private_ip(machine)
             instances_info[machine] = [ip, status]
 
-        services_to_list = self.description.parse_machines(instances, guests, copies, False, [guest.base_name for _, guest in self.description.scenario_guests.items()])
+        services_to_list = set(guests)-set([guest.base_name for _, guest in self.description.scenario_guests.items()])
+        services_to_list = self.description.parse_machines(None, services_to_list, None, False)
+
         services_status = {}
         for service_name in services_to_list:
             services_status[service_name] = self.client.get_machine_status(service_name)

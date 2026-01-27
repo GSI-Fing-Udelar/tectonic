@@ -248,10 +248,23 @@ def confirm_machines(ctx, instances, guest_names, copies, action, print_instance
         raise click.Abort()
 
 
+class ClickEchoHandler(logging.Handler):
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+
+            if record.levelno >= logging.ERROR:
+                click.echo(msg, err=True)
+            else:
+                click.echo(msg)
+
+        except Exception:
+            self.handleError(record)
+
 def init_logging(logfile, loglevel):
     logger.setLevel(logging.DEBUG)
 
-    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler = ClickEchoHandler()
     console_handler.setLevel(loglevel)
     # console_handler.setFormatter(formatter)
 
@@ -443,7 +456,7 @@ def deploy(ctx, guest_images, instances, service_image_list, force):
         confirm_machines(ctx, instances, guest_names=None, copies=None, action="Deploying")
 
     ctx.obj["core"].deploy(instances, guest_images, service_image_list)
-    _info(ctx)
+    # _info(ctx)
 
 
 @tectonic.command()
@@ -889,3 +902,4 @@ def main():
             raise
         else:
             click.echo(str(e))
+        
