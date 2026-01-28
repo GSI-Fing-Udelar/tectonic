@@ -129,6 +129,7 @@ resource "libvirt_domain" "machines" {
 
   xml {
     xslt = templatefile("${path.module}/xslt/main.xslt.tpl", {
+      enable_filters = local.tectonic.config.routing
       nw_filter_path = "${abspath("${path.module}/xslt/nw_filter.xslt")}"
       custom_path = "${abspath(lookup(each.value, "advanced_options_file", "/dev/null"))}"
     })

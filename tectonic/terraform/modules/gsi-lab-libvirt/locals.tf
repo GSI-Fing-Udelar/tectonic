@@ -39,9 +39,6 @@ locals {
           cidrhost(local.tectonic.config.platforms.libvirt.external_network, local.tectonic.config.platforms.libvirt.bridge_base_ip+g.entry_point_index), 
           split("/", local.tectonic.config.platforms.libvirt.external_network)[1]
         ),
-        "    routes:",
-        "      - to: 0.0.0.0/0", # TODO: set correct route
-        format("        via: %s", cidrhost(local.tectonic.config.platforms.libvirt.external_network, 1)),
       ] : [],
       g.internet_access ?
       [

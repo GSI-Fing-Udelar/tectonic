@@ -97,6 +97,9 @@ resource "libvirt_domain" "machines" {
   autostart = true
 
   xml {
-    xslt = file("${path.module}/xslt/nw_filter.xslt")
+    xslt = templatefile("${path.module}/xslt/main.xslt.tpl", {
+      enable_filters = local.tectonic.config.routing
+      nw_filter_path = "${abspath("${path.module}/xslt/nw_filter.xslt")}"
+    })
   }
 }

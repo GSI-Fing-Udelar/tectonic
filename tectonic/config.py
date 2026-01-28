@@ -241,7 +241,7 @@ class TectonicConfig(object):
     @routing.setter
     def routing(self, value):
         validate.boolean("routing", value)
-        self._routing = value
+        self._routing = self.platform == "aws" or value
 
     @classmethod
     def _assign_attributes(cls, config_obj, config_parser, section):

@@ -9,9 +9,5 @@
     %{ if enable_filters }
     <xsl:include href="${nw_filter_path}"/>
     %{ endif }
-
-    %{ if custom_path != "/dev/null" }
-    <xsl:include href="${custom_path}"/>
-    %{ endif }
     
 </xsl:stylesheet>
