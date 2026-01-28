@@ -24,7 +24,7 @@ resource "docker_network" "subnets" {
 
   name = "${each.key}"
   driver = "bridge"
-  internal = false #true
+  internal = true
   ipam_config {
     subnet = lookup(each.value, "ip_network")
   }
@@ -56,6 +56,13 @@ resource "docker_container" "machines" {
   privileged = true
   
   network_mode = "bridge"
+
+  dynamic "networks_advanced" { 
+    for_each = each.value.internet_access ? ["internet-nic"] : []
+    content { 
+      name = "${local.tectonic.institution}-${local.tectonic.lab_name}-internet"
+    }
+  }
 
   dynamic "networks_advanced" {
     for_each = each.value.interfaces

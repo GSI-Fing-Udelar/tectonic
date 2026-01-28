@@ -27,7 +27,7 @@ resource "docker_network" "subnets" {
 
   name = "${each.key}"
   driver = "bridge"
-  internal = false # "${lookup(each.value, "mode")}" != "nat"
+  internal = false # The correct approach would be to use the following: "${lookup(each.value, "mode")}" != "nat" so that only the internet network has internet access. But port forwarding does not work with internal networks. Therefore, the service network cannot be internal.
   ipam_config {
     subnet = lookup(each.value, "cidr")
   }
