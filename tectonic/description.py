@@ -510,8 +510,6 @@ class NetworkInterface():
                 base += 1
             if guest.internet_access:
                 base += 1
-        elif description.config.platform == "aws":
-            base = -1
         return base
 
     def _get_guest_ip_address(self, guest, network):
@@ -770,7 +768,7 @@ class ElasticDescription(ServiceDescription):
     supported_monitor_types = ["traffic", "endpoint"]
 
     def __init__(self, description):
-        super().__init__(description, "elastic", "rocky9", True)
+        super().__init__(description, "elastic", "rocky9", description.config.platform == "aws")
         self.memory = 8192
         self.vcpu = 4
         self.disk = 50
@@ -1551,7 +1549,7 @@ class Description:
         for instance_num in range(1, self.instance_number + 1):
             for base_name, base_guest in self.base_guests.items():
                 for copy in range(1, base_guest.copies+1):
-                    is_in_services_network = (
+                    is_in_services_network = not self.config.routing and (
                         (
                             self.elastic.enable and self.elastic.monitor_type == "endpoint" and base_guest.monitor
                         ) or (
