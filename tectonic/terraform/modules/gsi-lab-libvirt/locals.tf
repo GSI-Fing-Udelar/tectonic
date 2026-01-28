@@ -32,27 +32,72 @@ locals {
   # the necessary internal interfaces with dhcp.
   network_config = { for k, g in local.guest_data :
     k => join("\n", flatten(["version: 2", "ethernets:",
-      g.entry_point && local.tectonic.enable_ssh_access ? [
-	format("  %s%s:", local.os_data[g.base_os]["interface_base_name"], local.os_data[g.base_os]["interface_base_name"] == "eth" ? 0 : 3 ), 
-	format("    addresses: [%s/%s]", cidrhost(local.tectonic.config.platforms.libvirt.external_network, local.tectonic.config.platforms.libvirt.bridge_base_ip+g.entry_point_index), split("/", local.tectonic.config.platforms.libvirt.external_network)[1]),
-  "    routes:",
-  "      - to: 0.0.0.0/0",
-  format("        via: %s", cidrhost(local.tectonic.config.platforms.libvirt.external_network, 1)),
+      g.entry_point && local.tectonic.enable_ssh_access ? 
+      [
+	      format("  %s%s:", local.os_data[g.base_os]["interface_base_name"], local.os_data[g.base_os]["interface_base_name"] == "eth" ? 0 : 3 ), 
+	      format("    addresses: [%s/%s]", 
+          cidrhost(local.tectonic.config.platforms.libvirt.external_network, local.tectonic.config.platforms.libvirt.bridge_base_ip+g.entry_point_index), 
+          split("/", local.tectonic.config.platforms.libvirt.external_network)[1]
+        ),
+        "    routes:",
+        "      - to: 0.0.0.0/0", # TODO: set correct route
+        format("        via: %s", cidrhost(local.tectonic.config.platforms.libvirt.external_network, 1)),
       ] : [],
-      g.is_in_services_network ? [
-  format("  %s%s:", local.os_data[g.base_os]["interface_base_name"], g.entry_point && local.tectonic.enable_ssh_access ? (local.os_data[g.base_os]["interface_base_name"] == "eth" ? 1 : 4) : (local.os_data[g.base_os]["interface_base_name"] == "eth" ? 0 : 3)),
-	format("    addresses: [%s/%s]", cidrhost(local.tectonic.config.services_network_cidr_block, local.tectonic.config.services_network_cidr_block_base_ip+g.services_network_index), split("/", local.tectonic.config.services_network_cidr_block)[1])
+      g.internet_access ?
+      [
+	      format("  %s%s:", local.os_data[g.base_os]["interface_base_name"], 
+        g.entry_point && local.tectonic.enable_ssh_access 
+        ? 
+          (local.os_data[g.base_os]["interface_base_name"] == "eth" ? 1 : 4)
+        : 
+          (local.os_data[g.base_os]["interface_base_name"] == "eth" ? 0 : 3)
+        ), 
+        "    dhcp4: yes",
+        "    dhcp4-overrides:",
+        "      use-routes: false",
+        "    routes:",
+        "      - to: 0.0.0.0/0",
+        format("        via: %s", cidrhost(local.tectonic.config.internet_network_cidr_block, 1)),
+      ] : [],
+      g.is_in_services_network ?
+      [
+        format("  %s%s:", local.os_data[g.base_os]["interface_base_name"], 
+        g.entry_point && local.tectonic.enable_ssh_access 
+        ? 
+          (
+            g.internet_access
+            ?
+              (local.os_data[g.base_os]["interface_base_name"] == "eth" ? 2 : 5)
+            :
+              (local.os_data[g.base_os]["interface_base_name"] == "eth" ? 1 : 4)
+          ) 
+        : 
+          (
+            g.internet_access
+            ?
+              (local.os_data[g.base_os]["interface_base_name"] == "eth" ? 1 : 4)
+            :
+              (local.os_data[g.base_os]["interface_base_name"] == "eth" ? 0 : 3)
+          )
+        ),
+        "    dhcp4: yes",
+        "    dhcp4-overrides:",
+        "      use-routes: false",
+        "    routes:",
+        format("      - to: %s", local.tectonic.config.services_network_cidr_block),
+        format("        via: %s", cidrhost(local.tectonic.config.services_network_cidr_block, 1)),
       ] : [],
       [ for interface in g.interfaces:
-	[ format("  %s%s:", local.os_data[g.base_os]["interface_base_name"], interface.index),
-	  "    dhcp4: yes",
-    "    dhcp4-overrides:",
-    "      use-routes: false",
-    "    routes:",
-    format("      - to: %s", local.tectonic.config.network_cidr_block),
-    format("        via: %s", cidrhost(interface.subnetwork_cidr,1)),
-	]
-      ]]))
+        [ format("  %s%s:", local.os_data[g.base_os]["interface_base_name"], interface.index),
+          "    dhcp4: yes",
+          "    dhcp4-overrides:",
+          "      use-routes: false",
+          "    routes:",
+          format("      - to: %s", local.tectonic.config.network_cidr_block),
+          format("        via: %s", cidrhost(interface.subnetwork_cidr,1)),
+        ]
+      ]
+    ]))
   }
 
 

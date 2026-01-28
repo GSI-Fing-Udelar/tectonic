@@ -79,6 +79,13 @@ resource "libvirt_domain" "machines" {
   }
 
   dynamic "network_interface" { 
+    for_each = each.value.internet_access ? ["internet-nic"] : []
+    content { 
+      network_name = "${local.tectonic.institution}-${local.tectonic.lab_name}-internet"
+    }
+  }
+
+  dynamic "network_interface" { 
     for_each = each.value.is_in_services_network ? ["services-nic"] : []
     content { 
       network_name = "${local.tectonic.institution}-${local.tectonic.lab_name}-services"

@@ -508,6 +508,8 @@ class NetworkInterface():
                 base += 1
             if guest.entry_point and description.enable_ssh_access:
                 base += 1
+            if guest.internet_access:
+                base += 1
         elif description.config.platform == "aws":
             base = -1
         return base
@@ -649,6 +651,7 @@ class GuestDescription(BaseGuestDescription):
         result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
         result["entry_point_index"] = self.entry_point_index
         result["advanced_options_file"] = self.advanced_options_file
+        result["services_network_index"] = self.services_network_index
         return result
 
 class ServiceDescription(MachineDescription):
@@ -923,7 +926,7 @@ class MoodleDescription(ServiceDescription):
 
 class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
-        super().__init__(description, "bastion_host", "ubuntu22", True)
+        super().__init__(description, "bastion_host", "ubuntu22", description.config.platform == "aws")
         self.ports = {
             "guacamole": description.config.guacamole.external_port
         }
@@ -979,7 +982,7 @@ class BastionHostDescription(ServiceDescription):
 
 class TeacherAccessHostDescription(ServiceDescription):
     def __init__(self, description):
-        super().__init__(description, "teacher_access_host", "ubuntu22", True)
+        super().__init__(description, "teacher_access_host", "ubuntu22", description.config.platform == "aws")
         self.memory = 512
         self.vcpu = 1
         self.disk = 10
@@ -1548,7 +1551,7 @@ class Description:
         for instance_num in range(1, self.instance_number + 1):
             for base_name, base_guest in self.base_guests.items():
                 for copy in range(1, base_guest.copies+1):
-                    is_in_services_network = not self.config.routing and (
+                    is_in_services_network = (
                         (
                             self.elastic.enable and self.elastic.monitor_type == "endpoint" and base_guest.monitor
                         ) or (

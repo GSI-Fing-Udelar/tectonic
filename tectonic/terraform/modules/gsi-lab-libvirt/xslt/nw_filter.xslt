@@ -8,7 +8,7 @@
         <!-- Get vm name -->
         <xsl:variable name="vm_name" select="/domain/name"/>
         <!-- Attach nw filter -->
-        <xsl:if test="not(contains($network_name, 'external'))">
+        <xsl:if test="not(contains($network_name, 'external') or contains($network_name, 'internet') or contains($network_name, 'services'))">
             <filterref filter="{$vm_name}-{$network_name}"/>
         </xsl:if>
     </xsl:copy>

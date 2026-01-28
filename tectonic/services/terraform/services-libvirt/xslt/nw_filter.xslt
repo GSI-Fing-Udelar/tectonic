@@ -14,9 +14,7 @@
             <!-- Get vm name -->
             <xsl:variable name="vm_name" select="/domain/name"/>
             <!-- Attach nw filter -->
-            <xsl:if test="not(contains($network_name, 'external'))">
-                <filterref filter="{$vm_name}-{$network_name}"/>
-            </xsl:if>
+            <filterref filter="{$vm_name}-{$network_name}"/>
         </xsl:copy>
     </xsl:template>
     
