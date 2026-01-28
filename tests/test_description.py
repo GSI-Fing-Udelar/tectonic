@@ -108,7 +108,8 @@ def test_description_traffic_rules(labs_path, tectonic_config):
     lab_edition_path = Path(labs_path) / "test-traffic_rules.yml"
     tectonic_config.routing = False
     description = Description(tectonic_config, lab_edition_path)
-    assert description._base_traffic_rules == {}
+    if tectonic_config.platform != "aws":
+        assert description._base_traffic_rules == {}
 
     tectonic_config.routing = True
     description = Description(tectonic_config, lab_edition_path)

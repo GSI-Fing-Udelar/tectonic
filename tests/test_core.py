@@ -120,13 +120,12 @@ def test_destroy(core):
     core.packer.destroy_service_image = MagicMock()
     core.description.elastic.enable = True
     core.description.elastic.monitor_type = "traffic"
-    core.description._base_guests = {"guest": MagicMock(base_name="g", entry_point=True)}
+    core.description._base_guests = {"guest": MagicMock(base_name="g", entry_point=True, copies=1, os="ubuntu22", memory=512, disk=10, cpu=1, gpu=False, internet_access=False, gui=False, monitor=False, red_team_agent=False, blue_team_agent=False)}
     core.description.caldera.enable = True
     core.description.guacamole.enable = True
     core.description.moodle.enable = True
     core.description.bastion_host.enable = True
     core.client.destroy_nwfilter = MagicMock()
-
 
     core.destroy(None, True, ["svc"], True)
 
