@@ -45,7 +45,7 @@ The scenario description is a YAML file with the following sections:
     attribute mentioned above.
   + `internet_access`: Whether the guest has internet access. Note
     that this might be expensive on AWS, since a NAT gateway is
-    deployed in the lab VPC. Default: `no`.
+    deployed in the lab VPC. Default: `no`. It only works on AWS and Libvirt.
   + `copies`: The number of copies of this guest to deploy in each
     instance. Default: `1`.
   + `monitor`: Whether to monitor this guest using [Elastic Security](https://www.elastic.co/security). This option is ignored if `elastic_settings.enable` is `no`. Note that in AWS if this is `yes` and `elastic_settings.monitor_type` is `traffic`, the deployed instance type is selected from the `T3` instances, instead of `T2`. Default: `no`.

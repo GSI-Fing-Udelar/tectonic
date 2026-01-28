@@ -72,18 +72,25 @@ locate scenario instances, and are by default assigned networks in the
 range `10.0.0.0/24` which is unused by instances.
 
 
+### Routing
+The `routing` option in the tectonic.ini file controls whether routing exists between networks. 
+
+By default, `routing: no`. In this case, network traffic will be blocked between different subnetworks (either within the same instance or to other instances). All traffic within a subnetwork will be allowed. In other words, for two machines to be able to communicate they must be on the same subnetwork.
+
+If `routing: yes`, the enabled traffic depends on the rules specified in `traffic_rules` section. If no rules are specified, 
+then only traffic within the same subnet is allowed, and all other traffic is denied (similar to the previous case). Otherwise, traffic is enabled according to the rules specified in the scenario description. With routing enabled and the correct traffic rules, it is possible for two machines on the same instance to communicate even though they are on different subnetworks.
+
+The `routing` option has the following behavior:
+  - In Docker it always has the value `no`. Therefore, routing is not possible on this platform.
+  - In Libvirt it can take the value `yes` or `no`, at the user's discretion.
+  - In AWS it always has the value `yes`.
+
 ### Traffic
-The `routing` option in the tectonic.ini file controls whether routing exists between networks. Additionally, the `traffic_rules` section of the scenario description allows you to define rules for permitted traffic between guests within the scenario.
-
-By default, `routing: no`, meaning there is no routing between the networks of an instance. In this case, etwork traffic will be blocked between different subnetworks (either within the same instance or to other instances). All traffic within a subnetwork will be allowed.
-
-If `routing: yes`, the enabled traffic depends on the rules specified in `traffic_rules` section. If no rules are specified, then all traffic within the same subnetwork is allowed (similar to the previous case). Otherwise, traffic is enabled according to the rules specified in the scenario description.
-
-The `routing` option and `traffic_rules` only take effect when deployed on the AWS or Libvirt platform.
-
-#### Internet traffic
-In the case of AWS, a machine may have internet access if the `internet_access: yes` 
-option is set in the description at the guest level.
+The traffic in a scenario follows these rules:
+ - Traffic is allowed from the service network to the guests in the scenario and vice versa. This will depend on the deployed services and guest configuration options such as `monitor`, `red_team_agent`, `blue_team_agent`, among others.
+ - Traffic between guests on the same instance is permitted. This traffic depends on rules specified in the `traffic_rules` section; if this section is omitted, only traffic within the same subnet is allowed.
+ - Internet access is permitted for some services or guests. For guests, it is enabled with the `internet_access` option.
+ - All other traffic is denied.
 
 #### Services traffic
 Regarding services, the following traffic is allowed.
@@ -93,13 +100,19 @@ Regarding services, the following traffic is allowed.
 - The `elastic` server has internet access.
 - The `bastion_host` has access to `elastic` on port 5601/tcp.
 
+If `routing: no`, then in order for guests to reach Elastic, it is necessary that the guests have an interface on the services network (`services_network_cidr_block`).
+
 ##### Caldera
 - Guests hace accesso to `caldera` on ports 443/tcp, 7010/tcp, 7011/udp if the `red_team_agent: yes` and/or `blue_team_agent: yes` options are set in the guest description.
 - The `bastion_host` has access to `caldera` on port 8443/tcp.
 
+If `routing: no`, then in order for guests to reach Caldera, it is necessary that the guests have an interface on the services network (`services_network_cidr_block`).
+
 ##### Guacamole
 - `Guacamole` has access to guests on ports 22/tcp (SSH) and 3389/tcp (RDP).
 - The `bastion_host` has access to `guacamole` on port 10443/tcp.
+
+If `routing: no`, then in order for Guacamole to reach guests, it is necessary that the guests have an interface on the services network (`services_network_cidr_block`).
 
 ##### Moodle
 - The `bastion_host` has access to `moodle` on port 443/tcp.
