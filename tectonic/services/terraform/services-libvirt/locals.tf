@@ -27,14 +27,15 @@ locals {
   network_config = { for k, g in local.guest_data :
     k => join("\n", flatten(["version: 2", "ethernets:",
       [ for interface in g.interfaces:
-	[ format("  %s%s:", local.os_data[g.base_os]["interface_base_name"], interface.index),
-	  "    dhcp4: yes",
-    "    dhcp4-overrides:",
-    "      use-routes: false",
-    "    routes:",
-    format("      - to: %s", interface.subnetwork_base_name == "internet" ? "0.0.0.0/0" : local.tectonic.config.network_cidr_block),
-    format("        via: %s", cidrhost(interface.subnetwork_cidr, 1)),
-	]
-      ]]))
+        [ format("  %s%s:", local.os_data[g.base_os]["interface_base_name"], interface.index),
+          "    dhcp4: yes",
+          "    dhcp4-overrides:",
+          "      use-routes: false",
+          "    routes:",
+          format("      - to: %s", interface.subnetwork_base_name == "internet" ? "0.0.0.0/0" : local.tectonic.config.network_cidr_block),
+          format("        via: %s", cidrhost(interface.subnetwork_cidr, 1)),
+        ]
+      ]
+    ]))
   }
 }

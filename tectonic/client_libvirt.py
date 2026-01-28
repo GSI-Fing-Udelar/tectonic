@@ -115,7 +115,9 @@ class ClientLibvirt(Client):
                 for interface_name, val in interfaces.items():
                     if interface_name != "lo" and val["addrs"]:
                         for ipaddr in val["addrs"]:
-                            if ip_address(ipaddr["addr"]) in ip_network(self.config.network_cidr_block) and not ip_address(ipaddr["addr"]) in ip_network(self.config.services_network_cidr_block):
+                            if (ip_address(ipaddr["addr"]) in ip_network(self.config.network_cidr_block) and 
+                            not ip_address(ipaddr["addr"]) in ip_network(self.config.services_network_cidr_block) and
+                            not ip_address(ipaddr["addr"]) in ip_network(self.config.internet_network_cidr_block)):
                                 return ipaddr["addr"]
                 return None
         except Exception as exception:

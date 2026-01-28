@@ -22,7 +22,7 @@ main `config` section and special sections for different platforms
 * `debug`: Show debug messages during execution (also shows stack
   trace on error). Default: `yes`.
 * `proxy`: Proxy URL. Default: "" (empty).
-* `routing`: Enable routing and the use of traffic filtering rules to specify more complex scenarios. Currently only available on AWS and Libvirt. Default: `no`.
+* `routing`: Enable routing and the use of traffic filtering rules to specify more complex scenarios. Currently only available on AWS and Libvirt. Default: `no`. In AWS this option is forced to take the value `yes` and in Docker the value `no`.
 
 ### [ansible] section:
 * `ssh_common_args`: SSH arguments for ansible connection. Proxy Jump

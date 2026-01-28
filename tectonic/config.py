@@ -241,7 +241,12 @@ class TectonicConfig(object):
     @routing.setter
     def routing(self, value):
         validate.boolean("routing", value)
-        self._routing = self.platform == "aws" or value
+        if self.platform == "aws":
+            self._routing = True
+        elif self.platform == "docker":
+            self._routing = False
+        elif self.platform == "libvirt":
+            self._routing = value
 
     @classmethod
     def _assign_attributes(cls, config_obj, config_parser, section):

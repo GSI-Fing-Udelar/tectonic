@@ -26,7 +26,7 @@ guest_settings:
     copies: 1
     red_team_agent: yes
   waf:
-    memory: 512
+    memory: 1024
     cpu: 1
     disk: 10
     internet_access: yes
@@ -79,7 +79,7 @@ caldera_settings:
 
 elastic_settings:
   enable: yes
-  monitor_type: traffic
+  monitor_type: endpoint
   deploy_default_policy: yes
 
 guacamole_settings:
