@@ -53,7 +53,7 @@ resource "libvirt_network" "subnets" {
 
   name = "${each.key}"
   addresses = [lookup(each.value, "ip_network")]
-  mode = local.tectonic.config.routing ? "route" : "none"
+  mode = local.tectonic.config.platforms.libvirt.routing ? "route" : "none"
   autostart = true
 }
 
@@ -129,7 +129,7 @@ resource "libvirt_domain" "machines" {
 
   xml {
     xslt = templatefile("${path.module}/xslt/main.xslt.tpl", {
-      enable_filters = local.tectonic.config.routing
+      enable_filters = local.tectonic.config.platforms.libvirt.routing
       nw_filter_path = "${abspath("${path.module}/xslt/nw_filter.xslt")}"
       custom_path = "${abspath(lookup(each.value, "advanced_options_file", "/dev/null"))}"
     })

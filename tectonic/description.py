@@ -1264,7 +1264,7 @@ class Description:
         if self.config.platform != "aws":
             self._auxiliary_networks[internet_network_name].members = ["elastic"]
         services_network_name = f"{self.institution}-{self.lab_name}-services"
-        self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "route" if self.config.routing else "none" )
+        self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "route" if (self.config.platform == "libvirt" and self.config.libvirt.routing) else "none" )
         self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole", "moodle"]
         if self.config.platform == "aws":
             self._auxiliary_networks[services_network_name].members.append("teacher_access_host")
@@ -1318,7 +1318,7 @@ class Description:
         #Load base traffic rules of guests from description
         self._base_traffic_rules = {}
         rule_index = 0
-        if self.config.routing and description_data.get("traffic_rules", None) != None:
+        if (self.config.platform == "aws" or (self.config.platform == "libvirt" and self.config.libvirt.routing)) and description_data.get("traffic_rules", None) != None:
             for rule in description_data.get("traffic_rules"):
                 rule_name = f"rule-{rule_index}"
                 self._base_traffic_rules[rule_name] = BaseTrafficRule(rule_name, rule["description"], rule["source"], rule["destination"], rule.get("protocol", "all"), rule.get("port_range", "0-65535"))
@@ -1549,7 +1549,7 @@ class Description:
         for instance_num in range(1, self.instance_number + 1):
             for base_name, base_guest in self.base_guests.items():
                 for copy in range(1, base_guest.copies+1):
-                    is_in_services_network = not self.config.routing and (
+                    is_in_services_network = not (self.config.platform == "aws" or (self.config.platform == "libvirt" and self.config.libvirt.routing)) and (
                         (
                             self.elastic.enable and self.elastic.monitor_type == "endpoint" and base_guest.monitor
                         ) or (
@@ -1572,7 +1572,7 @@ class Description:
                         services_network_index += 1
 
         #Attach traffic rules
-        if self.config.routing:
+        if self.config.platform == "aws" or (self.config.platform == "libvirt" and self.config.libvirt.routing):
             if self._base_traffic_rules != {}: #User traffic rules
                 for _, rule_data in self._base_traffic_rules.items():
                     for instance in range(1,self.instance_number+1):

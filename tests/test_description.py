@@ -106,12 +106,14 @@ def test_description_invalid(labs_path, tectonic_config):
 
 def test_description_traffic_rules(labs_path, tectonic_config):
     lab_edition_path = Path(labs_path) / "test-traffic_rules.yml"
-    tectonic_config.routing = False
+    tectonic_config.libvirt.routing = False
     description = Description(tectonic_config, lab_edition_path)
     if tectonic_config.platform != "aws":
         assert description._base_traffic_rules == {}
+    elif tectonic_config.platform == "aws":
+        assert len(description._base_traffic_rules) == 1
 
-    tectonic_config.routing = True
+    tectonic_config.libvirt.routing = True
     description = Description(tectonic_config, lab_edition_path)
     if tectonic_config.platform != "docker":
         assert len(description._base_traffic_rules) == 1
@@ -139,27 +141,26 @@ def test_description_traffic_rules(labs_path, tectonic_config):
             elif service.base_name == "teacher_access_host":
                 assert len(rules) == 1
 
-        if tectonic_config.platform != "docker":
-            for _, guest in description.scenario_guests.items():
-                if guest.instance == 1:
-                    if guest.base_name == "victim":
-                        for _, interface in guest.interfaces.items():
-                            if interface.network.base_name == "dmz":
-                                assert len(interface.traffic_rules) == 3
-                                rule = interface.traffic_rules[0]
-                                assert rule.name == "udelar-lab01-1-victim-2-rule-0-1"
-                                assert rule.description == "Allow access from attacker to victim on port 8080"
-                                assert rule.protocol == "tcp"
-                                assert rule.from_port == "8080"
-                                assert rule.to_port == "8080"
-                                assert rule.source_cidr == "10.0.1.4/32"
-                    elif guest.base_name == "attacker":
-                        for _, interface in guest.interfaces.items():
-                            if interface.network.base_name == "lan":
-                                expected = 2
-                                if tectonic_config.platform == "aws":
-                                    expected = 3
-                                assert len(interface.traffic_rules) == expected
+        for _, guest in description.scenario_guests.items():
+            if guest.instance == 1:
+                if guest.base_name == "victim":
+                    for _, interface in guest.interfaces.items():
+                        if interface.network.base_name == "dmz":
+                            assert len(interface.traffic_rules) == 3
+                            rule = interface.traffic_rules[0]
+                            assert rule.name == "udelar-lab01-1-victim-2-rule-0-1"
+                            assert rule.description == "Allow access from attacker to victim on port 8080"
+                            assert rule.protocol == "tcp"
+                            assert rule.from_port == "8080"
+                            assert rule.to_port == "8080"
+                            assert rule.source_cidr == "10.0.1.4/32"
+                elif guest.base_name == "attacker":
+                    for _, interface in guest.interfaces.items():
+                        if interface.network.base_name == "lan":
+                            expected = 2
+                            if tectonic_config.platform == "aws":
+                                expected = 3
+                            assert len(interface.traffic_rules) == expected
 
 def test_description_no_services(labs_path, tectonic_config):
     lab_edition_path = Path(labs_path) / "no_services.yml"

@@ -33,6 +33,7 @@ class TectonicConfigLibvirt(object):
         self.bridge = "tectonic"
         self.external_network = "192.168.0.0/25"
         self.bridge_base_ip = 10
+        self.routing = False
 
 
     #----------- Getters ----------
@@ -60,7 +61,9 @@ class TectonicConfigLibvirt(object):
     def bridge_base_ip(self):
         return self._bridge_base_ip
 
-
+    @property
+    def routing(self):
+        return self._routing
 
     #----------- Setters ----------
     @uri.setter
@@ -90,6 +93,11 @@ class TectonicConfigLibvirt(object):
         validate.number("bridge_base_ip", value, min_value=5, max_value=254)
         self._bridge_base_ip = value
 
+    @routing.setter
+    def routing(self, value):
+        validate.boolean("routing", value)
+        self._routing = value
+
     def to_dict(self):
         return {
             "uri": self.uri,
@@ -97,4 +105,5 @@ class TectonicConfigLibvirt(object):
             "external_network": self.external_network,
             "bridge": self.bridge,
             "bridge_base_ip": self.bridge_base_ip,
+            "routing": self.routing
         }

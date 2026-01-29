@@ -60,7 +60,6 @@ class TectonicConfig(object):
         self.gitlab_backend_username = None
         self.gitlab_backend_access_token = None
         self.packer_executable_path = "packer"
-        self.routing = False
 
         self._ansible = TectonicConfigAnsible()
         self._aws = TectonicConfigAWS()
@@ -129,10 +128,6 @@ class TectonicConfig(object):
     @property
     def packer_executable_path(self):
         return self._packer_executable_path
-
-    @property
-    def routing(self):
-        return self._routing
 
     @property
     def ansible(self):
@@ -238,16 +233,6 @@ class TectonicConfig(object):
     def packer_executable_path(self, value):
         self._packer_executable_path = value
 
-    @routing.setter
-    def routing(self, value):
-        validate.boolean("routing", value)
-        if self.platform == "aws":
-            self._routing = True
-        elif self.platform == "docker":
-            self._routing = False
-        elif self.platform == "libvirt":
-            self._routing = value
-
     @classmethod
     def _assign_attributes(cls, config_obj, config_parser, section):
         """Assign the values of all parameters in the parser object in
@@ -305,7 +290,6 @@ class TectonicConfig(object):
                 "docker": self.docker.to_dict(),
             },
             "ssh_public_key_file": self.ssh_public_key_file,
-            "routing": self.routing,
         }
         if self.proxy:
             result["proxy"] = self.proxy

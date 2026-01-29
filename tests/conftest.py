@@ -56,7 +56,6 @@ services_network_cidr_block = 10.0.0.128/25
 ssh_public_key_file = ~/.ssh/id_rsa.pub
 configure_dns = no
 debug = yes
-routing = yes
 
 [ansible]
 ssh_common_args = -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 
@@ -72,6 +71,7 @@ student_access = bridge
 bridge = lab_ens
 external_network = 192.168.44.0/25
 bridge_base_ip = 10
+routing = yes
 
 [aws]
 region = us-east-1

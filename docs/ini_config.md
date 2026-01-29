@@ -22,7 +22,6 @@ main `config` section and special sections for different platforms
 * `debug`: Show debug messages during execution (also shows stack
   trace on error). Default: `yes`.
 * `proxy`: Proxy URL. Default: "" (empty).
-* `routing`: Enable routing and the use of traffic filtering rules to specify more complex scenarios. Currently only available on AWS and Libvirt. Default: `no`. In AWS this option is forced to take the value `yes` and in Docker the value `no`.
 
 ### [ansible] section:
 * `ssh_common_args`: SSH arguments for ansible connection. Proxy Jump
@@ -54,6 +53,7 @@ main `config` section and special sections for different platforms
   entry points. Default: `192.168.0.0/25`.
 * `bridge_base_ip`: Base number from which to assign static IP address
   in bridged networks. Default: `10`.
+* `routing`: Enable routing and the use of traffic filtering rules to specify more complex scenarios. Default: `no`. In AWS this option is forced to take the value `yes` and in Docker the value `no`. For this reason, it is not necessary to specify this option in the sections corresponding to each platform.
 
 ### [aws] section:
 * `region`: The region to deploy instances in AWS. Default:

@@ -122,7 +122,7 @@ class Core:
         if create_services_images:
             self.create_services_images()
 
-        if self.config.routing and self.config.platform == "libvirt":
+        if self.config.platform == "libvirt" and self.config.libvirt.routing:
             for _, service in self.description.services_guests.items():
                 for _, interface in service.interfaces.items():
                     self.client.create_nwfilter(f"{service.name}-{interface.network.name}", interface.private_ip, interface.traffic_rules)
@@ -167,7 +167,7 @@ class Core:
         self.terraform.destroy(instances)
         self.terraform_service.destroy(instances)
 
-        if self.config.routing and self.config.platform == "libvirt":
+        if self.config.platform == "libvirt" and self.config.libvirt.routing:
             if instances == None:
                 for _, service in self.description.services_guests.items():
                     for _, interface in service.interfaces.items():
@@ -466,7 +466,7 @@ class Core:
             machines_data = {}
             for _, guest in self.description.scenario_guests.items():
                 machine_name = f"{guest.base_name}-{guest.instance}" if guest.copy == 1 else f"{guest.base_name}-{guest.instance}-{guest.copy}"
-                if self.config.platform == "aws" or self.config.routing:
+                if self.config.platform == "aws" or (self.config.platform == "libvirt" and self.config.libvirt.routing):
                     connection_ip = self.client.get_machine_private_ip(guest.name) 
                 else: 
                     connection_ip = self.client.get_machine_ip_in_services_network(guest.name)
