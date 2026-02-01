@@ -62,18 +62,6 @@ class TerraformServiceDocker(TerraformService):
             list(str): names of resources.
         """
         return []
-    
-    def _get_terraform_variables(self):
-        """
-        Get variables to use in Terraform.
-        
-        Return:
-            dict: variables.
-        """
-        result = super()._get_terraform_variables()
-        result["docker_uri"] = self.config.docker.uri
-        return result
-
 
     def _get_service_machine_variables(self, service):
         """

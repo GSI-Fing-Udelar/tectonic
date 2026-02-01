@@ -1,0 +1,193 @@
+# The after-clone ansible playbook for the Password Cracking scenario.
+# This playbook is applied to each machine in each instance, after it
+# was cloned. Internet connection is not available by default.
+
+- name: Configure workstation
+  hosts: workstation
+  tasks:
+    - name: Add entry to host file
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        insertafter: EOF
+        line: "{{ networks['dmz']['members']['waf']['1'] }} service-waf.local"
+
+# - name: Configure workstation2
+#   hosts: workstation2
+#   tasks:
+#     - name: Add entry to host file
+#       ansible.builtin.lineinfile:
+#         path: /etc/hosts
+#         insertafter: EOF
+#         line: "{{ networks['dmz']['members']['waf']['1'] }} service-waf.local"
+    
+- name: Configure webserver
+  hosts: webserver
+  tasks:
+    - name: Disable default vhost
+      ansible.builtin.command:
+        cmd: a2dissite 000-default
+    - name: Adjust apache ports.conf
+      ansible.builtin.copy:
+        dest: /etc/apache2/ports.conf
+        content: |
+          Listen 8080
+          Listen 9080
+    - name: Create service1 vhost
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/service1.conf
+        content: |
+          <VirtualHost *:8080>
+            ServerName service1.local
+
+            DocumentRoot /var/www/html/service1
+      
+            ErrorLog ${APACHE_LOG_DIR}/service1_error.log
+            CustomLog ${APACHE_LOG_DIR}/service1_access.log combined
+          </VirtualHost>
+    - name: Create service2 vhost
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/service2.conf
+        content: |
+          <VirtualHost *:9080>
+            ServerName service2.local
+
+            DocumentRoot /var/www/html/service2
+            
+            ErrorLog ${APACHE_LOG_DIR}/service2_error.log
+            CustomLog ${APACHE_LOG_DIR}/service2_access.log combined
+          </VirtualHost>
+    - name: Create services directory
+      ansible.builtin.file:
+        path: "/var/www/html/{{ item }}"
+        owner: www-data
+        group: www-data
+        state: directory
+      with_items:
+        - service1
+        - service2
+    - name: Copy service1 site
+      ansible.builtin.copy:
+        dest: /var/www/html/service1/index.html
+        content: | 
+          <!DOCTYPE html>
+          <html>
+              <body>
+                  <h1>SERVICE 1</h1>
+              </body>
+          </html>
+    - name: Copy service2 site
+      ansible.builtin.copy:
+        dest: /var/www/html/service2/index.html
+        content: | 
+          <!DOCTYPE html>
+          <html>
+              <body>
+                  <h1>SERVICE 2</h1>
+              </body>
+          </html>
+    - name: Enable services site
+      ansible.builtin.command:
+        cmd: a2ensite service1 service2
+    - name: Enable and start apache service
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
+        enabled: true
+
+- name: Configure ftpserver
+  hosts: ftpserver
+  tasks:
+    - name: Enable ftp access for users in /etc/ftpusers independent of shell
+      ansible.builtin.shell: |
+        sed -i "/pam_shells.so/d" /etc/pam.d/vsftpd
+        sed -i "s/sense=deny/sense=allow/g" /etc/pam.d/vsftpd
+    - name: Create ftp user with same password as username
+      ansible.builtin.user:
+        name: admin
+        password: "{{ 'admin' | password_hash(hashtype='sha512', salt='7384hdfigsd7', rounds=5000)}}"
+        create_home: yes
+        home: /home/admin
+    - name: Enable access for ftp user
+      ansible.builtin.copy:
+        dest: /etc/ftpusers
+        content: |
+          admin
+    - name: Enable and start ftp service
+      ansible.builtin.service:
+        name: vsftpd
+        state: restarted
+        enabled: true
+    - name: Create example file
+      ansible.builtin.copy:
+        dest: /home/admin/readme.txt
+        content: |
+          HELLO
+        owner: admin
+        group: admin
+    - name: Add entry to host file
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        insertafter: EOF
+        line: "{{ networks['servers']['members']['webserver']['1'] }} service2.local"
+    - name: Enable SSH login with password
+      block:
+        - name: Find SSH config files
+          ansible.builtin.find:
+            paths: /etc/ssh/sshd_config.d
+            file_type: file
+          register: ssh_config
+        - name: Adjust SSH configuration files
+          ansible.builtin.lineinfile:
+            path: "{{ item.path }}"
+            regex: "^\\s*PasswordAuthentication"
+            line: "PasswordAuthentication yes"
+          with_items:
+            - "{{ ssh_config['files'] }}"
+            - { path: '/etc/ssh/sshd_config' }
+          register: sshd_conf
+        - name: Restart SSH service
+          ansible.builtin.service:
+            name: sshd
+            state: restarted
+          when: sshd_conf.changed
+
+- name: Configure waf
+  hosts: waf
+  tasks:
+    - name: Disable default vhost
+      ansible.builtin.command:
+        cmd: a2dissite 000-default
+    - name: Enable apache modules
+      ansible.builtin.command:
+        cmd: a2enmod proxy proxy_http ssl rewrite headers
+    - name: Adjust apache ports.conf
+      ansible.builtin.copy:
+        dest: /etc/apache2/ports.conf
+        content: |
+          Listen 80
+    - name: Create service-waf vhost
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/service-waf.conf
+        content: |
+          <VirtualHost *:80>
+            ServerName service-waf.local
+      
+            ErrorLog ${APACHE_LOG_DIR}/service-waf_error.log
+            CustomLog ${APACHE_LOG_DIR}/service-waf_access.log combined
+
+            ProxyPass "/" "http://service1.local:8080"
+            ProxyPassReverse "/" "http://service1.local:8080"
+          </VirtualHost>
+    - name: Enable services site
+      ansible.builtin.command:
+        cmd: a2ensite service-waf
+    - name: Enable and start apache service
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
+        enabled: true
+    - name: Add entry to host file
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        insertafter: EOF
+        line: "{{ networks['servers']['members']['webserver']['1'] }} service1.local"

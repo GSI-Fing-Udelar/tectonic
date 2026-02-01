@@ -20,9 +20,6 @@
 
 from tectonic.terraform import Terraform
 
-import json
-from tectonic.constants import OS_DATA
-
 class TerraformDockerException(Exception):
     pass
 
@@ -126,14 +123,3 @@ class TerraformDocker(Terraform):
           list(str): resources name to recreate.
         """
         return self._get_machine_resources_name(instances, guests, copies)
-
-    def _get_terraform_variables(self):
-        """
-        Get variables to use in Terraform.
-
-        Return:
-            dict: variables.
-        """
-        result = super()._get_terraform_variables()
-        result["docker_uri"] = self.config.docker.uri
-        return result

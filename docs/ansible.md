@@ -22,6 +22,7 @@ configuration and the scenario description.
 
 The variables for the `base_config` playbooks are the following:
 
+- `authorized_keys`: SSH keys to configure as authorized keys of the machines.
 - `scenario_dir`: Path to the directory with the scenario definition.
 - `ansible_dir`: Path to the directory with the ansible playbooks.
 - `config`: Dictionary with configurations associated with [parameters
@@ -41,11 +42,13 @@ The variables for the `base_config` playbooks are the following:
             - `teacher_access`
         - `docker`
             - `dns`
+            - `uri`
         - `libvirt`
             - `bridge_base_ip`
             - `external_network`
     - `proxy`
     - `services_network_cidr_block`
+    - `ssh_public_key_file`
     - `create_students_password`
 - `institution`: Institution.
 - `lab_name`: Laboratory name.

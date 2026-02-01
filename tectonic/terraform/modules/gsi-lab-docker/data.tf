@@ -21,5 +21,5 @@
 data "docker_image" "base_images" {
   for_each = toset(local.guest_basenames)
 
-  name = "${var.institution}-${var.lab_name}-${each.key}"
+  name = "${local.tectonic.institution}-${local.tectonic.lab_name}-${each.key}"
 }

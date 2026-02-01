@@ -32,11 +32,11 @@ data "aws_ami" "base_images" {
 
 data "aws_ami" "teacher_access_host" {
   most_recent = true
-  owners      = [local.os_data[var.default_os]["owner"]]
+  owners      = [local.os_data[local.tectonic.default_os]["owner"]]
 
   filter {
     name = "name"
-    values = [local.os_data[var.default_os]["ami_filter"]]
+    values = [local.os_data[local.tectonic.default_os]["ami_filter"]]
   }
 
   filter {
