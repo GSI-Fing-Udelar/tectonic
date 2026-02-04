@@ -1,4 +1,5 @@
 
+
 # Tectonic - An academic Cyber Range
 # Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
 # Uruguay
@@ -179,8 +180,9 @@ class Core:
                     logger.info("Destroying packetbeat ...")
                     self.terraform_service.destroy_packetbeat(self.ansible)
 
-                logger.info("Destroying service machines...")
-                self.terraform_service.destroy(instances)
+                if len(self.description.services_guests) > 0:
+                    logger.info("Destroying service machines...")
+                    self.terraform_service.destroy(instances)
 
             # Destroy images
             if images:
