@@ -217,6 +217,37 @@ class Ansible:
         self.output = ""
         self.debug_outputs = []
         extravars = { "ansible_no_target_syslog" : not self.config.ansible.keep_logs }
+        
+        # ============================================================================
+        # CUSTOM ANSIBLE COMPONENTS INTEGRATION
+        # ============================================================================
+        # Tectonic supports custom Ansible modules, roles, and filter plugins by
+        # setting environment variables that Ansible automatically recognizes.
+        # 
+        # Two-tier component discovery:
+        #   1. Core components (tectonic/ansible/):
+        #      - tectonic/ansible/library/        -> Global modules (e.g., encrypt_files_aes.py)
+        #      - tectonic/ansible/filter_plugins/ -> Global Jinja2 filters
+        #      - tectonic/ansible/module_utils/   -> Shared utilities for modules
+        #   
+        #
+        # Path priority (uses colon-separated paths):
+        #   - ANSIBLE_LIBRARY: tectonic_library
+        #   - ANSIBLE_FILTER_PLUGINS: tectonic_filter_plugins
+        #
+        # This approach:
+        #   ✓ Provides global components for all scenarios
+        #   ✓ Allows scenario-specific overrides
+        #   ✓ Maintains backward compatibility
+        #   ✓ Works seamlessly with ansible_runner
+        # ============================================================================
+        
+        # Core Tectonic components (always available)
+        tectonic_ansible_dir = tectonic_resources.files('tectonic') / 'ansible'
+        tectonic_library_path = tectonic_ansible_dir / "library"
+        tectonic_filter_plugins_path = tectonic_ansible_dir / "filter_plugins"
+        tectonic_module_utils_path = tectonic_ansible_dir / "module_utils"
+        
         envvars = { 
             "ANSIBLE_FORKS": self.config.ansible.forks,
             "ANSIBLE_HOST_KEY_CHECKING": False,
@@ -224,6 +255,26 @@ class Ansible:
             "ANSIBLE_GATHERING": "explicit",
             "ANSIBLE_TIMEOUT": self.config.ansible.timeout,
         }
+        
+        # Build ANSIBLE_LIBRARY path
+        library_paths = []
+        if tectonic_library_path.exists() and tectonic_library_path.is_dir():
+            library_paths.append(tectonic_library_path.as_posix())
+            logger.info(f"Using core Ansible library: {tectonic_library_path}")
+        if library_paths:
+            envvars["ANSIBLE_LIBRARY"] = ":".join(library_paths)
+        # Build ANSIBLE_FILTER_PLUGINS path
+        filter_paths = []
+        if tectonic_filter_plugins_path.exists() and tectonic_filter_plugins_path.is_dir():
+            filter_paths.append(tectonic_filter_plugins_path.as_posix())
+            logger.info(f"Using core Ansible filter plugins: {tectonic_filter_plugins_path}")
+        if filter_paths:
+            envvars["ANSIBLE_FILTER_PLUGINS"] = ":".join(filter_paths)
+        # Set ANSIBLE_MODULE_UTILS (required for custom module_utils)
+        if tectonic_module_utils_path.exists() and tectonic_module_utils_path.is_dir():
+            envvars["ANSIBLE_MODULE_UTILS"] = tectonic_module_utils_path.as_posix()
+            logger.info(f"Using core Ansible module_utils: {tectonic_module_utils_path}")
+        
         r = ansible_runner.interface.run(
             inventory=inventory,
             playbook=playbook,
@@ -240,7 +291,7 @@ class Ansible:
 
     def wait_for_connections(self, instances=None, guests=None, copies=None, only_instances=True, exclude=[], username=None, inventory=None):
         """Wait for machines to respond to ssh connections for ansible."""
-        playbook = tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'
+        playbook = tectonic_resources.files('tectonic') / 'ansible' / 'playbooks' / 'wait_for_connection.yml'
 
         return self.run(
             instances=instances, guests=guests, copies=copies,

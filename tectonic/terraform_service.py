@@ -91,7 +91,7 @@ class TerraformService(Terraform):
         ansible.run(
             instances=None,
             guests=[service.base_name],
-            playbook = tectonic_resources.files('tectonic') / 'playbooks' / 'services_get_password.yml',
+            playbook = tectonic_resources.files('tectonic') / 'ansible' / 'playbooks' / 'services_get_password.yml',
             only_instances=False,
             username=OS_DATA[service.os]["username"],
             quiet=True
