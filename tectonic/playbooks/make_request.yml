@@ -29,7 +29,10 @@
     force_basic_auth: true
     status_code: "{{ status_code }}"
     body_format: "{{ body_format }}"
-    use_proxy: false
+    use_proxy: "{{ config.proxy is defined }}"
     validate_certs: false
     timeout: 360
   register: result
+  environment:
+    http_proxy: "{{ config.proxy | default(omit) }}"
+    https_proxy: "{{ config.proxy | default(omit) }}"
