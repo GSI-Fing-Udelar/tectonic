@@ -68,6 +68,9 @@
         src: "https://downloads.apache.org/guacamole/{{ services.guacamole.version }}/source/guacamole-server-{{ services.guacamole.version }}.tar.gz"
         dest: /root/
         remote_src: yes
+      environment:
+        http_proxy: "{{ config.proxy | default(omit) }}"
+        https_proxy: "{{ config.proxy | default(omit) }}"
 
     - name: Build guacamole
       block:

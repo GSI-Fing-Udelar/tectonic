@@ -125,7 +125,6 @@ class TerraformServiceAWS(TerraformService):
 
         Parameters:
             instances (list(int)): number of the instances to target destroy.
-            services (list(str)): list of services to destroy
         Return:
             list(str): names of resources.
         """

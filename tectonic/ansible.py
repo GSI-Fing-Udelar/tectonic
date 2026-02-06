@@ -227,7 +227,7 @@ class Ansible:
             extravars=extravars,
             envvars=envvars,
         )
-        logger.info(self.output)
+        logger.debug(self.output)
 
         if (r.rc != 0 or r.status != "successful") and quiet:
             raise AnsibleException(self.output)

@@ -80,7 +80,7 @@ def test_create_instances_images(core):
     core.packer.destroy_instance_image.reset_mock()
     core.packer.create_instance_image.reset_mock()
 
-    core.create_instances_images(None)
+    core.create_instances_images([])
     core.packer.destroy_instance_image.assert_not_called()
     core.packer.create_instance_image.assert_not_called()
     
@@ -96,7 +96,7 @@ def test_create_services_images(core):
     core.packer.destroy_service_image.reset_mock()
     core.packer.create_service_image.reset_mock()
 
-    core.create_services_images(None)
+    core.create_services_images([])
     core.packer.destroy_service_image.assert_not_called()
     core.packer.create_service_image.assert_not_called()
 
@@ -120,7 +120,7 @@ def test_deploy(core):
     core.terraform_service.install_elastic_agent = MagicMock()
     core.terraform_service.install_caldera_agent = MagicMock()
 
-    core.deploy([1], True, True)
+    core.deploy([1], True, [])
 
     core.ansible.wait_for_connections.assert_called_once()
     core.ansible.run.assert_called_once()
@@ -142,7 +142,7 @@ def test_destroy(core):
     core.description.bastion_host.enable = True
 
 
-    core.destroy(None, True, ["svc"], True)
+    core.destroy(None, False, True, ["svc"])
 
     core.terraform.destroy.assert_called()
     core.terraform_service.destroy.assert_called()
@@ -175,12 +175,12 @@ def test_start_stop_restart(core):
     core.description.elastic.monitor_type = "traffic"
     core.terraform_service.manage_packetbeat = MagicMock()
 
-    core.start([1], ["g"], [1], True)
-    core.start([1], ["g"], [1], False)
-    core.stop([1], ["g"], [1], True)
-    core.stop([1], ["g"], [1], False)
-    core.restart([1], ["g"], [1], True)
-    core.restart([1], ["g"], [1], False)
+    core.start([1], ["g"], [1])
+    core.start([1], ["g"], [1])
+    core.stop([1], ["g"], [1])
+    core.stop([1], ["g"], [1])
+    core.restart([1], ["g"], [1])
+    core.restart([1], ["g"], [1])
 
     core.client.start_machine.assert_any_call("m1")
     core.client.stop_machine.assert_any_call("m1")
@@ -218,6 +218,7 @@ def test_list_instances_with_elastic(core, monitor_type):
     core.terraform_service.get_service_info =  MagicMock(return_value=[{'agents_status': agents_status}])
 
     status = core.list_instances([1], ["attacker"], [1])
+
     assert "instances_info" in status
     assert "services_status" in status
 

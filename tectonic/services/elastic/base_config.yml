@@ -88,6 +88,10 @@
         src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ ansible_facts.packages['elasticsearch'][0].version }}-linux-{{ architecture }}.tar.gz"
         dest: /opt
         remote_src: yes
+      environment:
+        http_proxy: "{{ config.proxy | default(omit) }}"
+        https_proxy: "{{ config.proxy | default(omit) }}"
+
     - name: Rename Elastic agent directory
       ansible.builtin.command: "mv /opt/elastic-agent-{{ ansible_facts.packages['elasticsearch'][0].version }}-linux-{{ architecture }}/ /opt/elastic-agent/"
 
