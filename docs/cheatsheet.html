@@ -10,24 +10,41 @@ systems and applications that can be used to train users on
 cybersecurity topics. Key functionalities include customizable network
 configurations, real-time monitoring and automated attack
 simulations.</p>
+<p>Services are special machines that operate across all instances
+within a scenario. Currently, the supported services are: elastic,
+caldera, guacamole, moodle and bastion host.</p>
 <h3 id="scenario-management">Scenario Management</h3>
-<p>Scenarios are defined using a scenario description yml file (usually
-<code>description.yml</code> inside the scenario directory) plus a lab
-edition file (usually <code>&lt;lab_name&gt;.yml</code>.</p>
+<p>Scenarios are defined using a <a
+href="./description.md#scenario-specification">scenario description yml
+file</a> (usually <code>description.yml</code> inside the scenario
+directory) plus a <a href="./description.md#lab-edition-information">lab
+edition file</a> (usually <code>&lt;lab_name&gt;.yml</code>).</p>
 <ul>
-<li><p>Create base images:</p>
-<pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; create-images</code></pre></li>
-<li><p>Deploy scenario:</p>
+<li><p>Create scenario base images [and all services images]:</p>
+<pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; create-images [--guests=all]</code></pre></li>
+<li><p>Deploy a scenario and all services:</p>
 <pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; deploy</code></pre></li>
 <li><p>Destroy scenario [and base images]:</p>
 <pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; destroy [--images]</code></pre></li>
+<li><p>Destroy services base images:</p>
+<pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; destroy \
+--images --services --service_image_list=all</code></pre>
+<p><strong>Warning:</strong> service base images can be reused between
+different scenarios. Make sure the image is not being used by other
+scenario when destroying it.</p></li>
 <li><p>Show cyber range information (access IP addresses,
 credentials):</p>
 <pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; info</code></pre></li>
 </ul>
 <h3 id="operations-on-machines">Operations on machines</h3>
-<p>Operations done on machines in the scenario, after it is
-deployed.</p>
+<p>Operations done on machines in the scenario, after it is deployed.
+Most of these commands accept <a href="#machine-specification">machine
+specification</a> options, represented as
+<code>&lt;machine_spec&gt;</code> below. These options can be a
+combination of: instance number (<code>-i</code>), guest (base) name
+(<code>-g</code>), and copy number (<code>-c</code>). Please see the
+corresponding <a href="#machine-specification">section below</a> for
+further details.</p>
 <ul>
 <li><p>Get a console on a <em>single</em> machine:</p>
 <pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; console &lt;machine_spec&gt;</code></pre></li>
@@ -38,6 +55,16 @@ deployed.</p>
 <li><p>Run an arbitrary ansible playbook:</p>
 <pre><code>tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; run-ansible -p &lt;playbook&gt; &lt;machine_spec&gt;</code></pre></li>
 </ul>
+<h4 id="machine-specification">Machine specification</h4>
+<p>Most commands accept machine specification options, which can be a
+combination of: instance number (<code>-i</code>), guest (base) name
+(<code>-g</code>), and copy number (<code>-c</code>).</p>
+<p>For example, to reboot all copies of the <code>victim</code> machine
+of instances 3 and 4, one can run:</p>
+<pre><code>  tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; reboot -g victim -i 3,4</code></pre>
+<p>Instance and copy numbers can be specified either as a list:
+<code>1,2,3</code>, as a range: <code>5-10</code>, or as a combination:
+<code>2,4-6,8</code>.</p>
 <h4 id="machine-names">Machine names</h4>
 <p>Machines in the cyber range are identified as follows:</p>
 <pre><code>&lt;institution&gt;-&lt;lab_name&gt;-&lt;instance&gt;-&lt;guest&gt;[-&lt;copy&gt;]</code></pre>
@@ -51,23 +78,18 @@ is:</p>
 copy, of instance 2 of the lab test_lab and institution test_inst
 is:</p>
 <pre><code>test_inst-test_lab-2-attacker</code></pre>
-<h4 id="machine-specification">Machine specification</h4>
-<p>Most commands accept machine specification options, which can be a
-combination of: instance number (<code>-i</code>), guest (base) name
-(<code>-g</code>), and copy number (<code>-c</code>).</p>
-<p>For example, to reboot all copies of the machine <code>victim</code>
-of instances 3 and 4, one can run:</p>
-<pre><code>  tectonic -c ~/tectonic.ini &lt;lab_edition_file&gt; reboot -g victim -i 3,4</code></pre>
-<p>this will reboot machines <code>test_inst-test_lab-3-victim</code>
-and <code>test_inst-test_lab-4-victim</code>.</p>
-<p>Instance and copy numbers can be specified either as a list:
-<code>1,2,3</code>, as a range: <code>5-10</code>, or as a combination:
-<code>2,4-6,8</code>.</p>
 <h3 id="connectivity-to-the-scenario">Connectivity to the scenario</h3>
+<h4 id="guacamole">Guacamole</h4>
+<p>If the Guacamole service was deployed as part of the scenario, the
+users will be able to access the instance machines through this service
+using a web browser. The access credentials of students for the
+Guacamole service are the the same as the credentials for the scenario
+machines. The access credentials of the teacher can be obtained with the
+<code>info</code> command.</p>
+<h4 id="console-connections">Console connections</h4>
 <ul>
-<li><p>Teacher access:<br />
-Use <code>tectonic console</code>, or connect through
-<code>ssh</code>:</p>
+<li><p>Teacher access: Use <code>tectonic console</code>, or connect
+through <code>ssh</code>:</p>
 <pre><code>ssh -J ubuntu@&lt;teacher_access_ip&gt; &lt;machine_ip&gt;</code></pre>
 <p><code>teacher_access_ip</code> is shown after scenario deployment and
 in the output of <code>tectonic info</code>.</p></li>
@@ -97,7 +119,7 @@ scenario either as student or teacher, as above.</p>
 <pre><code>ssh -L localhost:80443:10.0.1.5:443 &lt;ssh-connection-options&gt;</code></pre>
 <p>You can then connect to localhost:80443 to access port 443 on machine
 10.0.1.5.</p>
-<h2 id="file-edition">File edition</h2>
+<h4 id="file-edition">File edition</h4>
 <p>For editing files within a scenario, you can use a console based text
 editor or run locally a text editor that supports remote connections,
 such as <a href="https://code.visualstudio.com/">VSCode</a>. Using the

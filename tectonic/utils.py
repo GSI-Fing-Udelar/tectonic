@@ -29,7 +29,7 @@ def create_table(headers, rows):
     table.set_style(TableStyle.SINGLE_BORDER)
     table.field_names = headers
     table.add_rows(rows)
-    return table
+    return f"\n{table}"
 
 def list_files_in_directory(directory_path):
     """
