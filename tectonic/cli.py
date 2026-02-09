@@ -459,7 +459,7 @@ def deploy(ctx, guest_images, instances, service_image_list, force):
         confirm_machines(ctx, instances, guest_names=None, copies=None, action="Deploying")
 
     ctx.obj["core"].deploy(instances, guest_images, service_image_list)
-    # _info(ctx)
+    _info(ctx)
 
 
 @tectonic.command()
@@ -901,7 +901,7 @@ def main():
         tectonic.main(obj=obj)
     except Exception as e:
         logger.debug(traceback.format_exc())
-        if obj["config"].debug:
+        if obj.get("config") and obj.get("config").debug:
             raise
         else:
             click.echo(str(e))
