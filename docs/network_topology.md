@@ -77,10 +77,10 @@ The `routing` option in the tectonic.ini file controls whether routing exists be
 
 By default, `routing: no`. In this case, network traffic will be blocked between different subnetworks (either within the same instance or to other instances). All traffic within a subnetwork will be allowed. In other words, for two machines to be able to communicate they must be on the same subnetwork.
 
-If `routing: yes`, the enabled traffic depends on the rules specified in `traffic_rules` section. If no rules are specified, 
-then only traffic within the same subnet is allowed, and all other traffic is denied (similar to the previous case). Otherwise, traffic is enabled according to the rules specified in the scenario description. With routing enabled and the correct traffic rules, it is possible for two machines on the same instance to communicate even though they are on different subnetworks.
+If `routing: yes`, the enabled traffic depends on the rules specified in `traffic_rules` section of the scenario [description file](https://github.com/GSI-Fing-Udelar/tectonic/blob/feature/routing_trafficrules/docs/description.md). If no rules are specified, 
+then only traffic within the same subnet is allowed, and all other traffic is denied (similar to the `routing: no` case). Otherwise, traffic is enabled according to the rules specified in the scenario description. With routing enabled and the correct traffic rules, it is possible for two machines of the same instance to communicate even though they are on different subnetworks.
 
-The `routing` option has the following behavior:
+For technical differences between platforms, the `routing` option has the following behavior:
   - In Docker it always has the value `no`. Therefore, routing is not possible on this platform.
   - In Libvirt it can take the value `yes` or `no`, at the user's discretion.
   - In AWS it always has the value `yes`.
@@ -89,21 +89,21 @@ The `routing` option has the following behavior:
 The traffic in a scenario follows these rules:
  - Traffic is allowed from the service network to the guests in the scenario and vice versa. This will depend on the deployed services and guest configuration options such as `monitor`, `red_team_agent`, `blue_team_agent`, among others.
  - Traffic between guests on the same instance is permitted. This traffic depends on rules specified in the `traffic_rules` section; if this section is omitted, only traffic within the same subnet is allowed.
- - Internet access is permitted for some services or guests. For guests, it is enabled with the `internet_access` option.
+ - Internet access is permitted for some services. For guests, it is enabled with the `internet_access` option (disabled by default) .
  - All other traffic is denied.
 
 #### Services traffic
 Regarding services, the following traffic is allowed.
 
 ##### Elastic
--  Guests have access to `elastic` on ports 5044/tcp and 8220/tcp if the `monitor: yes` option is set in the guest description and `monitor_type: endpoint` is set in the elastic_settings section of the description file. If `monitor_type: network`, then the guests do not have access to `elastic`. Instead, `packetbeat` will have this access.
+-  Guests have access to the `elastic` server on ports 5044/tcp and 8220/tcp if the `monitor: yes` option is set in the guest description and `monitor_type: endpoint` is set in the elastic_settings section of the description file. If `monitor_type: network`, then the guests do not have access to `elastic`. Instead, `packetbeat` will have this access.
 - The `elastic` server has internet access.
 - The `bastion_host` has access to `elastic` on port 5601/tcp.
 
 If `routing: no`, then in order for guests to reach Elastic, it is necessary that the guests have an interface on the services network (`services_network_cidr_block`).
 
 ##### Caldera
-- Guests hace accesso to `caldera` on ports 443/tcp, 7010/tcp, 7011/udp if the `red_team_agent: yes` and/or `blue_team_agent: yes` options are set in the guest description.
+- Guests have access to `caldera` on ports 443/tcp, 7010/tcp, 7011/udp if the `red_team_agent: yes` and/or `blue_team_agent: yes` options are set in the guest description.
 - The `bastion_host` has access to `caldera` on port 8443/tcp.
 
 If `routing: no`, then in order for guests to reach Caldera, it is necessary that the guests have an interface on the services network (`services_network_cidr_block`).

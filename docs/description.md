@@ -59,7 +59,7 @@ The scenario description is a YAML file with the following sections:
 * A `traffic_rules` section allows you to specify the traffic allowed between machines in the scenario. This means that by default, all traffic is denied except for that specified through rules. If the section is omitted then only traffic within each subnet will be allowed. Each rule entry has these options:
   + `description`: description of the traffic that is enabled. This option is mandatory.
   + `source`: Traffic source. This can be a machine interface, represented by `<guest_name>.<network_name>`, or an entire network, represented by `<network_name>`. This option is mandatory.
-  + `destination`: Traffic destination. This muest be a machine interface, represented by `<guest_name>.<network_name>`. This option is mandatory.
+  + `destination`: Traffic destination. This must be a machine interface, represented by `<guest_name>.<network_name>`. This option is mandatory.
   + `port_range`: Traffic port range enabled. This can be a specific port or a range of ports. If the option is omitted then all ports are assumed (`0-65535`).
   + `protocol`: Traffic protocol enabled. It can take the values: `tcp`, `udp`,`icmp` or `all`. If the option is omitted then all protocolos are assumed (`all`).
 
