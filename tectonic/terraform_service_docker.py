@@ -62,17 +62,3 @@ class TerraformServiceDocker(TerraformService):
             list(str): names of resources.
         """
         return []
-
-    def _get_service_machine_variables(self, service):
-        """
-        Return machines variables deploy services.
-
-        Parameters:
-            service (ServiceDescription): services to deploy.
-
-        Returns:
-            dict: machines variables.
-        """
-        result = super()._get_service_machine_variables(service)
-        result["ports"] =  service.ports if service.base_name == "bastion_host" else {}
-        return result

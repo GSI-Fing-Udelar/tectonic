@@ -64,8 +64,8 @@ OS_DATA = {
         "username": "rocky",
         "cloud_image_url": "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
         "cloud_image_checksum": "15d81d3434b298142b2fdd8fb54aef2662684db5c082cc191c3c79762ed6360c",
-        # "cloud_image_url": "file:///data/isos/Rocky-9-GenericCloud.latest.x86_64.qcow2",
-        # "cloud_image_checksum": "2c72815bb83cadccbede4704780e9b52033722db8a45c3fb02130aa380690a3d",
+        #"cloud_image_url": "file:///data/isos/Rocky-9-GenericCloud.latest.x86_64.qcow2",
+        #"cloud_image_checksum": "2c72815bb83cadccbede4704780e9b52033722db8a45c3fb02130aa380690a3d",
         "docker_base_image": "gsitectonic/rocky9",
         "entrypoint": "/usr/sbin/init",
         "interface_base_name": "eth"

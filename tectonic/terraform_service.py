@@ -279,27 +279,6 @@ class TerraformService(Terraform):
         resources_to_recreate = self._get_resources_to_recreate(instances, guests, copies)
         self._apply(self.terraform_services_module, self._get_terraform_variables(), resources_to_recreate, True)
 
-    def _get_service_machine_variables(self, service):
-        """
-        Return machines variables deploy services.
-
-        Parameters:
-            service (ServiceDescription): services to deploy.
-
-        Returns:
-            dict: machines variables.
-        """
-        return {
-            "guest_name": service.name,
-            "base_name": service.base_name,
-            "hostname": service.base_name,
-            "base_os": service.os,
-            "interfaces": {name : self._get_network_interface_variables(interface) for name, interface in service.interfaces.items()},
-            "vcpu": service.vcpu,
-            "memory": service.memory,
-            "disk": service.disk,
-        }
-
     def _get_terraform_variables(self):
         """
         Get variables to use in Terraform.
