@@ -104,4 +104,4 @@ testpaths = [
 ]
 
 [tool.poetry.scripts]
-tectonic = "tectonic.cli:tectonic"
+tectonic = "tectonic.cli:main"

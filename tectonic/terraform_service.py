@@ -258,10 +258,13 @@ class TerraformService(Terraform):
         Parameters:
             instances (list(int)): number of the instances to destroy.
         """
-        resources_to_destroy = None
-        if instances is not None:
+        if instances is None:
+            # Destroy everything
+            resources_to_destroy = None
+        else:
             resources_to_destroy = self._get_resources_to_target_destroy(instances)
-        if resources_to_destroy != []:
+
+        if resources_to_destroy is None or len(resources_to_destroy) > 0: 
             self._destroy(self.terraform_services_module, self._get_terraform_variables(), resources_to_destroy)
 
     def recreate(self, instances, guests, copies): 

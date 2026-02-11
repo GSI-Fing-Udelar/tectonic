@@ -1340,11 +1340,8 @@ class Description:
             list(str): full name of machines.
         """
         # Validate filters
-        services_guests_names = []
-        for _, guest in self.services_guests.items():
-            services_guests_names.append(guest.base_name)
-
-        guests_aux = list(self.base_guests.keys())
+        services_guests_names = [service.base_name for _, service in self.services_guests.items()]
+        guests_aux = [guest.base_name for _, guest in self.base_guests.items()]
         if not only_instances:
             guests_aux = guests_aux + services_guests_names
         if max(instances or [], default=0) > self.instance_number:

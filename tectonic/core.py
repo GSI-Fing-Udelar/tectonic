@@ -1,4 +1,5 @@
 
+
 # Tectonic - An academic Cyber Range
 # Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
 # Uruguay
@@ -22,6 +23,7 @@ import os
 import json
 import time
 import datetime
+import logging
 
 from tectonic.ansible import Ansible
 from tectonic.constants import OS_DATA
@@ -38,6 +40,8 @@ from tectonic.terraform_docker import TerraformDocker
 from tectonic.terraform_service_aws import TerraformServiceAWS
 from tectonic.terraform_service_docker import TerraformServiceDocker
 from tectonic.terraform_service_libvirt import TerraformServiceLibvirt
+
+logger = logging.getLogger()
 
 class CoreException(Exception):
     pass
@@ -77,6 +81,7 @@ class Core:
         else:
             raise CoreException("Unknown platform.")
         self.ansible = Ansible(self.config, self.description, self.client)
+
         
     # def __del__(self):
     #     del self.terraform_service
@@ -86,41 +91,45 @@ class Core:
     #     del self.ansible
     #     del self.description
 
-    def create_instances_images(self, guests=()):
+    def create_instances_images(self, guests=None):
         """
         Create base images.
 
         Parameters:
-            guests (list(str)): names of the guests for which to create images. 
+            guests (list(str)): names of the guests for which to create images. A None value creates all guest images.
         """
-        if guests is not None:
+        if guests is None or len(guests) > 0:
+            logger.info("Destroying scenario base images...")
             self.packer.destroy_instance_image(guests)
+            logger.info("Creating scenario base images...")
             self.packer.create_instance_image(guests)
 
-    def create_services_images(self, services=None):
+    def create_services_images(self, service_image_list=None):
         """
         Create base images.
 
         Parameters:
             services (list(str)): List of services to create.
         """
-        if services is not None:
-            self.packer.destroy_service_image(services)
-            self.packer.create_service_image(services)
+        if service_image_list is None or len(service_image_list) > 0:
+            logger.info("Destroying service base images...")
+            self.packer.destroy_service_image(service_image_list)
+            logger.info("Creating service base images...")
+            self.packer.create_service_image(service_image_list)
     
-    def deploy(self, instances, create_instances_images, create_services_images):
+    def deploy(self, instances, create_guest_images, service_image_list):
         """
         Create scenario.
 
         Parameters:
             instances (list(int)): numbers of the instances to deploy.
-            create_instances_images: whether to create instances images.
-            create_services_images: whether to create services images.
+            create_guest_images (bool): whether to create instances images.
+            service_image_list (list(str)): list of service images to create.
         """
-        if create_instances_images:
+        if create_guest_images:
             self.create_instances_images()
-        if create_services_images:
-            self.create_services_images()
+        if len(service_image_list) > 1:
+            self.create_services_images(service_image_list)
 
         if self.config.platform == "libvirt" and self.config.libvirt.routing:
             for _, service in self.description.services_guests.items():
@@ -132,38 +141,47 @@ class Core:
                     for _, interface in guest.interfaces.items():
                         self.client.create_nwfilter(f"{guest.name}-{interface.network.name}", interface.private_ip, interface.traffic_rules)
 
-        self.terraform_service.deploy(instances)
+        if len(self.description.services_guests) > 0:
+            logger.info("Deploying service machines...")
+            self.terraform_service.deploy(instances)
 
-        self.ansible.configure_services()
+            logger.info("Configuring services...")
+            self.ansible.configure_services()
 
+        logger.info("Deploying scenario machines...")
         self.terraform.deploy(instances)
 
+        logger.info("Waiting for machines to boot up...")
         self.ansible.wait_for_connections(instances=instances)
 
+        logger.info("Running after clone configuration...")
         self.ansible.run(instances, quiet=True)
 
         self.configure_access(instances)
 
         if self.description.elastic.enable:
             if self.description.elastic.monitor_type == "traffic":
+                logger.info("Installing packetbeat...")
                 self.terraform_service.deploy_packetbeat(self.ansible)
             elif self.description.elastic.monitor_type == "endpoint":
+                logger.info("Installing elastic agents...")
                 self.terraform_service.install_elastic_agent(self.ansible, instances)
 
         if self.description.caldera.enable:
+            logger.info("Installing caldera agents...")
             self.terraform_service.install_caldera_agent(self.ansible, instances)
 
-    def destroy(self, instances, machines, services, destroy_images):
+    def destroy(self, instances, images, services, service_image_list):
         """
         Destroy scenario.
 
         Parameters:
             instances (list(int)): numbers of the instances to destroy, if None destroy all.
-            machines (bool): whether to destroy scenario machines.
-            services (list(str)): list of services to destroy
-            destroy_images (bool): whether to destroy instances images.
+            images (bool): whether to also destroy scenario base images.
+            services (bool): whether to destroy service machines.
+            service_image_list (list(str)): list of service images to destroy.
         """
-        
+        logger.info("Destroying scenario machines...")
         self.terraform.destroy(instances)
         self.terraform_service.destroy(instances)
 
@@ -179,14 +197,22 @@ class Core:
                         self.client.destroy_nwfilter(f"{guest.name}-{interface.network.name}")
         
         if instances is None:
-            # Destroy Packetbeat
-            if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
-                self.terraform_service.destroy_packetbeat(self.ansible)
-                
+            if services:
+                if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
+                    logger.info("Destroying packetbeat ...")
+                    self.terraform_service.destroy_packetbeat(self.ansible)
+
+                if len(self.description.services_guests) > 0:
+                    logger.info("Destroying service machines...")
+                    self.terraform_service.destroy(instances)
+
             # Destroy images
-            if destroy_images:
+            if images:
+                logger.info("Destroying scenario base images...")
                 self.packer.destroy_instance_image(self.description.base_guests.keys())
-                self.packer.destroy_service_image(services)
+                if len(service_image_list) > 0:
+                    logger.info("Destroying service base images...")
+                    self.packer.destroy_service_image(service_image_list)
     
     def recreate(self, instances, guests, copies):
         """
@@ -197,21 +223,26 @@ class Core:
             guests (list(str)): name of the guests to start.
             copies (list(int)): number of the copies to start.
         """
+        logger.info("Recreating machines...")
         self.terraform.recreate(instances, guests, copies)
 
-        self.ansible.wait_for_connections(instances, guests, copies, False, [service.base_name for _, service in self.description.services_guests.items()])
+        logger.info("Waiting for machines to boot up...")
+        self.ansible.wait_for_connections(instances, guests, copies, True)
         
+        logger.info("Running after clone configuration...")
         self.ansible.run(instances, guests, copies, quiet=True, only_instances=False)
 
         self.configure_access(instances)
 
         if self.description.elastic.enable and self.description.elastic.monitor_type == "endpoint":
+            logger.info("Installing elastic agents...")
             self.terraform_service.install_elastic_agent(self.ansible, instances)
 
         if self.description.caldera.enable:
+            logger.info("Installing caldera agents...")
             self.terraform_service.install_caldera_agent(self.ansible, instances)
 
-    def start(self, instances, guests, copies, start_services):
+    def start(self, instances, guests, copies):
         """
         Start scenario machines.
 
@@ -219,20 +250,19 @@ class Core:
             instances (list(int)): number of the instances to start.
             guests (list(str)): name of the guests to start.
             copies (list(int)): number of the copies to start.
-            start_services (bool): whether the services should be started.
         """
-        machines_to_start = self.description.parse_machines(instances, guests, copies, False, [service.base_name for _, service in self.description.services_guests.items()])
+        logger.info("Starting machines...")
+        machines_to_start = self.description.parse_machines(instances, guests, copies, False)
         for machine in machines_to_start:
             self.client.start_machine(machine)
+        if 'elastic' in machines_to_start and self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
+            # TODO: verify what happens in AWS with start, stop and
+            # restart of the packetbeat service, since the vm will be
+            # restarted too. This does not happen in docker and
+            # libvirt.
+            self.terraform_service.manage_packetbeat(self.ansible, "started")
 
-        if start_services:
-            for service_name in self.description.services_guests.keys():
-                self.client.start_machine(service_name)
-            if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
-                self.terraform_service.manage_packetbeat(self.ansible, "started") # TODO: ver que pasa en AWS con start, stop, restart del servicio de packetbeat 
-                                                                                # ya que la máquina donde se instala también sufre esta acción. En libvirt y docker esto no pasa. 
-
-    def stop(self, instances, guests, copies, stop_services):
+    def stop(self, instances, guests, copies):
         """
         Stop scenario machines.
 
@@ -240,19 +270,16 @@ class Core:
             instances (list(int)): number of the instances to stop.
             guests (list(str)): name of the guests to stop.
             copies (list(int)): number of the copies to stop.
-            stop_services (bool): whether the services should be stopped.
         """
-        machines_to_stop = self.description.parse_machines(instances, guests, copies, False, [service.base_name for _, service in self.description.services_guests.items()])
+        logger.info("Stopping machines...")
+        machines_to_stop = self.description.parse_machines(instances, guests, copies, False)
         for machine in machines_to_stop:
             self.client.stop_machine(machine)
 
-        if stop_services:
-            for service_name in self.description.services_guests.keys():
-                self.client.stop_machine(service_name)
-            if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
-                self.terraform_service.manage_packetbeat(self.ansible, "stopped")
+        if 'elastic' in machines_to_stop and self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
+            self.terraform_service.manage_packetbeat(self.ansible, "stopped")
 
-    def restart(self, instances, guests, copies, restart_services):
+    def restart(self, instances, guests, copies):
         """
         Restart scenario machines.
         
@@ -260,17 +287,14 @@ class Core:
             instances (list(int)): number of the instances to restart.
             guests (list(str)): name of the guests to restart.
             copies (list(int)): number of the copies to restart.
-            restart_services (bool): whether the services should be restarted.
         """
+        logger.info("Rebooting machines...")
         machines_to_restart = self.description.parse_machines(instances, guests, copies, False, [service.base_name for _, service in self.description.services_guests.items()])
         for machine in machines_to_restart:
             self.client.restart_machine(machine)
 
-        if restart_services:
-            for service_name in self.description.services_guests.keys():
-                self.client.restart_machine(service_name)
-            if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
-                self.terraform_service.manage_packetbeat(self.ansible, "restarted")
+        if 'elastic' in machines_to_restart and self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
+            self.terraform_service.manage_packetbeat(self.ansible, "restarted")
 
     def info(self):
         """
@@ -297,7 +321,7 @@ class Core:
                 service_info[service.base_name] = {
                     "URL": f"https://{self.config.bastion_host.domain}:{service_port}",
                     "Credentials": self.terraform_service.get_service_credentials(service, self.ansible),
-                }    
+                }
         return {
             "instances_info": instances_info,
             "services_info": service_info,
@@ -433,6 +457,8 @@ class Core:
         If access type is SSH then users are created on all entry points (and the student access host, if appropriate). Credentials can be public SSH keys and/or autogenerated passwords.
         If access type is guacamole then users are created on all entry points and in guacamole. Credentials can be autogenerated passwords.
         """
+        logger.info("Configuring user access...")
+
         only_instances = True
         entry_points = [guest.base_name for _, guest in self.description.base_guests.items() if guest.entry_point]
         if self.config.platform == "aws" and entry_points:

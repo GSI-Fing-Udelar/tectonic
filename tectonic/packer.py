@@ -97,7 +97,7 @@ class Packer(ABC):
             guests (list(str)): names of the guests for which to destroy images.
         """
         machines = []
-        machines = [guest for _, guest in self.description.base_guests.items() if not guests or guest.base_name in guests]
+        machines = [guest for _, guest in self.description.base_guests.items() if guests is None or guest.base_name in guests]
         for machine in machines:
             if self.client.is_image_in_use(machine.image_name):
                 raise PackerException(f"Unable to delete image {machine.base_name} because it is being used.")
