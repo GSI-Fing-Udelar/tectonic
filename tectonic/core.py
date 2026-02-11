@@ -351,7 +351,12 @@ class Core:
 
         services_status = {}
         for service_name in self.description.services_guests.keys():
-            services_status[service_name] = [self.description.services_guests[service_name].service_ip, self.client.get_machine_status(service_name)]
+            status = self.client.get_machine_status(service_name)
+            ip = "-"
+            if status == "RUNNING":
+                ip = self.client.get_machine_private_ip(service_name)
+            services_status[service_name] = [ip, status]
+
         if self.description.elastic.enable and services_status[self.description.elastic.name] == "RUNNING":
             if self.description.elastic.monitor_type == "traffic":
                 packetbeat_ip = "-"
