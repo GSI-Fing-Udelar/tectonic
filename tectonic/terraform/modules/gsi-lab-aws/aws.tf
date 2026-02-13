@@ -31,76 +31,6 @@ resource "aws_subnet" "instance_subnets" {
   }
 }
 
-resource "aws_security_group" "student_entry_point_sg" {
-  description = "[Sudent Access] Allow inbound traffic from bastion host to lab entry points for student access."
-
-  vpc_id = data.aws_vpc.vpc.id
-  ingress {
-    description     = "Allow inbound SSH traffic from guacamole/bastion host to lab entry points."
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [ data.aws_security_group.bastion_host_scenario_sg.id ]
-  }
-  ingress {
-    description     = "Allow inbound RDP traffic from guacamole/bastion host to lab entry points."
-    from_port       = 3389
-    to_port         = 3389
-    protocol        = "tcp"
-    security_groups = [ data.aws_security_group.bastion_host_scenario_sg.id ]
-  }
-  ingress {
-    description     = "Allow inbound VNC traffic from guacamole/bastion host to lab entry points."
-    from_port       = 5900
-    to_port         = 5900
-    protocol        = "tcp"
-    security_groups = [ data.aws_security_group.bastion_host_scenario_sg.id ]
-  }
-
-  tags = {
-    Name = format("%s-%s-student_entry_point", var.institution, var.lab_name)
-  }
-}
-
-resource "aws_security_group" "teacher_entry_point_sg" {
-  description = "[Teacher Access] Allow inbound traffic from teacher access host."
-
-  vpc_id = data.aws_vpc.vpc.id
-  ingress {
-    description     = "Allow inbound SSH traffic from teacher access host."
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [ data.aws_security_group.teacher_access_host_scenario_sg.id ]
-  }
-
-  ingress {
-    description = "Allow inbound SSH traffic from guacamole."
-    from_port   = "22"
-    to_port     = "22"
-    protocol    = "tcp"
-    cidr_blocks = [var.guacamole_ip]
-  }
-  ingress {
-    description = "Allow inbound RDP traffic from guacamole."
-    from_port   = "3389"
-    to_port     = "3389"
-    protocol    = "tcp"
-    cidr_blocks = [var.guacamole_ip]
-  }
-  ingress {
-    description = "Allow inbound VNC traffic from guacamole."
-    from_port   = "5900"
-    to_port     = "5900"
-    protocol    = "tcp"
-    cidr_blocks = [var.guacamole_ip]
-  }
-
-  tags = {
-    Name = format("%s-%s-teacher_entry_point", var.institution, var.lab_name)
-  }
-}
-
 resource "aws_security_group" "internet_access_sg" {
   count       = local.internet_access ? 1 : 0
   description = "[Machines] Allow outbound internet traffic for enabled machines."
@@ -115,28 +45,36 @@ resource "aws_security_group" "internet_access_sg" {
   }
 
   tags = {
-    Name = format("%s-%s-internet_acecss", var.institution, var.lab_name)
+    Name = format("%s-%s-internet_acecss", local.tectonic.institution, local.tectonic.lab_name)
   }
 }
 
-resource "aws_security_group" "subnet_sg" {
-  description = "[Machines] Allow all traffic within the subnet. Drop everything else."
+resource "aws_security_group" "interface_traffic" {
+  for_each = local.network_interfaces
 
-  for_each = local.subnetworks
+  description = "Traffic to interface ${each.key}"
   vpc_id   = data.aws_vpc.vpc.id
-  ingress {
-    description = "Allow inbound traffic from all instance subnets."
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [lookup(each.value, "ip_network")]
+
+  dynamic "ingress" {
+    for_each = lookup(each.value, "traffic_rules")
+    content {
+      description = ingress.value.description
+      from_port   = ingress.value.from_port
+      to_port     = ingress.value.to_port
+      protocol    = ingress.value.protocol == "all" ? "-1" : ingress.value.protocol
+      cidr_blocks = [ingress.value.network_cidr]
+    }
   }
-  egress {
-    description = "Allow outbound traffic to all instance subnets."
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [lookup(each.value, "ip_network")]
+
+  dynamic "egress" {
+    for_each = [for subnetwork in local.subnetworks : subnetwork if subnetwork.instance == lookup(each.value, "instance")]
+    content {
+      description = "Allow all outbound traffic to all instance subnetworks."
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = [ egress.value.ip_network ]
+    }
   }
 
   tags = {
@@ -144,53 +82,20 @@ resource "aws_security_group" "subnet_sg" {
   }
 }
 
-resource "aws_security_group" "services_subnet_sg" {
-  description = "[Machines] Allow traffic to services from subnet."
+resource "aws_security_group" "services_traffic" {
+  description = "Traffic to services subnetwork"
   vpc_id   = data.aws_vpc.vpc.id
-  ingress {
-    description = "Allow inbound traffic from services subnets."
+
+  egress {
+    description = "Allow all outbound traffic to services network."
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = [var.services_network_cidr_block]
+    cidr_blocks = [ local.tectonic.config.services_network_cidr_block ]
   }
-  egress {
-    description   = "Allow outbound traffic to Fleet"
-    from_port     = 8220
-    to_port       = 8220
-    protocol      = "tcp"
-    cidr_blocks   = [var.services_network_cidr_block]
-  }
-  egress {
-    description   = "Allow outbound traffic to Logstash."
-    from_port     = 5044
-    to_port       = 5044
-    protocol      = "tcp"
-    cidr_blocks   = [var.services_network_cidr_block]
-  }
-  egress {
-    description   = "Allow outbound traffic to Caldera"
-    from_port     = 443
-    to_port       = 443
-    protocol      = "tcp"
-    cidr_blocks   = [var.services_network_cidr_block]
-  }
-  egress {
-    description   = "Allow outbound traffic to Caldera"
-    from_port     = 7010
-    to_port       = 7010
-    protocol      = "tcp"
-    cidr_blocks   = [var.services_network_cidr_block]
-  }
-  egress {
-    description   = "Allow outbound traffic to Caldera"
-    from_port     = 7011
-    to_port       = 7011
-    protocol      = "udp"
-    cidr_blocks   = [var.services_network_cidr_block]
-  }
+
   tags = {
-    Name = "${var.institution}-${var.lab_name}-services-subnet"
+    Name = format("%s-%s-services_acecss", local.tectonic.institution, local.tectonic.lab_name)
   }
 }
 
@@ -202,7 +107,7 @@ resource "aws_route_table" "scenario_internet_access" {
     gateway_id = data.aws_nat_gateway.ngw.id
   }
   tags = {
-    Name = "${var.institution}-${var.lab_name}-scenario_internet_access"
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}-scenario_internet_access"
   }
 }
 
@@ -219,10 +124,13 @@ resource "aws_network_interface" "interfaces" {
 
   source_dest_check = false
 
-  security_groups = concat([aws_security_group.subnet_sg[each.value.subnetwork_name].id, aws_security_group.teacher_entry_point_sg.id],
-    local.guest_data[each.value.guest_name].entry_point ? [aws_security_group.student_entry_point_sg.id] : [],
+  security_groups = concat([aws_security_group.interface_traffic[each.key].id],
     local.guest_data[each.value.guest_name].internet_access ? [aws_security_group.internet_access_sg[0].id] : [],
-    local.guest_data[each.value.guest_name].is_in_services_network ? [aws_security_group.services_subnet_sg.id] : [],
+    (
+      local.guest_data[each.value.guest_name].monitor || 
+      local.guest_data[each.value.guest_name].red_team_agent || 
+      local.guest_data[each.value.guest_name].blue_team_agent
+    ) ? [aws_security_group.services_traffic.id] : [],
   )
 
   tags = {
@@ -250,7 +158,7 @@ resource "aws_instance" "machines" {
   user_data = templatefile(format("%s/%s", abspath(path.root), 
     (each.value.base_os == "windows_srv_2022" ? "user_data_win.pkrtpl" : "user_data_linux.pkrtpl")),
     { 
-      authorized_keys = var.authorized_keys, 
+      authorized_keys = local.tectonic.authorized_keys, 
       hostname = each.value.hostname,
       username = local.os_data[each.value.base_os]["username"],
       base_os = each.value.base_os,
@@ -277,14 +185,14 @@ resource "null_resource" "wait_for_machines" {
   }
 
   provisioner "local-exec" {
-    command = "aws --region=${var.aws_region} ec2 wait instance-status-ok --instance-ids ${aws_instance.machines[each.key].id}"
+    command = "aws --region=${local.tectonic.config.platforms.aws.region} ec2 wait instance-status-ok --instance-ids ${aws_instance.machines[each.key].id}"
   }
 }
 
 # DNS Configuration
 
 resource "aws_route53_zone" "zones" {
-  for_each = toset(var.configure_dns ? local.network_names : [])
+  for_each = toset(local.tectonic.config.configure_dns ? local.network_names : [])
   name     = each.key
 
   vpc {
@@ -292,12 +200,12 @@ resource "aws_route53_zone" "zones" {
   }
 
   tags = {
-    Name = format("%s-%s-%s", var.institution, var.lab_name, each.key)
+    Name = format("%s-%s-%s", local.tectonic.institution, local.tectonic.lab_name, each.key)
   }
 }
 
 resource "aws_route53_record" "records" {
-  for_each = var.configure_dns ? local.dns_data : {}
+  for_each = local.tectonic.config.configure_dns ? local.dns_data : {}
   zone_id  = aws_route53_zone.zones[each.value.network].zone_id
   name     = each.value.name #<guest_name>-(<guest_copy_number>)?-<instance_number>.<network_name>
   type     = "A"
@@ -306,7 +214,7 @@ resource "aws_route53_record" "records" {
 }
 
 resource "aws_route53_record" "records_reverse" {
-  for_each = var.configure_dns ? local.dns_data : {}
+  for_each = local.tectonic.config.configure_dns ? local.dns_data : {}
   zone_id  = data.aws_route53_zone.reverse[0].zone_id
   name     = join(".", reverse(split(".", each.value.ip)))
   type     = "PTR"
@@ -317,22 +225,24 @@ resource "aws_route53_record" "records_reverse" {
 # Traffic mirroring
 
 resource "aws_ec2_traffic_mirror_target" "packetbeat" {
-  count = var.monitor && var.monitor_type == "traffic" ? 1 : 0
+  count = local.tectonic.services.elastic.enable && local.tectonic.services.elastic.monitor_type == "traffic" ? 1 : 0
   description          = "Packetbeat target mirror traffic."
   network_interface_id = data.aws_instance.packetbeat[0].network_interface_id
 
   tags = {
-    Name = "${var.institution}-${var.lab_name}"
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}"
   }
 }
+
 resource "aws_ec2_traffic_mirror_filter" "filter" {
-  count = var.monitor && var.monitor_type == "traffic" ? 1 : 0
+  count = local.tectonic.services.elastic.enable && local.tectonic.services.elastic.monitor_type == "traffic" ? 1 : 0
   tags = {
-    Name = "${var.institution}-${var.lab_name}"
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}"
   }
 }
+
 resource "aws_ec2_traffic_mirror_filter_rule" "filter_all_inbound" {
-  count = var.monitor && var.monitor_type == "traffic" ? 1 : 0
+  count = local.tectonic.services.elastic.enable && local.tectonic.services.elastic.monitor_type == "traffic" ? 1 : 0
   traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.filter[0].id
   source_cidr_block        = "0.0.0.0/0"
   destination_cidr_block   = "0.0.0.0/0"
@@ -340,8 +250,9 @@ resource "aws_ec2_traffic_mirror_filter_rule" "filter_all_inbound" {
   rule_action              = "accept"
   traffic_direction        = "ingress"
 }
+
 resource "aws_ec2_traffic_mirror_filter_rule" "filter_all_outbound" {
-  count = var.monitor && var.monitor_type == "traffic" ? 1 : 0
+  count = local.tectonic.services.elastic.enable && local.tectonic.services.elastic.monitor_type == "traffic" ? 1 : 0
   traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.filter[0].id
   source_cidr_block        = "0.0.0.0/0"
   destination_cidr_block   = "0.0.0.0/0"
@@ -356,7 +267,7 @@ resource "aws_ec2_traffic_mirror_session" "session" {
   session_number           = 1
   traffic_mirror_filter_id = aws_ec2_traffic_mirror_filter.filter[0].id
   traffic_mirror_target_id = aws_ec2_traffic_mirror_target.packetbeat[0].id
-  virtual_network_id       = var.packetbeat_vlan_id
+  virtual_network_id       = local.tectonic.config.platforms.aws.packetbeat_vlan_id
   tags = {
     Name = "${each.key}"
   }

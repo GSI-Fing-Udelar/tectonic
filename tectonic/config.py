@@ -233,7 +233,6 @@ class TectonicConfig(object):
     def packer_executable_path(self, value):
         self._packer_executable_path = value
 
-
     @classmethod
     def _assign_attributes(cls, config_obj, config_parser, section):
         """Assign the values of all parameters in the parser object in
@@ -289,7 +288,8 @@ class TectonicConfig(object):
                 "aws": self.aws.to_dict(),
                 "libvirt": self.libvirt.to_dict(),
                 "docker": self.docker.to_dict(),
-            } 
+            },
+            "ssh_public_key_file": self.ssh_public_key_file,
         }
         if self.proxy:
             result["proxy"] = self.proxy

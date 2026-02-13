@@ -1,0 +1,90 @@
+---
+institution: udelar
+lab_name: traffic_rules
+default_os: ubuntu22
+
+guest_settings:
+  workstation:
+    entry_point: yes
+    memory: 2048
+    cpu: 2
+    disk: 20
+    copies: 1
+    red_team_agent: yes
+    monitor: yes
+    gui: no
+  webserver:
+    memory: 1024
+    cpu: 1
+    disk: 10
+    copies: 1
+    monitor: yes
+  ftpserver:
+    memory: 1024
+    cpu: 1
+    disk: 10
+    copies: 1
+    red_team_agent: yes
+  waf:
+    memory: 1024
+    cpu: 1
+    disk: 10
+    internet_access: yes
+    copies: 1
+    monitor: no
+
+topology:
+  - name: lan
+    members:
+      - workstation
+  - name: servers
+    members:
+      - webserver
+      - ftpserver
+  - name: dmz
+    members:
+      - waf
+
+traffic_rules: # If no traffic rules are defined then by default all traffic within the same subnet is allowed.
+  - description: Allow access from waf to webserver on port 8080
+    source: waf.dmz #The source can be an entire network or a machine interface (<guest>.<network>)
+    destination: webserver.servers #The destination must be the interface of a machine (<guest>.<network>)
+    port_range: 8080 #It can be a specific port, a range of ports (number-number), or by default all ports are assumed
+    protocol: tcp #It can be tcp, udp, icmp, or all. By default all is assumed
+  - description: Allow access from ftpserver to webserver on port 9080
+    source: ftpserver.servers
+    destination: webserver.servers
+    port_range: 9080
+    protocol: tcp
+  - description: Allow icmp traffic from webserver to waf
+    source: webserver.servers 
+    destination: waf.dmz
+    protocol: icmp
+  - description: Allow web traffic from lan to waf
+    source: lan
+    destination: waf.dmz
+    port_range: 80
+    protocol: tcp
+  - description: Allow ftp and ssh traffic from lan to ftpserver
+    source: lan
+    destination: ftpserver.servers
+    port_range: 21-22
+    protocol: tcp
+  - description: Allow all traffic from ftpserver to workstation
+    source: ftpserver.servers
+    destination: workstation.lan
+
+caldera_settings:
+  enable: yes
+
+elastic_settings:
+  enable: yes
+  monitor_type: endpoint
+  deploy_default_policy: yes
+
+guacamole_settings:
+  enable: yes
+
+moodle_settings:
+  enable: yes
+

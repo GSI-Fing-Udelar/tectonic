@@ -20,7 +20,8 @@ This is a full reference example of the ansible variables available in
             "teacher_access": "host"
         },
         "docker": {
-            "dns": "8.8.8.8"
+            "dns": "8.8.8.8",
+            "uri": "unix:///var/run/docker.sock"
         },
         "libvirt": {
             "bridge_base_ip": "10",
@@ -28,7 +29,8 @@ This is a full reference example of the ansible variables available in
         }
     },
     "proxy": "http://localhost:3128",
-    "services_network_cidr_block": "10.99.0.128/25"
+    "services_network_cidr_block": "10.99.0.128/25",
+    "ssh_public_key_file": "~/.ssh/id_rsa.pub",
 },
 "copy": "1",
 "create_students_password": true,

@@ -129,63 +129,7 @@ class TerraformServiceAWS(TerraformService):
             list(str): names of resources.
         """
         return []
- 
-    def _get_terraform_variables(self):
-        """
-        Get variables to use in Terraform.
-        
-        Return:
-            dict: variables.
-        """
-        result = super()._get_terraform_variables()
-        result["aws_region"] = self.config.aws.region
-        result["network_cidr_block"] = self.config.network_cidr_block
-        result["services_network_cidr_block"] = self.config.services_network_cidr_block
-        result["internet_network_cidr_block"] = self.config.internet_network_cidr_block
-        result["configure_dns"] = self.config.configure_dns
-        result["teacher_access_type"] = self.config.aws.teacher_access
-        result["monitor_type"] = self.description.elastic.monitor_type
-        result["elastic_internal_port"] = self.config.elastic.internal_port
-        result["elastic_external_port"] = self.config.elastic.external_port
-        result["caldera_internal_port"] = self.config.caldera.internal_port
-        result["caldera_external_port"] = self.config.caldera.external_port
-        result["guacamole_internal_port"] = self.config.guacamole.internal_port
-        result["guacamole_external_port"] = self.config.guacamole.external_port
-        result["moodle_internal_port"] = self.config.moodle.internal_port
-        result["moodle_external_port"] = self.config.moodle.external_port
-        return result
-    
-    def _get_network_interface_variables(self, interface):
-        """
-        Return netowkr interface variables for terraform.
 
-        Parameters:
-          interface (NetworkInterface): interface to get variables.
-
-        Returns:
-          dict: variables.
-        """
-        result = super()._get_network_interface_variables(interface)
-        result["network_name"] = interface.network.name
-        result["guest_name"] = interface.guest_name
-        result["index"] = interface.index
-        return result
-    
-    def _get_service_machine_variables(self, service):
-        """
-        Return machines variables deploy services.
-
-        Parameters:
-            service (ServiceDescription): services to deploy.
-
-        Returns:
-            dict: machines variables.
-        """
-        result = super()._get_service_machine_variables(service)
-        result["instance_type"] = service.instance_type
-        result["internet_access"] = service.internet_access
-        return result
-    
     def _build_packetbeat_inventory(self, ansible, variables):
         """
         Build inventory for Ansible when installing Packetbeat.

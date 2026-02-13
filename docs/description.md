@@ -17,8 +17,8 @@ A lab description consists of the following resources:
   directory, if using elastic for evaluation.
 * Caldera resources in the `caldera` directory  if using caldera for adversary emulation.
 
-### Scenario description file
-The scenario description is a YAML file with three main sections: 
+### Scenario description
+The scenario description is a YAML file with the following sections: 
 
 * A global section with the following options:
   + `institution`: The institution that created the lab. Must be alphanumeric. Required.
@@ -45,7 +45,7 @@ The scenario description is a YAML file with three main sections:
     attribute mentioned above.
   + `internet_access`: Whether the guest has internet access. Note
     that this might be expensive on AWS, since a NAT gateway is
-    deployed in the lab VPC. Default: `no`.
+    deployed in the lab VPC. Default: `no`. It only works on AWS and Libvirt.
   + `copies`: The number of copies of this guest to deploy in each
     instance. Default: `1`.
   + `monitor`: Whether to monitor this guest using [Elastic Security](https://www.elastic.co/security). This option is ignored if `elastic_settings.enable` is `no`. Note that in AWS if this is `yes` and `elastic_settings.monitor_type` is `traffic`, the deployed instance type is selected from the `T3` instances, instead of `T2`. Default: `no`.
@@ -56,8 +56,15 @@ The scenario description is a YAML file with three main sections:
   list of networks with a `name` and a list of `members` which must be
   one of the defined guests in the previous section. See [network_topology](./network_topology.md) for more details.
 
-+ A `elastic_settings` section to describe the configuration of the Elastic Security service. The following properties can be defined:
-  + `enable`: Whether to deploy this service. Default: `no`.
+* A `traffic_rules` section allows you to specify the traffic allowed between machines in the scenario. This means that by default, all traffic is denied except for that specified through rules. If the section is omitted then only traffic within each subnet will be allowed. Each rule entry has these options:
+  + `description`: description of the traffic that is enabled. This option is mandatory.
+  + `source`: Traffic source. This can be a machine interface, represented by `<guest_name>.<network_name>`, or an entire network, represented by `<network_name>`. This option is mandatory.
+  + `destination`: Traffic destination. This must be a machine interface, represented by `<guest_name>.<network_name>`. This option is mandatory.
+  + `port_range`: Traffic port range enabled. This can be a specific port or a range of ports. If the option is omitted then all ports are assumed (`0-65535`).
+  + `protocol`: Traffic protocol enabled. It can take the values: `tcp`, `udp`,`icmp` or `all`. If the option is omitted then all protocolos are assumed (`all`).
+
++ A `elastic_settings` section to describe the configuration of the Elastic Security service. The following properties must be defined:
+  + `enable`: Wheter to deploy this service. Default: `no`.
   + `memory`: Amount of RAM of the machine, in MB. Default: `8192`.
   + `vcpu`: Number of virtual CPUs of the machine. Default: `4`.
   + `disk`: Amount of disk of the machine, in GB. Default: `50`.

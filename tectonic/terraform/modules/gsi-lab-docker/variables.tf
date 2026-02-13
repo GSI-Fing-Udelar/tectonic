@@ -18,38 +18,6 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-variable "institution" {
-  type        = string
-  description = "The institution that created the lab."
-
-  validation {
-    condition     = !strcontains(var.institution, "-")
-    error_message = "Names cannot contain the '-' symbol."
-  }
-}
-
-variable "lab_name" {
-  type        = string
-  description = "The name of the lab"
-
-  validation {
-    condition     = !strcontains(var.lab_name, "-")
-    error_message = "Names cannot contain the '-' symbol."
-  }
-}
-
-variable "instance_number" {
-  type        = number
-  description = "Number of instances to create."
-}
-
-
-variable "docker_uri" {
-  type        = string
-  default     = "unix:///var/run/docker.sock"
-  description = "The uri to use for the docker provider."
-}
-
 variable "subnets_json" {
   type        = string
   default     = "{}"
@@ -62,12 +30,6 @@ variable "guest_data_json" {
   description = "The map with all guest data, in JSON format."
 }
 
-variable "default_os" {
-  type        = string
-  description = "Default base VM operating system to use. Can be ubuntu22 (the default) or rocky8."
-  default     = "ubuntu22"
-}
-
 variable "os_data_json" {
   type        = string
   description = "A JSON encoded map of operating system information."
@@ -78,25 +40,7 @@ variable "ssh_public_key_file" {
   default     = "~/.ssh/id_rsa.pub"
 }
 
-variable "authorized_keys" {
+variable "tectonic_json" {
   type        = string
-  description = "Admin user authorized_keys file contents"
-}
-
-variable "configure_dns" {
-  description = "Whether to configure DNS hostnames for instances."
-  type        = bool
-  default     = true
-}
-
-variable "services_network" {
-  type        = string
-  default     = "192.168.5.0/24"
-  description = "CIDR block of the external bridged network for services."
-}
-
-variable "services_network_base_ip" {
-  type        = number
-  default     = 10
-  description = "Starting IP from which to sequentially assign the services IPs. With default values, first entry point would get 192.168.5.10, and so on." 
+  description = "A JSON encoded map of tectonic configuration."
 }

@@ -19,5 +19,5 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 provider "docker" {
-  host = var.docker_uri
+  host = local.tectonic.config.platforms.docker.uri
 }

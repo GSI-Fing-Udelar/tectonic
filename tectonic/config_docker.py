@@ -51,4 +51,5 @@ class TectonicConfigDocker(object):
     def to_dict(self):
         return {
             "dns": self.dns,
+            "uri": self.uri,
         }

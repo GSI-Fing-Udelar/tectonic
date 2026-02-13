@@ -18,28 +18,13 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-# resource "libvirt_pool" "lab_images" {
-#   name = "base-images"
-#   type = "dir"
-#   path = var.libvirt_storage_pool
-# }
-
-# Base images
-# FZ: creo que esto debería ser un data source, no un resource
-# Basado en https://github.com/dmacvicar/terraform-provider-libvirt/pull/987
-# resource "libvirt_volume" "base_image" {
-#   for_each = keys(var.guest_settings)
-#   name = "${var.institution}.${var.lab_name}.${each.value}.qcow2"
-#   pool = libvirt_pool.lab_images.name
-# }
-
 # Base images already exist, here we create a volume for each
 # guest, using the base image as a template
 resource "libvirt_volume" "cloned_image" {
   for_each = local.guest_data
   name     = "${each.key}"
-  base_volume_name = "${var.institution}-${var.lab_name}-${each.value.base_name}"
-  pool     = var.libvirt_storage_pool
+  base_volume_name = "${local.tectonic.institution}-${local.tectonic.lab_name}-${each.value.base_name}"
+  pool     = local.tectonic.config.platforms.libvirt.storage_pool
   format   = "qcow2"
   size     = (lookup(each.value, "disk", 10) * 1073741824)
 }
@@ -50,17 +35,17 @@ resource "libvirt_cloudinit_disk" "commoninit" {
   user_data      = templatefile("${path.module}/cloud_init.cfg", { 
     hostname = each.value.hostname, 
     user = local.os_data[each.value.base_os]["username"],
-    authorized_keys = replace(var.authorized_keys, "\n", "\\n")
+    authorized_keys = replace(local.tectonic.authorized_keys, "\n", "\\n")
   })
   network_config = local.network_config[each.key]
-  pool           = var.libvirt_storage_pool
+  pool           = local.tectonic.config.platforms.libvirt.storage_pool
 }
 
 # External network for student access
 resource "libvirt_network" "external" {
-  name = "${var.institution}-${var.lab_name}-external"
+  name = "${local.tectonic.institution}-${local.tectonic.lab_name}-external"
   mode = "bridge"
-  bridge = var.libvirt_bridge
+  bridge = local.tectonic.config.platforms.libvirt.bridge
 }
 
 resource "libvirt_network" "subnets" {
@@ -68,7 +53,7 @@ resource "libvirt_network" "subnets" {
 
   name = "${each.key}"
   addresses = [lookup(each.value, "ip_network")]
-  mode = "none"
+  mode = local.tectonic.config.platforms.libvirt.routing ? "route" : "none"
   autostart = true
 }
 
@@ -87,16 +72,23 @@ resource "libvirt_domain" "machines" {
   cloudinit = libvirt_cloudinit_disk.commoninit[each.key].id
 
   dynamic "network_interface" { 
-    for_each = each.value.entry_point && var.enable_ssh_access ? ["external-nic"] : []
+    for_each = each.value.entry_point && local.tectonic.enable_ssh_access ? ["external-nic"] : []
     content { 
       network_id = libvirt_network.external.id
     }
   }
 
   dynamic "network_interface" { 
+    for_each = each.value.internet_access ? ["internet-nic"] : []
+    content { 
+      network_name = "${local.tectonic.institution}-${local.tectonic.lab_name}-internet"
+    }
+  }
+
+  dynamic "network_interface" { 
     for_each = each.value.is_in_services_network ? ["services-nic"] : []
     content { 
-      network_name = "${var.institution}-${var.lab_name}-services"
+      network_name = "${local.tectonic.institution}-${local.tectonic.lab_name}-services"
     }
   }
 
@@ -136,6 +128,10 @@ resource "libvirt_domain" "machines" {
   autostart = true
 
   xml {
-    xslt = file(lookup(each.value, "advanced_options_file", "/dev/null"))
+    xslt = templatefile("${path.module}/xslt/main.xslt.tpl", {
+      enable_filters = local.tectonic.config.platforms.libvirt.routing
+      nw_filter_path = "${abspath("${path.module}/xslt/nw_filter.xslt")}"
+      custom_path = "${abspath(lookup(each.value, "advanced_options_file", "/dev/null"))}"
+    })
   }
 }

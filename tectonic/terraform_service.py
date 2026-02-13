@@ -19,9 +19,7 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
-
 from abc import abstractmethod
-
 from tectonic.terraform import Terraform
 from tectonic.constants import OS_DATA
 import importlib.resources as tectonic_resources
@@ -281,27 +279,6 @@ class TerraformService(Terraform):
         resources_to_recreate = self._get_resources_to_recreate(instances, guests, copies)
         self._apply(self.terraform_services_module, self._get_terraform_variables(), resources_to_recreate, True)
 
-    def _get_service_machine_variables(self, service):
-        """
-        Return machines variables deploy services.
-
-        Parameters:
-            service (ServiceDescription): services to deploy.
-
-        Returns:
-            dict: machines variables.
-        """
-        return {
-            "guest_name": service.name,
-            "base_name": service.base_name,
-            "hostname": service.base_name,
-            "base_os": service.os,
-            "interfaces": {name : self._get_network_interface_variables(interface) for name, interface in service.interfaces.items()},
-            "vcpu": service.vcpu,
-            "memory": service.memory,
-            "disk": service.disk,
-        }
-
     def _get_terraform_variables(self):
         """
         Get variables to use in Terraform.
@@ -309,13 +286,9 @@ class TerraformService(Terraform):
         Return:
             dict: variables.
         """
-        machines = [service for _, service in self.description.services_guests.items()]
         return {
-            "institution": self.description.institution,
-            "lab_name": self.description.lab_name,
-            "ssh_public_key_file": self.config.ssh_public_key_file,
-            "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps({name: network.to_dict() for name, network in self.description.auxiliary_networks.items()}),
-            "guest_data_json": json.dumps({service.name: self._get_service_machine_variables(service) for service in machines}),
+            "tectonic_json": json.dumps(self.description.to_dict()),
+            "subnets_json": json.dumps({network.name: network.to_dict() for network in self.description.auxiliary_networks.values()}),
+            "guest_data_json": json.dumps({service.name: service.to_dict() for service in self.description.services_guests.values()}),
             "os_data_json": json.dumps(OS_DATA),
         }

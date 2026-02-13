@@ -104,6 +104,74 @@ def test_description_invalid(labs_path, tectonic_config):
     with pytest.raises(DescriptionException):
         Description(tectonic_config, lab_edition_path)
 
+def test_description_traffic_rules(labs_path, tectonic_config):
+    lab_edition_path = Path(labs_path) / "test-traffic_rules.yml"
+    tectonic_config.libvirt.routing = False
+    description = Description(tectonic_config, lab_edition_path)
+    if tectonic_config.platform != "aws":
+        assert description._base_traffic_rules == {}
+    elif tectonic_config.platform == "aws":
+        assert len(description._base_traffic_rules) == 1
+
+    tectonic_config.libvirt.routing = True
+    description = Description(tectonic_config, lab_edition_path)
+    if tectonic_config.platform != "docker":
+        assert len(description._base_traffic_rules) == 1
+        base_rule = description._base_traffic_rules["rule-0"]
+        assert base_rule.description == "Allow access from attacker to victim on port 8080"
+        assert base_rule.source == "attacker.lan"
+        assert base_rule.destination == "victim.dmz"
+        assert base_rule.protocol == "tcp"
+        assert base_rule.port_range == 8080
+
+        for _, service in description.services_guests.items():
+            rules = service.base_traffic_rules()
+            if service.base_name == "elastic":
+                assert len(rules) == 4
+            elif service.base_name == "caldera":
+                assert len(rules) == 5
+            elif service.base_name == "packetbeat":
+                assert len(rules) == 2
+            elif service.base_name == "guacamole":
+                assert len(rules) == 2
+            elif service.base_name == "moodle":
+                assert len(rules) == 2
+            elif service.base_name == "bastion_host":
+                assert len(rules) == 5
+            elif service.base_name == "teacher_access_host":
+                assert len(rules) == 1
+
+        for _, guest in description.scenario_guests.items():
+            if guest.instance == 1:
+                if guest.base_name == "victim":
+                    for _, interface in guest.interfaces.items():
+                        if interface.network.base_name == "dmz":
+                            assert len(interface.traffic_rules) == 3
+                            rule = interface.traffic_rules[0]
+                            assert rule.name == "udelar-lab01-1-victim-2-rule-0-1"
+                            assert rule.description == "Allow access from attacker to victim on port 8080"
+                            assert rule.protocol == "tcp"
+                            assert rule.from_port == "8080"
+                            assert rule.to_port == "8080"
+                            assert rule.source_cidr == "10.0.1.4/32"
+                elif guest.base_name == "attacker":
+                    for _, interface in guest.interfaces.items():
+                        if interface.network.base_name == "lan":
+                            expected = 2
+                            if tectonic_config.platform == "aws":
+                                expected = 3
+                            assert len(interface.traffic_rules) == expected
+
+def test_description_no_services(labs_path, tectonic_config):
+    lab_edition_path = Path(labs_path) / "no_services.yml"
+    description = Description(tectonic_config, lab_edition_path)
+    assert description.elastic.enable == False
+    assert description.caldera.enable == False
+    assert description.guacamole.enable == False
+    assert description.moodle.enable == False
+    assert description.bastion_host.enable == (tectonic_config.platform == "aws")
+    assert description.teacher_access_host.enable == (tectonic_config.platform == "aws")
+
 def test_description_setters(description):
     description = copy.deepcopy(description)
 

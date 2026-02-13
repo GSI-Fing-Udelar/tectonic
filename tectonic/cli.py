@@ -601,10 +601,10 @@ def list_instances(ctx, instances, guests, copies):
         logger.info(utils.create_table(headers,rows))
 
     if result.get("services_status"):
-        headers = ["Name", "Status"]
+        headers = ["Name", "IP", "Status"]
         rows = []
-        for machine, status in result.get("services_status", []).items():
-            rows.append([machine, status])
+        for machine, info in result.get("services_status", []).items():
+            rows.append([machine, info[0], info[1]])
         logger.info(utils.create_table(headers,rows))
         
 @tectonic.command()

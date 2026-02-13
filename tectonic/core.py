@@ -131,10 +131,22 @@ class Core:
         if len(service_image_list) > 1:
             self.create_services_images(service_image_list)
 
-        if len(self.description.services_guests) > 0:
-            logger.info("Deploying service machines...")
-            self.terraform_service.deploy(instances)
+        if self.config.platform == "libvirt" and self.config.libvirt.routing:
+            for _, service in self.description.services_guests.items():
+                for _, interface in service.interfaces.items():
+                    self.client.create_nwfilter(f"{service.name}-{interface.network.name}", interface.private_ip, interface.traffic_rules)
+            machines_to_create_nwfilter = self.description.parse_machines(instances)
+            for _, guest in self.description.scenario_guests.items():
+                if guest.name in machines_to_create_nwfilter:
+                    for _, interface in guest.interfaces.items():
+                        self.client.create_nwfilter(f"{guest.name}-{interface.network.name}", interface.private_ip, interface.traffic_rules)
 
+        # Invoke the services terraform module even if no services are enabled, 
+        # as this terraform creates networks that the instances terraform module can then use.
+        logger.info("Deploying service machines...")
+        self.terraform_service.deploy(instances) 
+
+        if len(self.description.services_guests) > 0:
             logger.info("Configuring services...")
             self.ansible.configure_services()
 
@@ -173,16 +185,29 @@ class Core:
         """
         logger.info("Destroying scenario machines...")
         self.terraform.destroy(instances)
-      
+        self.terraform_service.destroy(instances)
+
+        if self.config.platform == "libvirt" and self.config.libvirt.routing:
+            if instances == None:
+                for _, service in self.description.services_guests.items():
+                    for _, interface in service.interfaces.items():
+                        self.client.destroy_nwfilter(f"{service.name}-{interface.network.name}")
+            machines_to_delete_nwfilter = self.description.parse_machines(instances)
+            for _, guest in self.description.scenario_guests.items():
+                if guest.name in machines_to_delete_nwfilter:
+                    for _, interface in guest.interfaces.items():
+                        self.client.destroy_nwfilter(f"{guest.name}-{interface.network.name}")
+        
         if instances is None:
             if services:
                 if self.description.elastic.enable and self.description.elastic.monitor_type == "traffic":
                     logger.info("Destroying packetbeat ...")
                     self.terraform_service.destroy_packetbeat(self.ansible)
 
-                if len(self.description.services_guests) > 0:
-                    logger.info("Destroying service machines...")
-                    self.terraform_service.destroy(instances)
+                # Invoke the services terraform module even if no services are enabled, 
+                # as this terraform creates networks that the instances terraform module can then use.
+                logger.info("Destroying service machines...")
+                self.terraform_service.destroy(instances)
 
             # Destroy images
             if images:
@@ -291,8 +316,6 @@ class Core:
             elif self.config.platform == "libvirt":
                 bastion_host_ip = self.description.bastion_host.service_ip
             instances_info["Bastion Host domain - IP"] = f"{self.config.bastion_host.domain} - {bastion_host_ip}"
-        if self.description.teacher_access_host.enable:
-            instances_info["Teacher Access Host IP"] = self.description.teacher_access_host.service_ip
 
         service_info = {}
         for _, service in self.description.services_guests.items():
@@ -329,24 +352,29 @@ class Core:
                 ip = self.client.get_machine_private_ip(machine)
             instances_info[machine] = [ip, status]
 
-        services_to_list = set(guests)-set([guest.base_name for _, guest in self.description.scenario_guests.items()])
-        services_to_list = self.description.parse_machines(None, services_to_list, None, False)
-
         services_status = {}
-        for service_name in services_to_list:
-            services_status[service_name] = self.client.get_machine_status(service_name)
+        for service_name in self.description.services_guests.keys():
+            status = self.client.get_machine_status(service_name)
+            ip = "-"
+            if status == "RUNNING":
+                ip = self.client.get_machine_private_ip(service_name)
+            services_status[service_name] = [ip, status]
+
         if self.description.elastic.enable and services_status[self.description.elastic.name] == "RUNNING":
             if self.description.elastic.monitor_type == "traffic":
+                packetbeat_ip = "-"
+                if self.description.platfrom == "aws":
+                    packetbeat_ip = self.description.packetbeat.service_ip
                 packetbeat_status = self.terraform_service.manage_packetbeat(self.ansible, "status")
                 if packetbeat_status is not None:
-                    services_status[f"{self.description.institution}-{self.description.lab_name}-packetbeat"] = packetbeat_status
+                    services_status[f"{self.description.institution}-{self.description.lab_name}-packetbeat"] = [packetbeat_ip, packetbeat_status]
             else:
                 # TODO: move this somewhere else?
                 playbook = tectonic_resources.files('tectonic') / 'services' / 'elastic' / 'get_info.yml'
                 result = self.terraform_service.get_service_info(self.description.elastic, self.ansible, playbook, {"action":"agents_status"})
                 agents_status = result[0]['agents_status']
                 for key in agents_status:
-                    services_status[f"elastic-agents-{key}"] = agents_status[key]
+                    services_status[f"elastic-agents-{key}"] = ["-", agents_status[key]]
         if self.description.caldera.enable and services_status[self.description.caldera.name] == "RUNNING":
             # TODO: move this somewhere else?
             playbook = tectonic_resources.files('tectonic') / 'services' / 'caldera' / 'get_info.yml'
@@ -366,7 +394,7 @@ class Core:
                     else:
                         agents_status["dead"] = agents_status["dead"] + 1
             for key in agents_status:
-                services_status[f"caldera-agents-{key}"] = agents_status[key]
+                services_status[f"caldera-agents-{key}"] = ["-", agents_status[key]]
         return {
             "instances_info" : instances_info,
             "services_status" : services_status
@@ -472,11 +500,15 @@ class Core:
             machines_data = {}
             for _, guest in self.description.scenario_guests.items():
                 machine_name = f"{guest.base_name}-{guest.instance}" if guest.copy == 1 else f"{guest.base_name}-{guest.instance}-{guest.copy}"
+                if self.config.platform == "aws" or (self.config.platform == "libvirt" and self.config.libvirt.routing):
+                    connection_ip = self.client.get_machine_private_ip(guest.name) 
+                else: 
+                    connection_ip = self.client.get_machine_ip_in_services_network(guest.name)
                 machines_data[machine_name] = {
                     "instance": guest.instance,
                     "access_protocols": guest.access_protocols,
                     "entry_point": guest.entry_point,
-                    "ip": self.client.get_machine_private_ip(guest.name) if self.config.platform == "aws" else self.client.get_machine_ip_in_services_network(guest.name),
+                    "ip": connection_ip,
                 }
             self.ansible.run( #TODO: change user-mapping for database and assign guacadmin connections?
                 instances=None,
