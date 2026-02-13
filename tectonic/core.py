@@ -141,10 +141,12 @@ class Core:
                     for _, interface in guest.interfaces.items():
                         self.client.create_nwfilter(f"{guest.name}-{interface.network.name}", interface.private_ip, interface.traffic_rules)
 
-        if len(self.description.services_guests) > 0:
-            logger.info("Deploying service machines...")
-            self.terraform_service.deploy(instances)
+        # Invoke the services terraform module even if no services are enabled, 
+        # as this terraform creates networks that the instances terraform module can then use.
+        logger.info("Deploying service machines...")
+        self.terraform_service.deploy(instances) 
 
+        if len(self.description.services_guests) > 0:
             logger.info("Configuring services...")
             self.ansible.configure_services()
 
@@ -202,9 +204,10 @@ class Core:
                     logger.info("Destroying packetbeat ...")
                     self.terraform_service.destroy_packetbeat(self.ansible)
 
-                if len(self.description.services_guests) > 0:
-                    logger.info("Destroying service machines...")
-                    self.terraform_service.destroy(instances)
+                # Invoke the services terraform module even if no services are enabled, 
+                # as this terraform creates networks that the instances terraform module can then use.
+                logger.info("Destroying service machines...")
+                self.terraform_service.destroy(instances)
 
             # Destroy images
             if images:
