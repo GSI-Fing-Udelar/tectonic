@@ -203,6 +203,9 @@ def confirm_machines(ctx, instances, guest_names, copies, action, print_instance
         if "teacher_access" in guest_names:
             machines += ["the teacher access"]
             guest_names.remove("teacher_access")
+        if "bastion_host" in guest_names:
+            machines += ["the bastion hot"]
+            guest_names.remove("bastion_host")
 
         if not guest_names:
             print_instances = False
