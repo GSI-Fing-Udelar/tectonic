@@ -528,7 +528,7 @@ def destroy(ctx, images, services, service_image_list, instances, force):
             if services:
                 message += ", plus all running services"
             if len(service_image_list) > 0:
-                message += f". Also, the following service images will be deleted: {", ".join(service_image_list)}"
+                message += f". Also, the following service images will be deleted: {', '.join(service_image_list)}"
             message += "."
             logger.info(message)
             click.confirm("Continue?", abort=True)
