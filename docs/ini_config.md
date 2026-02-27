@@ -53,6 +53,7 @@ main `config` section and special sections for different platforms
   entry points. Default: `192.168.0.0/25`.
 * `bridge_base_ip`: Base number from which to assign static IP address
   in bridged networks. Default: `10`.
+* `connection_network`: CIDR used to access entry_point machines via SSH. This CIDR is used to configure a route on entry_point machines through the host interface associated with the external_network.
 * `routing`: Enable routing and the use of traffic filtering rules to specify more complex scenarios. Default: `no`. In AWS this option is forced to take the value `yes` and in Docker the value `no`. For this reason, it is not necessary to specify this option in the sections corresponding to each platform.
 
 ### [aws] section:
