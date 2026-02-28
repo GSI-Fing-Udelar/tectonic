@@ -1,0 +1,100 @@
+---
+# ==============================================================================
+# DFIR Final Scenario - Unified WannaCry Attack Simulation
+# ==============================================================================
+# This scenario simulates a complete WannaCry attack combining both:
+#   1. NETWORK: Realistic PCAP traffic (reconnaissance, malware download, C2)
+#   2. FILESYSTEM: Forensic disk image with encrypted and deleted files
+#
+# Key Features:
+#   - Network traffic simulation (SMB exploitation, HTTP malware download)
+#   - Realistic file system generation with multiple file types
+#   - Real AES-256-CBC encryption (not fake/simulated)
+#   - Forensic disk image creation for Autopsy analysis
+#   - Hidden flag file (encrypted + deleted) for DFIR challenge
+#   - PE executables with WannaCry signatures
+#   - Ransom notes and forensic artifacts
+#
+# Learning Objectives:
+#   1. Network forensics: Analyze PCAP files to identify attack vectors
+#   2. Disk forensics: Use Autopsy to recover deleted files
+#   3. Malware analysis: Identify ransomware patterns and artifacts
+#   4. Incident response: Correlate network and filesystem evidence
+#   5. File recovery: Recover and decrypt deleted encrypted files
+# ==============================================================================
+
+# Scenario metadata (REQUIRED fields per Tectonic specification)
+institution: udelar
+lab_name: dfir_final_scenario
+default_os: ubuntu22
+
+# Optional description shown in Tectonic info
+description: |
+  Unified WannaCry Attack Simulation for Digital Forensics and Incident Response Training.
+  
+  This scenario creates a complete attack simulation combining:
+  - Network traffic capture (PCAP): SMB exploitation, malware download, C2 communication
+  - Forensic disk image: Encrypted files, deleted artifacts, hidden flags
+  
+  Students will practice:
+  - Network forensics with Wireshark
+  - Disk forensics with Autopsy
+  - File recovery and decryption
+  - Timeline reconstruction
+  - Incident response correlation
+  
+  ⚠️  WARNING: Files are REALLY encrypted with AES-256-CBC!
+  🎯 CHALLENGE: Find and decrypt the hidden flag file!
+
+# Network topology - defines which machines are connected to which networks
+topology:
+  - name: forensic_network
+    members:
+      - victim
+      - analyst
+
+# Guest machines (VMs/containers)
+guest_settings:
+  # Victim machine that gets "infected" with WannaCry simulator
+  victim:
+    hostname: victim
+    entry_point: yes
+    memory: 2048
+    vcpu: 2
+    disk: 20
+    base_os: ubuntu22
+    internet_access: no
+    copies: 1
+    monitor: no
+    red_team_agent: no
+    blue_team_agent: no
+  
+  # Forensic analysis workstation for Autopsy and network analysis
+  analyst:
+    hostname: forensic-analyst
+    entry_point: yes
+    memory: 4096
+    vcpu: 4
+    disk: 50
+    base_os: ubuntu22
+    internet_access: no
+    copies: 1
+    monitor: no
+    red_team_agent: no
+    blue_team_agent: no
+
+# ==============================================================================
+# INTEGRATION NOTE: Custom Ansible Components
+# ==============================================================================
+# This scenario uses custom Ansible modules from tectonic/ansible/:
+#   - library/: Custom modules (network + filesystem)
+#   - module_utils/: Layer 1-3 primitives and orchestrators
+#   - filter_plugins/: Jinja2 custom filters
+#
+# Tectonic's ansible.py automatically configures:
+#   - ANSIBLE_LIBRARY environment variable
+#   - ANSIBLE_MODULE_UTILS environment variable
+#   - ANSIBLE_FILTER_PLUGINS environment variable
+#
+# No ansible.cfg needed - all handled by ansible.py programmatically.
+# ==============================================================================

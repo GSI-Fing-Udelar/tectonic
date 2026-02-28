@@ -61,3 +61,8 @@ Pipfile.lock
 build/
 .coverage
 codeclimate.json
+
+# Ansible
+ansible.log
+.ansible/
+*.retry
