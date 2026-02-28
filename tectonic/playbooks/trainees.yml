@@ -237,7 +237,7 @@
       register: moosh_results
       failed_when:
       - moosh_results.rc != 0
-      - "'Duplicate entry' not in (moosh_results.stderr | default(''))"
+      - "'duplicate key value violates unique constraint' not in (moosh_results.stderr | default(''))"
       loop: "{{ users | dict2items }}"
     - name: Enroll users to courses
       block:

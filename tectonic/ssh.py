@@ -21,8 +21,6 @@
 import subprocess
 import re
 import fabric
-from paramiko import proxy
-import logging
 
 def ssh_version(path="/usr/bin/ssh"):
     """

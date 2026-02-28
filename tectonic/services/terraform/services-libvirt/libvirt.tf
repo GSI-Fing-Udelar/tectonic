@@ -20,24 +20,26 @@
 
 # Base images already exist, here we create a volume for each
 # guest, using the base image as a template
+
 resource "libvirt_volume" "cloned_image" {
   for_each = local.guest_data
   name     = "${each.key}"
   base_volume_name = "${each.value.base_name}"
-  pool     = var.libvirt_storage_pool
+  pool     = local.tectonic.config.platforms.libvirt.storage_pool
   format   = "qcow2"
   size     = (lookup(each.value, "disk", 10) * 1073741824)
 }
+
 resource "libvirt_cloudinit_disk" "commoninit" {
   for_each = local.guest_data
-  name           = "guestinit-${var.institution}-${var.lab_name}-${each.key}.iso"
+  name           = "guestinit-${local.tectonic.institution}-${local.tectonic.lab_name}-${each.key}.iso"
   user_data      = templatefile("${path.module}/cloud_init.cfg", { 
-    hostname = each.value.hostname, 
+    hostname = "${each.key}", 
     user = local.os_data[each.value.base_os]["username"],
-    authorized_keys = replace(var.authorized_keys, "\n", "\\n")
+    authorized_keys = replace(local.tectonic.authorized_keys, "\n", "\\n")
   })
   network_config = local.network_config[each.key]
-  pool           = var.libvirt_storage_pool
+  pool           = local.tectonic.config.platforms.libvirt.storage_pool
 }
 
 resource "libvirt_network" "subnets" {
@@ -93,4 +95,11 @@ resource "libvirt_domain" "machines" {
     autoport    = true
   }
   autostart = true
+
+  xml {
+    xslt = templatefile("${path.module}/xslt/main.xslt.tpl", {
+      enable_filters = local.tectonic.config.platforms.libvirt.routing
+      nw_filter_path = "${abspath("${path.module}/xslt/nw_filter.xslt")}"
+    })
+  }
 }

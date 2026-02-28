@@ -19,11 +19,11 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 provider "aws" {
-  region = var.aws_region
+  region = local.tectonic.config.platforms.aws.region
   default_tags {
     tags = {
-      Institution = var.institution
-      Lab         = var.lab_name
+      Institution = local.tectonic.institution
+      Lab         = local.tectonic.lab_name
     }
   }
 }

@@ -6,6 +6,9 @@ import libvirt_qemu
 from tectonic.client import ClientException
 from tectonic.client_aws import ClientAWS, ClientAWSException
 from tectonic.client_libvirt import ClientLibvirt, ClientLibvirtException
+import xml.etree.ElementTree as ET
+import uuid
+from tectonic.description import TrafficRule, BaseTrafficRule
 
 def test_get_machine_status(client):
     assert client.get_machine_status("udelar-lab01-1-attacker") == "RUNNING"
@@ -143,3 +146,54 @@ def test_libvirt_wait_for_agent(monkeypatch, client):
         monkeypatch.setattr(libvirt_qemu, "qemuAgentCommand", raise_error)
         with pytest.raises(ClientLibvirtException, match="Cannot connect to QEMU agent."):
             client._wait_for_agent(MagicMock(libvirt.virDomain), sleep=1, max_tries=2)
+
+def test_libvirt_add_rule_to_nwfilter(client):
+    if client.config.platform == "libvirt":
+        root = ET.Element('filter', name="test", chain='root')
+        ET.SubElement(root, 'uuid').text = str(uuid.uuid5(uuid.NAMESPACE_URL, "test"))
+        client._add_rule_to_nwfilter(root, "tcp", "10.1.1.0/24", "10.1.1.5", "8080", "8082", 100, "in", "accept", None)
+        rules = root.findall("rule")
+        assert rules[0].get("direction") == "in"
+        assert rules[0].get("priority") == "100"
+        assert rules[0].get("action") == "accept"
+        protocol = rules[0].find("tcp")
+        assert protocol.get("dstportstart") == "8080"
+        assert protocol.get("dstportend") == "8082"
+        assert protocol.get("srcipaddr") == "10.1.1.0"
+        assert protocol.get("srcipmask") == "24"
+        assert protocol.get("dstipaddr") == "10.1.1.5"
+        assert protocol.get("dstipmask") == "32"
+
+def test_libvirt_destroy_nwfilter(monkeypatch, client):
+    if client.config.platform == "libvirt":
+        class NWFilterMock:
+            def __init__(self):
+                self.undefine_called = False
+            def undefine(self):
+                self.undefine_called = True
+        nwfilter_mock = NWFilterMock()
+        def fake_lookup(name):
+            return nwfilter_mock
+        
+        monkeypatch.setattr(client.connection, "nwfilterLookupByName", fake_lookup)
+        client.destroy_nwfilter("test-filter")
+        assert nwfilter_mock.undefine_called
+
+def test_libvirt_create_nwfilter(monkeypatch, client):
+    if client.config.platform == "libvirt":
+        xml_result = {}
+        def fake_define(xml_str):
+            xml_result["xml"] = xml_str
+        monkeypatch.setattr(client.connection, "nwfilterDefineXML", fake_define)
+        client.create_nwfilter("test-filter", "10.1.1.5", [])
+        root = ET.fromstring(xml_result["xml"]) 
+        assert len(root.findall("rule")) == 2
+
+        rules = [ TrafficRule(
+            BaseTrafficRule("test", "test", "10.1.1.0/24", "10.1.1.5", "tcp", 80),
+            "10.1.1.0/24",
+            1
+        )]
+        client.create_nwfilter("test-filter", "10.1.1.5", rules)
+        root = ET.fromstring(xml_result["xml"]) 
+        assert len(root.findall("rule")) == 3

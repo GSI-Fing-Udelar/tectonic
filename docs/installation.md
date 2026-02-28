@@ -119,6 +119,42 @@
       ```
       * This bridge should connect to an external network for student entry point access.
       * It is ok to have a dummy empty bridge for testing.
+
+    - If you are going to use routing, you need to configure nwfilters. You need 2 nwfilters named `qemu-announce-self` and `qemu-announce-self-rarp`. They are usually created when you install libvirt. You can check if they exist with the command:
+      ```bash
+      virsh nwfilter-list
+      ```
+      If they do nt exist, you can create them using the following commands:
+        - Create an qemu-announce-self-rarp.xml file with the nwfilter definition containing the following content:
+        ```
+        <filter name='qemu-announce-self-rarp' chain='rarp' priority='-400'>
+          <rule action='accept' direction='out' priority='500'>
+            <rarp srcmacaddr='$MAC' dstmacaddr='ff:ff:ff:ff:ff:ff' opcode='Request_Reverse' arpsrcmacaddr='$MAC' arpdstmacaddr='$MAC' arpsrcipaddr='0.0.0.0' arpdstipaddr='0.0.0.0'/>
+          </rule>
+          <rule action='accept' direction='in' priority='500'>
+            <rarp dstmacaddr='ff:ff:ff:ff:ff:ff' opcode='Request_Reverse' arpsrcmacaddr='$MAC' arpdstmacaddr='$MAC' arpsrcipaddr='0.0.0.0' arpdstipaddr='0.0.0.0'/>
+          </rule>
+        </filter>
+        ```
+        - Create qemu-announce-self-rarp nwfilter:
+        ```bash
+          virsh nwfilter-define qemu-announce-self-rarp.xml
+        ```
+        - Create an qemu-announce-self.xml file with the nwfilter definition containing the following content:
+        ```
+        <filter name='qemu-announce-self' chain='root'>
+          <rule action='accept' direction='out' priority='500'>
+            <mac protocolid='0x835'/>
+          </rule>
+          <filterref filter='qemu-announce-self-rarp'/>
+          <filterref filter='no-other-rarp-traffic'/>
+        </filter>
+        ```
+        - Create qemu-announce-self nwfilter:
+        ```bash
+          virsh nwfilter-define qemu-announce-self.xml
+        ```
+    
     - Install xsltproc and mkisofs
       ```bash
       sudo apt-get install xsltproc mkisofs
