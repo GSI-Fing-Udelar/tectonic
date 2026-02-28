@@ -1,0 +1,11 @@
+Listen 80
+Listen {{ services.guacamole.external_port }}
+{% if services.elastic.enable %}
+Listen {{ services.elastic.external_port }}
+{% endif %}
+{% if services.caldera.enable %}
+Listen {{ services.caldera.external_port }}
+{% endif %}
+{% if services.moodle.enable %}
+Listen {{ services.moodle.external_port }}
+{% endif %}

@@ -19,19 +19,13 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import copy
 import boto3
 import pytest
 import docker
 
-# from tectonic.deployment_aws import AWSDeployment
-# from tectonic.deployment_libvirt import LibvirtDeployment
-# from tectonic.deployment_docker import DockerDeployment
 from tectonic.config import TectonicConfig
 from tectonic.ansible import Ansible
 from tectonic.description import Description
-from tectonic.instance_type import InstanceType
-from tectonic.instance_type_aws import InstanceTypeAWS
 from tectonic.client_libvirt import ClientLibvirt
 from tectonic.client_aws import ClientAWS
 from tectonic.client_docker import ClientDocker
@@ -47,8 +41,8 @@ from tectonic.terraform_service_docker import TerraformServiceDocker
 from tectonic.core import Core
 
 from pathlib import Path
-from moto import mock_ec2, mock_secretsmanager
-from unittest.mock import MagicMock, patch
+from moto import mock_ec2
+from unittest.mock import MagicMock
 import libvirt_qemu
 
 
@@ -71,32 +65,50 @@ pipelining = no
 timeout = 10
 
 [libvirt]
-# uri="qemu+ssh://gsi@localhost:22222/system?no_verify=1
-# uri=qemu+ssh://gsi@gsi03/system?known_hosts=/home/jdcampo/.ssh/known_hosts
-#uri = qemu+ssh://gsi@tortuga:4446/system?known_hosts=/home/jdcampo/gsi/lasi/repos/tectonic/python/known_hosts
 uri = test:///TEST_DATA_PATH/libvirt_config.xml
 storage_pool = pool-dir
 student_access = bridge
 bridge = lab_ens
 external_network = 192.168.44.0/25
 bridge_base_ip = 10
+routing = yes
 
 [aws]
 region = us-east-1
 teacher_access = host
+packetbeat_vlan_id = 1
+access_host_instance_type = t2.micro
 
 [docker]
 uri = unix:///var/run/docker.sock
 dns = 8.8.8.8
 
 [elastic]
-elastic_stack_version = 8.14.3
+version = 8.14.3
 packetbeat_policy_name = Packetbeat
 endpoint_policy_name = Endpoint
 user_install_packetbeat = gsi
+external_port = 5601
 
 [caldera]
 version = 5.0.0
+ot_enabled = no
+external_port = 8443
+
+[guacamole]
+version = 1.6.0
+brute_force_protection_enabled = no
+external_port = 10443
+
+[moodle]
+version = 4.5.8
+site_fullname = Tectonic Moodle
+site_shortname = Tectonic
+admin_email = admin@tectonic.local
+external_port = 8080
+
+[bastion_host]
+domain = tectonic.cyberrange.com
 """
 
 @pytest.fixture(scope="session")
@@ -236,7 +248,7 @@ def base_tectonic_path():
 def test_data_path(base_tests_path):
     return Path(base_tests_path).joinpath("test_data/").absolute().as_posix()
 
-@pytest.fixture(scope="session", params=["aws","libvirt", "docker"])
+@pytest.fixture(scope="session", params=["aws", "libvirt", "docker"])
 def tectonic_config_path(request, tmp_path_factory, test_data_path):
     config_file = tmp_path_factory.mktemp('data') / f"{request.param}-config.ini"
     config_ini = test_config.replace(

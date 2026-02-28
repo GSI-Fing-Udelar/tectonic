@@ -24,7 +24,7 @@ resource "docker_network" "subnets" {
 
   name = "${each.key}"
   driver = "bridge"
-  internal = false #true
+  internal = true
   ipam_config {
     subnet = lookup(each.value, "ip_network")
   }
@@ -50,12 +50,19 @@ resource "docker_container" "machines" {
 
   upload {
     file = "/home/${local.os_data[each.value.base_os]["username"]}/.ssh/authorized_keys"
-    content = var.authorized_keys
+    content = local.tectonic.authorized_keys
   }
   
   privileged = true
   
   network_mode = "bridge"
+
+  dynamic "networks_advanced" { 
+    for_each = each.value.internet_access ? ["internet-nic"] : []
+    content { 
+      name = "${local.tectonic.institution}-${local.tectonic.lab_name}-internet"
+    }
+  }
 
   dynamic "networks_advanced" {
     for_each = each.value.interfaces
@@ -68,7 +75,7 @@ resource "docker_container" "machines" {
   dynamic "networks_advanced" { 
     for_each = each.value.is_in_services_network ? ["services-nic"] : []
     content { 
-      name = "${var.institution}-${var.lab_name}-services"
+      name = "${local.tectonic.institution}-${local.tectonic.lab_name}-services"
     }
   }
 

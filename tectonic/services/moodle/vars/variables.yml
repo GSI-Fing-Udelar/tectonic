@@ -18,15 +18,32 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 #
-- name: Make request
-  ansible.builtin.uri:
-    url: "{{ url }}"
-    headers: "{{ headers }}"
-    method: "{{ method }}"
-    body: "{{ body }}"
-    status_code: "{{ status_code }}"
-    body_format: "{{ body_format }}"
-    use_proxy: false
-    validate_certs: false
-    timeout: 360
-  register: result
+---
+php_version: "8.4"
+postgresql_version: "16"
+
+mysql_apt_repository: "https://dev.mysql.com/get/mysql-apt-config_0.8.36-1_all.deb"
+
+system_packages:
+  - git
+  - acl
+  - apache2
+  - "postgresql-{{ postgresql_version }}"
+  - "postgresql-client-{{ postgresql_version }}"
+  - python3-psycopg2
+  - netfilter-persistent
+  - moosh
+
+php_packages:
+  - "php{{ php_version }}"
+  - "php{{ php_version }}-fpm"
+  - "php{{ php_version }}-gd"
+  - "php{{ php_version }}-curl"
+  - "php{{ php_version }}-xml"
+  - "php{{ php_version }}-mbstring"
+  - "php{{ php_version }}-pgsql"
+  - "php{{ php_version }}-zip"
+  - "php{{ php_version }}-intl"
+  - "php{{ php_version }}-soap"
+  - "php{{ php_version }}-bcmath"
+  - "php{{ php_version }}-apcu"

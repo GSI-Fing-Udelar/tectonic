@@ -20,6 +20,7 @@
 
 from tectonic.client import Client, ClientException
 
+import logging
 import docker
 import subprocess
 from ipaddress import ip_network, ip_address
@@ -53,11 +54,13 @@ class ClientDocker(Client):
             description (Description): Tectonic description object.
         """
         super().__init__(config, description)
+        logging.getLogger("docker").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
         try:
             self.connection = docker.DockerClient(base_url=config.docker.uri)
-        except:
+        except Exception as e:
             self.connection = None
-            raise ClientDockerException(f"Cannot connect to docker server at {config.docker.uri}")
+            raise ClientDockerException(f"Cannot connect to docker server at {config.docker.uri}: {e}")
         
     def get_machine_status(self, machine_name):
         try:
@@ -85,6 +88,18 @@ class ClientDocker(Client):
         except Exception as e:
             raise ClientDockerException(str(e)) from e
         
+    def get_machine_ip_in_services_network(self, machine_name):
+        try:
+            container = self.connection.containers.get(machine_name)
+            if container:
+                for network in container.attrs["NetworkSettings"]["Networks"]:
+                    ip_addr = container.attrs["NetworkSettings"]["Networks"][network]["IPAddress"]
+                    if ip_address(ip_addr) in ip_network(self.config.services_network_cidr_block):
+                        return ip_addr
+            return None
+        except Exception as e:
+            raise ClientDockerException(str(e)) from e
+
     def _get_image_id(self, image_name):
         try:
             image = self.connection.images.get(image_name)

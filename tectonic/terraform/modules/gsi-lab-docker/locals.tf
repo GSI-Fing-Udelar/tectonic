@@ -21,9 +21,7 @@
 locals {
   guest_data  = jsondecode(var.guest_data_json)
   subnetworks = jsondecode(var.subnets_json)
-
   os_data = jsondecode(var.os_data_json)
-
   guest_basenames = distinct([for g in local.guest_data : g.base_name])
-
+  tectonic = jsondecode(var.tectonic_json)
 }

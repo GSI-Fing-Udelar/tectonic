@@ -20,7 +20,6 @@
 
 import importlib.resources as tectonic_resources
 from tectonic.constants import OS_DATA
-
 import python_terraform
 import os
 import json
@@ -36,7 +35,9 @@ class Terraform(ABC):
     Description: manages interaction with Terraform to deploy/destroy scenarios.
     """
 
-    BACKEND_TYPE = "FILE" # Possible values: FILE (for local files as backend), GITLAB (use gitlab as backend. You must change backend.tf of each terraform module).
+    BACKEND_TYPE = "FILE"
+
+    #BACKEND_TYPE = "FILE" # Possible values: FILE (for local files as backend), GITLAB (use gitlab as backend. You must change backend.tf of each terraform module).
 
     def __init__(self, config, description):
         """
@@ -118,8 +119,12 @@ class Terraform(ABC):
         Parameters:
             terraform_dir (str): path to the terraform module.
             variables (dict): variables of the terraform module.
-            resources (list(str)): name of terraform resources for target destroy. Default: None.
+            resources (list(str)): name of terraform resources for target destroy. Default: None (deletes everything). 
         """
+        if resources is not None and len(resources) == 0:
+            # Do nothing
+            return
+
         t = python_terraform.Terraform(working_dir=terraform_dir)
         self._run_terraform_cmd(t, "init", [], reconfigure=python_terraform.IsFlagged, backend_config=self._generate_backend_config(terraform_dir))
         self._run_terraform_cmd(t, "destroy", variables, auto_approve=True, input=False, target=resources)
@@ -189,16 +194,6 @@ class Terraform(ABC):
             list(str): names of resources.
         """
         pass
-    
-    @abstractmethod
-    def _get_terraform_variables(self):
-        """
-        Get variables to use in Terraform.
-
-        Return:
-            dict: variables.
-        """
-        pass
 
     def deploy(self, instances):
         """
@@ -236,44 +231,6 @@ class Terraform(ABC):
         resources_to_recreate = self._get_resources_to_recreate(instances, guests, copies)
         self._apply(self.terraform_instances_module, self._get_terraform_variables(), resources_to_recreate, True)
 
-    def _get_guest_variables(self, guest):
-        """
-        Return guest variables for terraform.
-
-        Parameters:
-          guest (GuestDescription): guest to get variables.
-
-        Returns:
-          dict: variables.
-        """
-        return {
-            "base_name": guest.base_name,
-            "name": guest.name,
-            "vcpu": guest.vcpu,
-            "memory": guest.memory,
-            "disk": guest.disk,
-            "hostname": guest.hostname,
-            "base_os": guest.os,
-            "interfaces": {name: self._get_network_interface_variables(interface) for name, interface in guest.interfaces.items()},
-            "is_in_services_network": guest.is_in_services_network,
-        }
-
-    def _get_network_interface_variables(self, interface):
-        """
-        Return netowkr interface variables for terraform.
-
-        Parameters:
-          interface (NetworkInterface): interface to get variables.
-
-        Returns:
-          dict: variables.
-        """
-        return {
-            "name": interface.name,
-            "subnetwork_name": interface.network.name,
-            "private_ip": interface.private_ip
-        }
-
     def _get_terraform_variables(self):
         """
         Get variables to use in Terraform.
@@ -282,14 +239,8 @@ class Terraform(ABC):
             dict: variables.
         """
         return {
-            "institution": self.description.institution,
-            "lab_name": self.description.lab_name,
-            "instance_number": self.description.instance_number,
-            "ssh_public_key_file": self.config.ssh_public_key_file,
-            "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps({name: network.to_dict() for name, network in self.description.scenario_networks.items()}),
-            "guest_data_json": json.dumps({name: self._get_guest_variables(guest) for name, guest in self.description.scenario_guests.items()}),
-            "default_os": self.description.default_os,
+            "tectonic_json": json.dumps(self.description.to_dict()),
+            "subnets_json": json.dumps({network.name: network.to_dict() for network in self.description.scenario_networks.values()}),
+            "guest_data_json": json.dumps({guest.name: guest.to_dict() for guest in self.description.scenario_guests.values()}),
             "os_data_json": json.dumps(OS_DATA),
-            "configure_dns": self.config.configure_dns,
         }

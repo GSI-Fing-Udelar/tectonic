@@ -29,42 +29,57 @@ OS_DATA = {
         "cloud_image_checksum": "fe102bfb3d3d917d31068dd9a4bd8fcaeb1f529edda86783f8524fdc1477ee29",
         "docker_base_image": "gsitectonic/ubuntu22",
         "entrypoint": "/usr/bin/systemd",
+        "interface_base_name": "ens"
     },
     "ubuntu22_deep_learning": {
         "ami_filter": "*Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*",
         "owner": "898082745236",
         "username": "ubuntu",
+        "interface_base_name": "ens"
+    },
+    "ubuntu24": {
+        "ami_filter": "ubuntu/images/*/ubuntu-*-24.04-amd64-server*",
+        "owner": "099720109477",
+        "username": "ubuntu",
+        "cloud_image_url": "https://cloud-images.ubuntu.com/releases/noble/release-20251213/ubuntu-24.04-server-cloudimg-amd64.img",
+        "cloud_image_checksum": "2b5f90ffe8180def601c021c874e55d8303e8bcbfc66fee2b94414f43ac5eb1f",
+        "docker_base_image": "gsitectonic/ubuntu24",
+        "entrypoint": "/usr/bin/systemd",
+        "interface_base_name": "ens"
     },
     "rocky8": {
         "ami_filter": "Rocky-8-EC2-Base-8.*x86_64",
         "owner": "792107900819",
         "username": "rocky",
         "cloud_image_url": "http://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2",
-        # "cloud_image_url": "file:///data/isos/Rocky-8-GenericCloud.latest.x86_64.qcow2",
+        #"cloud_image_url": "file:///data/isos/Rocky-8-GenericCloud.latest.x86_64.qcow2",
         "cloud_image_checksum": "e56066c58606191e96184de9a9183a3af33c59bcbd8740d8b10ca054a7a89c14",
         "docker_base_image": "gsitectonic/rocky8",
         "entrypoint": "/usr/sbin/init",
+        "interface_base_name": "eth"
     },
     "rocky9": {
         "ami_filter": "Rocky-9-EC2-Base-9.*x86_64",
         "owner": "792107900819",
         "username": "rocky",
         "cloud_image_url": "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
+        "cloud_image_checksum": "15d81d3434b298142b2fdd8fb54aef2662684db5c082cc191c3c79762ed6360c",
         #"cloud_image_url": "file:///data/isos/Rocky-9-GenericCloud.latest.x86_64.qcow2",
-        "cloud_image_checksum": "2c72815bb83cadccbede4704780e9b52033722db8a45c3fb02130aa380690a3d",
+        #"cloud_image_checksum": "2c72815bb83cadccbede4704780e9b52033722db8a45c3fb02130aa380690a3d",
         "docker_base_image": "gsitectonic/rocky9",
         "entrypoint": "/usr/sbin/init",
+        "interface_base_name": "eth"
     },
     "kali": {
         "ami_filter": "kali-last-snapshot-amd64*",
         "owner": "679593333241",  # TODO: Marketplace owner id
         "username": "kali",
-        # cloud-init image not provided by Kali :(
-        # See https://codingpackets.com/blog/kali-linux-cloud-init-image/
-            "cloud_image_url": "file:///data/isos/kali-linux-2023.3-qemu-amd64.qcow2",
-        "cloud_image_checksum": "b48cc396cf91ea1f38de4dca7abfcc0175f07d7af1b7e6df89a76194e7fda3d9",
-        # "cloud_image_url": "https://cdimage.kali.org/kali-2023.3/kali-linux-2023.3-qemu-amd64.7z"
-        # "cloud_image_checksum": "9ebbea4abb545c8e4a56153e2b5fa0ad90658c583af2fa76ad8c0a0b4ba23e20",
+        "cloud_image_url": "https://kali.download/cloud-images/kali-2025.3/kali-linux-2025.3-cloud-genericcloud-amd64.tar.xz",
+        #"cloud_image_url": "file:///data/isos/kali-linux-2025.3-cloud-genericcloud-amd64.qcow2",
+        "cloud_image_checksum": "ef21c5c186a6de18ab3109bd75494a56834b92d04641aa59a7d8f6691d17d2bc",
+        "docker_base_image": "gsitectonic/kali",
+        "entrypoint": "/usr/sbin/init",
+        "interface_base_name": "ens"
         },
     "windows_srv_2022": {
         "ami_filter": "Windows_Server-2022-English-Full-Base*",

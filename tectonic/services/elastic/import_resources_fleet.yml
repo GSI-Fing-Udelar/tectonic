@@ -46,6 +46,6 @@
       "kbn-xsrf": "ansible"
     body: "{{ lookup('ansible.builtin.file', integration) | from_json | ansible.builtin.combine({'policy_id':policy_id})}}"
   with_fileglob:
-    - "{{elastic.description_path}}/elastic/{{elastic.monitor_type}}/fleet/policy_integrations/{{ policy | basename | regex_replace('\\.json','') }}/*.json"
+    - "{{ scenario_dir }}/elastic/{{ services.elastic.monitor_type }}/fleet/policy_integrations/{{ policy | basename | regex_replace('\\.json','') }}/*.json"
   loop_control:
     loop_var: integration

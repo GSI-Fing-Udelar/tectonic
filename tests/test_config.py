@@ -95,6 +95,7 @@ valid_libvirt_options = [
         "bridge": "tectonic",
         "external_network": "192.168.128.0/25",
         "bridge_base_ip": 100,
+        "routing": True,
     },
 ]
 
@@ -173,7 +174,7 @@ def test_load_config(test_data_path):
 
     default_tectonic_config = TectonicConfig(parser['config']['lab_repo_uri'])
 
-    for section in ["config", "ansible", "aws", "libvirt", "docker", "elastic", "caldera"]:
+    for section in ["config", "ansible", "aws", "libvirt", "docker", "elastic", "caldera", "guacamole", "moodle", "bastion_host"]:
         if section == "config":
             config_obj = config
             default_config = default_tectonic_config
@@ -190,6 +191,8 @@ def test_load_config(test_data_path):
                 # Paths are made absolute, so check that they are changed accordingly.
                 if key in ["lab_repo_uri", "ssh_public_key_file"]:
                     assert str(getattr(config_obj, key)) == absolute_path(config_parser[key], base_dir=config.tectonic_dir)
+                elif key == "version" and section == "moodle":
+                    assert getattr(config_obj, key) == f"v{config_parser[key]}"
                 else:
                     assert_attr_eq(config_obj, config_parser, key)
             else:
@@ -211,10 +214,44 @@ def test_config_caldera_latest(test_data_path):
     config.caldera.version = 'master'
     assert config.caldera.version == 'master'
 
+    config.guacamole.version = 'latest'
+    assert config.guacamole.version == '1.6.0'
+
+    config.moodle.version = 'latest'
+    assert config.moodle.version == 'main'
+
 def test_config_elastic_latest(test_data_path):
     filename = Path(test_data_path).joinpath("config", "tectonic1.ini")
     config = TectonicConfig.load(filename)
-    config.elastic.elastic_stack_version = 'latest'
+    config.elastic.version = 'latest'
 
-    assert re.match(r"\d+.\d+.\d+", config.elastic.elastic_stack_version)
+    assert re.match(r"\d+.\d+.\d+", config.elastic.version)
+
+def test_config_guacamole_latest(test_data_path):
+    filename = Path(test_data_path).joinpath("config", "tectonic1.ini")
+    config = TectonicConfig.load(filename)
+    config.guacamole.version = 'latest'
+
+    assert re.match(r"\d+.\d+.\d+", config.guacamole.version)
     
+
+def test_config_invalid_default_pubkey(monkeypatch, test_data_path):
+    """Test whether the default pubkey is correctly overwritten by ini
+    options, when the default pubkey file does not exist.
+
+    """
+    default_pubkey = Path('~/.ssh/id_rsa.pub').expanduser()
+    test_pubkey = Path('~/.ssh/id_rsa_test_config.pub').expanduser()
+
+    def fake_is_file(self):
+        if self == default_pubkey:
+            return False
+        else:
+            return True
+    
+    monkeypatch.setattr(Path, "is_file", fake_is_file)
+
+    filename = Path(test_data_path) / 'config' / 'tectonic_test_config1.ini'
+    config = TectonicConfig.load(filename)
+    assert config.ssh_public_key_file == str(test_pubkey)
+

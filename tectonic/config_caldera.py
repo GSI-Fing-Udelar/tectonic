@@ -24,8 +24,10 @@ class TectonicConfigCaldera(object):
     """Class to store Tectonic caldera configuration."""
 
     def __init__(self):
-        self._version = "latest"
-        self._ot_enabled = False
+        self.version = "latest"
+        self.ot_enabled = False
+        self.internal_port = 8443
+        self.external_port = 8443
 
 
     #----------- Getters ----------
@@ -36,7 +38,14 @@ class TectonicConfigCaldera(object):
     @property
     def ot_enabled(self):
         return self._ot_enabled
-
+    
+    @property
+    def internal_port(self):
+        return self._internal_port
+    
+    @property
+    def external_port(self):
+        return self._external_port
 
     #----------- Setters ----------
     @version.setter
@@ -53,3 +62,20 @@ class TectonicConfigCaldera(object):
         validate.boolean("caldera ot enabled", value)
         self._ot_enabled = value
 
+    @internal_port.setter
+    def internal_port(self, value):
+        validate.number("Caldera internal port", value)
+        self._internal_port = value
+
+    @external_port.setter
+    def external_port(self, value):
+        validate.number("Caldera external port", value)
+        self._external_port = value
+
+    def to_dict(self):
+        return {
+            "version": self.version,
+            "ot_enabled": self.ot_enabled,
+            "internal_port": self.internal_port,
+            "external_port": self.external_port,
+        }

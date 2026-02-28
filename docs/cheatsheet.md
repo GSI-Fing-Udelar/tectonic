@@ -10,17 +10,21 @@ networks, systems and applications that can be used to train users on
 cybersecurity topics. Key functionalities include customizable network
 configurations, real-time monitoring and automated attack simulations.
 
+Services are special machines that operate across all instances within
+a scenario. Currently, the supported services are: elastic, caldera,
+guacamole, moodle and bastion host.
+
 
 ### Scenario Management
-Scenarios are defined using a scenario description yml file (usually
-`description.yml` inside the scenario directory) plus a lab edition
-file (usually `<lab_name>.yml`.
+Scenarios are defined using a [scenario description yml file](./description.md#scenario-specification) (usually
+`description.yml` inside the scenario directory) plus a [lab edition file](./description.md#lab-edition-information) (usually `<lab_name>.yml`).
 
-+ Create base images:
+
++ Create scenario base images [and all services images]:
   ```
-  tectonic -c ~/tectonic.ini <lab_edition_file> create-images
+  tectonic -c ~/tectonic.ini <lab_edition_file> create-images [--guests=all]
   ```
-+ Deploy scenario:
++ Deploy a scenario and all services:
   ```
   tectonic -c ~/tectonic.ini <lab_edition_file> deploy
   ```
@@ -28,13 +32,34 @@ file (usually `<lab_name>.yml`.
   ```
   tectonic -c ~/tectonic.ini <lab_edition_file> destroy [--images]
   ```
-+ Show cyber range information (access IP addresses, credentials):
+
++ Destroy services base images:
+  ```
+  tectonic -c ~/tectonic.ini <lab_edition_file> destroy \
+--images --services --service_image_list=all
+  ```
+  **Warning:** service base images can be reused between different scenarios. Make sure the image is not being used by other scenario when destroying it.
+
++ Show cyber range information (service URLs, trainer credentials):
   ```
   tectonic -c ~/tectonic.ini <lab_edition_file> info
   ```
 
++ List scenario machines (machine IPs, trainee credentials):
+  ```
+  tectonic -c ~/tectonic.ini <lab_edition_file> info
+  ```
+
+
+
 ### Operations on machines
 Operations done on machines in the scenario, after it is deployed.
+Most of these commands accept [machine
+specification](#machine-specification) options, represented as
+`<machine_spec>` below. These options can be a combination of:
+instance number (`-i`), guest (base) name (`-g`), and copy number
+(`-c`). Please see the corresponding [section
+below](#machine-specification) for further details.
 
 + Get a console on a *single* machine:
   ```
@@ -52,6 +77,21 @@ Operations done on machines in the scenario, after it is deployed.
   ```
   tectonic -c ~/tectonic.ini <lab_edition_file> run-ansible -p <playbook> <machine_spec>
   ```
+
+#### Machine specification
+
+Most commands accept machine specification options, which can be a
+combination of: instance number (`-i`), guest (base) name (`-g`), and
+copy number (`-c`).
+
+For example, to reboot all copies of the  `victim` machine of instances 3 and 4, one can run:
+```
+  tectonic -c ~/tectonic.ini <lab_edition_file> reboot -g victim -i 3,4
+```
+
+Instance and copy numbers can be specified either as a list: `1,2,3`,
+as a range: `5-10`, or as a combination: `2,4-6,8`.
+
 
 #### Machine names
 Machines in the cyber range are identified as follows: 
@@ -71,24 +111,19 @@ As another example, the attacker guest, which consists of a single copy, of inst
 test_inst-test_lab-2-attacker
 ```
 
-#### Machine specification
-
-Most commands accept machine specification options, which can be a
-combination of: instance number (`-i`), guest (base) name (`-g`), and
-copy number (`-c`).
-
-For example, to reboot all copies of the machine `victim` of instances 3 and 4, one can run:
-```
-  tectonic -c ~/tectonic.ini <lab_edition_file> reboot -g victim -i 3,4
-```
-this will reboot machines `test_inst-test_lab-3-victim` and `test_inst-test_lab-4-victim`.
-
-Instance and copy numbers can be specified either as a list: `1,2,3`,
-as a range: `5-10`, or as a combination: `2,4-6,8`.
-
 
 ### Connectivity to the scenario
-+ Teacher access:  
+#### Guacamole
+If the Guacamole service was deployed as part of the scenario, the
+users will be able to access the instance machines through this
+service using a web browser. The access credentials of students for
+the Guacamole service are the the same as the credentials for the
+scenario machines. The access credentials of the teacher can be
+obtained with the `info` command.
+
+#### Console connections
+
++ Teacher access:
   Use `tectonic console`, or connect through `ssh`:
   ```
   ssh -J ubuntu@<teacher_access_ip> <machine_ip>
@@ -134,7 +169,7 @@ You can then connect to localhost:80443 to access port 443 on machine
 10.0.1.5.
 
   
-## File edition
+#### File edition
 For editing files within a scenario, you can use a console based text
 editor or run locally a text editor that supports remote connections,
 such as [VSCode](https://code.visualstudio.com/). Using the above ssh

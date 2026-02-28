@@ -1,10 +1,6 @@
 import pytest
-import types
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-from tectonic.terraform_service import TerraformService, TerraformServiceException
-
 
 @pytest.fixture
 def fake_ansible():
@@ -117,10 +113,7 @@ def test_deploy_destroy_recreate(service):
 
             # destroy with resources
             service.destroy([1])
-            if service.config.platform == "aws":
-                mock_destroy.assert_called_once()
-            else:
-                mock_destroy.assert_not_called()
+            mock_destroy.assert_not_called()
             mock_destroy.reset_mock()
 
             service.description.elastic.monitor_type = "endpoint"

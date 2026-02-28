@@ -19,3 +19,17 @@ caldera_settings:
   vcpu: 2
   memory: 2048
   disk: 20
+
+guacamole_settings:
+  enable: yes
+  vcpu: 2
+  memory: 2048
+  disk: 20
+
+moodle_settings:
+  enable: yes
+  enable_trainees: yes
+  auto_enroll_trainees: yes
+  vcpu: 2
+  memory: 2048
+  disk: 20

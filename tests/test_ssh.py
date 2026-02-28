@@ -73,4 +73,4 @@ def test_interactive_shell_gateway_and_user(monkeypatch):
 
     monkeypatch.setattr(fabric.Connection, "shell", fabric_shell)
 
-    interactive_shell("localhost", "root", ("bastion", "ubuntu"))
+    interactive_shell("localhost", "root", [("bastion", "ubuntu")])

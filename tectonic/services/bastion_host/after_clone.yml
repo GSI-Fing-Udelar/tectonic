@@ -1,0 +1,135 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+- name: Finish playbook execution if reverse proxy already configured
+  block:
+    - name: Check if reverse_proxy file exists
+      ansible.builtin.stat:
+        path: /etc/apache2/sites-available/tectonic.conf
+      register: reverse_proxy
+    - name: End execution if reverse_proxy file exists or no need to configure reverse proxy
+      ansible.builtin.meta: end_play
+      when: reverse_proxy.stat.exists or not (services.elastic.enable or services.caldera.enable or services.guacamole.enable or services.moodle.enable)
+      
+- name: Configure firewall (iptables)
+  block:
+    - name: Set Gateway IP
+      ansible.builtin.set_fact:
+        gateway_ip: "{{ (services.bastion_host.ip | split('.'))[0] }}.{{ (services.bastion_host.ip | split('.'))[1] }}.{{ (services.bastion_host.ip | split('.'))[2] }}.129"
+    - name: Configure firewall | Flush rules
+      ansible.builtin.iptables:
+        table: filter
+        chain: "{{ item }}"
+        flush: yes
+      loop:
+        - INPUT
+        - FORWARD
+        - OUTPUT
+    - name: Configure firewall | Allow ssh from server
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        source: "{{ gateway_ip }}"
+        destination_port: 22
+        jump: ACCEPT
+    - name: Configure firewall | Allow access to apache ports
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        source: "{{ gateway_ip }}"
+        destination_port: "{{ item }}"
+        jump: ACCEPT
+      with_items:
+        - "{{ services.elastic.external_port }}"
+        - "{{ services.caldera.external_port }}"
+        - "{{ services.guacamole.external_port }}"
+        - "{{ services.moodle.external_port }}"
+    - name: Configure firewall | Allow related or established connections
+      ansible.builtin.iptables:
+        chain: INPUT
+        ctstate: ESTABLISHED,RELATED
+        jump: ACCEPT
+    - name: Configure firewall | Allow loopback traffic
+      ansible.builtin.iptables:
+        chain: INPUT
+        in_interface: lo
+        jump: ACCEPT
+    - name: Configure firewall | Drop all input traffic
+      ansible.builtin.iptables:
+        chain: INPUT
+        policy: DROP
+    - name: Configure firewall | Drop al forward traffic
+      ansible.builtin.iptables:
+        chain: FORWARD
+        policy: DROP
+    - name: Configure firewall | Accept all output traffic
+      ansible.builtin.iptables:
+        chain: OUTPUT
+        policy: ACCEPT
+    - name: Configure firewall | Save rules
+      ansible.builtin.command: service netfilter-persistent save
+  when: config.platform in ["libvirt", "docker"]
+
+- name: Configure reverse proxy
+  block:
+    - name: Create directory for certificate
+      ansible.builtin.file:
+        path: /etc/letsencrypt/live/{{ services.bastion_host.domain }}/
+        state: directory
+    - name: Create symbolic link
+      ansible.builtin.file:
+        src: /etc/letsencrypt/live/{{ services.bastion_host.domain }}/
+        dest: /etc/letsencrypt/live/active
+        force: yes
+        state: link
+    - name: Create selfsigned certificate
+      ansible.builtin.command:
+        cmd: openssl req -x509 -newkey rsa:4096 -keyout /etc/letsencrypt/live/{{ services.bastion_host.domain }}/privkey.pem -out /etc/letsencrypt/live/{{ services.bastion_host.domain }}/fullchain.pem -sha256 -days 3650 -nodes -subj "/C=UY/ST=Montevideo/L=Montevideo/O=FING/OU=GSI/CN={{ services.bastion_host.domain }}"
+    - name: Disable default vhost
+      ansible.builtin.command:
+        cmd: a2dissite 000-default
+    - name: Enable apache modules
+      ansible.builtin.command:
+        cmd: a2enmod proxy proxy_http ssl rewrite proxy_wstunnel headers
+    - name: Adjust apache ports.conf
+      ansible.builtin.template:
+        src: templates/ports.j2
+        dest: /etc/apache2/ports.conf
+    - name: Copy tectonic virtual host
+      ansible.builtin.template:
+        src: templates/tectonic.j2
+        dest: /etc/apache2/sites-available/tectonic.conf
+    - name: Copy tectonic site
+      ansible.builtin.template:
+        src: templates/index.j2
+        dest: /var/www/html/index.html
+    - name: Copy sites files
+      ansible.builtin.copy:
+        src: files/
+        dest: /var/www/html
+    - name: Enable apache site
+      ansible.builtin.command:
+        cmd: a2ensite tectonic
+    - name: Restart apache
+      ansible.builtin.service:
+        name: apache2
+        state: started
+        enabled: true
+  when: services.elastic.enable or services.caldera.enable or services.guacamole.enable or services.moodle.enable

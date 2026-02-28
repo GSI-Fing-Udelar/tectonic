@@ -28,16 +28,18 @@ class TectonicConfigElastic(object):
     """Class to store Tectonic elastic configuration."""
 
     def __init__(self):
-        self.elastic_stack_version = "8.18.0"
+        self.version = "9.1.0"
         self.packetbeat_policy_name = "Packetbeat"
         self.endpoint_policy_name = "Endpoint"
         self.user_install_packetbeat = "tectonic"
+        self.internal_port = 5601
+        self.external_port = 5601
 
 
     #----------- Getters ----------
     @property
-    def elastic_stack_version(self):
-        return self._elastic_stack_version
+    def version(self):
+        return self._version
 
     @property
     def packetbeat_policy_name(self):
@@ -50,15 +52,23 @@ class TectonicConfigElastic(object):
     @property
     def user_install_packetbeat(self):
         return self._user_install_packetbeat
+    
+    @property
+    def internal_port(self):
+        return self._internal_port
+    
+    @property
+    def external_port(self):
+        return self._external_port
 
 
     #----------- Setters ----------
-    @elastic_stack_version.setter
-    def elastic_stack_version(self, value):
-        validate.version_number("elastic_stack_version", value)
+    @version.setter
+    def version(self, value):
+        validate.version_number("version", value)
         if value == "latest":
             value = self._get_elastic_latest_version()
-        self._elastic_stack_version = value
+        self._version = value
 
     @packetbeat_policy_name.setter
     def packetbeat_policy_name(self, value):
@@ -85,3 +95,23 @@ class TectonicConfigElastic(object):
         versions = soup.find_all('a', attrs={"title": re.compile("Elasticsearch version \\d+\\.\\d+\\.\\d+")})
         latest_version = versions[0].get("title").split(" ")[2]
         return latest_version
+    
+    @internal_port.setter
+    def internal_port(self, value):
+        validate.number("Elastic internal port", value)
+        self._internal_port = value
+
+    @external_port.setter
+    def external_port(self, value):
+        validate.number("Elastic external port", value)
+        self._external_port = value
+
+    def to_dict(self):
+        return {
+            "version": self.version,
+            "packetbeat_policy_name": self.packetbeat_policy_name,
+            "endpoint_policy_name": self.endpoint_policy_name,
+            "user_install_packetbeat": self.user_install_packetbeat,
+            "internal_port": self.internal_port,
+            "external_port": self.external_port,
+        }

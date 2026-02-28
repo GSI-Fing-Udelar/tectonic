@@ -60,35 +60,7 @@ class TerraformServiceLibvirt(TerraformService):
 
         Parameters:
             instances (list(int)): number of the instances to target destroy.
-            services (list(str)): list of services to destroy
         Return:
             list(str): names of resources.
         """
         return []
-
-    def _get_terraform_variables(self):
-        """
-        Get variables to use in Terraform.
-        
-        Return:
-            dict: variables.
-        """
-        result = super()._get_terraform_variables()
-        result["libvirt_uri"] = self.config.libvirt.uri
-        result["libvirt_storage_pool"] = self.config.libvirt.storage_pool
-        return result
-
-    def _get_network_interface_variables(self, interface):
-        """
-        Return netowkr interface variables for terraform.
-
-        Parameters:
-          interface (NetworkInterface): interface to get variables.
-
-        Returns:
-          dict: variables.
-        """
-        result = super()._get_network_interface_variables(interface)
-        result["subnetwork_name"] = interface.network.name
-        result["index"] = interface.index
-        return result

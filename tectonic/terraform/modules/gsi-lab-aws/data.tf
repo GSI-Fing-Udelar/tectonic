@@ -18,6 +18,28 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
+data "aws_vpc" "vpc" {
+  tags = {
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}"
+  }
+}
+
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+data "aws_key_pair" "pub_key" {
+  key_name           = "${local.tectonic.institution}-${local.tectonic.lab_name}-pubkey"
+  include_public_key = true
+}
+
+data "aws_nat_gateway" "ngw" {
+  state = "available" 
+  tags  = {
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}"
+  }
+}
+
 data "aws_ami" "base_images" {
   for_each = toset(local.guest_basenames)
 
@@ -26,29 +48,28 @@ data "aws_ami" "base_images" {
 
   filter {
     name   = "name"
-    values = ["${var.institution}-${var.lab_name}-${each.key}"]
+    values = ["${local.tectonic.institution}-${local.tectonic.lab_name}-${each.key}"]
   }
 }
 
-data "aws_ami" "student_access_host" {
-  most_recent = true
-  owners      = [local.os_data[var.default_os]["owner"]]
-
-  filter {
-    name = "name"
-    values = [local.os_data[var.default_os]["ami_filter"]]
-  }
-
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
+data "aws_route53_zone" "reverse" {
+  count         = local.tectonic.config.configure_dns ? 1 : 0
+  name          = "in-addr.arpa"
+  private_zone  = true
+  vpc_id        = data.aws_vpc.vpc.id
+  tags = {
+    Institution = local.tectonic.institution
+    Lab         = local.tectonic.lab_name
   }
 }
 
-data "aws_availability_zones" "available" {
-  state = "available"
+data "aws_instance" "packetbeat" {
+  count         = local.tectonic.services.elastic.enable && local.tectonic.services.elastic.monitor_type == "traffic" ? 1 : 0
+  instance_tags = {
+    Name = "${local.tectonic.institution}-${local.tectonic.lab_name}-packetbeat"
+  }
+  filter {
+    name   = "instance-state-name"
+    values = ["running"]
+  }
 }

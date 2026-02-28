@@ -19,7 +19,6 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from pathlib import Path
 from configparser import ConfigParser
 import tectonic.validate as validate
 from tectonic.utils import absolute_path
@@ -30,11 +29,14 @@ from tectonic.config_libvirt import TectonicConfigLibvirt
 from tectonic.config_docker import TectonicConfigDocker
 from tectonic.config_elastic import TectonicConfigElastic
 from tectonic.config_caldera import TectonicConfigCaldera
+from tectonic.config_guacamole import TectonicConfigGuacamole
+from tectonic.config_moodle import TectonicConfigMoodle
+from tectonic.config_bastion_host import TectonicConfigBastionHost
 
 class TectonicConfig(object):
     """Class to store Tectonic configuration."""
 
-    supported_platforms = ["aws", "libvirt", "docker"]
+    supported_platforms = ["docker", "aws", "libvirt"]
 
     def __init__(self, lab_repo_uri):
         self._tectonic_dir = os.path.realpath(
@@ -47,7 +49,10 @@ class TectonicConfig(object):
         self.network_cidr_block = "10.0.0.0/16"
         self.internet_network_cidr_block = "192.168.4.0/24"
         self.services_network_cidr_block = "192.168.5.0/24"
-        self.ssh_public_key_file = "~/.ssh/id_rsa.pub"
+        try:
+            self.ssh_public_key_file = "~/.ssh/id_rsa.pub"
+        except ValueError:
+            self._ssh_public_key_file = None
         self.configure_dns = False
         self.debug = False
         self.proxy = None
@@ -62,6 +67,9 @@ class TectonicConfig(object):
         self._docker = TectonicConfigDocker()
         self._elastic = TectonicConfigElastic()
         self._caldera = TectonicConfigCaldera()
+        self._guacamole = TectonicConfigGuacamole()
+        self._moodle = TectonicConfigMoodle()
+        self.bastion_host = TectonicConfigBastionHost()
 
 
     #----------- Getters ----------
@@ -121,7 +129,6 @@ class TectonicConfig(object):
     def packer_executable_path(self):
         return self._packer_executable_path
 
-
     @property
     def ansible(self):
         return self._ansible
@@ -145,7 +152,14 @@ class TectonicConfig(object):
     @property
     def caldera(self):
         return self._caldera
-
+    
+    @property
+    def guacamole(self):
+        return self._guacamole
+    
+    @property
+    def moodle(self):
+        return self._moodle
 
     #----------- Setters ----------
     @platform.setter
@@ -217,23 +231,27 @@ class TectonicConfig(object):
 
     @packer_executable_path.setter
     def packer_executable_path(self, value):
-        # validate.path_to_file("packer_executable_path", value)
         self._packer_executable_path = value
 
-
     @classmethod
-    def _assign_attribute(cls, config_obj, config_parser, key):
-        """Assign the value of name key in the parser object to the corresponding config attribute."""
-        # Fail if the option is not a valid TectonicConfig attribute
-        config_attrs = [a for a in dir(config_obj) if isinstance(getattr(config_obj.__class__, a, None), property) and 
-                        (getattr(config_obj.__class__, a).fset is not None)]
-        if key not in config_attrs:
-            raise ValueError(f"Unrecognized configuration option {key}.")
+    def _assign_attributes(cls, config_obj, config_parser, section):
+        """Assign the values of all parameters in the parser object in
+        the given section to the corresponding config attribute."""
+        params = {}
+        if config_parser.has_section(section):
+            params = config_parser[section].keys()
+        
+        for param in params:
+            # Fail if the param is not a valid TectonicConfig attribute
+            config_attrs = [a for a in dir(config_obj) if isinstance(getattr(config_obj.__class__, a, None), property) and 
+                            (getattr(config_obj.__class__, a).fset is not None)]
+            if param not in config_attrs:
+                raise ValueError(f"Unrecognized configuration option {param}.")
 
-        if isinstance(getattr(config_obj, key), bool):
-            setattr(config_obj, key, config_parser.getboolean(key))
-        else:
-            setattr(config_obj, key, config_parser.get(key))
+            if isinstance(getattr(config_obj, param), bool):
+                setattr(config_obj, param, config_parser.getboolean(section, param))
+            else:
+                setattr(config_obj, param, config_parser.get(section, param))
 
     @classmethod
     def load(cls, filename):
@@ -244,19 +262,35 @@ class TectonicConfig(object):
         parser.read_file(f)
         config = TectonicConfig(parser['config']['lab_repo_uri'])
 
-        for key in parser['config'].keys():
-            TectonicConfig._assign_attribute(config, parser['config'], key)
-        for key in parser['ansible'].keys():
-            TectonicConfig._assign_attribute(config.ansible, parser['ansible'], key)
-        for key in parser['aws'].keys():
-            TectonicConfig._assign_attribute(config.aws, parser['aws'], key)
-        for key in parser['libvirt'].keys():
-            TectonicConfig._assign_attribute(config.libvirt, parser['libvirt'], key)
-        for key in parser['docker'].keys():
-            TectonicConfig._assign_attribute(config.docker, parser['docker'], key)
-        for key in parser['elastic'].keys():
-            TectonicConfig._assign_attribute(config.elastic, parser['elastic'], key)
-        for key in parser['caldera'].keys():
-            TectonicConfig._assign_attribute(config.caldera, parser['caldera'], key)
+        TectonicConfig._assign_attributes(config, parser, 'config')
+        TectonicConfig._assign_attributes(config.ansible, parser, 'ansible')
+        TectonicConfig._assign_attributes(config.aws, parser, 'aws')
+        TectonicConfig._assign_attributes(config.libvirt, parser, 'libvirt')
+        TectonicConfig._assign_attributes(config.docker, parser, 'docker')
+        TectonicConfig._assign_attributes(config.elastic, parser, 'elastic')
+        TectonicConfig._assign_attributes(config.caldera, parser, 'caldera')
+        TectonicConfig._assign_attributes(config.guacamole, parser, 'guacamole')
+        TectonicConfig._assign_attributes(config.moodle, parser, 'moodle')
+        TectonicConfig._assign_attributes(config.bastion_host, parser, 'bastion_host')
 
         return config
+    
+    def to_dict(self):
+        result = {
+            "ansible": self.ansible.to_dict(),
+            "platform": self.platform,
+            "network_cidr_block": self.network_cidr_block,
+            "internet_network_cidr_block": self.internet_network_cidr_block,
+            "services_network_cidr_block": self.services_network_cidr_block,
+            "configure_dns": self.configure_dns,
+            "debug": self.debug,
+            "platforms":{
+                "aws": self.aws.to_dict(),
+                "libvirt": self.libvirt.to_dict(),
+                "docker": self.docker.to_dict(),
+            },
+            "ssh_public_key_file": self.ssh_public_key_file,
+        }
+        if self.proxy:
+            result["proxy"] = self.proxy
+        return result

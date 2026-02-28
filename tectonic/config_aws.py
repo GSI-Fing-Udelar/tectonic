@@ -67,3 +67,11 @@ class TectonicConfigAWS(object):
     def packetbeat_vlan_id(self, value):
         validate.number("packetbeat_vlan_id", value, min_value=1, max_value=4094)
         self._packetbeat_vlan_id = value
+
+    def to_dict(self):
+        return {
+            "region": self.region,
+            "teacher_access": self.teacher_access,
+            "access_host_instance_type": self.access_host_instance_type,
+            "packetbeat_vlan_id": self.packetbeat_vlan_id,
+        }

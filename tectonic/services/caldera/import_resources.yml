@@ -22,77 +22,77 @@
   block:
     - name: Check if objectives exists
       ansible.builtin.stat:
-        path: "{{ caldera.description_path }}/caldera/objectives/"
+        path: "{{ scenario_dir }}/caldera/objectives/"
       delegate_to: localhost
       register: objectives
       become: false
     - name: Import objectives
       ansible.builtin.copy:
-        src: "{{ caldera.description_path }}/caldera/objectives/"
+        src: "{{ scenario_dir }}/caldera/objectives/"
         dest: /opt/caldera/data/objectives/
       when: objectives.stat.exists
 - name: Import sources
   block:
     - name: Check if sources exists
       ansible.builtin.stat:
-        path: "{{ caldera.description_path }}/caldera/sources/"
+        path: "{{ scenario_dir }}/caldera/sources/"
       delegate_to: localhost
       register: sources
       become: false
     - name: Import sources
       ansible.builtin.copy:
-        src: "{{ caldera.description_path }}/caldera/sources/"
+        src: "{{ scenario_dir }}/caldera/sources/"
         dest: /opt/caldera/data/sources/
       when: sources.stat.exists
 - name: Import payloads
   block:
     - name: Check if payloads exists
       ansible.builtin.stat:
-        path: "{{ caldera.description_path }}/caldera/payloads/"
+        path: "{{ scenario_dir }}/caldera/payloads/"
       delegate_to: localhost
       register: payloads
       become: false
     - name: Import payloads
       ansible.builtin.copy:
-        src: "{{ caldera.description_path }}/caldera/payloads/"
+        src: "{{ scenario_dir }}/caldera/payloads/"
         dest: /opt/caldera/data/payloads/
       when: payloads.stat.exists
 - name: Import abilities
   block:
     - name: Check if abilities exists
       ansible.builtin.stat:
-        path: "{{ caldera.description_path }}/caldera/abilities/"
+        path: "{{ scenario_dir }}/caldera/abilities/"
       delegate_to: localhost
       register: abilities
       become: false
     - name: Import abilities
       ansible.builtin.copy:
-        src: "{{ caldera.description_path }}/caldera/abilities/"
+        src: "{{ scenario_dir }}/caldera/abilities/"
         dest: /opt/caldera/data/abilities/
       when: abilities.stat.exists
 - name: Import adversaries
   block:
     - name: Check if adversaries exists
       ansible.builtin.stat:
-        path: "{{ caldera.description_path }}/caldera/adversaries/"
+        path: "{{ scenario_dir }}/caldera/adversaries/"
       delegate_to: localhost
       register: adversaries
       become: false
     - name: Import adversaries
       ansible.builtin.copy:
-        src: "{{ caldera.description_path }}/caldera/adversaries/"
+        src: "{{ scenario_dir }}/caldera/adversaries/"
         dest: /opt/caldera/data/adversaries/
       when: adversaries.stat.exists
 - name: Import files
   block:
     - name: Check if files exists
       ansible.builtin.stat:
-        path: "{{ caldera.description_path }}/caldera/files/"
+        path: "{{ scenario_dir }}/caldera/files/"
       delegate_to: localhost
       register: files
       become: false
     - name: Import files
       ansible.builtin.copy:
-        src: "{{ caldera.description_path }}/caldera/files/"
+        src: "{{ scenario_dir }}/caldera/files/"
         dest: /opt/files/
       when: files.stat.exists

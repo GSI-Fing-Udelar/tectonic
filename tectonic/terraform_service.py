@@ -19,9 +19,7 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
-
 from abc import abstractmethod
-
 from tectonic.terraform import Terraform
 from tectonic.constants import OS_DATA
 import importlib.resources as tectonic_resources
@@ -141,8 +139,6 @@ class TerraformService(Terraform):
             })
             endpoint_token = result[0]["token"]
             extra_vars = {
-                "institution": self.description.institution,
-                "lab_name": self.description.lab_name,
                 "token": endpoint_token,
                 "elastic_url": f"https://{self.description.elastic.service_ip}:8220",
             }
@@ -161,8 +157,6 @@ class TerraformService(Terraform):
         """
         if self.client.get_machine_status(self.description.caldera.name) == "RUNNING":
             extra_vars = {
-                "institution": self.description.institution,
-                "lab_name": self.description.lab_name,
                 "caldera_ip": self.description.caldera.service_ip,
                 "caldera_agent_type": "red",
             }
@@ -202,8 +196,6 @@ class TerraformService(Terraform):
         """
         variables = {
             "action": action,
-            "institution": self.description.institution,
-            "lab_name": self.description.lab_name,
         }
         inventory = self._build_packetbeat_inventory(ansible, variables)
         ansible.run(inventory=inventory, playbook=self.PACKETBEAT_PLAYBOOK, quiet=True)
@@ -229,10 +221,6 @@ class TerraformService(Terraform):
                 "action": "install",
                 "elastic_url": f"https://{elastic_ip}:8220",
                 "token": agent_token,
-                "elastic_agent_version": self.config.elastic.elastic_stack_version,
-                "institution": self.description.institution,
-                "lab_name": self.description.lab_name,
-                "proxy": self.config.proxy,
             }
             inventory = self._build_packetbeat_inventory(ansible, variables)
             ansible.wait_for_connections(inventory=inventory)
@@ -247,8 +235,6 @@ class TerraformService(Terraform):
         """
         variables = {
             "action": "delete",
-            "institution": self.description.institution,
-            "lab_name": self.description.lab_name,
         }
         inventory = self._build_packetbeat_inventory(ansible, variables)
         ansible.run(inventory=inventory, playbook=self.PACKETBEAT_PLAYBOOK, quiet=True)
@@ -272,10 +258,13 @@ class TerraformService(Terraform):
         Parameters:
             instances (list(int)): number of the instances to destroy.
         """
-        resources_to_destroy = None
-        if instances is not None:
+        if instances is None:
+            # Destroy everything
+            resources_to_destroy = None
+        else:
             resources_to_destroy = self._get_resources_to_target_destroy(instances)
-        if resources_to_destroy != []:
+
+        if resources_to_destroy is None or len(resources_to_destroy) > 0: 
             self._destroy(self.terraform_services_module, self._get_terraform_variables(), resources_to_destroy)
 
     def recreate(self, instances, guests, copies): 
@@ -290,27 +279,6 @@ class TerraformService(Terraform):
         resources_to_recreate = self._get_resources_to_recreate(instances, guests, copies)
         self._apply(self.terraform_services_module, self._get_terraform_variables(), resources_to_recreate, True)
 
-    def _get_service_machine_variables(self, service):
-        """
-        Return machines variables deploy services.
-
-        Parameters:
-            service (ServiceDescription): services to deploy.
-
-        Returns:
-            dict: machines variables.
-        """
-        return {
-            "guest_name": service.name,
-            "base_name": service.base_name,
-            "hostname": service.base_name,
-            "base_os": service.os,
-            "interfaces": {name : self._get_network_interface_variables(interface) for name, interface in service.interfaces.items()},
-            "vcpu": service.vcpu,
-            "memory": service.memory,
-            "disk": service.disk,
-        }
-
     def _get_terraform_variables(self):
         """
         Get variables to use in Terraform.
@@ -318,13 +286,9 @@ class TerraformService(Terraform):
         Return:
             dict: variables.
         """
-        machines = [service for _, service in self.description.services_guests.items()]
         return {
-            "institution": self.description.institution,
-            "lab_name": self.description.lab_name,
-            "ssh_public_key_file": self.config.ssh_public_key_file,
-            "authorized_keys": self.description.authorized_keys,
-            "subnets_json": json.dumps({name: network.to_dict() for name, network in self.description.auxiliary_networks.items()}),
-            "guest_data_json": json.dumps({service.name: self._get_service_machine_variables(service) for service in machines}),
+            "tectonic_json": json.dumps(self.description.to_dict()),
+            "subnets_json": json.dumps({network.name: network.to_dict() for network in self.description.auxiliary_networks.values()}),
+            "guest_data_json": json.dumps({service.name: service.to_dict() for service in self.description.services_guests.values()}),
             "os_data_json": json.dumps(OS_DATA),
         }

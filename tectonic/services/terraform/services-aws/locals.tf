@@ -19,12 +19,13 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 locals {
+  tectonic = jsondecode(var.tectonic_json)
   guest_data  = jsondecode(var.guest_data_json)
   subnetworks = jsondecode(var.subnets_json)
 
   os_data = jsondecode(var.os_data_json)
 
-  guest_basenames = distinct([for g in local.guest_data : g.base_name])
+  guest_basenames = distinct([for g in local.guest_data : g.base_name if g.base_name != "teacher_access_host"])
 
   network_interfaces = { for interface in flatten(
     [for g in local.guest_data :
@@ -35,7 +36,7 @@ locals {
 
   network_names = distinct(
     [for key, interface in local.network_interfaces :
-      interface.network_name
+      interface.subnetwork_name
   ])
 
   internet_access = length([for g in local.guest_data : g if g.internet_access]) > 0
@@ -44,22 +45,13 @@ locals {
     [for guest in local.guest_data :
       [for network_interface in guest.interfaces :
         {
-          name    = guest.hostname
-          network = network_interface.network_name
+          name    = guest.name
+          network = network_interface.subnetwork_name
           ip      = network_interface.private_ip
         }
       ]
     ]) :
     format("%s-%s", record.name, record.network) => record
-  }
-
-  interfaces_to_mirror = { for interface_data in flatten(
-    [for i, interface in data.aws_network_interface.interface : {
-      interface_name : interface.tags.Name,
-      interface_id : interface.id
-      }
-      if can(regex("^${var.institution}-${var.lab_name}-\\d+-(${join("|", var.machines_to_monitor)})(-\\d+)?-\\d+$", interface.tags.Name)) && var.monitor && var.monitor_type == "traffic"
-    ]) : interface_data.interface_name => interface_data
   }
 
 }

@@ -22,7 +22,6 @@ import pytest
 import copy
 from pathlib import Path
 import yaml
-
 from tectonic.description import DescriptionException, Description
 from tectonic.instance_type import InstanceType
 from tectonic.instance_type_aws import InstanceTypeAWS
@@ -79,11 +78,6 @@ def test_description_traffic(labs_path, tectonic_config):
     else:
         assert not description.packetbeat.enable
 
-def test_description_no_services(labs_path, tectonic_config):
-    lab_edition_path = Path(labs_path) / "no_services.yml"
-    description = Description(tectonic_config, lab_edition_path)
-    assert not description.auxiliary_networks
-
 def test_description_package(labs_path, tectonic_config):
     lab_edition_path = Path(labs_path) / "test-package.yml"
     description = Description(tectonic_config, lab_edition_path)
@@ -109,6 +103,74 @@ def test_description_invalid(labs_path, tectonic_config):
     lab_edition_path = Path(labs_path) / "invalid_topology.yml"
     with pytest.raises(DescriptionException):
         Description(tectonic_config, lab_edition_path)
+
+def test_description_traffic_rules(labs_path, tectonic_config):
+    lab_edition_path = Path(labs_path) / "test-traffic_rules.yml"
+    tectonic_config.libvirt.routing = False
+    description = Description(tectonic_config, lab_edition_path)
+    if tectonic_config.platform != "aws":
+        assert description._base_traffic_rules == {}
+    elif tectonic_config.platform == "aws":
+        assert len(description._base_traffic_rules) == 1
+
+    tectonic_config.libvirt.routing = True
+    description = Description(tectonic_config, lab_edition_path)
+    if tectonic_config.platform != "docker":
+        assert len(description._base_traffic_rules) == 1
+        base_rule = description._base_traffic_rules["rule-0"]
+        assert base_rule.description == "Allow access from attacker to victim on port 8080"
+        assert base_rule.source == "attacker.lan"
+        assert base_rule.destination == "victim.dmz"
+        assert base_rule.protocol == "tcp"
+        assert base_rule.port_range == 8080
+
+        for _, service in description.services_guests.items():
+            rules = service.base_traffic_rules()
+            if service.base_name == "elastic":
+                assert len(rules) == 4
+            elif service.base_name == "caldera":
+                assert len(rules) == 5
+            elif service.base_name == "packetbeat":
+                assert len(rules) == 2
+            elif service.base_name == "guacamole":
+                assert len(rules) == 2
+            elif service.base_name == "moodle":
+                assert len(rules) == 2
+            elif service.base_name == "bastion_host":
+                assert len(rules) == 5
+            elif service.base_name == "teacher_access_host":
+                assert len(rules) == 1
+
+        for _, guest in description.scenario_guests.items():
+            if guest.instance == 1:
+                if guest.base_name == "victim":
+                    for _, interface in guest.interfaces.items():
+                        if interface.network.base_name == "dmz":
+                            assert len(interface.traffic_rules) == 3
+                            rule = interface.traffic_rules[0]
+                            assert rule.name == "udelar-lab01-1-victim-2-rule-0-1"
+                            assert rule.description == "Allow access from attacker to victim on port 8080"
+                            assert rule.protocol == "tcp"
+                            assert rule.from_port == "8080"
+                            assert rule.to_port == "8080"
+                            assert rule.source_cidr == "10.0.1.4/32"
+                elif guest.base_name == "attacker":
+                    for _, interface in guest.interfaces.items():
+                        if interface.network.base_name == "lan":
+                            expected = 2
+                            if tectonic_config.platform == "aws":
+                                expected = 3
+                            assert len(interface.traffic_rules) == expected
+
+def test_description_no_services(labs_path, tectonic_config):
+    lab_edition_path = Path(labs_path) / "no_services.yml"
+    description = Description(tectonic_config, lab_edition_path)
+    assert description.elastic.enable == False
+    assert description.caldera.enable == False
+    assert description.guacamole.enable == False
+    assert description.moodle.enable == False
+    assert description.bastion_host.enable == (tectonic_config.platform == "aws")
+    assert description.teacher_access_host.enable == (tectonic_config.platform == "aws")
 
 def test_description_setters(description):
     description = copy.deepcopy(description)
@@ -161,13 +223,15 @@ def test_parse_machines_elastic_endpoint(description):
     description.elastic.enable = True
     description.elastic.monitor_type = "endpoint"
     description.caldera.enable = False
+    description.guacamole.enable = False
+    description.moodle.enable = False
     machine_list = description.parse_machines(only_instances=False)
     expected_machines = base_machines.copy() + [
         'udelar-lab01-elastic',
+        'udelar-lab01-bastion_host'
     ]
     if description.config.platform == "aws":
-        expected_machines += ['udelar-lab01-student_access',
-                              'udelar-lab01-teacher_access']
+        expected_machines.append('udelar-lab01-teacher_access_host')
     assert set(machine_list) == set(expected_machines)
 
 
@@ -177,11 +241,14 @@ def test_parse_machines_teacher_endpoint(description):
     description.config.aws.teacher_access = "endpoint"
     description.elastic.enable = False
     description.caldera.enable = False
+    description.guacamole.enable = False
+    description.moodle.enable = False
+    description.bastion_host.enable = False
+    description.teacher_access_host.enable = False
     machine_list = description.parse_machines(only_instances=False)
     expected_machines = base_machines.copy()
-    if description.config.platform == "aws":
-        expected_machines += ['udelar-lab01-student_access']
     assert set(machine_list) == set(expected_machines)
+
 
 def test_parse_machines_teacher_host(description):
     description = copy.deepcopy(description)
@@ -189,16 +256,19 @@ def test_parse_machines_teacher_host(description):
     description.config.aws.teacher_access = "host"
     description.elastic.enable = True
     description.caldera.enable = True
+    description.guacamole.enable = True
+    description.moodle.enable = True
     description.elastic.monitor_type = "traffic"
     machine_list = description.parse_machines(only_instances=False)
     expected_machines = base_machines.copy() + [
         'udelar-lab01-elastic',
         'udelar-lab01-caldera',
+        'udelar-lab01-guacamole',
+        'udelar-lab01-moodle',
+        'udelar-lab01-bastion_host'
     ]
     if description.config.platform == "aws":
-        expected_machines += ['udelar-lab01-packetbeat',
-                              'udelar-lab01-student_access',
-                              'udelar-lab01-teacher_access']
+        expected_machines += ['udelar-lab01-packetbeat', 'udelar-lab01-teacher_access_host']
     assert set(machine_list) == set(expected_machines)
 
 def test_parse_machines_filter_guests_with_services(description):
@@ -208,6 +278,8 @@ def test_parse_machines_filter_guests_with_services(description):
     description.elastic.enable = True
     description.caldera.enable = True
     description.elastic.monitor_type = "traffic"
+    description.guacamole.enable = True
+    description.moodle.enable = True
     machine_list = description.parse_machines(guests=["attacker"], only_instances=False)
     assert set(machine_list) == set([
         'udelar-lab01-1-attacker',
@@ -216,16 +288,20 @@ def test_parse_machines_filter_guests_with_services(description):
 
 def test_parse_machines_exclude_service(description):
     description = copy.deepcopy(description)
-
-    machine_list = description.parse_machines(exclude=['elastic'], only_instances=False)
+    description.bastion_host.enabe = True
+    description.guacamole.enable = True
+    description.caldera.enable = True
+    description.moodle.enable = True
+    if description.config.platform == "aws":
+        description.bastion_host.enable = True
+    machine_list = description.parse_machines(exclude=['elastic','moodle'], only_instances=False)
     expected_machines = base_machines.copy() + [
         'udelar-lab01-caldera',
+        'udelar-lab01-guacamole',
+        'udelar-lab01-bastion_host'
     ]
     if description.config.platform == "aws":
-        expected_machines += [
-            'udelar-lab01-student_access',
-            'udelar-lab01-teacher_access'
-        ]
+        expected_machines.append('udelar-lab01-teacher_access_host')
     assert set(machine_list) == set(expected_machines)
 
 def test_parse_machines_services(description):
@@ -235,16 +311,20 @@ def test_parse_machines_services(description):
     description.elastic.enable = True
     description.elastic.monitor_type = "traffic"
     description.caldera.enable = True
+    description.guacamole.enable = True
+    description.moodle.enable = True
     machine_list = description.parse_machines(only_instances=False)
     expected_machines = base_machines.copy() + [
         'udelar-lab01-elastic',
         'udelar-lab01-caldera',
+        'udelar-lab01-guacamole',
+        'udelar-lab01-moodle',
+        'udelar-lab01-bastion_host',
     ]
     if description.config.platform == "aws":
         expected_machines += [
-            'udelar-lab01-packetbeat',
-            'udelar-lab01-student_access',
-            'udelar-lab01-teacher_access'
+            'udelar-lab01-packetbeat', 
+            'udelar-lab01-teacher_access_host'  
         ]
     assert set(machine_list) == set(expected_machines)
 
@@ -331,22 +411,6 @@ def test_parse_machines_exclude_guests(description):
         'udelar-lab01-1-server',
         'udelar-lab01-2-server',
     ])
-
-def test_parse_machines_student_access_not_required(description):
-    description = copy.deepcopy(description)
-
-    # Test that student_access is not deployed, if there is no entry
-    # point in the scenario.
-    description.config.aws.teacher_access = "host"
-    description.elastic.enable = False
-    description.caldera.enable = False
-    description.base_guests['attacker'].entry_point = False
-    description.base_guests['victim'].entry_point = False
-    machine_list = description.parse_machines(only_instances=False)
-    expected_machines = base_machines.copy()
-    if description.config.platform == "aws":
-        expected_machines += ['udelar-lab01-teacher_access']
-    assert set(machine_list) == set(expected_machines)
 
 def test_parse_machines_invalid(description):
     description = copy.deepcopy(description)

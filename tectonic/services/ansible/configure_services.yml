@@ -30,3 +30,13 @@
     - name: Include Caldera playbook
       ansible.builtin.include_tasks: ../caldera/after_clone.yml
       when: '"caldera" in group_names'
+    - name: Include Guacamole playbook
+      ansible.builtin.include_tasks: ../guacamole/after_clone.yml
+      when: '"guacamole" in group_names'
+    - name: Include Moodle playbook
+      ansible.builtin.include_tasks: ../moodle/after_clone.yml
+      when: '"moodle" in group_names'
+    - name: Include Bastion Host playbook
+      ansible.builtin.include_tasks: ../bastion_host/after_clone.yml
+      when: '"bastion_host" in group_names'
+

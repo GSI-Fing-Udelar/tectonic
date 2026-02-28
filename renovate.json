@@ -18,6 +18,11 @@
     ]
   },
   "packageRules": [
+      // Ignore dmacvicar minor updates, since they break compatibility
+    {
+      "matchPackageNames": ["dmacvicar/libvirt"],
+      "enabled": false
+    },
     {
       "groupName": "github-actions",
       "matchManagers": [

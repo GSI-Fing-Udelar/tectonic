@@ -25,24 +25,23 @@
   vars:
     elastic_repo_key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
     elastic_repo_url: https://artifacts.elastic.co/packages/9.x/yum
-    
+
   tasks:
     - name: Set hostname
       ansible.builtin.hostname:
         name: elastic
-      when: platform != "docker"
+      when: config.platform != "docker"
 
     - name: Install packages
       ansible.builtin.package:
-        name: "{{ item }}"
+        name:
+          - unzip
+          - tar
+          - wget
+          - jq
+          - firewalld
         state: present
-      with_items:
-        - unzip
-        - tar
-        - wget
-        - jq
-        - firewalld
-        
+
     - name: Install Elastic repo
       block:
         - name: Import Elastic repo key
@@ -60,23 +59,13 @@
             file: elasticsearch
             state: present
 
-    - name: Install Elastic latest version
-      ansible.builtin.package:
-        name:
-          - elasticsearch
-          - kibana
-          - logstash
-        state: present
-      when: elastic_latest_version == "True"
-
     - name: Install Elastic specific version
       ansible.builtin.package:
         name: 
-          - "elasticsearch-{{ elastic_version }}" 
-          - "kibana-{{ elastic_version }}"
-          - "logstash-{{ elastic_version }}"
+          - "elasticsearch-{{ services.elastic.version }}" 
+          - "kibana-{{ services.elastic.version }}"
+          - "logstash-{{ services.elastic.version }}"
         state: present
-      when: elastic_latest_version == "False"
 
     - name: Gather architecture
       block:
@@ -89,29 +78,38 @@
             architecture: "arm64"
           when: ansible_facts['architecture'] == "arm64" or ansible_facts['architecture'] == "aarch64"
 
-    - name: Gather packages facts
-      ansible.builtin.package_facts:
-        manager: auto
-
     - name: Download Elastic Agent
-      ansible.builtin.unarchive:
-        src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ ansible_facts.packages['elasticsearch'][0].version }}-linux-{{ architecture }}.tar.gz"
-        dest: /opt
-        remote_src: yes
+      block:
+        - name: Download Elastic Agent | Use proxy
+          ansible.builtin.unarchive:
+            src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ services.elastic.version }}-linux-{{ architecture }}.tar.gz"
+            dest: /opt
+            remote_src: yes
+          environment:
+            http_proxy: "{{ config.proxy }}"
+            https_proxy: "{{ config.proxy }}"
+          when: "'proxy' in config"
+        - name: Download Elastic Agent | Don't use proxy
+          ansible.builtin.unarchive:
+            src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ services.elastic.version }}-linux-{{ architecture }}.tar.gz"
+            dest: /opt
+            remote_src: yes
+          when: "'proxy' not in config"
+
     - name: Rename Elastic agent directory
-      ansible.builtin.command: "mv /opt/elastic-agent-{{ ansible_facts.packages['elasticsearch'][0].version }}-linux-{{ architecture }}/ /opt/elastic-agent/"
+      ansible.builtin.command: "mv /opt/elastic-agent-{{ services.elastic.version }}-linux-{{ architecture }}/ /opt/elastic-agent/"
 
     - name : Start firewalld
       ansible.builtin.service:
         name: firewalld
         state: started
         enabled: yes
-      when: platform != "docker"
+      when: config.platform != "docker"
 
     - name: Set elasticsearch memory limit
       ansible.builtin.copy:
         dest: /etc/elasticsearch/jvm.options.d/memory.options
         content: |
-          -Xms{{ elasticsearch_memory }}g
-          -Xmx{{ elasticsearch_memory }}g
-      when: platform == "docker"
+          -Xms{{ services.elastic.memory // 2  // 1000 | round(0, 'ceil') | int }}g
+          -Xmx{{ services.elastic.memory // 2  // 1000 | round(0, 'ceil') | int }}g
+      when: config.platform == "docker"
