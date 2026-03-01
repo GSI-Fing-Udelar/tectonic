@@ -1,0 +1,191 @@
+---
+# ==============================================================================
+# Forensic Analysis Scenario - Unified WannaCry Attack Simulation
+# ==============================================================================
+# It executes a complete WannaCry attack simulation combining:
+#   1. NETWORK: Generates realistic PCAP traffic
+#   2. FILESYSTEM: Creates forensic disk image with encrypted/deleted files
+#
+# ARCHITECTURE:
+#   NETWORK Layer 3: generate_wannacry_attack (PCAP generation)
+#   FILESYSTEM Layer 3: execute_ransomware_profile (file operations)
+#   FILESYSTEM Layer 1: Disk image creation, encryption, deletion
+#
+# PLAYBOOK FLOW:
+#   Phase 1: Network attack simulation (PCAP generation)
+#   Phase 2: Filesystem preparation (disk image creation)
+#   Phase 3: Directory structure creation
+#   Phase 4: WannaCry ransomware simulation (Layer 3)
+#   Phase 5: Flag file generation (forensic challenge)
+#   Phase 6: Cleanup (unmount disk image)
+#
+# OUTPUTS:
+#   - /tmp/wannacry_unified_attack.pcap (network traffic)
+#   - /tmp/final_forensic.img (forensic disk image)
+#   - Hidden flag inside disk image (deleted, recoverable)
+# ==============================================================================
+
+- name: "Unified WannaCry Attack Simulation (Network + Filesystem)"
+  hosts: victim
+  gather_facts: yes
+  become: yes
+  vars_files:
+    - variables/vars.yml
+
+  tasks:
+    - name: "Phase 1: Network attack simulation (PCAP generation)"
+      block:
+        - name: "Phase 1 | Clean previous PCAP output"
+          ansible.builtin.file:
+            path: "{{ pcap_output }}"
+            state: absent
+        - name: "Phase 1 | Generate WannaCry attack traffic (PCAP)"
+          tectonic.evidence_generation.network_generate_wannacry_attack:
+            victim_ip: "{{ victim_ip }}"
+            attacker_ip: "{{ attacker_ip }}"
+            ip_malicious_server: "{{ malicious_server_ip }}"
+            output_path: "{{ pcap_output }}"
+          register: network_attack
+        - name: "Phase 1 | Display attack summary"
+          ansible.builtin.debug:
+            msg:
+              - "Network attack simulation completed"
+              - "PCAP file: {{ pcap_output }}"
+              - "Total packets: {{ network_attack.total_packets | default('N/A') }}"
+              - "Phases: Reconnaissance → Malware Download → C2"
+
+    - name: "Phase 2: Filesystem preparation (disk image creation)"
+      block:
+        - name: "Phase 2 | Clean previous disk image"
+          ansible.builtin.file:
+            path: "{{ image_file }}"
+            state: absent
+        - name: "Phase 2 | Create disk image ({{ image_size_mb }}MB)"
+          ansible.builtin.command: "dd if=/dev/zero of={{ image_file }} bs=1M count={{ image_size_mb }}"
+        - name: "Phase 2 | Format image as ext4 filesystem"
+          ansible.builtin.command: "mkfs.ext4 -F {{ image_file }}"
+        - name: "Phase 2 | Detach any orphaned loop devices from previous runs"
+          ansible.builtin.shell: |
+            losetup -j {{ image_file }} 2>/dev/null | cut -d: -f1 | while read dev; do
+              [ -n "$dev" ] && umount "$dev" 2>/dev/null || true
+              [ -n "$dev" ] && losetup -d "$dev" 2>/dev/null || true
+            done
+            exit 0
+          ignore_errors: yes
+          changed_when: false
+        - name: "Phase 2 | Attach image to loop device"
+          ansible.builtin.command: "losetup -fP {{ image_file }}"
+        - name: "Phase 2 | Detect loop device path"
+          ansible.builtin.shell: "losetup -j {{ image_file }} | cut -d: -f1"
+          register: loop_detect
+          changed_when: false
+        - name: "Phase 2 | Save loop device path"
+          ansible.builtin.set_fact:
+            loop_device: "{{ loop_detect.stdout }}"
+        - name: "Phase 2 | Create mount point directory"
+          ansible.builtin.file:
+            path: "{{ mount_point }}"
+            state: directory
+        - name: "Phase 2 | Mount filesystem to mount point"
+          ansible.posix.mount:
+            path: "{{ mount_point }}"
+            src: "{{ loop_device }}"
+            fstype: ext4
+            state: mounted
+
+    - name: "Phase 3: Directory structure creation"
+      block:
+        - name: "Phase 3 | Create target directory /srv/samba/share inside disk image"
+          ansible.builtin.file:
+            path: "{{ mount_point }}/srv/samba/share"
+            state: directory
+            mode: "0755"
+    
+    - name: "Phase 4: WannaCry ransomware simulation (Layer 3)"
+      block:
+        - name: "Phase 4 | Execute WannaCry ransomware profile"
+          tectonic.evidence_generation.filesystem_execute_ransomware_profile:
+            profile: "{{ profile_name }}"
+            target_directory: "{{ mount_point }}/srv/samba/share"
+            file_count: "{{ file_count }}"
+            faker_seed: "{{ faker_seed }}"
+            force_rerun: "{{ force_rerun }}"
+            deletion_ratio: "{{ deletion_ratio }}"
+          register: wannacry_result
+
+    - name: "Phase 5: Flag file generation (forensic challenge)"
+      block:
+        - name: "Phase 5 | Create flag file with secret message"
+          tectonic.evidence_generation.filesystem_generate_file:
+            path: "{{ mount_point }}/srv/samba/share/flagsinha.txt"
+            extension: txt
+            content: "Congratulations, you've found the flag!!!"
+        - name: "Phase 5 | Encrypt flag file with AES-256-CBC (.WNCRY extension)"
+          tectonic.evidence_generation.filesystem_encrypt_files_aes:
+            files:
+              - "{{ mount_point }}/srv/samba/share/flagsinha.txt"
+            key: "{{ key }}" # 32 bytes key for AES-256
+            encrypted_extension: "WNCRY"
+            keep_original: false
+          register: encrypt_flag_result
+        - name: "Phase 5 | Sync filesystem before unmounting (flush buffers)"
+          ansible.builtin.command: sync
+          changed_when: false
+        - name: "Phase 5 | Unmount filesystem and remove fstab entry"
+          ansible.posix.mount:
+            path: "{{ mount_point }}"
+            state: absent
+        - name: "Phase 5 | Delete encrypted flag file with debugfs (forensically recoverable)"
+          tectonic.evidence_generation.filesystem_delete_file_debugfs:
+            filename: "flagsinha.txt.WNCRY"
+            device: "{{ loop_device }}"
+            directory: "/srv/samba/share"
+
+    - name: "Phase 6: Cleanup (unmount disk image)"
+      block:
+        - name: "Phase 6 | Detach loop device from disk image"
+          ansible.builtin.command: "losetup -d {{ loop_device }}"
+          when: loop_device != ""
+          ignore_errors: yes
+        - name: "Phase 6 | Verify loop device is disconnected"
+          ansible.builtin.shell: "losetup -j {{ image_file }}"
+          register: loop_check
+          changed_when: false
+          failed_when: false
+        - name: "Phase 6 | Display loop device status"
+          ansible.builtin.debug:
+            msg: "{{ 'Loop device disconnected successfully' if loop_check.stdout == '' else 'Warning: Loop device still attached' }}"
+
+
+- name: "Forensic Analysis Workstation Setup"
+  hosts: analyst
+  gather_facts: yes
+  become: yes
+  vars_files:
+    - variables/vars.yml
+  tasks:
+    - name: "Display analyst ready message"
+      ansible.builtin.copy:
+        dest: /root/readme.txt
+        content: |
+          ANALYST WORKSTATION
+
+          Ready for forensic analysis:
+            - Wireshark (network analysis)
+            - Autopsy (disk forensics)
+            - Python (custom analysis scripts)
+
+          Copy artifacts from victim machine:
+            scp victim:/tmp/wannacry_unified_attack.pcap.
+            scp victim:/tmp/final_forensic.img.
+
+          Analysis tools available:
+            - wireshark
+            - tshark
+            - tcpdump
+    - name: "Display encryption key"
+      ansible.builtin.copy:
+        dest: /root/key.txt
+        content: |
+          Decryption key for flag:
+            {{ key }}

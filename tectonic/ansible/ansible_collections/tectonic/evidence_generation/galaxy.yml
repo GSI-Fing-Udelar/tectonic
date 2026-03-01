@@ -1,0 +1,15 @@
+namespace: tectonic
+name: evidence_generation
+version: 1.0.0
+readme: README.md
+authors:
+- gsi@fing.edu.uy
+description: Collection for evidence and artifacts generation in Tectonic cyber range.
+license:
+- GPL-3.0-or-later
+tags: ["tectonic", "forensics"]
+dependencies: {}
+repository: https://github.com/GSI-Fing-Udelar/tectonic
+homepage: http://example.com
+issues: https://www.fing.edu.uy/inco/proyectos/tectonic
+build_ignore: []

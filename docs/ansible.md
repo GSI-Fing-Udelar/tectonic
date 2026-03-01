@@ -197,3 +197,10 @@ These parameters are used in a playbook as follows:
 parameters["flags"]
 parameters["users"]["name"] and parametes["users"]["password"]
 ```
+### Collections
+
+Tectonic provides a set of collections located in the `ansible/ansible_collection` directory that can be used as part of playbooks. The provided collections are:
+
+- `tectonic.evidence_generation`: a collection useful for generating evidence and other network and filesystem artifacts.
+
+For more details on these collections, see the documentation for each one within its directory.
