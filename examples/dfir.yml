@@ -10,52 +10,15 @@
 #   tectonic -c tectonic.ini examples/dfir_final_scenario/edition.yml deploy
 # ==============================================================================
 
-# Base scenario reference
 base_lab: dfir_final_scenario
-
-# Institution offering this lab edition
 institution: udelar
-
-# Edition name (optional, defaults to base_lab name)
-lab_edition_name: dfir_unified_training
-
-# Number of instances to deploy
-# Each instance is an independent copy of the scenario
-# For a class of 20 students working in pairs: instance_number: 10
+lab_edition_name: dfir
 instance_number: 1
-
-# Student configuration
 student_prefix: student
 create_students_passwords: true
-
-# Teacher SSH public keys directory (optional)
-# Uncomment and set to allow teacher access to all instances
-# teacher_pubkey_dir: teacher_pubkeys/
-
-# Student SSH public keys directory (optional)
-# Uncomment to provide per-student SSH access
-# student_pubkey_dir: student_pubkeys/
-
-# Random seed for reproducible parameter generation
-# Change this to get different random file contents across runs
-random_seed: 42
-
-# ==============================================================================
-# SERVICE CONFIGURATIONS (Optional)
-# ==============================================================================
-
-# Elastic Stack configuration (optional - for advanced monitoring)
-# Uncomment to enable Elastic Security monitoring
-# elastic_settings:
-#   enable: true
-#   monitor_type: endpoint
-#   deploy_default_policy: true
-#   memory: 4096
-
-# Caldera configuration (optional - for automated attack simulation)
-# Uncomment to enable Caldera C2 framework
-# caldera_settings:
-#   enable: false
+teacher_pubkey_dir: teacher_pubkeys/
+student_pubkey_dir: student_pubkeys/
+random_seed: 378374hdf9udf
 
 # ==============================================================================
 # DEPLOYMENT NOTES

@@ -80,7 +80,7 @@
     # PHASE 0: Display simulation start
     # ========================================================================
     - name: "Display simulation start message"
-      debug:
+      ansible.builtin.debug:
         msg:
           - "=============================================="
           - "  UNIFIED WANNACRY ATTACK SIMULATION"
@@ -100,11 +100,11 @@
     # PHASE 1: NETWORK ATTACK SIMULATION
     # ========================================================================
     - name: "[PHASE 1] ═══════════════════════════════════════════"
-      debug:
+      ansible.builtin.debug:
         msg: "NETWORK ATTACK SIMULATION"
 
     - name: "[NETWORK] Clean previous PCAP output"
-      file:
+      ansible.builtin.file:
         path: "{{ pcap_output }}"
         state: absent
 
@@ -117,7 +117,7 @@
       register: network_attack
 
     - name: "[NETWORK] Display attack summary"
-      debug:
+      ansible.builtin.debug:
         msg:
           - "Network attack simulation completed"
           - "PCAP file: {{ pcap_output }}"
@@ -128,22 +128,22 @@
     # PHASE 2: FILESYSTEM PREPARATION
     # ========================================================================
     - name: "[PHASE 2] ═══════════════════════════════════════════"
-      debug:
+      ansible.builtin.debug:
         msg: "FILESYSTEM PREPARATION"
 
     - name: "[DISK] Clean previous disk image"
-      file:
+      ansible.builtin.file:
         path: "{{ image_file }}"
         state: absent
 
     - name: "[DISK] Create disk image ({{ image_size_mb }}MB)"
-      command: "dd if=/dev/zero of={{ image_file }} bs=1M count={{ image_size_mb }}"
+      ansible.builtin.command: "dd if=/dev/zero of={{ image_file }} bs=1M count={{ image_size_mb }}"
 
     - name: "[DISK] Format image as ext4 filesystem"
-      command: "mkfs.ext4 -F {{ image_file }}"
+      ansible.builtin.command: "mkfs.ext4 -F {{ image_file }}"
 
     - name: "[DISK] Detach any orphaned loop devices from previous runs"
-      shell: |
+      ansible.builtin.shell: |
         losetup -j {{ image_file }} 2>/dev/null | cut -d: -f1 | while read dev; do
           [ -n "$dev" ] && umount "$dev" 2>/dev/null || true
           [ -n "$dev" ] && losetup -d "$dev" 2>/dev/null || true
@@ -153,24 +153,24 @@
       changed_when: false
 
     - name: "[DISK] Attach image to loop device"
-      command: "losetup -fP {{ image_file }}"
+      ansible.builtin.command: "losetup -fP {{ image_file }}"
 
     - name: "[DISK] Detect loop device path"
-      shell: "losetup -j {{ image_file }} | cut -d: -f1"
+      ansible.builtin.shell: "losetup -j {{ image_file }} | cut -d: -f1"
       register: loop_detect
       changed_when: false
 
     - name: "[DISK] Save loop device path"
-      set_fact:
+      ansible.builtin.set_fact:
         loop_device: "{{ loop_detect.stdout }}"
 
     - name: "[DISK] Create mount point directory"
-      file:
+      ansible.builtin.file:
         path: "{{ mount_point }}"
         state: directory
 
     - name: "[DISK] Mount filesystem to mount point"
-      mount:
+      ansible.posix.mount:
         path: "{{ mount_point }}"
         src: "{{ loop_device }}"
         fstype: ext4
@@ -182,7 +182,7 @@
     # Create realistic victim directory structure inside mounted disk image
     # ========================================================================
     - name: "[FS] Create target directory /srv/samba/share inside disk image"
-      file:
+      ansible.builtin.file:
         path: "{{ mount_point }}/srv/samba/share"
         state: directory
         mode: "0755"
@@ -242,11 +242,11 @@
       register: encrypt_flag_result
 
     - name: "[DISK] Sync filesystem before unmounting (flush buffers)"
-      command: sync
+      ansible.builtin.command: sync
       changed_when: false
 
     - name: "[DISK] Unmount filesystem and remove fstab entry"
-      mount:
+      ansible.posix.mount:
         path: "{{ mount_point }}"
         state: absent
 
@@ -265,18 +265,18 @@
     #   3. Display cleanup status
     # ========================================================================
     - name: "[CLEANUP] Detach loop device from disk image"
-      command: "losetup -d {{ loop_device }}"
+      ansible.builtin.command: "losetup -d {{ loop_device }}"
       when: loop_device != ""
       ignore_errors: yes
 
     - name: "[CLEANUP] Verify loop device is disconnected"
-      shell: "losetup -j {{ image_file }}"
+      ansible.builtin.shell: "losetup -j {{ image_file }}"
       register: loop_check
       changed_when: false
       failed_when: false
 
     - name: "[CLEANUP] Display loop device status"
-      debug:
+      ansible.builtin.debug:
         msg: "{{ 'Loop device disconnected successfully' if loop_check.stdout == '' else 'Warning: Loop device still attached' }}"
 
 # ==============================================================================
@@ -289,26 +289,26 @@
 
   tasks:
     - name: "Display analyst ready message"
-      debug:
+      ansible.builtin.debug:
         msg:
           - "=============================================="
           - "   ANALYST WORKSTATION READY"
           - "=============================================="
           - ""
-          - "🔬 Ready for forensic analysis:"
+          - " Ready for forensic analysis:"
           - "   - Wireshark (network analysis)"
           - "   - Autopsy (disk forensics)"
           - "   - Python (custom analysis scripts)"
           - ""
-          - "📁 Copy artifacts from victim machine:"
+          - " Copy artifacts from victim machine:"
           - "   scp victim:/tmp/wannacry_unified_attack.pcap ."
           - "   scp victim:/tmp/final_forensic.img ."
           - ""
-          - "🎯 Analysis tools available:"
+          - " Analysis tools available:"
           - "   - wireshark"
           - "   - tshark"
           - "   - tcpdump"
           - ""
-          - "🔓 Decryption key for flag:"
+          - " Decryption key for flag:"
           - "   0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
           - "=============================================="
