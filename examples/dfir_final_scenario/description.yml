@@ -23,12 +23,9 @@
 #   5. File recovery: Recover and decrypt deleted encrypted files
 # ==============================================================================
 
-# Scenario metadata (REQUIRED fields per Tectonic specification)
 institution: udelar
 lab_name: dfir_final_scenario
 default_os: ubuntu22
-
-# Optional description shown in Tectonic info
 description: |
   Unified WannaCry Attack Simulation for Digital Forensics and Incident Response Training.
   
@@ -43,17 +40,16 @@ description: |
   - Timeline reconstruction
   - Incident response correlation
   
-  ⚠️  WARNING: Files are REALLY encrypted with AES-256-CBC!
-  🎯 CHALLENGE: Find and decrypt the hidden flag file!
+  WARNING: Files are REALLY encrypted with AES-256-CBC!
+  CHALLENGE: Find and decrypt the hidden flag file!
 
-# Network topology - defines which machines are connected to which networks
+
 topology:
   - name: forensic_network
     members:
       - victim
       - analyst
 
-# Guest machines (VMs/containers)
 guest_settings:
   # Victim machine that gets "infected" with WannaCry simulator
   victim:
@@ -82,19 +78,3 @@ guest_settings:
     monitor: no
     red_team_agent: no
     blue_team_agent: no
-
-# ==============================================================================
-# INTEGRATION NOTE: Custom Ansible Components
-# ==============================================================================
-# This scenario uses custom Ansible modules from tectonic/ansible/:
-#   - library/: Custom modules (network + filesystem)
-#   - module_utils/: Layer 1-3 primitives and orchestrators
-#   - filter_plugins/: Jinja2 custom filters
-#
-# Tectonic's ansible.py automatically configures:
-#   - ANSIBLE_LIBRARY environment variable
-#   - ANSIBLE_MODULE_UTILS environment variable
-#   - ANSIBLE_FILTER_PLUGINS environment variable
-#
-# No ansible.cfg needed - all handled by ansible.py programmatically.
-# ==============================================================================

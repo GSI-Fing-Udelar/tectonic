@@ -1,0 +1,21 @@
+# Network simulation parameters
+victim_ip: "192.168.1.100" # Target machine IP address
+attacker_ip: "203.0.113.50" # Attacker's public IP address
+malicious_server_ip: "198.51.100.25" # Malware distribution server IP
+pcap_output: "/tmp/wannacry_unified_attack.pcap" # Output PCAP file path
+# Filesystem simulation parameters
+file_count: 150 # Number of victim files to generate
+target_directory: "/srv/samba/share" # Target directory (inside disk image)
+faker_seed: 42 # Seed for reproducible fake data
+force_rerun: true # Ignore idempotency, always re-run
+deletion_ratio: 25 # Percentage of files to delete (25%)
+# Wannacry profile (layer 3 orchestration)
+profile_name: "wannacry" # Profile name for ransomware behavior
+# Forensic disk image parameters
+image_file: "/tmp/final_forensic.img" # Disk image file path
+image_size_mb: 1024 # Disk image size (1GB)
+mount_point: "/mnt/simple_forensic" # Mount point for image
+case_id: "TEST_{{ ansible_date_time.epoch }}" # Case identifier with timestamp
+loop_device: "" # Loop device (auto-detected)
+# Encryption key
+key: "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"

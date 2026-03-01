@@ -218,9 +218,7 @@ class Ansible:
             "ANSIBLE_PIPELINING": self.config.ansible.pipelining,
             "ANSIBLE_GATHERING": "explicit",
             "ANSIBLE_TIMEOUT": self.config.ansible.timeout,
-            "ANSIBLE_LIBRARY": (tectonic_resources.files("tectonic") / "ansible" / "library").as_posix(),
-            "ANSIBLE_FILTER_PLUGINS": (tectonic_resources.files("tectonic") / "ansible" / "filter_plugins").as_posix(),
-            "ANSIBLE_MODULE_UTILS": (tectonic_resources.files("tectonic") / "ansible" / "module_utils").as_posix(),
+            "ANSIBLE_COLLECTIONS_PATH": (tectonic_resources.files("tectonic") / "ansible" ).as_posix()
         }
         
         r = ansible_runner.interface.run(
