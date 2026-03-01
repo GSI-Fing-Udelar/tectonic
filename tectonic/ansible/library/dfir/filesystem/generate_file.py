@@ -22,8 +22,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
----
+"""
 module: generate_file
 
 short_description: Generate a single file by type (Layer 1)
@@ -33,8 +32,6 @@ description:
   - Routes to specific primitive based on file extension
   - Supports text, PDF, images, Office documents, archives, executables
   - Atomic operation for single file creation
-  
-version_added: "2.0.0"
 
 options:
   path:
@@ -113,11 +110,7 @@ notes:
   - Supported extensions txt, pdf, jpg, png, docx, xlsx, zip, tar, tar.gz, sh, py
   - Archives (zip, tar) contain randomly generated dummy files
 
-author:
-  - Filesystem Forensics Team
-'''
-
-EXAMPLES = r'''
+Examples:
 # Generate text file with custom content
 - name: Create text file
   generate_file:
@@ -166,9 +159,8 @@ EXAMPLES = r'''
   generate_file:
     path: /tmp/script.sh
     extension: sh
-'''
 
-RETURN = r'''
+Returns:
 changed:
   description: Whether the file was created
   type: bool
@@ -198,7 +190,7 @@ size_kb:
   type: float
   returned: always
   sample: 245.3
-'''
+"""
 
 from ansible.module_utils.basic import AnsibleModule
 import os

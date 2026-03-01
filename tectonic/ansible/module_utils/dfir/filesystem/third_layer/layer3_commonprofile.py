@@ -23,7 +23,6 @@
 Filesystem Layer 3 - Common User Profile Orchestrator
 ======================================================
 
-Author: Filesystem Forensics Team
 Purpose: High-level user behavior simulation for filesystem analysis
 Context: Layer 3 (Profiles) - Orchestrates Layer 2 and Layer 1 primitives
 
@@ -43,9 +42,6 @@ Dependencies:
     - layer1_primitives: File creation, permission changes
     - faker: Realistic data generation
     - typing: Type hints
-
-Type Safety:
-    All functions use Python 3.8+ type hints (PEP 484)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -56,7 +52,7 @@ import random
 import sys
 import subprocess
 from typing import List, Dict, Tuple, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 
 try:
     from faker import Faker
@@ -497,49 +493,3 @@ class Layer3UserProfile:
             print(f"{'='*70}\n")
         
         return all_stats
-
-
-# ============================================================================
-# DEMONSTRATION
-# ============================================================================
-
-def main():
-    """Demonstration of Layer 3 user profile generation."""
-    print("="*70)
-    print("LAYER 3 USER PROFILES - DEMONSTRATION")
-    print("="*70)
-    
-    generator = Layer3UserProfile()
-    
-    # Demo 1: Single personal profile
-    print("\nDEMO 1: Personal User Profile")
-    stats1 = generator.generate_profile(
-        profile_type='personal',
-        base_directory='/tmp/demo_profiles/user_personal',
-        faker_seed=42,
-        verbose=True
-    )
-    
-    # Demo 2: Multiple profiles (simulated office environment)
-    print("\n\nDEMO 2: Office Environment (3 users)")
-    profiles_config = [
-        {'type': 'corporate', 'user': 'manager'},
-        {'type': 'developer', 'user': 'dev_team'},
-        {'type': 'designer', 'user': 'marketing'}
-    ]
-    
-    stats_multi = generator.generate_multiple_profiles(
-        profiles=profiles_config,
-        base_directory='/tmp/demo_profiles/office',
-        faker_seed=100,
-        verbose=True
-    )
-    
-    print("\n✅ Demonstration complete!")
-    print("\nAnalyze generated files:")
-    print("  tree /tmp/demo_profiles")
-    print("  ls -lh /tmp/demo_profiles/user_personal/tmp/Fotos")
-
-
-if __name__ == '__main__':
-    main()

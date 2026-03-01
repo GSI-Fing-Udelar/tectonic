@@ -19,19 +19,17 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+
+from ansible.module_utils.basic import AnsibleModule
+import os
+
 """
 Ansible Module: generate_pe_wannacry
 Generate simulated PE (Portable Executable) files with WannaCry signatures
 detectable by ReversingLabs YARA rules.
 
 This module is a thin wrapper around Layer 1 primitive create_pe_wannacry_file.
-"""
 
-from ansible.module_utils.basic import AnsibleModule
-import os
-
-DOCUMENTATION = '''
----
 module: generate_pe_wannacry
 short_description: Generate PE files with WannaCry malware signatures
 description:
@@ -62,11 +60,8 @@ options:
         required: false
         type: int
         default: 42
-author:
-    - WannaCry Simulator Team
-'''
 
-EXAMPLES = '''
+Examples:
 - name: Generate WannaCry PE executables
   generate_pe_wannacry:
     target_directory: "/tmp/wannacry_exe"
@@ -79,8 +74,7 @@ EXAMPLES = '''
       - main_2
       - start_service_3
     seed: 42
-'''
-
+"""
 
 def main():
     module = AnsibleModule(

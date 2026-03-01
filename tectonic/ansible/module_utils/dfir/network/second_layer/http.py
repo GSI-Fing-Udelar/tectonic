@@ -23,7 +23,6 @@
 HTTP Second Layer - High-Level HTTP Navigation Primitive
 =========================================================
 
-
 This module provides high-level primitives for complete web browsing sessions,
 orchestrating DNS resolution, TCP connections, and HTTP exchanges.
 
@@ -33,9 +32,6 @@ Dependencies:
     - scapy: Packet manipulation
     - faker: Realistic content generation
     - typing: Type hints
-
-Type Safety:
-    All functions use Python 3.8+ type hints (PEP 484)
 """
 
 from ansible.module_utils.dfir.network.first_layer.tcp_primitives import Layer1Generator

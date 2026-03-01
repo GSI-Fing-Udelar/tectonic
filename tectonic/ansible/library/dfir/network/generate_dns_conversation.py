@@ -22,7 +22,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
+"""
 ---
 module: generate_dns_conversation
 
@@ -79,11 +79,7 @@ options:
     type: int
     default: null
 
-author:
-    - Integration Architect
-'''
-
-EXAMPLES = r'''
+Examples:
 # Successful DNS resolution with deterministic seeding
 - name: Resolve domain successfully
   generate_dns_conversation:
@@ -104,9 +100,8 @@ EXAMPLES = r'''
     result: "No Existente"
     output_path: "/tmp/dns_nxdomain.pcap"
     faker_seed: 42
-'''
 
-RETURN = r'''
+Returns:
 packets_generated:
     description: Number of packets generated
     type: int
@@ -119,10 +114,8 @@ output_file:
     description: Path to generated PCAP file
     type: str
     returned: always
-'''
+"""
 
-import os
-import sys
 import time
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.dfir.network.second_layer.dns import dns_communication

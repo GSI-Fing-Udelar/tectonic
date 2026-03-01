@@ -35,7 +35,7 @@ except ImportError:
     except Exception:
         pass  # Will be handled by layer2_orchestrators
 
-DOCUMENTATION = r'''
+"""
 ---
 module: decrypt_files_aes
 
@@ -46,8 +46,6 @@ description:
   - Decrypts files previously encrypted with encrypt_files_aes
   - Restores original files using the same encryption key
   - Removes encrypted files after successful decryption
-  
-version_added: "2.0.0"
 
 options:
   files:
@@ -87,11 +85,7 @@ notes:
   - Decryption format: Reads [16-byte IV] + [AES-256-CBC encrypted data with PKCS7 padding]
   - Requires the exact same key used for encryption
 
-author:
-  - Filesystem Forensics Team
-'''
-
-EXAMPLES = r'''
+Examples:
 # Decrypt files with known key
 - name: Decrypt victim files
   decrypt_files_aes:
@@ -120,9 +114,8 @@ EXAMPLES = r'''
   decrypt_files_aes:
     files: "{{ files_to_decrypt.files | map(attribute='path') | list }}"
     key: "{{ saved_encryption_key }}"
-'''
 
-RETURN = r'''
+Returns:
 changed:
   description: Whether any files were decrypted
   type: bool
@@ -158,9 +151,8 @@ total_failed:
   type: int
   returned: always
   sample: 0
-'''
+"""
 
-import os
 from ansible.module_utils.basic import AnsibleModule
 
 

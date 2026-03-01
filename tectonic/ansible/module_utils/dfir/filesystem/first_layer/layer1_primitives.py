@@ -23,7 +23,6 @@
 Filesystem Layer 1 Primitives - Atomic File Operations
 =======================================================
 
-Author: Forensics Team
 Purpose: Provide atomic file operation primitives for ransomware simulation
 Context: Layer 1 (Atomic) filesystem primitives for WannaCry simulator
 
@@ -37,9 +36,6 @@ Dependencies:
     - faker: Realistic content generation
     - python-docx: DOCX document generation
     - openpyxl: XLSX spreadsheet generation
-
-Type Safety:
-    All functions use Python 3.8+ type hints (PEP 484)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -53,7 +49,7 @@ import zipfile
 import tarfile
 import sys
 import subprocess
-from typing import Optional, Tuple, Dict, Any, Union
+from typing import Optional, Tuple, Union
 from datetime import datetime
 
 # Try to import optional libraries with auto-installation

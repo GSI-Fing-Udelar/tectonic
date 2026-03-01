@@ -23,7 +23,6 @@
 Filesystem Layer 2 Orchestrators - Bulk Operations and Complex Workflows
 =========================================================================
 
-Author: Filesystem Forensics Team
 Purpose: Provide bulk operation orchestrators for ransomware simulation
 Context: Layer 2 (Orchestration) filesystem primitives for WannaCry simulator
 
@@ -35,9 +34,6 @@ Dependencies:
     - layer1_primitives: Atomic file operations
     - faker: Realistic name/content generation
     - random: Distribution calculations
-
-Type Safety:
-    All functions use Python 3.8+ type hints (PEP 484)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -46,11 +42,10 @@ __metaclass__ = type
 import os
 import random
 import glob
-import math
 import sys
 import subprocess
 from typing import List, Dict, Tuple, Optional, Any, Union
-from datetime import datetime, timedelta
+from datetime import datetime
 
 try:
     from faker import Faker

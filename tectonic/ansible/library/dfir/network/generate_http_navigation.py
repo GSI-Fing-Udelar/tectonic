@@ -22,7 +22,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
+"""
 ---
 module: generate_http_navigation
 
@@ -82,11 +82,7 @@ options:
     type: int
     default: null
 
-author:
-    - Integration Architect
-'''
-
-EXAMPLES = r'''
+Examples:
 # Simple web navigation (HTML only) with deterministic seeding
 - name: Navigate to website
   generate_http_navigation:
@@ -117,7 +113,7 @@ EXAMPLES = r'''
     output_path: "/tmp/http_complete.pcap"
 '''
 
-RETURN = r'''
+Returns:
 packets_generated:
     description: Number of packets generated
     type: int
@@ -134,10 +130,8 @@ output_file:
     description: Path to generated PCAP file
     type: str
     returned: always
-'''
+"""
 
-import os
-import sys
 import time
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.dfir.network.second_layer.http import http_web_navigation

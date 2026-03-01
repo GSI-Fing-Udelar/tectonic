@@ -22,8 +22,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
----
+"""
 module: generate_fs_user_profile
 
 short_description: Generate realistic user filesystem profiles (Layer 3)
@@ -34,8 +33,6 @@ description:
   - Supports predefined profiles (personal, corporate, developer, designer, student, server)
   - Automatically creates directory structures, files, and applies temporal distributions
   - Can generate single or multiple user profiles simultaneously
-
-version_added: "3.0.0"
 
 options:
   profile_type:
@@ -105,11 +102,7 @@ notes:
   - "Profile: student - University student (notes, assignments, PDFs)"
   - "Profile: server - File server (backups, logs, archives)"
 
-author:
-  - Filesystem Forensics Team
-'''
-
-EXAMPLES = r'''
+Examples:
 # Generate a personal user profile
 - name: Create personal user filesystem
   generate_fs_user_profile:
@@ -157,9 +150,8 @@ EXAMPLES = r'''
   generate_fs_user_profile:
     profile_type: student
     base_directory: /tmp/students/alice
-'''
 
-RETURN = r'''
+Returns:
 changed:
   description: Whether the module made changes
   type: bool
@@ -219,7 +211,7 @@ multi_user_stats:
   type: list
   returned: when multi_user=true
   sample: [{"user_name": "manager", "total_files": 200}, ...]
-'''
+"""
 
 from ansible.module_utils.basic import AnsibleModule
 

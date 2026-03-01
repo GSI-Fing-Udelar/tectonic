@@ -46,7 +46,6 @@ Dependencies:
 
 from ansible.module_utils.dfir.network.first_layer.tcp_primitives import Layer1Generator, rnd_port, rnd_seq, now_ts
 from typing import List, Optional, Tuple
-import time
 import subprocess
 import sys
 

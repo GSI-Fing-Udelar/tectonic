@@ -22,8 +22,8 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
----
+
+"""
 module: generate_network_user_profile
 
 short_description: Generates user behavior profiles (Layer 3)
@@ -100,11 +100,7 @@ options:
     required: true
     type: str
 
-author:
-    - Integration Architect
-'''
-
-EXAMPLES = r'''
+Examples:
 # Single user browsing 5 websites
 - name: Generate single user browsing profile
   generate_network_user_profile:
@@ -123,9 +119,8 @@ EXAMPLES = r'''
     ip_base: "192.168.1."
     ip_resolver: "8.8.8.8"
     output_path: "/tmp/multi_user_browsing.pcap"
-'''
 
-RETURN = r'''
+Returns:
 packets_generated:
     description: Total number of packets generated
     type: int
@@ -146,10 +141,8 @@ duration_seconds:
     description: Duration of generated traffic in seconds
     type: float
     returned: always
-'''
+"""
 
-import os
-import sys
 import time
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.dfir.network.third_layer.http_communication import Layer3Profile

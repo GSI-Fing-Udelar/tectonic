@@ -22,8 +22,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
----
+"""
 module: generate_wannacry_attack
 
 short_description: Generates WannaCry-style multi-stage attack simulation (Layer 3 Profile)
@@ -72,9 +71,8 @@ options:
     description: Path to output PCAP file
     required: true
     type: str
-'''
 
-EXAMPLES = r'''
+Examples:
 # Generate WannaCry-style attack simulation
 - name: Generate WannaCry attack scenario
   generate_wannacry_attack:
@@ -96,9 +94,8 @@ EXAMPLES = r'''
   generate_wannacry_attack:
     victim_ip: "10.0.0.50"
     output_path: "/tmp/wannacry_attack_auto.pcap"
-'''
 
-RETURN = r'''
+Retruns:
 packets_generated:
     description: Total number of packets generated
     type: int
@@ -143,10 +140,8 @@ attack_phases:
     description: Description of attack phases
     type: list
     returned: always
-'''
+"""
 
-import os
-import sys
 import time
 import traceback
 from ansible.module_utils.basic import AnsibleModule

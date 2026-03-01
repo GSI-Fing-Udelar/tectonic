@@ -22,8 +22,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
----
+"""
 module: apply_temporal_distribution
 
 short_description: Apply temporal distributions to file timestamps (Layer 2)
@@ -33,8 +32,7 @@ description:
   - Supports statistical distributions (UNIFORM, GAUSSIAN, EXPONENTIAL, PARETO)
   - Modifies mtime (modification time) and atime (access time)
   - Useful for creating realistic forensic timelines
-  
-version_added: "2.0.0"
+
 
 options:
   files:
@@ -80,11 +78,7 @@ notes:
   - "Time format: supports 's', 'm', 'h', 'd' suffixes or raw seconds"
   - "Note: Birth time (btime/ctime) CANNOT be modified on Linux filesystems"
 
-author:
-  - Filesystem Forensics Team
-'''
-
-EXAMPLES = r'''
+Examples:
 # Apply uniform distribution (files created over last 30 days)
 - name: Distribute files over last month
   apply_temporal_distribution:
@@ -126,9 +120,8 @@ EXAMPLES = r'''
     distribution_type: deterministic
     distribution_params:
       fixed_offset: "-4h"
-'''
 
-RETURN = r'''
+Returns:
 changed:
   description: Whether any timestamps were modified
   type: bool
@@ -152,10 +145,9 @@ total_files:
   type: int
   returned: always
   sample: 150
-'''
+"""
 
 from ansible.module_utils.basic import AnsibleModule
-import time
 
 
 def main():

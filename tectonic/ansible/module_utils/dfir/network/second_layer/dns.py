@@ -29,9 +29,6 @@ Dependencies:
     - DNSFirstLayer: Atomic DNS packet primitives
     - scapy: Packet manipulation
     - typing: Type hints
-
-Type Safety:
-    All functions use Python 3.8+ type hints (PEP 484)
 """
 
 from ansible.module_utils.dfir.network.first_layer.dns import create_dns_query, create_dns_response

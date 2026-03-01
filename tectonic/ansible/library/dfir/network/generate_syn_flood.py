@@ -22,8 +22,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
----
+"""
 module: generate_syn_flood
 
 short_description: Generates SYN Flood attack traffic (Layer 3 Profile)
@@ -94,11 +93,7 @@ options:
     required: true
     type: str
 
-author:
-    - Integration Architect
-'''
-
-EXAMPLES = r'''
+Examples:
 # Simple SYN flood attack (100 attackers targeting port 80)
 - name: Generate simple SYN flood attack
   generate_syn_flood:
@@ -127,9 +122,8 @@ EXAMPLES = r'''
     dest_multiple_ports: [80, 443, 22, 3389, 8080]
     attackers_per_port: 25
     output_path: "/tmp/syn_flood_multiport.pcap"
-'''
 
-RETURN = r'''
+Returns:
 packets_generated:
     description: Total number of packets generated
     type: int
@@ -158,10 +152,8 @@ duration_seconds:
     description: Duration of attack traffic in seconds
     type: float
     returned: always
-'''
+"""
 
-import os
-import sys
 import time
 import traceback
 from ansible.module_utils.basic import AnsibleModule

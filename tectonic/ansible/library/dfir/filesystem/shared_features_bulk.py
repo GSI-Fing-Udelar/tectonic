@@ -22,8 +22,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
----
+"""
 module: shared_features_bulk
 
 short_description: Apply shared characteristics to files (Layer 2)
@@ -33,8 +32,6 @@ description:
   - Modifies file permissions (chmod)
   - Simulates file deletion for forensic scenarios
   - Operates on existing files matching pattern
-  
-version_added: "2.0.0"
 
 options:
   base_directory:
@@ -118,11 +115,7 @@ notes:
   - Deletion is random selection from matched files
   - Useful for simulating ransomware shadow copy deletion behavior
 
-author:
-  - Filesystem Forensics Team
-'''
-
-EXAMPLES = r'''
+Examples:
 # Set all encrypted files to read-only
 - name: Make encrypted files read-only
   shared_features_bulk:
@@ -152,9 +145,8 @@ EXAMPLES = r'''
     name_pattern: "*"
     default_permissions: "0755"
     recursive: false
-'''
 
-RETURN = r'''
+Returns:
 changed:
   description: Whether any modifications were made
   type: bool
@@ -184,7 +176,7 @@ files_failed:
   type: list
   returned: always
   sample: []
-'''
+"""
 
 from ansible.module_utils.basic import AnsibleModule
 

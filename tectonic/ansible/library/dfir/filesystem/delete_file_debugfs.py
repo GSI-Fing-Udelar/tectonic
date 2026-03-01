@@ -22,7 +22,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
+"""
 ---
 module: delete_file_debugfs
 
@@ -32,8 +32,6 @@ description:
   - Deletes a file from ext4 filesystem using debugfs
   - True forensic deletion - file can be recovered with icat/Autopsy
   - Marks inode as deleted but data blocks remain intact temporarily
-  
-version_added: "2.0.0"
 
 options:
   filename:
@@ -56,11 +54,7 @@ notes:
   - Requires sudo privileges for debugfs
   - File must already exist on the filesystem
 
-author:
-  - Filesystem Forensics Team
-'''
-
-EXAMPLES = r'''
+Examples:
 # Delete file with debugfs capturing inode
 - name: Delete password file forensically
   delete_file_debugfs:
@@ -73,9 +67,8 @@ EXAMPLES = r'''
     filename: FORENSIC_document.txt
     device: /dev/sda3
     directory: /home
-'''
 
-RETURN = r'''
+Returns:
 changed:
   description: Whether the file was deleted
   type: bool
@@ -105,7 +98,7 @@ msg:
   type: str
   returned: always
   sample: "Successfully deleted FORENSIC_passwords.txt from /dev/sda3 using debugfs"
-'''
+"""
 
 from ansible.module_utils.basic import AnsibleModule
 

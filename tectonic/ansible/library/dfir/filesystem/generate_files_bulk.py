@@ -22,8 +22,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
----
+"""
 module: generate_files_bulk
 
 short_description: Bulk file generation orchestrator (Layer 2)
@@ -34,8 +33,6 @@ description:
   - Creates flat or tree directory structures
   - Generates realistic filenames using Faker variables
   - Atomic operations ensure forensic accuracy
-  
-version_added: "2.0.0"
 
 options:
   count:
@@ -99,11 +96,7 @@ notes:
   - Supported file types: txt, pdf, jpg, png, docx, xlsx, zip, tar.gz, sh, py
   - Each file type uses appropriate Layer 1 primitive for generation
 
-author:
-  - Filesystem Forensics Team
-'''
-
-EXAMPLES = r'''
+Examples:
 # Generate 100 files with default distribution (flat structure)
 - name: Generate 100 files
   generate_files_bulk:
@@ -142,9 +135,8 @@ EXAMPLES = r'''
       jpg: 20
       xlsx: 15
       txt: 10
-'''
 
-RETURN = r'''
+Returns:
 changed:
   description: Whether any files were created
   type: bool
@@ -180,7 +172,7 @@ distribution_used:
   type: dict
   returned: always
   sample: {"pdf": 30, "docx": 40, "txt": 20, "jpg": 10}
-'''
+"""
 
 import os
 from ansible.module_utils.basic import AnsibleModule

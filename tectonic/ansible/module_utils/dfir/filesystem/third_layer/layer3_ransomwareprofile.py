@@ -23,7 +23,6 @@
 Filesystem Layer 3 - Ransomware Profile Orchestrator
 =====================================================
 
-Author: Filesystem Forensics Team
 Purpose: High-level ransomware behavior simulation for filesystem analysis
 Context: Layer 3 (Profiles) - Orchestrates Layer 2 and Layer 1 primitives
 
@@ -48,20 +47,14 @@ Dependencies:
     - cryptography: AES encryption (for real encryption simulation)
     - faker: Realistic data generation
     - typing: Type hints
-
-Type Safety:
-    All functions use Python 3.8+ type hints (PEP 484)
 """
 
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-import os
-import random
 import sys
 import subprocess
-from typing import List, Dict, Tuple, Optional, Any, Union
-from datetime import datetime, timedelta
+from typing import List, Dict, Tuple, Optional, Any
 
 try:
     from faker import Faker

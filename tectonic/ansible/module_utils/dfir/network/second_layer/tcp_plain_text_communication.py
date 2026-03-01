@@ -47,7 +47,7 @@ Dependencies:
 
 from ansible.module_utils.dfir.network.first_layer.tcp_primitives import Layer1Generator
 from ansible.module_utils.dfir.network.utils import get_random_time, get_public_ip, now_ts
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict
 import subprocess
 import sys
 

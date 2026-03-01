@@ -29,9 +29,6 @@ response packets with forensic accuracy.
 Dependencies:
     - scapy: DNS packet construction
     - typing: Type hints
-
-Type Safety:
-    All functions use Python 3.8+ type hints (PEP 484)
 """
 
 from typing import Optional

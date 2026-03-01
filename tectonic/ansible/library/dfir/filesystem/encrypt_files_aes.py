@@ -35,8 +35,7 @@ except ImportError:
     except Exception:
         pass  # Will be handled by layer2_orchestrators
 
-DOCUMENTATION = r'''
----
+"""
 module: encrypt_files_aes
 
 short_description: Bulk AES-256-CBC file encryption (Layer 2)
@@ -47,8 +46,6 @@ description:
   - Encrypts files with random or specified key
   - Deletes originals unless keep_original is set
   - Uses same encryption method as real WannaCry malware
-  
-version_added: "2.0.0"
 
 options:
   files:
@@ -89,11 +86,7 @@ notes:
   - Encryption format: [16-byte IV] + [AES-256-CBC encrypted data with PKCS7 padding]
   - This is REAL encryption - files cannot be recovered without the key
 
-author:
-  - Filesystem Forensics Team
-'''
-
-EXAMPLES = r'''
+Examples:
 # Encrypt files with random key
 - name: Encrypt victim files
   encrypt_files_aes:
@@ -122,9 +115,8 @@ EXAMPLES = r'''
   encrypt_files_aes:
     files: "{{ files_to_encrypt.files | map(attribute='path') | list }}"
     encrypted_extension: "WNCRY"
-'''
 
-RETURN = r'''
+Returns:
 changed:
   description: Whether any files were encrypted
   type: bool
@@ -160,7 +152,7 @@ total_failed:
   type: int
   returned: always
   sample: 0
-'''
+"""
 
 import os
 from ansible.module_utils.basic import AnsibleModule

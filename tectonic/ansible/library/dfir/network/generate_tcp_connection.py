@@ -22,8 +22,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
----
+"""
 module: generate_tcp_connection
 
 short_description: Generates TCP connection primitives (Layer 1)
@@ -79,11 +78,7 @@ options:
     required: true
     type: str
 
-author:
-    - Integration Architect
-'''
-
-EXAMPLES = r'''
+Examples:
 # Generate complete TCP handshake
 - name: Generate TCP handshake
   generate_tcp_connection:
@@ -101,9 +96,8 @@ EXAMPLES = r'''
     dest_ip: "172.16.0.10"
     dest_port: 443
     output_path: "/tmp/syn_flood.pcap"
-'''
 
-RETURN = r'''
+Returns:
 packets_generated:
     description: Number of packets generated
     type: int
@@ -116,10 +110,8 @@ output_file:
     description: Path to generated PCAP file
     type: str
     returned: always
-'''
+"""
 
-import os
-import sys
 import time
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.dfir.network.first_layer.tcp_primitives import Layer1Generator

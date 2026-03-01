@@ -35,8 +35,7 @@ except ImportError:
     except Exception:
         pass  # Will be handled by layer1_primitives
 
-DOCUMENTATION = r'''
----
+"""
 module: execute_ransomware_profile
 
 short_description: Execute complete ransomware simulation using Layer 3 profiles
@@ -47,8 +46,6 @@ description:
   - Executes full attack chain from file generation to encryption and timeline manipulation
   - Uses Layer 3 orchestrator (layer3_ransomwareprofile) which coordinates Layer 2 and Layer 1 primitives
   - Provides idempotency control and reproducible results
-  
-version_added: "3.0.0"
 
 options:
   profile:
@@ -151,11 +148,7 @@ notes:
   - Encryption is REAL - files cannot be recovered without the key
   - All timestamps are forensically accurate and reproducible
 
-author:
-  - Filesystem Forensics Team
-'''
-
-EXAMPLES = r'''
+Examples:
 # Execute WannaCry simulation with default parameters
 - name: Simulate WannaCry ransomware
   execute_ransomware_profile:
@@ -207,9 +200,8 @@ EXAMPLES = r'''
     profile: wannacry
     target_directory: /tmp/wannacry_simulation
     force_rerun: true
-'''
 
-RETURN = r'''
+Returns:
 changed:
   description: Whether the simulation was executed
   type: bool
@@ -279,11 +271,7 @@ profile_config:
     file_count: 150
     encryption_algorithm: "AES-256-CBC"
     encrypted_extension: "WNCRY"
-'''
-
-# ============================================================================
-# IMPORTS
-# ============================================================================
+"""
 
 import os
 import time
@@ -358,7 +346,6 @@ def setup_target_directory(target_dir: str) -> None:
     # Get directory stats
     dir_stat = os.stat(target_dir)
     dir_uid = dir_stat.st_uid
-    dir_gid = dir_stat.st_gid
     
     # Check if current user is owner
     if dir_uid != os.getuid():

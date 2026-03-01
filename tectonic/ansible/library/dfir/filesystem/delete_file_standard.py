@@ -22,8 +22,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
----
+"""
 module: delete_file_standard
 
 short_description: Delete a file with optional backup (Layer 1)
@@ -33,8 +32,6 @@ description:
   - Optionally creates backup before deletion
   - Equivalent to state=absent in Ansible file module
   - Atomic operation for single file deletion
-  
-version_added: "2.0.0"
 
 options:
   path:
@@ -53,11 +50,7 @@ notes:
   - For bulk deletion, use shared_features_bulk module
   - Fails if file does not exist
 
-author:
-  - Filesystem Forensics Team
-'''
-
-EXAMPLES = r'''
+Examples:
 # Delete a single file (forensic recoverable by default)
 - name: Delete temporary file
   delete_file_standard:
@@ -78,9 +71,8 @@ EXAMPLES = r'''
 - name: Delete file but keep recoverable
   delete_file_standard:
     path: /tmp/test_recovery.txt
-'''
 
-RETURN = r'''
+Returns:
 changed:
   description: Whether the file was deleted
   type: bool
@@ -104,7 +96,7 @@ backup_file:
   type: str
   returned: when backup is true
   sample: "/tmp/important_data.xlsx.backup"
-'''
+"""
 
 from ansible.module_utils.basic import AnsibleModule
 

@@ -19,6 +19,17 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+"""
+TCP First Layer Primitives - Atomic TCP Packet Generation
+==========================================================
+
+This module provides low-level primitives for creating individual TCP packets with forensic accuracy.
+
+Dependencies:
+    - scapy: DNS packet construction
+    - typing: Type hints
+"""
+
 from ansible.module_utils.dfir.network.utils import *
 from typing import Optional
 import subprocess
