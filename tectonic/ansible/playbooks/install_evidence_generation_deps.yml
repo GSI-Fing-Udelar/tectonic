@@ -1,3 +1,24 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+---
 # DEPENDENCIES INSTALLED:
 #   Python libraries:
 #     - faker: Realistic fake data generation
@@ -19,45 +40,47 @@
 #     - pandoc: Document converter for PDF generation
 # ==============================================================================
 
-- name: "Update package cache (Debian)"
-  ansible.builtin.apt:
-    update_cache: yes
-    cache_valid_time: 3600
-  when: ansible_facts['os_family'] == 'Debian'
+- name: "Update package cache"
+  block:
+    - name: "Update package cache | Debian"
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'
+    - name: "Update package cache | RedHat/Fedora"
+      ansible.builtin.dnf:
+        update_cache: yes
+      when: ansible_facts['os_family'] == 'RedHat' or ansible_facts['os_family'] == 'Fedora'
 
-- name: "Update package cache (RedHat/Fedora)"
-  ansible.builtin.dnf:
-    update_cache: yes
-  when: ansible_facts['os_family'] == 'RedHat' or ansible_facts['os_family'] == 'Fedora'
-
-- name: "Install system build dependencies and tools (Debian)"
-  ansible.builtin.apt:
-    name:
-      - python3-dev
-      - python3-pip
-      - build-essential
-      - libssl-dev
-      - libffi-dev
-      - pkg-config
-      - wireshark-common
-      - pandoc
-    state: present
-    install_recommends: no
-  when: ansible_facts['os_family'] == 'Debian'
-
-- name: "Install system build dependencies and tools (RedHat/Fedora)"
-  ansible.builtin.dnf:
-    name:
-      - python3-devel
-      - python3-pip
-      - gcc
-      - openssl-devel
-      - libffi-devel
-      - pkgconfig
-      - wireshark
-      - pandoc
-    state: present
-  when: ansible_facts['os_family'] == 'RedHat' or ansible_facts['os_family'] == 'Fedora'
+- name: "Install system build dependencies and tools"
+  block:
+    - name: "Install system build dependencies and tools | Debian"
+      ansible.builtin.apt:
+        name:
+          - python3-dev
+          - python3-pip
+          - build-essential
+          - libssl-dev
+          - libffi-dev
+          - pkg-config
+          - wireshark-common
+          - pandoc
+        state: present
+        install_recommends: no
+      when: ansible_facts['os_family'] == 'Debian'
+    - name: "Install system build dependencies and tools | RedHat/Fedora"
+      ansible.builtin.dnf:
+        name:
+          - python3-devel
+          - python3-pip
+          - gcc
+          - openssl-devel
+          - libffi-devel
+          - pkgconfig
+          - wireshark
+          - pandoc
+        state: present
+      when: ansible_facts['os_family'] == 'RedHat' or ansible_facts['os_family'] == 'Fedora'
 
 - name: "Upgrade pip to latest version"
   ansible.builtin.command: "{{ ansible_python_interpreter | default('python3') }} -m pip install --upgrade pip"
@@ -75,27 +98,3 @@
       - scapy
     state: present
     executable: pip3
-
-- name: "Verify Python dependencies installation"
-  ansible.builtin.command: '{{ ansible_python_interpreter | default(''python3'') }} -c ''import faker, PIL, docx, openpyxl, cryptography, scapy; print("All dependencies installed successfully")'''
-  changed_when: false
-  register: verify_deps
-  failed_when: verify_deps.rc != 0
-
-- name: "Verify system tools installation"
-  ansible.builtin.command: "which mergecap pandoc"
-  changed_when: false
-  register: verify_tools
-  failed_when: verify_tools.rc != 0
-
-- name: "Display installation summary"
-  ansible.builtin.debug:
-    msg:
-      - "=============================================="
-      - "  EVIDENCE GENERATION DEPENDENCIES INSTALLED"
-      - "=============================================="
-      - "✅ Python libraries: faker, Pillow, python-docx, openpyxl, cryptography, scapy"
-      - "✅ System build tools: gcc, python3-dev, libssl-dev, libffi-dev"
-      - "✅ System tools: mergecap (wireshark-common), pandoc"
-      - "✅ Ready for evidence generation tasks in after_clone phase"
-      - "=============================================="
