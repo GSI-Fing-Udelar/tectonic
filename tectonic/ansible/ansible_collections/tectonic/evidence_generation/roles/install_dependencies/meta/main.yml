@@ -1,0 +1,9 @@
+galaxy_info:
+  author: gsi@fing.edu.uy
+  description: Install dependencies required for evidence generation
+  license: GPL-3.0-only
+  min_ansible_version: 2.10
+  galaxy_tags: 
+    - "tectonic"
+    - "forensics"
+dependencies: []

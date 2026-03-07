@@ -101,6 +101,10 @@ class Core:
         if guests is None or len(guests) > 0:
             logger.info("Destroying scenario base images...")
             self.packer.destroy_instance_image(guests)
+
+            logger.info("Install scenario requirements...")
+            self.ansible.install_scenario_requirements()
+
             logger.info("Creating scenario base images...")
             self.packer.create_instance_image(guests)
 
@@ -114,6 +118,10 @@ class Core:
         if service_image_list is None or len(service_image_list) > 0:
             logger.info("Destroying service base images...")
             self.packer.destroy_service_image(service_image_list)
+
+            logger.info("Install scenario requirements...")
+            self.ansible.install_scenario_requirements()
+
             logger.info("Creating service base images...")
             self.packer.create_service_image(service_image_list)
     
@@ -155,6 +163,9 @@ class Core:
 
         logger.info("Waiting for machines to boot up...")
         self.ansible.wait_for_connections(instances=instances)
+
+        logger.info("Install scenario requirements...")
+        self.ansible.install_scenario_requirements()
 
         logger.info("Running after clone configuration...")
         self.ansible.run(instances, quiet=True)
@@ -232,6 +243,9 @@ class Core:
         logger.info("Waiting for machines to boot up...")
         self.ansible.wait_for_connections(instances, guests, copies, True)
         
+        logger.info("Install scenario requirements...")
+        self.ansible.install_scenario_requirements()
+
         logger.info("Running after clone configuration...")
         self.ansible.run(instances, guests, copies, quiet=True, only_instances=False)
 
@@ -436,6 +450,10 @@ class Core:
             username (str): username to use.
             playbook (str): path to Ansible playbook.
         """
+        logger.info("Install scenario requirements...")
+        self.ansible.install_scenario_requirements()
+
+        logger.info("Run ansible...")
         self.description.parse_machines(instances, guests, copies, False)
         self.ansible.run(instances=instances, guests=guests, copies=copies, only_instances=False, username=username, playbook=playbook)
     

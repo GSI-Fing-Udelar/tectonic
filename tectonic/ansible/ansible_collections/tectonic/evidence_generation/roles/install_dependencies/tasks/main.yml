@@ -1,0 +1,23 @@
+---
+- name: Install system packages
+  block:
+    - name: Install system packages | Debian
+      ansible.builtin.import_role:
+        name: tectonic.core.install_system_packages
+      vars:
+        packages_to_install: "{{ debian_packages }}"
+      when: ansible_facts.os_family == "Debian"
+    - name: Install system packages | RedHat/Fedora
+      ansible.builtin.import_role:
+        name: tectonic.core.install_system_packages
+      vars:
+        packages_to_install: "{{ redhat_packages }}"
+      when: ansible_facts.os_family in ["RedHat", "Fedora"]
+
+- name: Install Python libraries
+  ansible.builtin.import_role:
+    name: tectonic.core.install_python_libraries
+  vars:
+    libraries_to_install: "{{ python_libraries }}"
+    python_executable: "{{ python_executable_path }}"
+    pip_executable: "{{ pip_executable_path }}"

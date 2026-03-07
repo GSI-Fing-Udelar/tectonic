@@ -27,38 +27,21 @@
   hosts: victim
   gather_facts: yes
   become: yes
+  roles:
+    - tectonic.evidence_generation.install_dependencies
   tasks:
-    - name: "Update apt package cache"
-      ansible.builtin.apt:
-        update_cache: yes
-        cache_valid_time: 3600
-      when: ansible_os_family == "Debian"
-
     - name: "Install minimal system packages"
       ansible.builtin.apt:
         name:
-          # Python environment (required for Ansible modules)
-          - python3
-          - python3-pip
-          - python3-dev
-          - python3-venv
           # Network analysis tools
           - tcpdump # PCAP capture and analysis
           - tshark # Command-line Wireshark
           # Filesystem tools
           - e2fsprogs # ext4 filesystem utilities (mkfs.ext4)
           - util-linux # losetup for loop devices
-          # Build tools (for Python packages with C extensions)
-          - build-essential
-          - libssl-dev
-          - libffi-dev
         state: present
         install_recommends: no
       when: ansible_os_family == "Debian"
-
-    - name: "Install evidence generation dependencies" # TODO: improve?
-      ansible.builtin.include_tasks: ../../../tectonic/ansible/playbooks/install_evidence_generation_deps.yml
-
 
 - name: "Install Forensic Tools - Analyst Workstation Base Image"
   hosts: analyst

@@ -18,6 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import logging
 from pathlib import Path
 import ansible_runner
@@ -136,7 +137,7 @@ class Ansible:
                 inventory[machine.base_name]["hosts"][machine.name]["become_flags"] = "-i"
         return inventory
     
-    def build_inventory_localhost(self, username=None, extra_vars=None):
+    def build_inventory_localhost(self, username=None, extra_vars=None, become=True):
         if extra_vars is None:
             extra_vars = {}
         return {
@@ -147,7 +148,7 @@ class Ansible:
                     }
                 },
                 "vars": {
-                    "ansible_become": True,
+                    "ansible_become": become,
                     "ansible_user": username or self.config.elastic.user_install_packetbeat,
                     "basename": "localhost",
                     "ansible_connection" : "local",
@@ -218,7 +219,8 @@ class Ansible:
             "ANSIBLE_PIPELINING": self.config.ansible.pipelining,
             "ANSIBLE_GATHERING": "explicit",
             "ANSIBLE_TIMEOUT": self.config.ansible.timeout,
-            "ANSIBLE_COLLECTIONS_PATH": (tectonic_resources.files("tectonic") / "ansible" ).as_posix()
+            "ANSIBLE_COLLECTIONS_PATH": self.config.ansible.collections_and_roles_path,
+            "ANSIBLE_ROLES_PATH": f"{self.config.ansible.collections_and_roles_path}/roles"
         }
         
         r = ansible_runner.interface.run(
@@ -252,3 +254,11 @@ class Ansible:
             inventory = self.build_inventory(machine_list=enabled_services)
             self.wait_for_connections(inventory=inventory)
             self.run(inventory=inventory, playbook=self.ANSIBLE_SERVICE_PLAYBOOK, quiet=True)
+
+    def install_scenario_requirements(self):
+        if os.path.exists(Path(self.description.scenario_dir) / "ansible"/ "requirements.yml"):
+            inventory = self.build_inventory_localhost(become=False)
+            self.run(
+                inventory=inventory,
+                playbook=tectonic_resources.files('tectonic') / 'ansible' / 'playbooks' / 'install_collections.yml',
+            )

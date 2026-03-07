@@ -73,6 +73,7 @@ bs4 = "*"
 freezegun = "*"
 docker = "*"
 pyopenssl = ">=24.3"
+faker = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "9.0.2"

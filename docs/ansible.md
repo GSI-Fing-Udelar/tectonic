@@ -30,6 +30,7 @@ The variables for the `base_config` playbooks are the following:
     - `ansible`
         - `ssh_common_args`
         - `keep_logs`
+        - `collections_and_roles_path`
     - `configure_dns`
     - `debug`
     - `internet_network_cidr_block`
@@ -59,6 +60,7 @@ The variables for the `base_config` playbooks are the following:
     - `copies`
     - `disk`
     - `entry_point`
+    - `evidence_generation`
     - `gui`
     - `hostname`
     - `instance`
@@ -199,8 +201,12 @@ parameters["users"]["name"] and parametes["users"]["password"]
 ```
 ### Collections
 
-Tectonic provides a set of collections located in the `ansible/ansible_collection` directory that can be used as part of playbooks. The provided collections are:
+Tectonic provides a set of Ansible collections for advanced functionality. The collections are:
 
-- `tectonic.evidence_generation`: a collection useful for generating evidence and other network and filesystem artifacts.
+- `tectonic.core`: core functionalities
+- `tectonic.evidence_generation`: useful for generating evidence and other network and filesystem artifacts
 
 For more details on these collections, see the documentation for each one within its directory.
+
+If your scenario's Ansible playbooks depend on Ansible collections or roles, create a requirements.yml file defining these dependencies. Tectonic will automate the installation via ansible-galaxy. The [requirements.yml](https://docs.ansible.com/projects/ansible/latest/galaxy/user_guide.html#installing-roles-and-collections-from-the-same-requirements-yml-file) file must follow the Ansible Galaxy standard.
+
