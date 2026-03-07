@@ -255,10 +255,11 @@ class Ansible:
             self.wait_for_connections(inventory=inventory)
             self.run(inventory=inventory, playbook=self.ANSIBLE_SERVICE_PLAYBOOK, quiet=True)
 
-    def install_scenario_requirements(self):
+    def install_scenario_requirements(self, quiet=True):
         if os.path.exists(Path(self.description.scenario_dir) / "ansible"/ "requirements.yml"):
             inventory = self.build_inventory_localhost(become=False)
             self.run(
                 inventory=inventory,
                 playbook=tectonic_resources.files('tectonic') / 'ansible' / 'playbooks' / 'install_collections.yml',
+                quiet=quiet
             )
