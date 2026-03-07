@@ -1,6 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+import os
+from ansible.module_utils.basic import AnsibleModule
+
 DOCUMENTATION = r'''
 ---
 module: generate_files_bulk
@@ -155,11 +160,6 @@ distribution_used:
   returned: always
   sample: {"pdf": 30, "docx": 40, "txt": 20, "jpg": 10}
 '''
-
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-import os
-from ansible.module_utils.basic import AnsibleModule
 
 def main():
     """

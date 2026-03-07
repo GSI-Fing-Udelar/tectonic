@@ -6,6 +6,4 @@ galaxy_info:
   galaxy_tags: 
     - "tectonic"
     - "forensics"
-dependencies:
-  - name: tectonic.core.install_system_packages
-  - name: tectonic.core.install_python_libraries
+  dependencies: []

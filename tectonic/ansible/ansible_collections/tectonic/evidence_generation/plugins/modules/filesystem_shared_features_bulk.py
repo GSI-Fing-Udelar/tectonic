@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+from ansible.module_utils.basic import AnsibleModule
+
 DOCUMENTATION = r'''
 ---
 module: shared_features_bulk
@@ -159,10 +163,6 @@ files_failed:
   returned: always
   sample: []
 '''
-
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-from ansible.module_utils.basic import AnsibleModule
 
 def main():
     """

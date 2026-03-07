@@ -1,6 +1,15 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+import time
+import traceback
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.third_layer.syn_flood import SynFloodProfile
+from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.pcap_merger import merge_pcap_with_mergecap
+
+
 DOCUMENTATION = r'''
 ---
 module: generate_syn_flood
@@ -135,14 +144,6 @@ duration_seconds:
     type: float
     returned: always
 '''
-
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-import time
-import traceback
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.third_layer.syn_flood import SynFloodProfile
-from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.pcap_merger import merge_pcap_with_mergecap
 
 def generate_syn_flood_packets(module):
     """

@@ -1,6 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+import time
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.second_layer.http import http_web_navigation
+from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.pcap_merger import merge_pcap_with_mergecap
+
 DOCUMENTATION = r'''
 ---
 module: generate_http_navigation
@@ -111,14 +118,6 @@ output_file:
     type: str
     returned: always
 '''
-
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-import time
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.second_layer.http import http_web_navigation
-from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.pcap_merger import merge_pcap_with_mergecap
-
 
 def generate_http_packets(module):
     """

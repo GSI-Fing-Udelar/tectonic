@@ -1,6 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+from ansible.module_utils.basic import AnsibleModule
+import os
+
 DOCUMENTATION = r'''
 ---
 module: generate_file
@@ -173,11 +178,6 @@ size_kb:
   returned: always
   sample: 245.3
 '''
-
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-from ansible.module_utils.basic import AnsibleModule
-import os
 
 def main():
     """

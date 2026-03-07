@@ -1,6 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from ansible.module_utils.basic import AnsibleModule
+import os
+
 DOCUMENTATION = r'''
 ---
 module: generate_pe_wannacry
@@ -52,9 +55,6 @@ EXAMPLES = r'''
       - start_service_3
     seed: 42
 '''
-
-from ansible.module_utils.basic import AnsibleModule
-import os
 
 def main():
     module = AnsibleModule(

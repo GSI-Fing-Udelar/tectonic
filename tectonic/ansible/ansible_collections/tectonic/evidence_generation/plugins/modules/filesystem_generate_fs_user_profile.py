@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+from ansible.module_utils.basic import AnsibleModule
+
 DOCUMENTATION = r'''
 ---
 module: generate_fs_user_profile
@@ -193,10 +197,6 @@ multi_user_stats:
   returned: when multi_user=true
   sample: [{"user_name": "manager", "total_files": 200}, ...]
 '''
-
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-from ansible.module_utils.basic import AnsibleModule
 
 def main():
     """

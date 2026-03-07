@@ -1,6 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+import time
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.second_layer.dns import dns_communication
+from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.pcap_merger import merge_pcap_with_mergecap
+
 DOCUMENTATION = r'''
 ---
 module: generate_dns_conversation
@@ -95,14 +102,7 @@ output_file:
     description: Path to generated PCAP file
     type: str
     returned: always
-''''
-
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-import time
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.second_layer.dns import dns_communication
-from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.pcap_merger import merge_pcap_with_mergecap
+'''
 
 def generate_dns_packets(module):
     """

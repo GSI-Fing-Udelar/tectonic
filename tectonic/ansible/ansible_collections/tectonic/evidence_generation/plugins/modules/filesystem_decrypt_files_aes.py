@@ -1,6 +1,21 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+import sys
+import subprocess
+from ansible.module_utils.basic import AnsibleModule
+# Auto-install cryptography if not available
+try:
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+except ImportError:
+    try:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'cryptography'])
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    except Exception:
+        pass  # Will be handled by layer2_orchestrators
+
 DOCUMENTATION = r'''
 ---
 module: decrypt_files_aes
@@ -120,21 +135,6 @@ total_failed:
   returned: always
   sample: 0
 '''
-
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-import sys
-import subprocess
-from ansible.module_utils.basic import AnsibleModule
-# Auto-install cryptography if not available
-try:
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-except ImportError:
-    try:
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'cryptography'])
-        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-    except Exception:
-        pass  # Will be handled by layer2_orchestrators
 
 def main():
     """

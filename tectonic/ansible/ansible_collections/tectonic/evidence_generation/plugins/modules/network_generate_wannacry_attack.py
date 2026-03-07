@@ -1,6 +1,14 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+import time
+import traceback
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.third_layer.wannacry import wannacry_attack_simulation
+from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.pcap_merger import merge_pcap_with_mergecap
+
 DOCUMENTATION = r'''
 ---
 module: generate_wannacry_attack
@@ -123,15 +131,6 @@ attack_phases:
     type: list
     returned: always
 '''
-
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-import time
-import traceback
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.third_layer.wannacry import wannacry_attack_simulation
-from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.pcap_merger import merge_pcap_with_mergecap
-
 
 def generate_wannacry_attack_packets(module):
     """

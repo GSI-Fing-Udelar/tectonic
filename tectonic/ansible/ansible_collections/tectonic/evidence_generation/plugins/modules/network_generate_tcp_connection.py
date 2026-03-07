@@ -1,6 +1,14 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+import time
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.first_layer.tcp_primitives import Layer1Generator
+from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.second_layer.not_ended_tcp_connection import not_ended_tcp_connection
+from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.pcap_merger import merge_pcap_with_mergecap
+
 DOCUMENTATION = r'''
 module: generate_tcp_connection
 
@@ -92,15 +100,6 @@ output_file:
     type: str
     returned: always
 '''
-
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-import time
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.first_layer.tcp_primitives import Layer1Generator
-from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.second_layer.not_ended_tcp_connection import not_ended_tcp_connection
-from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.pcap_merger import merge_pcap_with_mergecap
-
 
 def generate_tcp_packets(module):
     """

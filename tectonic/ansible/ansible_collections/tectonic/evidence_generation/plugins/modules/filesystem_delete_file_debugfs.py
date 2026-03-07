@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+from ansible.module_utils.basic import AnsibleModule
+
 DOCUMENTATION = r'''
 ---
 module: delete_file_debugfs
@@ -80,10 +84,6 @@ msg:
   returned: always
   sample: "Successfully deleted FORENSIC_passwords.txt from /dev/sda3 using debugfs"
 '''
-
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-from ansible.module_utils.basic import AnsibleModule
 
 def main():
     """

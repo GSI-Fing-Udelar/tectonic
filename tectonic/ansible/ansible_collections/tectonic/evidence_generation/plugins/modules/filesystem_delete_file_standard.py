@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+from ansible.module_utils.basic import AnsibleModule
+
 DOCUMENTATION = r'''
 ---
 module: delete_file_standard
@@ -79,11 +83,6 @@ backup_file:
   returned: when backup is true
   sample: "/tmp/important_data.xlsx.backup"
 '''
-
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-from ansible.module_utils.basic import AnsibleModule
-
 
 def main():
     """
