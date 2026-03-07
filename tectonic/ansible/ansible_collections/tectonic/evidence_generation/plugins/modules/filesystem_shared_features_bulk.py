@@ -1,28 +1,8 @@
-#
-# Tectonic - An academic Cyber Range
-# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
-# Uruguay
-#
-# This file is part of Tectonic.
-#
-# Tectonic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tectonic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-
-"""
+DOCUMENTATION = r'''
+---
 module: shared_features_bulk
 
 short_description: Apply shared characteristics to files (Layer 2)
@@ -114,8 +94,9 @@ notes:
   - Uses Layer 2 orchestrator apply_shared_characteristics() from module_utils.layer2_orchestrators
   - Deletion is random selection from matched files
   - Useful for simulating ransomware shadow copy deletion behavior
+'''
 
-Examples:
+EXAMPLES = r'''
 # Set all encrypted files to read-only
 - name: Make encrypted files read-only
   shared_features_bulk:
@@ -145,8 +126,9 @@ Examples:
     name_pattern: "*"
     default_permissions: "0755"
     recursive: false
+'''
 
-Returns:
+RETURN = r'''
 changed:
   description: Whether any modifications were made
   type: bool
@@ -176,10 +158,11 @@ files_failed:
   type: list
   returned: always
   sample: []
-"""
+'''
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 from ansible.module_utils.basic import AnsibleModule
-
 
 def main():
     """

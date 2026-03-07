@@ -1,28 +1,8 @@
-#
-# Tectonic - An academic Cyber Range
-# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
-# Uruguay
-#
-# This file is part of Tectonic.
-#
-# Tectonic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tectonic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-
-"""
+DOCUMENTATION = r'''
+---
 module: generate_files_bulk
 
 short_description: Bulk file generation orchestrator (Layer 2)
@@ -95,8 +75,9 @@ notes:
   - Uses Layer 2 orchestrators from module_utils.layer2_orchestrators
   - Supported file types: txt, pdf, jpg, png, docx, xlsx, zip, tar.gz, sh, py
   - Each file type uses appropriate Layer 1 primitive for generation
+'''
 
-Examples:
+EXAMPLES = r'''
 # Generate 100 files with default distribution (flat structure)
 - name: Generate 100 files
   generate_files_bulk:
@@ -135,8 +116,9 @@ Examples:
       jpg: 20
       xlsx: 15
       txt: 10
+'''
 
-Returns:
+RETURN = r'''
 changed:
   description: Whether any files were created
   type: bool
@@ -172,11 +154,12 @@ distribution_used:
   type: dict
   returned: always
   sample: {"pdf": 30, "docx": 40, "txt": 20, "jpg": 10}
-"""
+'''
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 import os
 from ansible.module_utils.basic import AnsibleModule
-
 
 def main():
     """

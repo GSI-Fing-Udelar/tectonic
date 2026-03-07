@@ -1,41 +1,7 @@
-#
-# Tectonic - An academic Cyber Range
-# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
-# Uruguay
-#
-# This file is part of Tectonic.
-#
-# Tectonic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tectonic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-
-import sys
-import subprocess
-
-# Auto-install cryptography if not available
-try:
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-except ImportError:
-    try:
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'cryptography'])
-        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-    except Exception:
-        pass  # Will be handled by layer2_orchestrators
-
-"""
+DOCUMENTATION = r'''
 ---
 module: decrypt_files_aes
 
@@ -84,8 +50,9 @@ notes:
   - Uses Layer 2 orchestrator decrypt_files_bulk() from module_utils.layer2_orchestrators
   - Decryption format: Reads [16-byte IV] + [AES-256-CBC encrypted data with PKCS7 padding]
   - Requires the exact same key used for encryption
+'''
 
-Examples:
+EXAMPLES = r'''
 # Decrypt files with known key
 - name: Decrypt victim files
   decrypt_files_aes:
@@ -114,8 +81,9 @@ Examples:
   decrypt_files_aes:
     files: "{{ files_to_decrypt.files | map(attribute='path') | list }}"
     key: "{{ saved_encryption_key }}"
+'''
 
-Returns:
+RETURN = r'''
 changed:
   description: Whether any files were decrypted
   type: bool
@@ -151,10 +119,22 @@ total_failed:
   type: int
   returned: always
   sample: 0
-"""
+'''
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+import sys
+import subprocess
 from ansible.module_utils.basic import AnsibleModule
-
+# Auto-install cryptography if not available
+try:
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+except ImportError:
+    try:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'cryptography'])
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    except Exception:
+        pass  # Will be handled by layer2_orchestrators
 
 def main():
     """

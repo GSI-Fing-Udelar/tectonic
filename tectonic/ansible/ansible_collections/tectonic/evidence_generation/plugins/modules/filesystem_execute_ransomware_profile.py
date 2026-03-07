@@ -1,41 +1,8 @@
-#
-# Tectonic - An academic Cyber Range
-# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
-# Uruguay
-#
-# This file is part of Tectonic.
-#
-# Tectonic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tectonic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-
-import sys
-import subprocess
-
-# Auto-install cryptography if not available
-try:
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-except ImportError:
-    try:
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'cryptography'])
-        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-    except Exception:
-        pass  # Will be handled by layer1_primitives
-
-"""
+DOCUMENTATION = r'''
+---
 module: execute_ransomware_profile
 
 short_description: Execute complete ransomware simulation using Layer 3 profiles
@@ -147,8 +114,9 @@ notes:
   - Creates marker file .ransomware_executed for idempotency
   - Encryption is REAL - files cannot be recovered without the key
   - All timestamps are forensically accurate and reproducible
+'''
 
-Examples:
+EXAMPLES = r'''
 # Execute WannaCry simulation with default parameters
 - name: Simulate WannaCry ransomware
   execute_ransomware_profile:
@@ -162,7 +130,6 @@ Examples:
     target_directory: /tmp/wannacry_test
     file_count: 500
     faker_seed: 12345
-
 
 # Custom ransomware profile based on WannaCry
 - name: Custom ransomware simulation
@@ -200,8 +167,9 @@ Examples:
     profile: wannacry
     target_directory: /tmp/wannacry_simulation
     force_rerun: true
+'''
 
-Returns:
+RETURN = r'''
 changed:
   description: Whether the simulation was executed
   type: bool
@@ -271,13 +239,26 @@ profile_config:
     file_count: 150
     encryption_algorithm: "AES-256-CBC"
     encrypted_extension: "WNCRY"
-"""
+'''
 
 import os
 import time
 import traceback
 import subprocess
 from ansible.module_utils.basic import AnsibleModule
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+import sys
+import subprocess
+# Auto-install cryptography if not available
+try:
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+except ImportError:
+    try:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'cryptography'])
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    except Exception:
+        pass  # Will be handled by layer1_primitives
 
 
 # ============================================================================

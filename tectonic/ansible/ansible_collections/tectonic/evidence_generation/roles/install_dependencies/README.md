@@ -36,7 +36,9 @@ Role Variables
 Requirements
 ------------
 
-Collection tectonic.core
+Depends on roles: 
+  - tectonic.core.install_system_packages
+  - tectonic.core.install_python_libraries
 
 
 Example Playbook

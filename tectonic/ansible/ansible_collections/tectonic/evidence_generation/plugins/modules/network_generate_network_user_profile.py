@@ -1,29 +1,7 @@
-#
-# Tectonic - An academic Cyber Range
-# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
-# Uruguay
-#
-# This file is part of Tectonic.
-#
-# Tectonic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tectonic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-
-
-"""
+DOCUMENTATION = r'''
 module: generate_network_user_profile
 
 short_description: Generates user behavior profiles (Layer 3)
@@ -99,8 +77,9 @@ options:
     description: Path to output PCAP file
     required: true
     type: str
+'''
 
-Examples:
+EXAMPLES = r'''
 # Single user browsing 5 websites
 - name: Generate single user browsing profile
   generate_network_user_profile:
@@ -119,8 +98,9 @@ Examples:
     ip_base: "192.168.1."
     ip_resolver: "8.8.8.8"
     output_path: "/tmp/multi_user_browsing.pcap"
+'''
 
-Returns:
+RETURN = r'''
 packets_generated:
     description: Total number of packets generated
     type: int
@@ -141,8 +121,10 @@ duration_seconds:
     description: Duration of generated traffic in seconds
     type: float
     returned: always
-"""
+'''
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 import time
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.third_layer.http_communication import Layer3Profile

@@ -1,41 +1,8 @@
-#
-# Tectonic - An academic Cyber Range
-# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
-# Uruguay
-#
-# This file is part of Tectonic.
-#
-# Tectonic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tectonic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-
-import sys
-import subprocess
-
-# Auto-install cryptography if not available
-try:
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-except ImportError:
-    try:
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'cryptography'])
-        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-    except Exception:
-        pass  # Will be handled by layer2_orchestrators
-
-"""
+DOCUMENTATION = r'''
+---
 module: encrypt_files_aes
 
 short_description: Bulk AES-256-CBC file encryption (Layer 2)
@@ -85,8 +52,9 @@ notes:
   - Uses Layer 2 orchestrator encrypt_files_bulk() from module_utils.layer2_orchestrators
   - Encryption format: [16-byte IV] + [AES-256-CBC encrypted data with PKCS7 padding]
   - This is REAL encryption - files cannot be recovered without the key
+'''
 
-Examples:
+EXAMPLES = r'''
 # Encrypt files with random key
 - name: Encrypt victim files
   encrypt_files_aes:
@@ -115,8 +83,9 @@ Examples:
   encrypt_files_aes:
     files: "{{ files_to_encrypt.files | map(attribute='path') | list }}"
     encrypted_extension: "WNCRY"
+'''
 
-Returns:
+RETURN = r'''
 changed:
   description: Whether any files were encrypted
   type: bool
@@ -152,11 +121,23 @@ total_failed:
   type: int
   returned: always
   sample: 0
-"""
+'''
 
 import os
 from ansible.module_utils.basic import AnsibleModule
-
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+import sys
+import subprocess
+# Auto-install cryptography if not available
+try:
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+except ImportError:
+    try:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--quiet', 'cryptography'])
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    except Exception:
+        pass  # Will be handled by layer2_orchestrators
 
 def main():
     """

@@ -1,28 +1,8 @@
-#
-# Tectonic - An academic Cyber Range
-# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
-# Uruguay
-#
-# This file is part of Tectonic.
-#
-# Tectonic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tectonic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-
-"""
+DOCUMENTATION = r'''
+---
 module: generate_wannacry_attack
 
 short_description: Generates WannaCry-style multi-stage attack simulation (Layer 3 Profile)
@@ -71,8 +51,9 @@ options:
     description: Path to output PCAP file
     required: true
     type: str
+'''
 
-Examples:
+EXAMPLES = r'''
 # Generate WannaCry-style attack simulation
 - name: Generate WannaCry attack scenario
   generate_wannacry_attack:
@@ -94,8 +75,9 @@ Examples:
   generate_wannacry_attack:
     victim_ip: "10.0.0.50"
     output_path: "/tmp/wannacry_attack_auto.pcap"
+'''
 
-Retruns:
+RETURN = r'''
 packets_generated:
     description: Total number of packets generated
     type: int
@@ -140,8 +122,10 @@ attack_phases:
     description: Description of attack phases
     type: list
     returned: always
-"""
+'''
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 import time
 import traceback
 from ansible.module_utils.basic import AnsibleModule

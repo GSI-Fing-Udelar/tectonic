@@ -1,42 +1,18 @@
-#
-# Tectonic - An academic Cyber Range
-# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
-# Uruguay
-#
-# This file is part of Tectonic.
-#
-# Tectonic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tectonic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-
-from ansible.module_utils.basic import AnsibleModule
-import os
-
-"""
-Ansible Module: generate_pe_wannacry
-Generate simulated PE (Portable Executable) files with WannaCry signatures
-detectable by ReversingLabs YARA rules.
-
-This module is a thin wrapper around Layer 1 primitive create_pe_wannacry_file.
-
+DOCUMENTATION = r'''
+---
 module: generate_pe_wannacry
+
 short_description: Generate PE files with WannaCry malware signatures
+
 description:
     - Creates Windows PE executable files with embedded WannaCry patterns
     - Patterns match those searched by ReversingLabs YARA rules
     - Files are detectable by professional malware analysis tools
     - Uses Layer 1 primitive from module_utils.layer1_primitives
+
 options:
     target_directory:
         description:
@@ -60,8 +36,9 @@ options:
         required: false
         type: int
         default: 42
+'''
 
-Examples:
+EXAMPLES = r'''
 - name: Generate WannaCry PE executables
   generate_pe_wannacry:
     target_directory: "/tmp/wannacry_exe"
@@ -74,7 +51,10 @@ Examples:
       - main_2
       - start_service_3
     seed: 42
-"""
+'''
+
+from ansible.module_utils.basic import AnsibleModule
+import os
 
 def main():
     module = AnsibleModule(

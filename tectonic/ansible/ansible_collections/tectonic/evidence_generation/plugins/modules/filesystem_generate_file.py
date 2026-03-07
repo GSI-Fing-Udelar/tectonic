@@ -1,28 +1,8 @@
-#
-# Tectonic - An academic Cyber Range
-# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
-# Uruguay
-#
-# This file is part of Tectonic.
-#
-# Tectonic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tectonic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-
-"""
+DOCUMENTATION = r'''
+---
 module: generate_file
 
 short_description: Generate a single file by type (Layer 1)
@@ -109,8 +89,9 @@ notes:
   - For bulk file generation, use generate_files_bulk module
   - Supported extensions txt, pdf, jpg, png, docx, xlsx, zip, tar, tar.gz, sh, py
   - Archives (zip, tar) contain randomly generated dummy files
+'''
 
-Examples:
+EXAMPLES = r'''
 # Generate text file with custom content
 - name: Create text file
   generate_file:
@@ -159,8 +140,9 @@ Examples:
   generate_file:
     path: /tmp/script.sh
     extension: sh
+'''
 
-Returns:
+RETURN = r'''
 changed:
   description: Whether the file was created
   type: bool
@@ -190,11 +172,12 @@ size_kb:
   type: float
   returned: always
   sample: 245.3
-"""
+'''
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 from ansible.module_utils.basic import AnsibleModule
 import os
-
 
 def main():
     """

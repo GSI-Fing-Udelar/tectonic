@@ -1,28 +1,7 @@
-#
-# Tectonic - An academic Cyber Range
-# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
-# Uruguay
-#
-# This file is part of Tectonic.
-#
-# Tectonic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tectonic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-
-"""
+DOCUMENTATION = r'''
 ---
 module: generate_dns_conversation
 
@@ -78,8 +57,9 @@ options:
     required: false
     type: int
     default: null
+'''
 
-Examples:
+EXAMPLES = r'''
 # Successful DNS resolution with deterministic seeding
 - name: Resolve domain successfully
   generate_dns_conversation:
@@ -100,8 +80,9 @@ Examples:
     result: "No Existente"
     output_path: "/tmp/dns_nxdomain.pcap"
     faker_seed: 42
+'''
 
-Returns:
+RETURN = r'''
 packets_generated:
     description: Number of packets generated
     type: int
@@ -114,13 +95,14 @@ output_file:
     description: Path to generated PCAP file
     type: str
     returned: always
-"""
+''''
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 import time
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.second_layer.dns import dns_communication
 from ansible_collections.tectonic.evidence_generation.plugins.module_utils.network.pcap_merger import merge_pcap_with_mergecap
-
 
 def generate_dns_packets(module):
     """

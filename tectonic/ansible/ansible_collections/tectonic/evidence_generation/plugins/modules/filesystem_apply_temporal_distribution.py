@@ -1,28 +1,8 @@
-#
-# Tectonic - An academic Cyber Range
-# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
-# Uruguay
-#
-# This file is part of Tectonic.
-#
-# Tectonic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tectonic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-
-"""
+DOCUMENTATION = r'''
+---
 module: apply_temporal_distribution
 
 short_description: Apply temporal distributions to file timestamps (Layer 2)
@@ -32,7 +12,6 @@ description:
   - Supports statistical distributions (UNIFORM, GAUSSIAN, EXPONENTIAL, PARETO)
   - Modifies mtime (modification time) and atime (access time)
   - Useful for creating realistic forensic timelines
-
 
 options:
   files:
@@ -77,8 +56,9 @@ notes:
   - "DETERMINISTIC: requires 'fixed_offset' (e.g., '-1d')"
   - "Time format: supports 's', 'm', 'h', 'd' suffixes or raw seconds"
   - "Note: Birth time (btime/ctime) CANNOT be modified on Linux filesystems"
+'''
 
-Examples:
+EXAMPLES = r'''
 # Apply uniform distribution (files created over last 30 days)
 - name: Distribute files over last month
   apply_temporal_distribution:
@@ -120,8 +100,9 @@ Examples:
     distribution_type: deterministic
     distribution_params:
       fixed_offset: "-4h"
+'''
 
-Returns:
+RETURN = r'''
 changed:
   description: Whether any timestamps were modified
   type: bool
@@ -145,10 +126,11 @@ total_files:
   type: int
   returned: always
   sample: 150
-"""
+'''
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 from ansible.module_utils.basic import AnsibleModule
-
 
 def main():
     """
