@@ -203,6 +203,9 @@ def confirm_machines(ctx, instances, guest_names, copies, action, print_instance
         if "teacher_access" in guest_names:
             machines += ["the teacher access"]
             guest_names.remove("teacher_access")
+        if "bastion_host" in guest_names:
+            machines += ["the bastion hot"]
+            guest_names.remove("bastion_host")
 
         if not guest_names:
             print_instances = False
@@ -528,7 +531,7 @@ def destroy(ctx, images, services, service_image_list, instances, force):
             if services:
                 message += ", plus all running services"
             if len(service_image_list) > 0:
-                message += f". Also, the following service images will be deleted: {", ".join(service_image_list)}"
+                message += f". Also, the following service images will be deleted: {', '.join(service_image_list)}"
             message += "."
             logger.info(message)
             click.confirm("Continue?", abort=True)
@@ -601,10 +604,10 @@ def list_instances(ctx, instances, guests, copies):
         logger.info(utils.create_table(headers,rows))
 
     if result.get("services_status"):
-        headers = ["Name", "Status"]
+        headers = ["Name", "IP", "Status"]
         rows = []
-        for machine, status in result.get("services_status", []).items():
-            rows.append([machine, status])
+        for machine, info in result.get("services_status", []).items():
+            rows.append([machine, info[0], info[1]])
         logger.info(utils.create_table(headers,rows))
         
 @tectonic.command()

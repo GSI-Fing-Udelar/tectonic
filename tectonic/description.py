@@ -119,7 +119,7 @@ class AuxiliaryNetwork(NetworkDescription):
 
     @mode.setter
     def mode(self, value):
-        validate.supported_value("mode", value, ["none", "nat"])
+        validate.supported_value("mode", value, ["none", "nat", "route"])
         self._mode = value
 
     def to_dict(self):
@@ -129,6 +129,7 @@ class AuxiliaryNetwork(NetworkDescription):
             "name" : self.name,
             "cidr" : self.ip_network,
             "mode" : self.mode,
+            "instance" : self.instance,
         }
 
 class ScenarioNetwork(NetworkDescription):
@@ -179,7 +180,8 @@ class ScenarioNetwork(NetworkDescription):
         """Convert a ScenarioNetwork object to the dictionary expected by terraform."""
         return {
             "name" : self.name,
-            "ip_network" : self.ip_network
+            "ip_network" : self.ip_network,
+            "instance" : self.instance,
         }
 
 class MachineDescription:
@@ -419,11 +421,12 @@ class NetworkInterface():
     def __init__(self, description, guest, network, interface_num, private_ip=None):
         self.name = f"{guest.name}-{interface_num+1}"
         self.index = interface_num + self._get_interface_index_to_sum(description, guest)
-        self._guest_name = f"{guest.name}"
+        self.guest_name = guest.name
         self.network = network
         self.private_ip = self._get_guest_ip_address(guest, network) if private_ip is None else private_ip
         self.mask = ipaddress.ip_network(network.ip_network).prefixlen
-
+        self._traffic_rules = []
+    
     @property
     def name(self):
         return self._name
@@ -447,6 +450,10 @@ class NetworkInterface():
     @property
     def mask(self):
         return self._mask
+    
+    @property
+    def traffic_rules(self):
+        return self._traffic_rules
 
     @name.setter
     def name(self, value):
@@ -456,9 +463,9 @@ class NetworkInterface():
     def index(self, value):
         self._index = value
 
-    # @index.setter
-    # def guest_name(self, value):
-    #     self._guest_name = value
+    @guest_name.setter
+    def guest_name(self, value):
+        self._guest_name = value
 
     @network.setter
     def network(self, value):
@@ -479,7 +486,11 @@ class NetworkInterface():
             "private_ip" : self.private_ip,
             "subnetwork_name" : self.network.name,
             "subnetwork_base_name" : self.network.base_name,
-            "subnetwork_cidr" : self.network.ip_network
+            "subnetwork_cidr" : self.network.ip_network,
+            "index": self.index,
+            "instance": self.network.instance,
+            "guest_name": self.guest_name,
+            "traffic_rules": [traffic_rule.to_dict() for traffic_rule in self.traffic_rules]
         }
         
     def _get_interface_index_to_sum(self, description, guest):
@@ -489,15 +500,16 @@ class NetworkInterface():
         point and if it has an interface in the services network.
 
         """
-        base = 0
+        base = -1
         if description.config.platform == "libvirt":
-            base = 2
+            if OS_DATA[guest.os].get("interface_base_name", None) != "eth":
+                base = 2
             if guest.is_in_services_network:
                 base += 1
             if guest.entry_point and description.enable_ssh_access:
                 base += 1
-        elif description.config.platform == "aws":
-            base = -1
+            if guest.internet_access:
+                base += 1
         return base
 
     def _get_guest_ip_address(self, guest, network):
@@ -507,6 +519,9 @@ class NetworkInterface():
         hostnum = network.members.index(guest.base_name) + (guest.copy - 1) + 3
         ip_network = ipaddress.ip_network(network.ip_network)
         return str(list(ip_network.hosts())[hostnum])
+    
+    def _add_traffic_rule(self, rule):
+        self._traffic_rules.append(rule)
 
 class GuestDescription(BaseGuestDescription):
     def __init__(self, description, base_guest, instance_num, copy, is_in_services_network=False):
@@ -632,6 +647,9 @@ class GuestDescription(BaseGuestDescription):
         result["hostname"] = self.hostname
         result["is_in_services_network"] = self.is_in_services_network
         result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
+        result["entry_point_index"] = self.entry_point_index
+        result["advanced_options_file"] = self.advanced_options_file
+        result["services_network_index"] = self.services_network_index
         return result
 
 class ServiceDescription(MachineDescription):
@@ -647,6 +665,7 @@ class ServiceDescription(MachineDescription):
         self.entry_point = False
         self.internet_access = internet_access
         self.ansible_playbook = str(tectonic_resources.files('tectonic') / 'services' / self.base_name / 'base_config.yml')
+        self.ports = {}
 
     @property
     def base_name(self):
@@ -671,6 +690,10 @@ class ServiceDescription(MachineDescription):
     @property
     def ansible_playbook(self):
         return self._ansible_playbook
+    
+    @property
+    def ports(self):
+        return self._ports
 
     @base_name.setter
     def base_name(self, value):
@@ -690,6 +713,10 @@ class ServiceDescription(MachineDescription):
     def ansible_playbook(self, value):
         self._ansible_playbook = value
 
+    @ports.setter
+    def ports(self, value):
+        self._ports = value
+
     def load_service(self, data):
         """Loads the information from the yaml structure in data."""
         self.load_machine(data)
@@ -702,12 +729,18 @@ class ServiceDescription(MachineDescription):
     def load_interfaces(self, auxiliary_networks):
         interface_num = 1
         for _, network in auxiliary_networks.items():
-            if self._base_name in network.members:
+            if self.base_name in network.members:
                 ip_network = ipaddress.ip_network(network.ip_network)
                 private_ip = str(list(ip_network.hosts())[network.members.index(self._base_name)+4])
                 interface = NetworkInterface(self._description, self, network, interface_num, private_ip)
                 self._interfaces[interface.name] = interface
                 interface_num += 1
+                if network.base_name == "services":
+                    for rule_data in self.base_traffic_rules():
+                        interface.traffic_rules.append(TrafficRule(rule_data, rule_data.source, 1))
+                elif network.base_name == "internet" and self._description.config.platform == "aws" and self.base_name == "bastion_host":
+                    for rule_data in self.base_traffic_rules():
+                        interface.traffic_rules.append(TrafficRule(rule_data, rule_data.source, 1))
 
     @property
     def service_ip(self):
@@ -722,18 +755,20 @@ class ServiceDescription(MachineDescription):
     def to_dict(self):
         """Convert a ServiceDescription object to the dictionary expected by packer."""
         result = super().to_dict()
-        result["enable"] = self.enable,
+        result["enable"] = self.enable
         result["name"] = self.name
         result["interfaces"] = {name: interface.to_dict() for name, interface in self.interfaces.items()}
         result["ip"] = self.service_ip
         result["ansible_playbook"] = self.ansible_playbook
+        result["ports"] = self.ports
+        result["internet_access"] = self.internet_access
         return result
 
 class ElasticDescription(ServiceDescription):
     supported_monitor_types = ["traffic", "endpoint"]
 
     def __init__(self, description):
-        super().__init__(description, "elastic", "rocky9", True)
+        super().__init__(description, "elastic", "rocky9", description.config.platform == "aws")
         self.memory = 8192
         self.vcpu = 4
         self.disk = 50
@@ -769,7 +804,20 @@ class ElasticDescription(ServiceDescription):
         result["monitor_type"] = self.monitor_type
         result["deploy_default_policy"] = self.deploy_default_policy
         return result | self._description.config.elastic.to_dict()
-        
+    
+    def base_traffic_rules(self):
+        base_traffic_rules = []
+        base_traffic_rules.append(BaseTrafficRule("service-elastic-kibana", "Allow incoming kibana traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", f"{self._description.config.elastic.internal_port}"))
+        base_traffic_rules.append(BaseTrafficRule("service-elastic-fleet", "Allow incoming fleet traffic", self._description.config.network_cidr_block, self.service_ip, "tcp", "8220"))
+        base_traffic_rules.append(BaseTrafficRule("service-elastic-agent", "Allow incoming agent traffic", self._description.config.network_cidr_block, self.service_ip, "tcp", "5044"))
+        source_ssh = None
+        if self._description.config.platform == "libvirt":
+            source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
+        elif self._description.config.platform == "aws":
+            source_ssh = f"{self._description.teacher_access_host.service_ip}/32"
+        base_traffic_rules.append(BaseTrafficRule("service-elastic-ssh", "Allow incoming ssh traffic", source_ssh, self.service_ip, "tcp", "22"))
+        return base_traffic_rules
+
 class CalderaDescription(ServiceDescription):
     def __init__(self, description):
         super().__init__(description, "caldera", "rocky9")
@@ -784,6 +832,20 @@ class CalderaDescription(ServiceDescription):
     def to_dict(self):
         result = super().to_dict()
         return result | self._description.config.caldera.to_dict()
+    
+    def base_traffic_rules(self):
+        base_traffic_rules = []
+        base_traffic_rules.append(BaseTrafficRule("service-caldera-web", "Allow incoming web interface traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", f"{self._description.config.caldera.internal_port}"))
+        base_traffic_rules.append(BaseTrafficRule("service-caldera-agent-1", "Allow incoming agent traffic to port 443", self._description.config.network_cidr_block, self.service_ip, "tcp", "443"))
+        base_traffic_rules.append(BaseTrafficRule("service-caldera-agent-2", "Allow incoming agent traffic to port 7010", self._description.config.network_cidr_block, self.service_ip, "tcp", "7010"))
+        base_traffic_rules.append(BaseTrafficRule("service-caldera-agent-3", "Allow incoming agent traffic to port 7011", self._description.config.network_cidr_block, self.service_ip, "udp", "7011"))
+        source_ssh = None
+        if self._description.config.platform == "libvirt":
+            source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
+        elif self._description.config.platform == "aws":
+            source_ssh = f"{self._description.teacher_access_host.service_ip}/32"
+        base_traffic_rules.append(BaseTrafficRule("service-caldera-ssh", "Allow incoming ssh traffic", source_ssh, self.service_ip, "tcp", "22"))
+        return base_traffic_rules
 
 class PacketbeatDescription(ServiceDescription):
     def __init__(self, description):
@@ -791,6 +853,17 @@ class PacketbeatDescription(ServiceDescription):
         self.memory = 512
         self.vcpu = 1
         self.disk = 10
+
+    def base_traffic_rules(self):
+        base_traffic_rules = []
+        source_ssh = None
+        base_traffic_rules.append(BaseTrafficRule("service-packetbeat-vxlan", "Allow incoming VXLAN interface traffic", self._description.config.network_cidr_block, self.service_ip, "udp", "4789"))
+        if self._description.config.platform == "libvirt":
+            source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block.hosts()))[0]}/32"
+        elif self._description.config.platform == "aws":
+            source_ssh = f"{self._description.teacher_access_host.service_ip}/32"
+        base_traffic_rules.append(BaseTrafficRule("service-packetbeat-ssh", "Allow incoming ssh traffic", source_ssh, self.service_ip, "tcp", "22"))
+        return base_traffic_rules
 
 class GuacamoleDescription(ServiceDescription):
     def __init__(self, description):
@@ -806,6 +879,17 @@ class GuacamoleDescription(ServiceDescription):
     def to_dict(self):
         result = super().to_dict()
         return result | self._description.config.guacamole.to_dict()
+    
+    def base_traffic_rules(self):
+        base_traffic_rules = []
+        base_traffic_rules.append(BaseTrafficRule("service-guacamole-web", "Allow incoming web interface traffic", f"{self._description._bastion_host.service_ip}/32", self.service_ip, "tcp", f"{self._description.config.guacamole.internal_port}"))
+        source_ssh = None
+        if self._description.config.platform == "libvirt":
+            source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
+        elif self._description.config.platform == "aws":
+            source_ssh = f"{self._description.teacher_access_host.service_ip}/32"
+        base_traffic_rules.append(BaseTrafficRule("service-guacamole-ssh", "Allow incoming ssh traffic", source_ssh, self.service_ip, "tcp", "22"))
+        return base_traffic_rules
 
 class MoodleDescription(ServiceDescription):
     def __init__(self, description):
@@ -826,10 +910,21 @@ class MoodleDescription(ServiceDescription):
         result["enable_trainees"] = self.enable_trainees
         result["auto_enroll_trainees"] = self.auto_enroll_trainees
         return result | self._description.config.moodle.to_dict()
+    
+    def base_traffic_rules(self):
+        base_traffic_rules = []
+        base_traffic_rules.append(BaseTrafficRule("service-moodle-web", "Allow incoming web interface traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", f"{self._description.config.moodle.internal_port}"))
+        source_ssh = None
+        if self._description.config.platform == "libvirt":
+            source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
+        elif self._description.config.platform == "aws":
+            source_ssh = f"{self._description.teacher_access_host.service_ip}/32"
+        base_traffic_rules.append(BaseTrafficRule("service-moodle-ssh", "Allow incoming ssh traffic", source_ssh, self.service_ip, "tcp", "22"))
+        return base_traffic_rules
 
 class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
-        super().__init__(description, "bastion_host", "ubuntu22", True)
+        super().__init__(description, "bastion_host", "ubuntu22", description.config.platform == "aws")
         self.ports = {
             "guacamole": description.config.guacamole.external_port
         }
@@ -852,14 +947,6 @@ class BastionHostDescription(ServiceDescription):
                 False,
                 "endpoint"
             )
-    
-    @property
-    def ports(self):
-        return self._ports
-    
-    @ports.setter
-    def ports(self, value):
-        self._ports = value
 
     @property
     def domain(self):
@@ -877,15 +964,179 @@ class BastionHostDescription(ServiceDescription):
     def to_dict(self):
         result = super().to_dict()
         result["instance_type"] = self.instance_type
-        result["ports"] = self.ports
         return result | self._description.config.bastion_host.to_dict()
+    
+    def base_traffic_rules(self):
+        base_traffic_rules = []
+        source = None
+        if self._description.config.platform == "libvirt":
+            source = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
+        elif self._description.config.platform == "aws":
+            source = "0.0.0.0/0"
+        for service, port in self.ports.items():
+            base_traffic_rules.append(BaseTrafficRule(f"service-bastion_host-web-{service}", "Allow incoming web interface traffic", source, self.service_ip, "tcp", port))
+        base_traffic_rules.append(BaseTrafficRule("service-bastion_host-ssh", "Allow incoming ssh traffic", source, self.service_ip, "tcp", "22"))
+        return base_traffic_rules
 
 class TeacherAccessHostDescription(ServiceDescription):
     def __init__(self, description):
-        super().__init__(description, "teacher_access_host", "ubuntu22", True)
+        super().__init__(description, "teacher_access_host", "ubuntu22", description.config.platform == "aws")
         self.memory = 512
         self.vcpu = 1
         self.disk = 10
+
+    def base_traffic_rules(self):
+        base_traffic_rules = []
+        base_traffic_rules.append(BaseTrafficRule("service-bastion_host-ssh", "Allow incoming ssh traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", "22"))
+        return base_traffic_rules
+
+class BaseTrafficRule():
+    def __init__(self, name, description, source, destination, protocol, port_range):
+        self.name = name
+        self.description = description
+        self.source = source
+        self.destination = destination
+        self.protocol = protocol
+        self.port_range = port_range
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def description(self):
+        return self._description
+    
+    @property
+    def source(self):
+        return self._source
+    
+    @property
+    def destination(self):
+        return self._destination
+    
+    @property
+    def protocol(self):
+        return self._protocol
+    
+    @property
+    def port_range(self):
+        return self._port_range
+         
+    @name.setter
+    def name(self, value):
+        self._name = value
+
+    @description.setter
+    def description(self, value):
+        self._description = value
+
+    @source.setter
+    def source(self, value):
+        self._source = value
+
+    @destination.setter
+    def destination(self, value):
+        self._destination = value
+
+    @protocol.setter
+    def protocol(self, value):
+        validate.supported_value("protocol", value, ["tcp", "udp", "icmp", "all"])
+        self._protocol = value
+
+    @port_range.setter
+    def port_range(self, value):
+        self._port_range = value
+
+class TrafficRule():
+    def __init__(self, rule_data, source_cidr, copy):
+        self.base_traffic_rule = rule_data 
+        self.source_cidr = source_cidr
+        self.copy = copy
+        self.interface_attached = None
+
+        port_split = str(rule_data.port_range).split("-")
+        self.from_port = port_split[0]
+        if len(port_split) == 2:
+            self._to_port = port_split[1]
+        else:
+            self._to_port = self._from_port
+        if rule_data.protocol == "icmp":
+            self._from_port = "-1"
+            self._to_port = "-1"
+        elif rule_data.protocol == "all":
+            self._from_port = "0"
+            self._to_port = "0"
+
+    @property
+    def name(self):
+        return f"{self.interface_attached}-{self.base_traffic_rule.name}-{self.copy}"
+    
+    @property
+    def description(self):
+        return self._base_traffic_rule.description
+    
+    @property
+    def protocol(self):
+        return self._base_traffic_rule.protocol
+
+    @property
+    def base_traffic_rule(self):
+        return self._base_traffic_rule
+    
+    @property
+    def copy(self):
+        return self._copy
+    
+    @property
+    def interface_attached(self):
+        return self._interface_attached
+
+    @property
+    def from_port(self):
+        return self._from_port
+    
+    @property
+    def to_port(self):
+        return self._to_port
+    
+    @property
+    def source_cidr(self):
+        return self._source_cidr
+
+    @base_traffic_rule.setter
+    def base_traffic_rule(self, value):
+        self._base_traffic_rule = value
+
+    @copy.setter
+    def copy(self, value):
+        self._copy = value
+
+    @interface_attached.setter
+    def interface_attached(self, value):
+        self._interface_attached = value
+
+    @source_cidr.setter
+    def source_cidr(self, value):
+        self._source_cidr = value
+
+    @from_port.setter
+    def from_port(self, value):
+        self._from_port = value
+
+    @to_port.setter
+    def to_port(self, value):
+        self._to_port = value
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "description": self.description,
+            "network_cidr": self.source_cidr,
+            "from_port": self.from_port,
+            "to_port": self.to_port,
+            "protocol": self.protocol,
+        }
 
 class Description:
 
@@ -958,33 +1209,35 @@ class Description:
         self._required(lab_edition_data, "random_seed")
         self.random_seed = lab_edition_data["random_seed"]
 
-        # Guacamole is enabled if it is enabled in the description and
-        # not disabled in the lab edition.
+        ##### Start load services #####
+
+        # Guacamole is enabled if it is enabled in the description and not disabled in the lab edition.
         enable_guacamole = self.guacamole.enable and lab_edition_data.get("guacamole_settings", {}).get("enable", True)
         self.guacamole.load_service(lab_edition_data.get("guacamole_settings", {}))
         self.guacamole.enable = enable_guacamole
         if enable_guacamole:
             self.create_students_passwords = True
 
-        # Elastic is enabled if it is enabled in the description and
-        # not disabled in the lab edition.
+        # Elastic is enabled if it is enabled in the description and not disabled in the lab edition.
         enable_elastic = self.elastic.enable and lab_edition_data.get("elastic_settings", {}).get("enable", True)
         self.elastic.load_service(lab_edition_data.get("elastic_settings", {}))
         self.elastic.enable = enable_elastic
+        
         if enable_elastic and config.platform == "aws" and self.elastic.monitor_type == "traffic":
             self.packetbeat.enable = True
+            
 
-        # Caldera is enabled if it is enabled in the description and
-        # not disabled in the lab edition.
+        # Caldera is enabled if it is enabled in the description and not disabled in the lab edition.
         enable_caldera = self.caldera.enable and lab_edition_data.get("caldera_settings", {}).get("enable", True)
         self.caldera.load_service(lab_edition_data.get("caldera_settings", {}))
         self.caldera.enable = enable_caldera
+        
 
-        # Moodle is enabled if it is enabled in the description and
-        # not disabled in the lab edition.
+        # Moodle is enabled if it is enabled in the description and not disabled in the lab edition.
         enable_moodle = self.moodle.enable and lab_edition_data.get("moodle_settings", {}).get("enable", True)
         self.moodle.load_service(lab_edition_data.get("moodle_settings", {}))
         self.moodle.enable = enable_moodle
+        
 
         # Bastion Host
         self._bastion_host = BastionHostDescription(self)
@@ -1001,6 +1254,37 @@ class Description:
         # Teacher Access Host
         self._teacher_access_host = TeacherAccessHostDescription(self)
         self.teacher_access_host.enable = self.config.platform == "aws" and self.config.aws.teacher_access == "host"
+
+        # Load auxiliary networks
+        self._auxiliary_networks = {}
+        internet_network_name = f"{self.institution}-{self.lab_name}-internet"
+        self._auxiliary_networks[internet_network_name] = AuxiliaryNetwork(self, "internet", self.config.internet_network_cidr_block, "nat")
+        if self.config.platform == "aws":
+            self._auxiliary_networks[internet_network_name].members = ["bastion_host"]
+        if self.config.platform != "aws":
+            self._auxiliary_networks[internet_network_name].members = ["elastic"]
+        services_network_name = f"{self.institution}-{self.lab_name}-services"
+        self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "route" if (self.config.platform == "libvirt" and self.config.libvirt.routing) else "none" )
+        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole", "moodle"]
+        if self.config.platform == "aws":
+            self._auxiliary_networks[services_network_name].members.append("teacher_access_host")
+            if self.elastic.monitor_type == "traffic":
+                self._auxiliary_networks[services_network_name].members.append("packetbeat")
+        else:
+            self._auxiliary_networks[services_network_name].members.append("bastion_host")
+
+        # Load services interfaces
+        self.bastion_host.load_interfaces(self.auxiliary_networks)
+        self.teacher_access_host.load_interfaces(self.auxiliary_networks)
+        self.elastic.load_interfaces(self._auxiliary_networks)
+        self.packetbeat.load_interfaces(self._auxiliary_networks)
+        self.caldera.load_interfaces(self._auxiliary_networks)
+        self.moodle.load_interfaces(self.auxiliary_networks)
+        self.guacamole.load_interfaces(self.auxiliary_networks)
+
+        ##### End load services #####
+
+
 
         # Load base guests and topology
         self._required(description_data, "guest_settings")
@@ -1030,33 +1314,16 @@ class Description:
 
         self._scenario_networks = self._compute_scenario_networks()
         self._parameters_files = tectonic.utils.list_files_in_directory(Path(self._scenario_dir) / "ansible" / "parameters")
+        
+        #Load base traffic rules of guests from description
+        self._base_traffic_rules = {}
+        rule_index = 0
+        if (self.config.platform == "aws" or (self.config.platform == "libvirt" and self.config.libvirt.routing)) and description_data.get("traffic_rules", None) != None:
+            for rule in description_data.get("traffic_rules"):
+                rule_name = f"rule-{rule_index}"
+                self._base_traffic_rules[rule_name] = BaseTrafficRule(rule_name, rule["description"], rule["source"], rule["destination"], rule.get("protocol", "all"), rule.get("port_range", "0-65535"))
+                rule_index = rule_index + 1
 
-        # Load auxiliary networks
-        self._auxiliary_networks = {}
-        services_network_name = f"{self.institution}-{self.lab_name}-services"
-        self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "none")
-        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole", "moodle"]
-        if self.config.platform == "aws":
-            self._auxiliary_networks[services_network_name].members.append("teacher_access_host")
-            if self.elastic.monitor_type == "traffic":
-                self._auxiliary_networks[services_network_name].members.append("packetbeat")
-        else:
-            self._auxiliary_networks[services_network_name].members.append("bastion_host")
-        internet_network_name = f"{self.institution}-{self.lab_name}-internet"
-        self._auxiliary_networks[internet_network_name] = AuxiliaryNetwork(self, "internet", self.config.internet_network_cidr_block, "nat")
-        if self.config.platform == "aws":
-            self._auxiliary_networks[internet_network_name].members = ["bastion_host"]
-        if self.config.platform != "aws":
-            self._auxiliary_networks[internet_network_name].members = ["elastic"]
-
-        #Load services interfaces
-        self.elastic.load_interfaces(self._auxiliary_networks)
-        self.packetbeat.load_interfaces(self._auxiliary_networks)
-        self.caldera.load_interfaces(self._auxiliary_networks)
-        self.guacamole.load_interfaces(self.auxiliary_networks)
-        self.moodle.load_interfaces(self.auxiliary_networks)
-        self.bastion_host.load_interfaces(self.auxiliary_networks)
-        self.teacher_access_host.load_interfaces(self.auxiliary_networks)
 
     def parse_machines(self, instances=[], guests=[], copies=[], only_instances=True, exclude=[]):
         """
@@ -1279,14 +1546,16 @@ class Description:
         for instance_num in range(1, self.instance_number + 1):
             for base_name, base_guest in self.base_guests.items():
                 for copy in range(1, base_guest.copies+1):
-                    is_in_services_network = (
-                        self.elastic.enable and self.elastic.monitor_type == "endpoint" and base_guest.monitor
-                    ) or (
-                        self.caldera.enable and (base_guest.red_team_agent or base_guest.blue_team_agent)
-                    ) or (
-                        self.config.platform != "aws" and self.guacamole.enable
-                    ) or (
-                        self.guacamole.enable and base_guest.entry_point
+                    is_in_services_network = not (self.config.platform == "aws" or (self.config.platform == "libvirt" and self.config.libvirt.routing)) and (
+                        (
+                            self.elastic.enable and self.elastic.monitor_type == "endpoint" and base_guest.monitor
+                        ) or (
+                            self.caldera.enable and (base_guest.red_team_agent or base_guest.blue_team_agent)
+                        ) or (
+                            self.config.platform != "aws" and self.guacamole.enable
+                        ) or (
+                            self.guacamole.enable and base_guest.entry_point
+                        )
                     )
                     guest = GuestDescription(self, base_guest, instance_num, copy, is_in_services_network)
                     guest.entry_point_index = entry_point_index
@@ -1298,6 +1567,83 @@ class Description:
                         entry_point_index += 1
                     if is_in_services_network:
                         services_network_index += 1
+
+        #Attach traffic rules
+        if self.config.platform == "aws" or (self.config.platform == "libvirt" and self.config.libvirt.routing):
+            if self._base_traffic_rules != {}: #User traffic rules
+                for _, rule_data in self._base_traffic_rules.items():
+                    for instance in range(1,self.instance_number+1):
+                        rules_to_add = []
+                        source_split = str(rule_data.source).split(".")
+                        if len(source_split) == 2:
+                            machine_name = source_split[0]
+                            network_name = source_split[1]
+                            for _, guest in guests.items():
+                                if machine_name == guest.base_name and instance == guest.instance:
+                                    for _, interface in guest.interfaces.items():
+                                        if network_name == interface.network.base_name:
+                                            rules_to_add.append(TrafficRule(rule_data, f"{interface.private_ip}/32", guest.copy))
+                        else:
+                            network_name = source_split[0]
+                            for _, network in self.scenario_networks.items():
+                                if network_name == network.base_name and instance == network.instance:
+                                    rules_to_add.append(TrafficRule(rule_data, network.ip_network, 1))
+                        
+                        machine_name = rule_data.destination.split(".")[0]
+                        network_name = rule_data.destination.split(".")[1]
+                        for _, guest in guests.items():
+                            if machine_name == guest.base_name and instance == guest.instance:
+                                for _, interface in guest.interfaces.items():
+                                    if network_name == interface.network.base_name:
+                                        for rule in rules_to_add:
+                                            rule.interface_attached = interface.name
+                                            interface._add_traffic_rule(rule)
+
+            else: #Default rules (allow all trafic in each subnetwork)
+                for instance in range(1,self.instance_number+1):
+                    for _, guest in guests.items():
+                        rule_index = 0
+                        for _, interface in guest.interfaces.items():
+                            rule_data = BaseTrafficRule(f"rule-{rule_index}", f"Allow all traffic in subnetwork {interface.network.name}", interface.network.name, f"{guest.name}.{interface.network.name}", "all", "0-65535")
+                            rule = TrafficRule(rule_data, interface.network.ip_network, guest.copy)
+                            rule.interface_attached = interface.name
+                            interface._add_traffic_rule(rule)
+                            rule_index = rule_index +1
+            
+            #Incoming traffic from services to guests
+            for _, guest in guests.items():
+                if self.guacamole.enable:
+                    for _, interface in guest.interfaces.items():
+                        if ipaddress.ip_address(interface.private_ip) in ipaddress.ip_network(self.config.network_cidr_block, strict=False):
+                            for protocol, protocol_data in guest.access_protocols.items():
+                                rule_data = BaseTrafficRule(f"rule-guacamole-{protocol}", f"Allow {protocol} traffic from guacamole", "services", f"{guest.name}.{interface.network.name}-guacamole-{protocol}", "tcp", protocol_data["port"])
+                                rule = TrafficRule(rule_data, f"{self.guacamole.service_ip}/32", guest.copy)
+                                rule.interface_attached = interface.name
+                                interface._add_traffic_rule(rule)
+                if self.teacher_access_host.enable:
+                    for _, interface in guest.interfaces.items():
+                        if ipaddress.ip_address(interface.private_ip) in ipaddress.ip_network(self.config.network_cidr_block, strict=False):
+                            rule_data = BaseTrafficRule(f"rule-teacher_access", f"Allow ssh traffic from teacher_access", "services", f"{guest.name}.{interface.network.name}-teacher_access-ssh", "tcp", "22")
+                            rule = TrafficRule(rule_data, f"{self.teacher_access_host.service_ip}/32", guest.copy)
+                            rule.interface_attached = interface.name
+                            interface._add_traffic_rule(rule)
+            if self.config.platform == "libvirt":
+                for _, guest in guests.items():
+                    for _, interface in guest.interfaces.items():
+                        rule_data = BaseTrafficRule(f"rule-libvirt-ssh", f"Allow ssh access from host", interface.network.name, f"{guest.name}.{interface.network.name}-libvirt_host-ssh", "tcp", "22")
+                        ip = str(list((ipaddress.ip_network(interface.network.ip_network)).hosts())[0]) #First IP in each network
+                        rule = TrafficRule(rule_data, f"{ip}/32", guest.copy)
+                        interface._add_traffic_rule(rule)
+            elif self.config.platform == "aws":
+                if self.bastion_host.enable:
+                    for _, guest in guests.items():
+                        if guest.entry_point:
+                            for _, interface in guest.interfaces.items():
+                                if ipaddress.ip_address(interface.private_ip) in ipaddress.ip_network(self.config.network_cidr_block, strict=False):
+                                    rule_data = BaseTrafficRule(f"rule-bastion_host-entry_point", f"Allow ssh traffic from bastion_host", "services", f"{guest.name}.{interface.network.name}-bastion_host-ssh", "tcp", "22")
+                                    rule = TrafficRule(rule_data, f"{self.bastion_host.service_ip}/32", guest.copy)
+                                    rule.interface_attached = interface.name
+                                    interface._add_traffic_rule(rule)
         return guests
         
     @property
@@ -1514,4 +1860,7 @@ class Description:
             "ansible_dir": self.ansible_dir,
             "services": services,
             "config": self.config.to_dict(),
+            "authorized_keys": self.authorized_keys,
+            "default_os": self.default_os,
+            "enable_ssh_access": self.enable_ssh_access
         }

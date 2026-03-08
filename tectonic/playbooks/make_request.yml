@@ -22,17 +22,14 @@
   ansible.builtin.uri:
     url: "{{ url }}"
     headers: "{{ headers }}"
-    user: "{{ user }}"
-    password: "{{ password }}"
     method: "{{ method }}"
     body: "{{ body }}"
-    force_basic_auth: true
     status_code: "{{ status_code }}"
     body_format: "{{ body_format }}"
-    use_proxy: "{{ config.proxy is defined }}"
+    force_basic_auth: "{{ true if 'user' is defined and 'password' is defined else false }}"
+    user: "{{ user | default(omit) }}"
+    password: "{{ password | default(omit) }}"
+    use_proxy: false #No proxy is used even if configured, since this playbook is used for local service calls.
     validate_certs: false
     timeout: 360
   register: result
-  environment:
-    http_proxy: "{{ config.proxy | default(omit) }}"
-    https_proxy: "{{ config.proxy | default(omit) }}"

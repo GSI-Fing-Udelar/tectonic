@@ -19,6 +19,7 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 locals {
+  tectonic = jsondecode(var.tectonic_json)
   guest_data  = jsondecode(var.guest_data_json)
   subnetworks = jsondecode(var.subnets_json)
 
@@ -35,7 +36,7 @@ locals {
 
   network_names = distinct(
     [for key, interface in local.network_interfaces :
-      interface.network_name
+      interface.subnetwork_name
   ])
 
   internet_access = length([for g in local.guest_data : g if g.internet_access]) > 0
@@ -44,8 +45,8 @@ locals {
     [for guest in local.guest_data :
       [for network_interface in guest.interfaces :
         {
-          name    = guest.hostname
-          network = network_interface.network_name
+          name    = guest.name
+          network = network_interface.subnetwork_name
           ip      = network_interface.private_ip
         }
       ]

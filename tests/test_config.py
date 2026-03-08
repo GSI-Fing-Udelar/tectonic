@@ -95,6 +95,7 @@ valid_libvirt_options = [
         "bridge": "tectonic",
         "external_network": "192.168.128.0/25",
         "bridge_base_ip": 100,
+        "routing": True,
     },
 ]
 
