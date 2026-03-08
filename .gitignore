@@ -66,3 +66,5 @@ codeclimate.json
 ansible.log
 .ansible/
 *.retry
+tectonic/ansible/ansible_collections/
+tectonic/ansible/roles/
