@@ -999,13 +999,13 @@ files = [
 
 [[package]]
 name = "libvirt-python"
-version = "11.7.0"
+version = "12.1.0"
 description = "The libvirt virtualization API python binding"
 optional = false
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
-    {file = "libvirt-python-11.7.0.tar.gz", hash = "sha256:f65f80fe7dabb47c2ea887bec5f62509b756282acac4fa958ab74706c0b76c11"},
+    {file = "libvirt_python-12.1.0.tar.gz", hash = "sha256:2cc02c0b91a9abd140185feab46b33281091d4deffbc1bbfdb68ce682359f2b0"},
 ]
 
 [[package]]
