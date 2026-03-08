@@ -47,7 +47,7 @@ from tectonic.terraform_service_docker import TerraformServiceDocker
 from tectonic.core import Core
 
 from pathlib import Path
-from moto import mock_aws, mock_secretsmanager
+from moto import mock_aws, mock
 from unittest.mock import MagicMock, patch
 import libvirt_qemu
 
