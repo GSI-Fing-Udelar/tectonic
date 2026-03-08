@@ -134,7 +134,15 @@ def ip_network(name, value):
             raise ValueError
     except:
         raise ValueError(f"Invalid {name} {value}. Must be a valid IP network.")
-    
+
+def ip_cidr(name, value):
+    """Validates that the value named name is a valid IP CIDR"""
+    try:
+        if not isinstance(value, str):
+            raise ValueError
+        ipaddress.ip_network(value)
+    except:
+        raise ValueError(f"Invalid {name} {value}. Must be a valid IP network.")
 
 def hostname(name, value):
     """Validates that the value named name is a hostname."""

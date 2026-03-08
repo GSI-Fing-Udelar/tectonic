@@ -25,7 +25,7 @@
   vars:
     elastic_repo_key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
     elastic_repo_url: https://artifacts.elastic.co/packages/9.x/yum
-    
+
   tasks:
     - name: Set hostname
       ansible.builtin.hostname:
@@ -34,15 +34,14 @@
 
     - name: Install packages
       ansible.builtin.package:
-        name: "{{ item }}"
+        name:
+          - unzip
+          - tar
+          - wget
+          - jq
+          - firewalld
         state: present
-      with_items:
-        - unzip
-        - tar
-        - wget
-        - jq
-        - firewalld
-        
+
     - name: Install Elastic repo
       block:
         - name: Import Elastic repo key
@@ -79,21 +78,26 @@
             architecture: "arm64"
           when: ansible_facts['architecture'] == "arm64" or ansible_facts['architecture'] == "aarch64"
 
-    - name: Gather packages facts
-      ansible.builtin.package_facts:
-        manager: auto
-
     - name: Download Elastic Agent
-      ansible.builtin.unarchive:
-        src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ ansible_facts.packages['elasticsearch'][0].version }}-linux-{{ architecture }}.tar.gz"
-        dest: /opt
-        remote_src: yes
-      environment:
-        http_proxy: "{{ config.proxy | default(omit) }}"
-        https_proxy: "{{ config.proxy | default(omit) }}"
+      block:
+        - name: Download Elastic Agent | Use proxy
+          ansible.builtin.unarchive:
+            src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ services.elastic.version }}-linux-{{ architecture }}.tar.gz"
+            dest: /opt
+            remote_src: yes
+          environment:
+            http_proxy: "{{ config.proxy }}"
+            https_proxy: "{{ config.proxy }}"
+          when: "'proxy' in config"
+        - name: Download Elastic Agent | Don't use proxy
+          ansible.builtin.unarchive:
+            src: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ services.elastic.version }}-linux-{{ architecture }}.tar.gz"
+            dest: /opt
+            remote_src: yes
+          when: "'proxy' not in config"
 
     - name: Rename Elastic agent directory
-      ansible.builtin.command: "mv /opt/elastic-agent-{{ ansible_facts.packages['elasticsearch'][0].version }}-linux-{{ architecture }}/ /opt/elastic-agent/"
+      ansible.builtin.command: "mv /opt/elastic-agent-{{ services.elastic.version }}-linux-{{ architecture }}/ /opt/elastic-agent/"
 
     - name : Start firewalld
       ansible.builtin.service:

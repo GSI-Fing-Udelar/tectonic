@@ -138,16 +138,21 @@ class TerraformAWS(Terraform):
           list(str): resources name of the aws_security_group for the instances.
         """
         resources = []
-        for instance in filter(
-            lambda i: i <= self.description.instance_number,
-            instances or range(1, self.description.instance_number + 1),
-        ):
-            for network in self.description.topology.keys():
-                resources.append(
-                    'aws_security_group.subnet_sg["'
-                    f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network}"
-                    '"]'
-                )
+        instances = instances or range(1, self.description.instance_number + 1)
+        for _, guest in self.description.scenario_guests.items():
+            if guest.instance in instances:
+                for _, interface in guest.interfaces.items():
+                    resources.append(
+                        'aws_security_group.interface_traffic["'
+                        f"{interface.name}"
+                        '"]'
+                    )
+            # for network in self.description.topology.keys():
+            #     resources.append(
+            #         'aws_security_group.interface_traffic["'
+            #         f"{self.description.institution}-{self.description.lab_name}-{str(instance)}-{network}"
+            #         '"]'
+            #     )
         return resources
 
     def _get_subnet_resources_name(self, instances):
@@ -271,53 +276,3 @@ class TerraformAWS(Terraform):
         """
         resources = self._get_machine_resources_name(instances, guests, copies)
         return resources
-    
-    def _get_terraform_variables(self):
-        """
-        Get variables to use in Terraform.
-
-        Return:
-            dict: variables.
-        """
-        result = super()._get_terraform_variables()
-        result["aws_region"] = self.config.aws.region
-        result["network_cidr_block"] = self.config.network_cidr_block
-        result["services_network_cidr_block"] = self.config.services_network_cidr_block
-        result["monitor"] = self.description.elastic.enable
-        result["monitor_type"] = self.description.elastic.monitor_type
-        result["packetbeat_vlan_id"] = self.config.aws.packetbeat_vlan_id
-        result["monitor"] = self.description.elastic.enable
-        result["guacamole_ip"] = f"{self.description.guacamole.service_ip}/32"
-        return result
-    
-    def _get_guest_variables(self, guest):
-        """
-        Return guest variables for terraform.
-
-        Parameters:
-          guest (GuestDescription): guest to get variables.
-
-        Returns:
-          dict: variables.
-        """
-        result = super()._get_guest_variables(guest)
-        result["entry_point"] = guest.entry_point
-        result["instance_type"] = guest.instance_type
-        result["internet_access"] = guest.internet_access
-        return result
-
-    def _get_network_interface_variables(self, interface):
-        """
-        Return netowkr interface variables for terraform.
-
-        Parameters:
-          interface (NetworkInterface): interface to get variables.
-
-        Returns:
-          dict: variables.
-        """
-        result = super()._get_network_interface_variables(interface)
-        result["network_name"] = interface.network.name
-        result["guest_name"] = interface.guest_name
-        result["index"] = interface.index
-        return result

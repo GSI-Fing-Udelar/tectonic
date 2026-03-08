@@ -18,31 +18,6 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
-variable "institution" {
-  type        = string
-  description = "The institution that created the lab."
-
-  validation {
-    condition     = !strcontains(var.institution, "-")
-    error_message = "Names cannot contain the '-' symbol."
-  }
-}
-
-variable "lab_name" {
-  type        = string
-  description = "The name of the lab"
-
-  validation {
-    condition     = !strcontains(var.lab_name, "-")
-    error_message = "Names cannot contain the '-' symbol."
-  }
-}
-
-variable "docker_uri" {
-  type        = string
-  default     = "unix:///var/run/docker.sock"
-  description = "The uri to use for the docker provider."
-}
 
 variable "subnets_json" {
   type        = string
@@ -61,18 +36,7 @@ variable "os_data_json" {
   description = "A JSON encoded map of operating system information."
 }
 
-variable "ssh_public_key_file" {
-  description = "ssh public key"
-  default     = "~/.ssh/id_rsa.pub"
-}
-
-variable "authorized_keys" {
+variable "tectonic_json" {
   type        = string
-  description = "Admin user authorized_keys file contents "
-}
-
-variable "configure_dns" {
-  description = "Whether to configure DNS hostnames for instances."
-  type        = bool
-  default     = true
+  description = "A JSON encoded map of tectonic configuration."
 }
