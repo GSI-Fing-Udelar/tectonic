@@ -41,7 +41,7 @@ from tectonic.terraform_service_docker import TerraformServiceDocker
 from tectonic.core import Core
 
 from pathlib import Path
-from moto import mock_ec2
+from moto import mock_aws
 from unittest.mock import MagicMock
 import libvirt_qemu
 
@@ -135,7 +135,7 @@ def aws_instance_name():
 @pytest.fixture(scope="session")
 def ec2_client(aws_credentials, aws_instance_name, example_lab_names,
                example_institutions):
-    with mock_ec2():
+    with mock_aws():
         client = boto3.client("ec2", region_name="us-east-1")
         # Create Public VPC
         public_vpc_id = client.create_vpc(

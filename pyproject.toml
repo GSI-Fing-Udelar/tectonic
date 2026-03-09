@@ -33,7 +33,7 @@ include = [
 
 # Requirements
 [tool.poetry.dependencies]
-python = ">=3.10,<4.0"
+python = ">=3.11,<4.0"
 bcrypt = "*"
 passlib = "*"
 boto3 = "*"
@@ -42,7 +42,7 @@ certifi = "*"
 cffi = "*"
 charset-normalizer = "*"
 click = "*"
-cryptography= "44.0.3"
+cryptography= "46.0.5"
 decorator = "*"
 deprecated = "*"
 fabric = "*"
@@ -63,7 +63,7 @@ six = "*"
 urllib3 = "*"
 wrapt = "*"
 ansible-runner = "*"
-ansible = "10.7.0"
+ansible = "12.3.0"
 libvirt-python = "*"
 elasticsearch = "*"
 packaging = "*"
@@ -81,9 +81,9 @@ pytest-cov = "7.0.0"
 pytest-mock = "3.15.1"
 pytest-env = "1.5.0"
 fabric = { version = "3.2.2", extras = ["pytest"] }
-pylint = "3.3.9"
-black = "24.10.0"
-moto = { version = "4.2.14", extras = ["ec2"] }
+pylint = "4.0.5"
+black = "26.3.0"
+moto = { version = "5.1.22", extras = ["ec2"] }
 responses = "0.26.0"
 freezegun = "1.5.5"
 
