@@ -61,7 +61,7 @@ class TectonicConfig(object):
         self.gitlab_backend_access_token = None
         self.packer_executable_path = "packer"
 
-        self._ansible = TectonicConfigAnsible()
+        self._ansible = TectonicConfigAnsible(self.tectonic_dir)
         self._aws = TectonicConfigAWS()
         self._libvirt = TectonicConfigLibvirt()
         self._docker = TectonicConfigDocker()

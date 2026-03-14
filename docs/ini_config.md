@@ -36,6 +36,7 @@ main `config` section and special sections for different platforms
 * `pipelining`: Whether pipelining is enabled in order to reduce the
   number of SSH connections. Default: `no`.
 * `timeout`: Ansible connection timeout in seconds. Default: `10`.
+* `collections_and_roles_path`: Path to custom Ansible collections and roles. Default: `./tectonic/ansible`. See [ansible](ansible.md) for more information.
 
 ### [libvirt] section:
 * `uri`: URI to connect to libvirt server. Default:

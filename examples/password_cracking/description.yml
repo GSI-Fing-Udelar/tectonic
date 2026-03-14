@@ -48,7 +48,7 @@ guest_settings:
     # defensive actions simulation. Default: no.
     blue_team_agent: no
     # Configure GUI. Default: no.
-    gui: yes
+    gui: no
 
   # The victim that must be attacked.
   victim:
