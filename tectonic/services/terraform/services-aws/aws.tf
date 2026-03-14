@@ -133,7 +133,7 @@ resource "aws_instance" "machines" {
 }
 
 resource "aws_eip" "bastion_host" {
-  vpc = true
+  domain = "vpc"
   tags = {
     Name = format("%s-%s-bastion_host", local.tectonic.institution, local.tectonic.lab_name)
   }
