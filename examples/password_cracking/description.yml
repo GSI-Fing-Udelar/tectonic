@@ -97,3 +97,10 @@ moodle_settings:
   memory: 4096
   vpcu: 2
   disk: 20
+
+ctfd_settings:
+  enable: yes
+  # Default values:
+  memory: 4096
+  vpcu: 2
+  disk: 20

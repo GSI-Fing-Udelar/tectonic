@@ -24,11 +24,10 @@ class TectonicConfigCaldera(object):
     """Class to store Tectonic caldera configuration."""
 
     def __init__(self):
-        self.version = "latest"
+        self.version = "5.3.0"
         self.ot_enabled = False
         self.internal_port = 8443
         self.external_port = 8443
-
 
     #----------- Getters ----------
     @property
@@ -51,8 +50,7 @@ class TectonicConfigCaldera(object):
     @version.setter
     def version(self, value):
         # Allow either master or latest
-        if value != 'master':
-            validate.version_number("caldera version", value)
+        validate.version_number("caldera version", value)
         if value == "latest":
             value = "master"
         self._version = value

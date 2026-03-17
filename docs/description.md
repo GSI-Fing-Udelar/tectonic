@@ -100,13 +100,29 @@ The scenario description is a YAML file with the following sections:
   + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
   + `disk`: Amount of disk of the machine, in GB. Default: `20`.
 
-+ A `moodle_settings` section to describe the configuration of the [Moodle service](./moodle.md). The following properties can be defined:
++ A `moodle_settings` section to describe the configuration of the [Moodle service](./services/moodle.md). The following properties can be defined:
   + `enable`: Whether to deploy this service. Default: `no`.
   + `memory`: Amount of RAM of the machine, in MB. Default: `4096`.
   + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
   + `disk`: Amount of disk of the machine, in GB. Default: `20`.
   + `enable_trainees`: Whether student users should be automatically configured. Default: `yes`.
   + `auto_enroll_trainees`: Whether users should be enroll in the courses. Default: `yes`.
+
++ A `ctfd_settings` section to describe the configuration of the CTFd service. The following properties can be defined:
+  + `enable`: Whether to deploy this service. Default: `no`.
+  + `memory`: Amount of RAM of the machine, in MB. Default: `4096`.
+  + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
+  + `disk`: Amount of disk of the machine, in GB. Default: `20`.
+  + `event_name`: Name of the event. Default: 
+  + `event_description`: Description of the event. Default: 
+  + `user_mode`: [User Mode](https://docs.ctfd.io/docs/accounts/user-mode). Poosible values are: `teams`/`user`. Default: `teams`.
+  + `event_start`: When the event starts. Default: 1724295600
+  + `event_end`: When the event finishes. Default: 1724641200
+  + `event_freeze`: TODO
+  + `challenge_visibility`: TODO
+  + `registration_visibility`: TODO
+  + `score_visibility`: TODO
+  + `account_visibility`: TODO
 
 A complete example description file with all available options is available in the [example directory](../examples/password_cracking/description.yml).
 
@@ -216,8 +232,8 @@ The lab edition is a YAML file with the following options:
     takes the value `true`.
   + `random_seed`: Seed used for the random generation of parameters
     that are used to configure and parameterize the instances.
-  + Four optional `elastic_settings`, `caldera_settings`, `guacamole_settings` 
-    and `moodle_settings` sections with the same options as the scenario
+  + Four optional `elastic_settings`, `caldera_settings`, `guacamole_settings`, `moodle_settings` 
+    and `ctfd_settings` sections with the same options as the scenario
     description. Options here take precedence on the scenario
     description. For the service to be effectively enabled, it must be
     enabled here and in the scenario description. Ultimately, the

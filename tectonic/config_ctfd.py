@@ -20,15 +20,13 @@
 
 import tectonic.validate as validate
 
-class TectonicConfigMoodle(object):
-    """Class to store Tectonic Moodle configuration."""
+class TectonicConfigCtfd(object):
+    """Class to store Tectonic Ctfd configuration."""
 
     def __init__(self):
-        self.version = "4.5.8"
-        self.internal_port = 443
-        self.external_port = 8080
-        self.site_fullname = "Tectonic Moodle"
-        self.site_shortname = "Tectonic"
+        self.version = "3.8.2"
+        self.internal_port = 8443
+        self.external_port = 8090
         self.admin_email = "admin@tectonic.local"
 
     @property
@@ -42,46 +40,28 @@ class TectonicConfigMoodle(object):
     @property
     def external_port(self):
         return self._external_port
-    
-    @property
-    def site_fullname(self):
-        return self._site_fullname
-    
-    @property
-    def site_shortname(self):
-        return self._site_shortname
-    
+
     @property
     def admin_email(self):
         return self._admin_email
     
     @version.setter
     def version(self, value):
-        validate.version_number("moodle version", value)
+        validate.version_number("Ctfd version", value)
         if value == "latest":
-            value = "main"
-        else:
-            value = f"v{value}"
+            value = "master"
         self._version = value
 
     @internal_port.setter
     def internal_port(self, value):
-        validate.number("Moodle internal port", value)
+        validate.number("Ctfd internal port", value)
         self._internal_port = value
 
     @external_port.setter
     def external_port(self, value):
-        validate.number("Moodle external port", value)
+        validate.number("Ctfd external port", value)
         self._external_port = value
-    
-    @site_fullname.setter
-    def site_fullname(self, value):
-        self._site_fullname = value
-    
-    @site_shortname.setter
-    def site_shortname(self, value):
-        self._site_shortname = value
-    
+
     @admin_email.setter
     def admin_email(self, value):
         self._admin_email = value
@@ -91,7 +71,4 @@ class TectonicConfigMoodle(object):
             "version": self.version,
             "internal_port": self.internal_port,
             "external_port": self.external_port,
-            "site_fullname": self.site_fullname,
-            "site_shortname": self.site_shortname,
-            "admin_email": self.admin_email,
         }

@@ -934,6 +934,8 @@ class BastionHostDescription(ServiceDescription):
             self.ports["caldera"] = description.config.caldera.external_port
         if description.moodle.enable:
             self.ports["moodle"] = description.config.moodle.external_port
+        if description.ctfd.enable:
+            self.ports["ctfd"] = description.config.ctfd.external_port
 
     @property
     def instance_type(self):
@@ -988,6 +990,32 @@ class TeacherAccessHostDescription(ServiceDescription):
     def base_traffic_rules(self):
         base_traffic_rules = []
         base_traffic_rules.append(BaseTrafficRule("service-bastion_host-ssh", "Allow incoming ssh traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", "22"))
+        return base_traffic_rules
+
+class CtfdDescription(ServiceDescription):
+    def __init__(self, description):
+        super().__init__(description, "ctfd", "ubuntu24")
+        self.memory = 4096
+        self.vcpu = 2
+        self.disk = 20
+
+    def load_service(self, data):
+        super().load_service(data)
+
+    def to_dict(self):
+        result = super().to_dict()
+        # Ver si pasar cosas del ini al description
+        return result | self._description.config.ctfd.to_dict()
+    
+    def base_traffic_rules(self):
+        base_traffic_rules = []
+        base_traffic_rules.append(BaseTrafficRule("service-ctfd-web", "Allow incoming web interface traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", f"{self._description.config.ctfd.internal_port}"))
+        source_ssh = None
+        if self._description.config.platform == "libvirt":
+            source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
+        elif self._description.config.platform == "aws":
+            source_ssh = f"{self._description.teacher_access_host.service_ip}/32"
+        base_traffic_rules.append(BaseTrafficRule("service-moodle-ssh", "Allow incoming ssh traffic", source_ssh, self.service_ip, "tcp", "22"))
         return base_traffic_rules
 
 class BaseTrafficRule():
@@ -1195,6 +1223,8 @@ class Description:
         self.guacamole.load_service(description_data.get("guacamole_settings", {}))
         self._moodle = MoodleDescription(self)
         self.moodle.load_service(description_data.get("moodle_settings", {}))
+        self._ctfd = CtfdDescription(self)
+        self.ctfd.load_service(description_data.get("ctfd_settings", {}))
 
         # Load lab edition data
         self._required(lab_edition_data, "instance_number")
@@ -1237,7 +1267,11 @@ class Description:
         enable_moodle = self.moodle.enable and lab_edition_data.get("moodle_settings", {}).get("enable", True)
         self.moodle.load_service(lab_edition_data.get("moodle_settings", {}))
         self.moodle.enable = enable_moodle
-        
+
+        # Ctfd is enabled if it is enabled in the description and not disabled in the lab edition.
+        enable_ctfd = self.ctfd.enable and lab_edition_data.get("ctfd_settings", {}).get("enable", True)
+        self.ctfd.load_service(lab_edition_data.get("ctfd_settings", {}))
+        self.ctfd.enable = enable_ctfd
 
         # Bastion Host
         self._bastion_host = BastionHostDescription(self)
@@ -1248,7 +1282,8 @@ class Description:
             self.elastic.enable or
             self.caldera.enable or
             self.guacamole.enable or
-            self.moodle.enable
+            self.moodle.enable or
+            self.ctfd.enable
         )
 
         # Teacher Access Host
@@ -1265,7 +1300,7 @@ class Description:
             self._auxiliary_networks[internet_network_name].members = ["elastic"]
         services_network_name = f"{self.institution}-{self.lab_name}-services"
         self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "route" if (self.config.platform == "libvirt" and self.config.libvirt.routing) else "none" )
-        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole", "moodle"]
+        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole", "moodle", "ctfd"]
         if self.config.platform == "aws":
             self._auxiliary_networks[services_network_name].members.append("teacher_access_host")
             if self.elastic.monitor_type == "traffic":
@@ -1281,6 +1316,7 @@ class Description:
         self.caldera.load_interfaces(self._auxiliary_networks)
         self.moodle.load_interfaces(self.auxiliary_networks)
         self.guacamole.load_interfaces(self.auxiliary_networks)
+        self.ctfd.load_interfaces(self.auxiliary_networks)
 
         ##### End load services #####
 
@@ -1663,6 +1699,8 @@ class Description:
             services[self.guacamole.name] = self.guacamole
         if self.moodle.enable:
             services[self.moodle.name] = self.moodle
+        if self.ctfd.enable:
+            services[self.ctfd.name] = self.ctfd
         if self.teacher_access_host.enable:
             services[self.teacher_access_host.name] = self.teacher_access_host
         return services
@@ -1686,6 +1724,10 @@ class Description:
     @property
     def moodle(self):
         return self._moodle
+
+    @property
+    def ctfd(self):
+        return self._ctfd
     
     @property
     def bastion_host(self):
@@ -1849,6 +1891,7 @@ class Description:
         services["caldera"] = self.caldera.to_dict()
         services["guacamole"] = self.guacamole.to_dict()
         services["moodle"] = self.moodle.to_dict()
+        services["ctfd"] = self.ctfd.to_dict()
         services["bastion_host"] = self.bastion_host.to_dict()
         services["teacher_access_host"] = self.teacher_access_host.to_dict()
 

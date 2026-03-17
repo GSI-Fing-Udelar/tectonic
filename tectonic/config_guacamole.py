@@ -50,8 +50,7 @@ class TectonicConfigGuacamole(object):
     @version.setter
     def version(self, value):
         # Allow either latest or specific version
-        if value != 'latest':
-            validate.version_number("caldera version", value)
+        validate.version_number("Guacamole version", value)
         if value == "latest":
             value = "1.6.0"
         self._version = value

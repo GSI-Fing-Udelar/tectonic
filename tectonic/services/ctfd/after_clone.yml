@@ -1,0 +1,307 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+- name: Finish playbook execution if CTFd already installed
+  block:
+    - name: Check if credentials file exists
+      ansible.builtin.stat:
+        path: /root/credentials
+      register: credentials
+    - name: End execution if credentials file exists
+      ansible.builtin.meta: end_play
+      when: credentials.stat.exists
+
+- name: Load variables
+  ansible.builtin.include_vars:
+    file: vars/variables.yml
+
+- name: Add hostname
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    insertafter: EOF
+    line: "{{ services.ctfd.ip }} {{ ansible_facts['fqdn'] }}"
+  when: config.platform != "docker"
+
+- name: Configure firewall (iptables)
+  block:
+    - name: Set Gateway IP
+      ansible.builtin.set_fact:
+        gateway_ip: "{{ (services.ctfd.ip | split('.'))[0] }}.{{ (services.ctfd.ip | split('.'))[1] }}.{{ (services.ctfd.ip | split('.'))[2] }}.129"
+    - name: Configure firewall | Flush existing rules
+      ansible.builtin.iptables:
+        table: filter
+        chain: "{{ item }}"
+        flush: yes
+      loop: [INPUT, FORWARD, OUTPUT]
+    - name: Configure firewall | Allow specific traffic
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: "{{ item.proto | default(omit) }}"
+        source: "{{ item.src | default(omit) }}"
+        destination_port: "{{ item.port | default(omit) }}"
+        in_interface: "{{ item.iface | default(omit) }}"
+        ctstate: "{{ item.ctstate | default(omit) }}"
+        jump: ACCEPT
+      loop:
+        - { ctstate: "ESTABLISHED,RELATED" }
+        - { iface: "lo" }
+        - { proto: "tcp", port: 22, src: "{{ gateway_ip }}" }
+        - {
+            proto: "tcp",
+            port: "{{ services.ctfd.internal_port }}",
+            src: "{{ services.bastion_host.ip }}",
+          }
+    - name: Configure firewall | Set default policies
+      ansible.builtin.iptables:
+        chain: "{{ item.chain }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { chain: INPUT, policy: DROP }
+        - { chain: FORWARD, policy: DROP }
+        - { chain: OUTPUT, policy: ACCEPT }
+    - name: Configure firewall | Save rules
+      ansible.builtin.command: service netfilter-persistent save
+  when: config.platform in ["libvirt", "docker"]
+
+- name: Create certificates
+  block:
+    - name: Create certificates directory
+      ansible.builtin.file:
+        path: /opt/certs/
+        state: directory
+        recurse: yes
+        owner: root
+        group: root
+    - name: Create private key
+      community.crypto.openssl_privatekey:
+        path: /opt/certs/certificate.key
+    - name: Create certificate signing request (CSR) for self-signed certificate
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: /opt/certs/certificate.key
+        common_name: "{{ ansible_facts['fqdn'] }}"
+        country_name: UY
+        organization_name: GSI
+        subject_alt_name:
+          - "DNS:{{ ansible_facts['fqdn'] }}"
+          - "DNS:{{ services.ctfd.ip }}"
+          - "DNS:127.0.0.1"
+      register: csr
+    - name: Create self-signed certificate from CSR
+      community.crypto.x509_certificate:
+        path: /opt/certs/certificate.crt
+        csr_content: "{{ csr.csr }}"
+        privatekey_path: /opt/certs/certificate.key
+        provider: selfsigned
+
+# - name: Copy files for banner and icons
+#   block:
+#     - name: Generate random names
+#       ansible.builtin.set_fact:
+#         icon_directory: "{{ lookup('community.general.random_string', lower=true, upper=false, numbers=true, special=false, length=32) }}"
+#         banner_directory: "{{ lookup('community.general.random_string', lower=true, upper=false, numbers=true, special=false, length=32) }}"
+#     - name: Create directories
+#       ansible.builtin.file:
+#         path: "/opt/CTFd/CTFd/uploads/{{ item }}"
+#         state: directory
+#       loop:
+#         - "{{ icon_directory }}"
+#         - "{{ banner_directory }}"
+#     - name: Copy banner
+#       ansible.builtin.copy:
+#         src: files/banner.png
+#         dest: "/opt/CTFd/CTFd/uploads/{{ banner_directory }}/{{ banner_file_name }}"
+#     - name: Calculate banner hash
+#       ansible.builtin.stat:
+#         path: "/opt/CTFd/CTFd/uploads/{{ banner_directory }}/{{ banner_file_name }}"
+#         checksum_algorithm: sha1
+#       register: hash_check
+#     - name: Set banner hash
+#       ansible.builtin.set_fact:
+#         banner_sha1sum: "{{ hash_check['stat']['checksum'] }}"
+#     - name: Copy icon
+#       ansible.builtin.copy:
+#         src: files/icon.png
+#         dest: /opt/CTFd/CTFd/uploads/{{ icon_directory }}/{{ icon_file_name }}
+#     - name: Calculate icon hash
+#       ansible.builtin.stat:
+#         path: "/opt/CTFd/CTFd/uploads/{{ icon_directory }}/{{ icon_file_name }}"
+#         checksum_algorithm: sha1
+#       register: hash_check
+#     - name: Set icon hash
+#       ansible.builtin.set_fact:
+#         icon_sha1sum: "{{ hash_check['stat']['checksum'] }}"
+
+- name: Set passwords
+  ansible.builtin.set_fact:
+    ctfd_admin_password: "{{ lookup('community.general.random_string', lower=true, upper=false, numbers=true, special=false, length=12) }}"
+    ctfd_admin_token: "ctfd_{{ lookup('community.general.random_string', lower=true, upper=false, numbers=true, special=false, length=64) }}"
+    ctfd_secret_key: "{{ lookup('community.general.random_string', lower=true, upper=false, numbers=true, special=false, length=12) }}" 
+    redis_password: "{{ lookup('community.general.random_string', lower=true, upper=false, numbers=true, special=false, length=100) }}"
+    db_root_password: "{{ lookup('community.general.random_string', lower=true, upper=false, numbers=true, special=false, length=12) }}"
+    db_password: "{{ lookup('community.general.random_string', lower=true, upper=false, numbers=true, special=false, length=12) }}"
+
+- name: Set CTFD admin password
+  block:
+    - name: Copy CTFd admin password script
+      ansible.builtin.copy:
+        dest: /tmp/generate_password.py
+        content: |
+          from passlib.hash import bcrypt_sha256
+          hash = bcrypt_sha256.hash("{{ ctfd_admin_password }}")
+          print(hash)
+    - name: Execute CTFd admin password script
+      ansible.builtin.command: /opt/CTFd/venv/bin/python3 /tmp/generate_password.py
+      register: script_result
+    - name: Set CTFd admin password
+      ansible.builtin.set_fact:
+        admin_password_hash: "{{ script_result['stdout'] }}"
+    - name: Remove CTFd admin password script
+      ansible.builtin.file:
+        path: /tmp/generate_password.py
+        state: absent
+
+- name: Configure redis
+  ansible.builtin.template:
+    src: templates/redis.conf.j2
+    dest: /etc/redis/redis.conf
+    owner: redis
+    group: root
+    mode: '0600'
+
+- name: Restart redis
+  ansible.builtin.service:
+    name: redis
+    state: restarted
+    enabled: yes
+
+- name: Restart DB
+  ansible.builtin.service:
+    name: mysql
+    state: restarted
+    enabled: yes
+
+- name: DB - Set root password
+  community.mysql.mysql_user:
+    name: root
+    password: "{{ db_root_password }}"
+    host: localhost
+    state: present
+    check_implicit_admin: true
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: DB - Create CTFd database
+  community.mysql.mysql_db:
+    name: "{{ db_name }}"
+    state: present
+    login_user: root
+    login_password: "{{ db_root_password }}"
+    check_implicit_admin: true
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: DB - Create CTFd user
+  community.mysql.mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    priv: "{{ db_name }}.*:ALL,GRANT"
+    state: present
+    host: localhost
+    login_user: root
+    login_password: "{{ db_root_password }}"
+    check_implicit_admin: true
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Configure CTFd
+  ansible.builtin.template:
+    src: templates/ctfd.ini.j2
+    dest: /opt/CTFd/CTFd/config.ini
+    owner: ctf
+    group: ctf
+    mode: '0644'
+
+- name: Create CTFd service file
+  ansible.builtin.template:
+    src: templates/ctfd.service.j2
+    dest: /etc/systemd/system/ctfd.service
+    mode: '0644'
+
+- name: Start CTFd
+  ansible.builtin.service:
+    name: ctfd
+    state: started
+    enabled: yes
+
+- name: Restart CTFd
+  ansible.builtin.service:
+    name: ctfd
+    state: restarted
+    enabled: yes
+
+- name: Configure Nginx
+  ansible.builtin.template:
+    src: templates/nginx.conf.j2
+    dest: /etc/nginx/sites-available/default
+    mode: '0644'
+
+- name: Restart Nginx
+  ansible.builtin.service:
+    name: nginx
+    state: restarted
+    enabled: yes
+
+- name: Write passwords
+  ansible.builtin.copy:
+    dest: /root/credentials
+    content: |
+      admin {{ ctfd_admin_password }}
+      admin_token {{ ctfd_admin_token }}
+
+# - name: DB - Create CTFd database template
+#   ansible.builtin.template:
+#     src: templates/database.sql.data.j2
+#     dest: /tmp/database.sql
+
+# - name: DB - Import CTFd database
+#   community.mysql.mysql_db:
+#     name: "{{ db_name }}"
+#     state: import
+#     target: /tmp/database.sql
+#     login_user: root
+#     login_password: "{{ db_root_password }}"
+#     check_implicit_admin: true
+#     login_unix_socket: /var/run/mysqld/mysqld.sock
+
+# - name: DB - Remove CTFd database template
+#   ansible.builtin.file:
+#     path: /tmp/database.sql
+#     state: absent
+
+# Adjust REDIS_URL line
+- name: Configure CTFd to use Redis
+  ansible.builtin.template:
+    src: templates/ctfd-redis.ini.j2
+    dest: /opt/CTFd/CTFd/config.ini
+    owner: ctf
+    group: ctf
+    mode: '0644'
+
+- name: Restart CTFd
+  ansible.builtin.service:
+    name: ctfd
+    state: restarted
+    enabled: yes
