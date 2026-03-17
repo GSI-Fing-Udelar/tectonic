@@ -78,10 +78,10 @@ pyopenssl = ">=24.3"
 pytest = "9.0.2"
 pytest-cov = "7.0.0"
 pytest-mock = "3.15.1"
-pytest-env = "1.5.0"
+pytest-env = "1.6.0"
 fabric = { version = "3.2.2", extras = ["pytest"] }
 pylint = "4.0.5"
-black = "26.3.0"
+black = "26.3.1"
 moto = { version = "5.1.22", extras = ["ec2"] }
 responses = "0.26.0"
 freezegun = "1.5.5"
