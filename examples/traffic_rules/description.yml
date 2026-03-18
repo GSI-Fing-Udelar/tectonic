@@ -68,11 +68,13 @@ traffic_rules: # If no traffic rules are defined then by default all traffic wit
   - description: Allow ftp and ssh traffic from lan to ftpserver
     source: lan
     destination: ftpserver.servers
-    port_range: 21-22
+    port_range: 21
     protocol: tcp
-  - description: Allow all traffic from ftpserver to workstation
-    source: ftpserver.servers
-    destination: workstation.lan
+  - description: Allow ftp traffic from lan to ftpserver (data channel)
+    source: lan
+    destination: ftpserver.servers
+    port_range: 50000-50100
+    protocol: tcp
 
 caldera_settings:
   enable: yes

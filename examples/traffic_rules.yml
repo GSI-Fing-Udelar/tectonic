@@ -13,18 +13,21 @@ caldera_settings:
   enable: yes
   memory: 2048
   cpu: 2
+  disk: 30
 
 elastic_settings:
-  enable: yes
+  enable: no
   memory: 8192
   cpu: 4
 
 guacamole_settings:
-  enable: yes
+  enable: no
   memory: 2048
   cpu: 2
+  disk: 30
 
 moodle_settings:
-  enable: yes
+  enable: no
   memory: 2048
   cpu: 2
+  disk: 30
