@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tectonic-cyberrange"
-version = "2.0.1"
+version = "3.0.0"
 authors = ["GSI-Fing-Udelar"]
 description = "A Python package for the Tectonic Cyber Range project."
 readme = "README.md"
@@ -33,7 +33,7 @@ include = [
 
 # Requirements
 [tool.poetry.dependencies]
-python = ">=3.11,<4.0"
+python = ">=3.12,<4.0"
 bcrypt = "*"
 passlib = "*"
 boto3 = "*"
@@ -63,7 +63,7 @@ six = "*"
 urllib3 = "*"
 wrapt = "*"
 ansible-runner = "*"
-ansible = "12.3.0"
+ansible = "13.4.0"
 libvirt-python = "*"
 elasticsearch = "*"
 packaging = "*"
@@ -79,10 +79,10 @@ faker = "*"
 pytest = "9.0.2"
 pytest-cov = "7.0.0"
 pytest-mock = "3.15.1"
-pytest-env = "1.5.0"
+pytest-env = "1.6.0"
 fabric = { version = "3.2.2", extras = ["pytest"] }
 pylint = "4.0.5"
-black = "26.3.0"
+black = "26.3.1"
 moto = { version = "5.1.22", extras = ["ec2"] }
 responses = "0.26.0"
 freezegun = "1.5.5"

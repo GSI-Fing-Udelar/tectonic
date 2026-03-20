@@ -1,7 +1,3 @@
-# The after-clone ansible playbook for the Password Cracking scenario.
-# This playbook is applied to each machine in each instance, after it
-# was cloned. Internet connection is not available by default.
-
 - name: Configure workstation
   hosts: workstation
   tasks:
@@ -10,15 +6,6 @@
         path: /etc/hosts
         insertafter: EOF
         line: "{{ networks['dmz']['members']['waf']['1'] }} service-waf.local"
-
-# - name: Configure workstation2
-#   hosts: workstation2
-#   tasks:
-#     - name: Add entry to host file
-#       ansible.builtin.lineinfile:
-#         path: /etc/hosts
-#         insertafter: EOF
-#         line: "{{ networks['dmz']['members']['waf']['1'] }} service-waf.local"
     
 - name: Configure webserver
   hosts: webserver
@@ -112,6 +99,14 @@
         dest: /etc/ftpusers
         content: |
           admin
+    - name: Adjust ftp configuration
+      ansible.builtin.blockinfile:
+        path: "/etc/vsftpd.conf"
+        block: |
+          pasv_enable=YES
+          pasv_min_port=50000
+          pasv_max_port=50100
+        insertafter: "EOF"
     - name: Enable and start ftp service
       ansible.builtin.service:
         name: vsftpd

@@ -51,7 +51,7 @@ among others.
 The following are the requirements to run Tectonic:
 
 - SO: Linux or Mac OS
-- Python and pip: version 3.10 or newer.
+- Python and pip: version 3.12 or newer.
 - IaC Tools: Terraform and Packer
 - Base platforms: Libvirt or Docker
 - AWS credentials and AWS CLI (for AWS deployment)
