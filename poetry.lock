@@ -2,29 +2,29 @@
 
 [[package]]
 name = "ansible"
-version = "12.3.0"
+version = "13.4.0"
 description = "Radically simple IT automation"
 optional = false
-python-versions = ">=3.11"
+python-versions = ">=3.12"
 groups = ["main"]
 files = [
-    {file = "ansible-12.3.0-py3-none-any.whl", hash = "sha256:cd156f82fa87f7a899212b0efa9f7ca3a24d609212de9f78428a572eb01e5414"},
-    {file = "ansible-12.3.0.tar.gz", hash = "sha256:02721f6fb432ddd47f1044ac49b04b5e9ae08890bd427def8df3db1607aeec51"},
+    {file = "ansible-13.4.0-py3-none-any.whl", hash = "sha256:8c869fcc07954b53c5b125f1e914957cc7b541a92a7d512496207d80385a78eb"},
+    {file = "ansible-13.4.0.tar.gz", hash = "sha256:6d741511abc1f724443aa16992fb615cc822a22da427ade925ff937ccd691eb1"},
 ]
 
 [package.dependencies]
-ansible-core = ">=2.19.5,<2.20.0"
+ansible-core = ">=2.20.3,<2.21.0"
 
 [[package]]
 name = "ansible-core"
-version = "2.19.7"
+version = "2.20.3"
 description = "Radically simple IT automation"
 optional = false
-python-versions = ">=3.11"
+python-versions = ">=3.12"
 groups = ["main"]
 files = [
-    {file = "ansible_core-2.19.7-py3-none-any.whl", hash = "sha256:edeaadbff4eeaf0e677ae11b2ea9cc4faf9a250a59923a55e48fcb10cd66f35a"},
-    {file = "ansible_core-2.19.7.tar.gz", hash = "sha256:7d6f53dc33fc3defbe437b88bfaf87b3f7abbc56c4f1691e59342166c70bbebd"},
+    {file = "ansible_core-2.20.3-py3-none-any.whl", hash = "sha256:7fe2da953192cac5d5eb37bfc984bf9339daa252e0e3d1deb5526eb1f8be9f7f"},
+    {file = "ansible_core-2.20.3.tar.gz", hash = "sha256:38670ab2d2ffd67ee7e9e562f7c94e0927c8b7b4b0eb69233bc008c29e32d591"},
 ]
 
 [package.dependencies]
@@ -32,7 +32,7 @@ cryptography = "*"
 jinja2 = ">=3.1.0"
 packaging = "*"
 PyYAML = ">=5.1"
-resolvelib = ">=0.5.3,<2.0.0"
+resolvelib = ">=0.8.0,<2.0.0"
 
 [[package]]
 name = "ansible-runner"
@@ -1393,10 +1393,7 @@ files = [
 [package.dependencies]
 astroid = ">=4.0.2,<=4.1.dev0"
 colorama = {version = ">=0.4.5", markers = "sys_platform == \"win32\""}
-dill = [
-    {version = ">=0.3.7", markers = "python_version >= \"3.12\""},
-    {version = ">=0.3.6", markers = "python_version == \"3.11\""},
-]
+dill = {version = ">=0.3.7", markers = "python_version >= \"3.12\""}
 isort = ">=5,<5.13 || >5.13,<9"
 mccabe = ">=0.6,<0.8"
 platformdirs = ">=2.2"
@@ -2113,5 +2110,5 @@ test = ["pytest", "pytest-cov"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.11,<4.0"
-content-hash = "ea9fe1cdf2d344c8381ee28ed90c5c67c7041eb101e357ab11be1ccf75ec08a8"
+python-versions = ">=3.12,<4.0"
+content-hash = "1d52ec6cfb55ad119ea61faf9893f08c57effe191a5ea3aab7351dbf35d11d85"
