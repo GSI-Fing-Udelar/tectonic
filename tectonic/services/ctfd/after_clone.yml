@@ -236,10 +236,10 @@
         login_password: "{{ db_root_password }}"
         check_implicit_admin: true
         login_unix_socket: /var/run/mysqld/mysqld.sock
-    # - name: Import configuration into database | Remove CTFd database template
-    #   ansible.builtin.file:
-    #     path: /tmp/database.sql
-    #     state: absent
+    - name: Import configuration into database | Remove CTFd database template
+      ansible.builtin.file:
+        path: /tmp/database.sql
+        state: absent
 
 - name: Configure CTFd to use Redis
   ansible.builtin.template:
@@ -255,10 +255,57 @@
     state: restarted
     enabled: yes
 
+- name: Create challenge directory in CTFd
+  ansible.builtin.file:
+    path: /opt/challenges
+    state: directory
+
+- name: Create ctcli config
+  block:
+    - name: Create ctcli config | Create directory
+      ansible.builtin.file:
+        path: /opt/challenges/.ctf
+        state: directory
+    - name: Create ctfcli config | Create file
+      ansible.builtin.copy:
+        dest: /opt/challenges/.ctf/config
+        content: |
+          [config]
+          url = http://127.0.0.1:8000
+          access_token = {{ ctfd_admin_token }}
+
+          [challenges]
+
+- name: Check if ctfd directory exists
+  ansible.builtin.stat:
+    path: "{{ scenario_dir }}/ctfd"
+  register: ctfd
+  delegate_to: localhost
+  become: false
+  
+- name: Import challenges
+  block:
+    - name: Copy challenges
+      ansible.builtin.copy:
+        src: "{{ scenario_dir }}/ctfd/"
+        dest: /opt/challenges
+    - name: Find all challenges in /opt/challenges
+      ansible.builtin.find:
+        paths: /opt/challenges
+        file_type: directory
+        recurse: false
+      register: challenges
+    - name: Import challenges
+      ansible.builtin.command:
+        cmd: /opt/CTFd/venv/bin/python3 -m ctfcli challenge install "{{ item.path | basename }}"
+        chdir: /opt/challenges
+      loop: "{{ challenges.files }}"
+  when:
+    ctfd.stat.isdir is defined and ctfd.stat.isdir
+
 - name: Write passwords
   ansible.builtin.copy:
     dest: /root/credentials
     content: |
       admin {{ ctfd_admin_password }}
       admin_token {{ ctfd_admin_token }}
-      db_password_root {{ db_root_password }}

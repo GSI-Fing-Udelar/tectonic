@@ -74,6 +74,7 @@ freezegun = "*"
 docker = "*"
 pyopenssl = ">=24.3"
 faker = "*"
+ctfcli = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "9.0.2"
