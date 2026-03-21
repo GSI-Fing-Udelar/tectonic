@@ -113,16 +113,19 @@ The scenario description is a YAML file with the following sections:
   + `memory`: Amount of RAM of the machine, in MB. Default: `4096`.
   + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
   + `disk`: Amount of disk of the machine, in GB. Default: `20`.
-  + `event_name`: Name of the event. Default: 
-  + `event_description`: Description of the event. Default: 
-  + `user_mode`: [User Mode](https://docs.ctfd.io/docs/accounts/user-mode). Poosible values are: `teams`/`user`. Default: `teams`.
-  + `event_start`: When the event starts. Default: 1724295600
-  + `event_end`: When the event finishes. Default: 1724641200
-  + `event_freeze`: TODO
-  + `challenge_visibility`: TODO
-  + `registration_visibility`: TODO
-  + `score_visibility`: TODO
-  + `account_visibility`: TODO
+  + `event_name`: Name of the event. Default: `lab_name` value.
+  + `event_description`: Description of the event. Default: `empty`.
+  + `user_mode`: [User Mode](https://docs.ctfd.io/docs/accounts/user-mode). Possible values are: `teams` or `users`. Default: `user`.
+  + `challenge_visibility`: Control wheter users must be logged in to see challenges. Possible values are: `public`, `private` or `admins`. Default: `private`.
+  + `registration_visibility`: Control wheter registration is enabled for everyone or disable. Possible values are: `public`,`private`. Default: `private`.
+  + `score_visibility`: Control wheter solves/scores are shown to the public, to logged in users, hidden to all non admins, or only show to admins. Possible vlues are: `public`, `private`, `hidden`, `admins`. Default: `private`.
+  + `account_visibility`: Control wheter accounts (users and teams) are shown to everyone, only to authenticated users or only to admins. Possible values are: `public`, `private`, `admins`. Default: `private`.
+  + `verify_emails`: Control whether users must confirm their email addresses before participating. Default: `no`.
+  + `team_size`: Amount of users per team (Teams mode only). Default: `4`. 
+  + `enable_trainees`: Whether student users should be automatically configured. Default: `yes`.
+  + `event_start`: This is the time when the competition will begin. Challenges will automatically unlock and users will be able to submit answers. Default: `today`.
+  + `event_end`: This is the time when the competition will end. Challenges will automatically close and users won't be able to submit answers. Default: `in 3 weeks starting from today`.
+  + `event_freeze`: Freeze time specifies the timestamp that the competition will be frozen to. All solves before the freeze time will be shown, but new solves won't be shown to users. Default: `event_end` value.
 
 A complete example description file with all available options is available in the [example directory](../examples/password_cracking/description.yml).
 
@@ -178,6 +181,10 @@ Caldera configuration is done based on artifacts that are automatically imported
 
 ### Moodle artifacts
 Moodle configuration can be done based on course backup files that are automatically imported into Moodle. These artifacts must be provided as part of the scenario specification in the `moodle` directory . See [Moodle](./moodle.md) for more information.
+
+### CTFd artifacts
+
+TODO
 
 ## Lab Edition Information
 The lab edition is a YAML file with the following options:

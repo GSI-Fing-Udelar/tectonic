@@ -29,6 +29,7 @@ from zipfile import ZipFile
 from pathlib import Path
 import re
 import json
+from datetime import datetime, timedelta, timezone
 
 import importlib.resources as tectonic_resources
 from tectonic.constants import OS_DATA
@@ -998,13 +999,91 @@ class CtfdDescription(ServiceDescription):
         self.memory = 4096
         self.vcpu = 2
         self.disk = 20
+        self.event_name = description.base_lab
+        self.event_description = ""
+        self.user_mode = "users"
+        self.challenge_visibility = "private"
+        self.registration_visibility = "private"
+        self.score_visibility = "private"
+        self.account_visibility = "private"
+        self.verify_emails = False
+        self.team_size = 4 if self.user_mode == "teams" else None
+        self.enable_trainees = True
+        self.event_start = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        self.event_end = (datetime.now(timezone.utc) + timedelta(weeks=3)).strftime("%Y-%m-%d %H:%M:%S")
+        self.event_freeze = self.event_end
 
     def load_service(self, data):
         super().load_service(data)
 
+        self.event_name = data.get("event_name", self.event_name)
+        self.event_description = data.get("event_description", self.event_description)
+
+        user_mode = data.get("user_mode", self.user_mode)
+        validate.supported_value("CTFd user mode", user_mode, ["users", "teams"])
+        self.user_mode = user_mode
+
+        challenge_visibility = data.get("challenge_visibility", self.challenge_visibility)
+        validate.supported_value("CTFd challenge visibility", challenge_visibility, ["private", "public", "admins"])
+        self.challenge_visibility = challenge_visibility
+
+        registration_visibility = data.get("registration_visibility", self.registration_visibility)
+        validate.supported_value("CTFd registration visibility", registration_visibility, ["private", "public"])
+        self.registration_visibility = registration_visibility
+
+        score_visibility = data.get("score_visibility", self.score_visibility)
+        validate.supported_value("CTFd score visibility", score_visibility, ["private", "public", "hidden", "admins"])
+        self.score_visibility = score_visibility
+
+        account_visibility = data.get("account_visibility", self.account_visibility)
+        validate.supported_value("CTFd account visibility", account_visibility, ["private", "public", "admins"])
+        self.account_visibility = account_visibility
+
+        verify_emails = data.get("verify_emails", self.verify_emails)
+        validate.boolean("CTFd enable users email verification", verify_emails)
+        self.verify_emails = verify_emails
+
+        team_size = data.get("team_size", self.team_size)
+        if self.user_mode == "teams":
+            validate.number("CTFd teams size", team_size, 2, 100)
+            self.team_size = team_size
+        else:
+            self.team_size = None
+
+        enable_trainees = data.get("enable_trainees", self.enable_trainees)
+        validate.boolean("CTFd enable trainees users", enable_trainees)
+        self.enable_trainees = enable_trainees
+
+        event_start = data.get("event_start", self.event_start)
+        validate.time("CTFd event start time", event_start)
+        self.event_start = event_start
+
+        event_end = data.get("event_end", (datetime.strptime(self.event_start, "%Y-%m-%d %H:%M:%S") + timedelta(weeks=3)).strftime("%Y-%m-%d %H:%M:%S"))
+        validate.time("CTFd event end time", event_end)
+        validate.times_compare("CTFd event start and event end times.", event_start, event_end)
+        self.event_end = event_end
+
+        event_freeze = data.get("event_freeze", self.event_end)
+        validate.time("CTFd event freeze time", event_freeze)
+        validate.times_compare("CTFd event start and event freeze times", event_start, event_freeze)
+        validate.times_compare("CTFd event freeze and event end times", event_freeze, event_end)
+        self.event_freeze = event_freeze
+
     def to_dict(self):
         result = super().to_dict()
-        # Ver si pasar cosas del ini al description
+        result["event_name"] = self.event_name
+        result["event_description"] = self.event_description
+        result["user_mode"] = self.user_mode
+        result["challenge_visibility"] = self.challenge_visibility
+        result["registration_visibility"] = self.registration_visibility
+        result["score_visibility"] = self.score_visibility
+        result["account_visibility"] = self.account_visibility
+        result["verify_emails"] = self.verify_emails
+        result["team_size"] = self.team_size
+        result["enable_trainees"] = self.enable_trainees
+        result["event_start"] = self.event_start
+        result["event_end"] = self.event_end
+        result["event_freeze"] = self.event_freeze
         return result | self._description.config.ctfd.to_dict()
     
     def base_traffic_rules(self):

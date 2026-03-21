@@ -17,6 +17,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
 - name: Finish playbook execution if CTFd already installed
   block:
     - name: Check if credentials file exists
@@ -108,44 +109,6 @@
         csr_content: "{{ csr.csr }}"
         privatekey_path: /opt/certs/certificate.key
         provider: selfsigned
-
-# - name: Copy files for banner and icons
-#   block:
-#     - name: Generate random names
-#       ansible.builtin.set_fact:
-#         icon_directory: "{{ lookup('community.general.random_string', lower=true, upper=false, numbers=true, special=false, length=32) }}"
-#         banner_directory: "{{ lookup('community.general.random_string', lower=true, upper=false, numbers=true, special=false, length=32) }}"
-#     - name: Create directories
-#       ansible.builtin.file:
-#         path: "/opt/CTFd/CTFd/uploads/{{ item }}"
-#         state: directory
-#       loop:
-#         - "{{ icon_directory }}"
-#         - "{{ banner_directory }}"
-#     - name: Copy banner
-#       ansible.builtin.copy:
-#         src: files/banner.png
-#         dest: "/opt/CTFd/CTFd/uploads/{{ banner_directory }}/{{ banner_file_name }}"
-#     - name: Calculate banner hash
-#       ansible.builtin.stat:
-#         path: "/opt/CTFd/CTFd/uploads/{{ banner_directory }}/{{ banner_file_name }}"
-#         checksum_algorithm: sha1
-#       register: hash_check
-#     - name: Set banner hash
-#       ansible.builtin.set_fact:
-#         banner_sha1sum: "{{ hash_check['stat']['checksum'] }}"
-#     - name: Copy icon
-#       ansible.builtin.copy:
-#         src: files/icon.png
-#         dest: /opt/CTFd/CTFd/uploads/{{ icon_directory }}/{{ icon_file_name }}
-#     - name: Calculate icon hash
-#       ansible.builtin.stat:
-#         path: "/opt/CTFd/CTFd/uploads/{{ icon_directory }}/{{ icon_file_name }}"
-#         checksum_algorithm: sha1
-#       register: hash_check
-#     - name: Set icon hash
-#       ansible.builtin.set_fact:
-#         icon_sha1sum: "{{ hash_check['stat']['checksum'] }}"
 
 - name: Set passwords
   ansible.builtin.set_fact:
@@ -240,13 +203,7 @@
     dest: /etc/systemd/system/ctfd.service
     mode: '0644'
 
-- name: Start CTFd
-  ansible.builtin.service:
-    name: ctfd
-    state: started
-    enabled: yes
-
-- name: Restart CTFd
+- name: Start CTFd so fresh database is created
   ansible.builtin.service:
     name: ctfd
     state: restarted
@@ -264,34 +221,26 @@
     state: restarted
     enabled: yes
 
-- name: Write passwords
-  ansible.builtin.copy:
-    dest: /root/credentials
-    content: |
-      admin {{ ctfd_admin_password }}
-      admin_token {{ ctfd_admin_token }}
+- name: Import configuration into database
+  block:
+    - name: Import configuration into database | Create CTFd database template
+      ansible.builtin.template:
+        src: templates/database.sql.data.j2
+        dest: /tmp/database.sql
+    - name: Import configuration into database | Import CTFd database
+      community.mysql.mysql_db:
+        name: "{{ db_name }}"
+        state: import
+        target: /tmp/database.sql
+        login_user: root
+        login_password: "{{ db_root_password }}"
+        check_implicit_admin: true
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+    # - name: Import configuration into database | Remove CTFd database template
+    #   ansible.builtin.file:
+    #     path: /tmp/database.sql
+    #     state: absent
 
-# - name: DB - Create CTFd database template
-#   ansible.builtin.template:
-#     src: templates/database.sql.data.j2
-#     dest: /tmp/database.sql
-
-# - name: DB - Import CTFd database
-#   community.mysql.mysql_db:
-#     name: "{{ db_name }}"
-#     state: import
-#     target: /tmp/database.sql
-#     login_user: root
-#     login_password: "{{ db_root_password }}"
-#     check_implicit_admin: true
-#     login_unix_socket: /var/run/mysqld/mysqld.sock
-
-# - name: DB - Remove CTFd database template
-#   ansible.builtin.file:
-#     path: /tmp/database.sql
-#     state: absent
-
-# Adjust REDIS_URL line
 - name: Configure CTFd to use Redis
   ansible.builtin.template:
     src: templates/ctfd-redis.ini.j2
@@ -305,3 +254,11 @@
     name: ctfd
     state: restarted
     enabled: yes
+
+- name: Write passwords
+  ansible.builtin.copy:
+    dest: /root/credentials
+    content: |
+      admin {{ ctfd_admin_password }}
+      admin_token {{ ctfd_admin_token }}
+      db_password_root {{ db_root_password }}

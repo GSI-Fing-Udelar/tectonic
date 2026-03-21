@@ -47,19 +47,19 @@ class TectonicConfigCtfd(object):
     
     @version.setter
     def version(self, value):
-        validate.version_number("Ctfd version", value)
+        validate.version_number("CTFd version", value)
         if value == "latest":
             value = "master"
         self._version = value
 
     @internal_port.setter
     def internal_port(self, value):
-        validate.number("Ctfd internal port", value)
+        validate.number("CTFd internal port", value)
         self._internal_port = value
 
     @external_port.setter
     def external_port(self, value):
-        validate.number("Ctfd external port", value)
+        validate.number("CTFd external port", value)
         self._external_port = value
 
     @admin_email.setter
@@ -71,4 +71,5 @@ class TectonicConfigCtfd(object):
             "version": self.version,
             "internal_port": self.internal_port,
             "external_port": self.external_port,
+            "admin_email": self.admin_email
         }

@@ -18,17 +18,5 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 python_executable: python3
-
-plugins:
-  - name: ctfd-matrix-scoreboard-plugin
-    url: https://github.com/itszn/ctfd-matrix-scoreboard-plugin.git
-    version: master
-  - name: ctfd-portable-challenges-plugin
-    url: https://github.com/tamuctf/ctfd-portable-challenges-plugin.git
-    version: master
-  - name: ctfd-personal_challenge-plugin
-    url: https://gitlab.fi.muni.cz/kypolab/theses/apg/ctfd-personal_challenge-plugin.git
-    version: master
-
 db_name: ctfd
 db_user: ctfd

@@ -71,13 +71,6 @@
         dest: /opt/CTFd/
         version: "{{ services.ctfd.version }}"
 
-    # - name: Download CTFd plugins
-    #   ansible.builtin.git:
-    #     repo: "{{ item['url'] }}"
-    #     dest: "/opt/CTFd/CTFd/plugins/{{ item['name'] }}"
-    #     version: "{{ item['version'] }}"
-    #   loop: "{{ plugins }}"
-
     - name: Recursively change ownership of /opt/CTFd
       ansible.builtin.file:
         path: /opt/CTFd
