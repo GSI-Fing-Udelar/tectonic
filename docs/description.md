@@ -174,17 +174,17 @@ Optionally, the user can provide a set of parameters to be used in the playbooks
 See [ansible](./ansible.md) for more information.
 
 ### Elastic Security artifacts
-Elastic Security configuration is done based on artifacts that are automatically imported into the Elasticsearch, Kibana and Fleet components. These artifacts must be provided as part of the scenario specification in the `elastic` directory. See [Elastic](./elastic.md) for more information.
+Elastic Security configuration is done based on artifacts that are automatically imported into the Elasticsearch, Kibana and Fleet components. These artifacts must be provided as part of the scenario specification in the `elastic` directory. See [Elastic](./services/elastic.md) for more information.
 
 ### Caldera artifacts
-Caldera configuration is done based on artifacts that are automatically imported into Caldera. These artifacts must be provided as part of the scenario specification in the `caldera` directory. See [Caldera](./caldera.md) for more information.
+Caldera configuration is done based on artifacts that are automatically imported into Caldera. These artifacts must be provided as part of the scenario specification in the `caldera` directory. See [Caldera](./services/caldera.md) for more information.
 
 ### Moodle artifacts
-Moodle configuration can be done based on course backup files that are automatically imported into Moodle. These artifacts must be provided as part of the scenario specification in the `moodle` directory . See [Moodle](./moodle.md) for more information.
+Moodle configuration can be done based on course backup files that are automatically imported into Moodle. These artifacts must be provided as part of the scenario specification in the `moodle` directory . See [Moodle](./services/moodle.md) for more information.
 
 ### CTFd artifacts
+CTFd configuration can be done based on challenges backup files that are automatically imported into CTFd. These artifacts must be provided as part of the scenario specification in the `ctfd` directory . See [CTFd](./services/ctfd.md) for more information.
 
-TODO
 
 ## Lab Edition Information
 The lab edition is a YAML file with the following options:
