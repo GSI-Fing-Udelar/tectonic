@@ -1060,15 +1060,15 @@ class CtfdDescription(ServiceDescription):
 
         event_end = data.get("event_end", (datetime.strptime(self.event_start, "%Y-%m-%d %H:%M:%S") + timedelta(weeks=3)).strftime("%Y-%m-%d %H:%M:%S"))
         validate.time("CTFd event end time", event_end)
-        validate.times_compare("CTFd event start and event end times.", event_start, event_end)
-        validate.times_compare("CTFd event end and now times.", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), event_end)
+        validate.times_compare("CTFd event start and event end times", event_start, event_end)
+        validate.times_compare("CTFd event end and now times", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), event_end)
         self.event_end = event_end
 
         event_freeze = data.get("event_freeze", self.event_end)
         validate.time("CTFd event freeze time", event_freeze)
         validate.times_compare("CTFd event start and event freeze times", event_start, event_freeze)
         validate.times_compare("CTFd event freeze and event end times", event_freeze, event_end)
-        validate.times_compare("CTFd event freeze and now times.", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), event_freeze)
+        validate.times_compare("CTFd event freeze and now times", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), event_freeze)
         self.event_freeze = event_freeze
 
     def to_dict(self):

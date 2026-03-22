@@ -550,6 +550,17 @@ class Core:
                 only_instances=False,
                 quiet=True
             )
+
+        if self.description.ctfd.enable and self.description.ctfd.enable_trainees:
+            self.ansible.run(
+                instances=None,
+                guests=["ctfd"],
+                copies=None,
+                playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
+                only_instances=False,
+                quiet=True,
+            )
+
         return users
     
     def _get_students_passwords(self):
