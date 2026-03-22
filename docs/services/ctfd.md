@@ -27,3 +27,9 @@ To facilitate this task, it is suggested to work on the CTFd machine as follows:
 - For each challenge, run: /opt/CTFd/venv/bin/python3 -m ctfcli challenge mirror <challenge_name>
 
 Once the challenge backups were created, copy the generated directories into a `ctfd` directory inside the scenario specification.
+
+Note: ctfcli has some limitations. For example, it's not possible to import or export requirements for flags.
+
+### CTFd bakup
+
+Additionally, you can back up your entire CTFd instance by following the steps documented here [https://docs.ctfd.io/docs/exports/ctfd-exports]. This backup can then be manually imported from the web interface. Keep in mind that doing this will overwrite all the base configuration created by Tectonic (the event, the admin user and their token, and the trainee users), so you'll need to know the password for one of the users you're importing beforehand and also modify the event settings after the import.
