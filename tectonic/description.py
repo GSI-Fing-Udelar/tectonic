@@ -721,7 +721,10 @@ class ServiceDescription(MachineDescription):
     def load_service(self, data):
         """Loads the information from the yaml structure in data."""
         self.load_machine(data)
-        self.enable = data.get("enable", self.enable)
+
+        enable = data.get("enable", self.enable)
+        validate.boolean("Service enable", enable)
+        self.enable = enable
 
     @property
     def interfaces(self):
@@ -797,7 +800,11 @@ class ElasticDescription(ServiceDescription):
     def load_service(self, data):
         """Loads the information from the yaml structure in data."""
         super().load_service(data)
+
+        monitor_type = data.get("monitor_type", self.monitor_type)
+        validate.supported_value("Elastic monitor type", monitor_type, ["traffic", "endpoint"])
         self.monitor_type = data.get("monitor_type", self.monitor_type)
+
         self.deploy_default_policy = data.get("deploy_default_policy", self.deploy_default_policy)
 
     def to_dict(self):
@@ -903,8 +910,14 @@ class MoodleDescription(ServiceDescription):
 
     def load_service(self, data):
         super().load_service(data)
-        self.enable_trainees = data.get("enable_trainees", self.enable_trainees)
-        self.auto_enroll_trainees = data.get("auto_enroll_trainees", self.auto_enroll_trainees)
+
+        enable_trainees = data.get("enable_trainees", self.enable_trainees)
+        validate.boolean("Moodle enable trainees", enable_trainees)
+        self.enable_trainees = enable_trainees
+
+        auto_enroll_trainees = data.get("auto_enroll_trainees", self.auto_enroll_trainees)
+        validate.boolean("Moodle auto entroll trainees", auto_enroll_trainees)
+        self.auto_enroll_trainees =auto_enroll_trainees
 
     def to_dict(self):
         result = super().to_dict()
