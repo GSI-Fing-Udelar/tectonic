@@ -795,7 +795,6 @@ def student_access(ctx, instances, force):
 
     Trainers users are created on all machines.
     """
-    logger.info("Configuring student access...")
     users = ctx.obj["core"].configure_access(instances)
 
     rows = []

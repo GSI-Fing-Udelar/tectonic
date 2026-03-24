@@ -486,21 +486,25 @@ class Core:
         logger.info("Configuring user access...")
 
         only_instances = True
+        extra_vars = {}
         entry_points = [guest.base_name for _, guest in self.description.base_guests.items() if guest.entry_point]
-        if self.config.platform == "aws" and entry_points:
+
+        if self.config.platform == "aws":
             entry_points.append("bastion_host")
             only_instances = False
-        users = self.description.generate_student_access_credentials()
-        self.ansible.run(
-            instances=instances,
-            guests=entry_points,
-            copies=None,
-            playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
-            only_instances=only_instances,
-            quiet=True,
-        )
+
+        if self.description.moodle.enable and self.description.moodle.enable_trainees:
+            entry_points.append("moodle")
+            only_instances = False
+
+        if self.description.ctfd.enable and self.description.ctfd.enable_trainees:
+            entry_points.append("ctfd")
+            only_instances = False
 
         if self.description.guacamole.enable:
+            entry_points.append("guacamole")
+            only_instances = False
+
             guacamole_password = self.terraform_service.get_service_credentials(self.description.guacamole, self.ansible)['trainer']
             trainer_credentials = self.description.generate_trainer_access_credentials(guacamole_password)
             self.ansible.run(
@@ -528,40 +532,22 @@ class Core:
                     "entry_point": guest.entry_point,
                     "ip": connection_ip,
                 }
-            self.ansible.run( #TODO: change user-mapping for database and assign guacadmin connections?
-                instances=None,
-                guests=["guacamole"],
-                copies=None,
-                playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
-                only_instances=False,
-                extra_vars={
-                    "instances": machines_data, 
-                    "trainer": trainer_credentials,   
-                },
-                quiet=True
-            )
+            extra_vars = {
+                "machines_data": machines_data, 
+                "trainer": trainer_credentials,   
+            }
+        
+        self.ansible.run(
+            instances=instances,
+            guests=entry_points,
+            copies=None,
+            playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
+            only_instances=only_instances,
+            extra_vars=extra_vars,
+            quiet=True,
+        )
 
-        if self.description.moodle.enable and self.description.moodle.enable_trainees:
-            self.ansible.run(
-                instances=None,
-                guests=["moodle"],
-                copies=None,
-                playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
-                only_instances=False,
-                quiet=True
-            )
-
-        if self.description.ctfd.enable and self.description.ctfd.enable_trainees:
-            self.ansible.run(
-                instances=None,
-                guests=["ctfd"],
-                copies=None,
-                playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
-                only_instances=False,
-                quiet=True,
-            )
-
-        return users
+        return self.description.generate_student_access_credentials()
     
     def _get_students_passwords(self):
         """
