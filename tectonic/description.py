@@ -1009,8 +1009,8 @@ class CtfdDescription(ServiceDescription):
         self.verify_emails = False
         self.team_size = 4 if self.user_mode == "teams" else None
         self.enable_trainees = True
-        self.event_start = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        self.event_end = (datetime.now(timezone.utc) + timedelta(weeks=3)).strftime("%Y-%m-%d %H:%M:%S")
+        self.event_start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.event_end = (datetime.now() + timedelta(weeks=3)).strftime("%Y-%m-%d %H:%M:%S")
         self.event_freeze = self.event_end
 
     def load_service(self, data):
