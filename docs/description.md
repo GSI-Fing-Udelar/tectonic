@@ -120,7 +120,7 @@ The scenario description is a YAML file with the following sections:
   + `registration_visibility`: Control wheter registration is enabled for everyone or disable. Possible values are: `public`,`private`. Default: `private`.
   + `score_visibility`: Control wheter solves/scores are shown to the public, to logged in users, hidden to all non admins, or only show to admins. Possible vlues are: `public`, `private`, `hidden`, `admins`. Default: `private`.
   + `account_visibility`: Control wheter accounts (users and teams) are shown to everyone, only to authenticated users or only to admins. Possible values are: `public`, `private`, `admins`. Default: `private`.
-  + `verify_emails`: Control whether users must confirm their email addresses before participating. Default: `no`.
+  + `verify_emails`: Control whether users must confirm their email addresses before participating. Default: `no`. Currently, CTFd cannot send emails so setting it to yes is pointless.
   + `team_size`: Amount of users per team (Teams mode only). Default: `4`. 
   + `enable_trainees`: Whether student users should be automatically configured. Default: `yes`.
   + `event_start`: This is the time when the competition will begin. Challenges will automatically unlock and users will be able to submit answers. Default: `today`.

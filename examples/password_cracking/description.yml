@@ -113,13 +113,19 @@ ctfd_settings:
   event_name: Password Cracking
   # Description for the event
   event_description: Password Cracking exercise
-  # TODO adjust comments
+  # User mode (users/teams)
   user_mode: users
+  # Who can see the challenges
   challenge_visibility: private
+  # Who can register new users
   registration_visibility: private
+  # Who can see the score
   score_visibility: private
+  # Who can see the accounts
   account_visibility: private
+  # Create trainees users 
   enable_trainees: yes
+  # Send email confirmations
   verify_emails: no
   # Service machine resources
   memory: 2048
