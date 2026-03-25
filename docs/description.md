@@ -100,13 +100,32 @@ The scenario description is a YAML file with the following sections:
   + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
   + `disk`: Amount of disk of the machine, in GB. Default: `20`.
 
-+ A `moodle_settings` section to describe the configuration of the [Moodle service](./moodle.md). The following properties can be defined:
++ A `moodle_settings` section to describe the configuration of the [Moodle service](./services/moodle.md). The following properties can be defined:
   + `enable`: Whether to deploy this service. Default: `no`.
   + `memory`: Amount of RAM of the machine, in MB. Default: `4096`.
   + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
   + `disk`: Amount of disk of the machine, in GB. Default: `20`.
   + `enable_trainees`: Whether student users should be automatically configured. Default: `yes`.
   + `auto_enroll_trainees`: Whether users should be enroll in the courses. Default: `yes`.
+
++ A `ctfd_settings` section to describe the configuration of the CTFd service. The following properties can be defined:
+  + `enable`: Whether to deploy this service. Default: `no`.
+  + `memory`: Amount of RAM of the machine, in MB. Default: `4096`.
+  + `vcpu`: Number of virtual CPUs of the machine. Default: `2`.
+  + `disk`: Amount of disk of the machine, in GB. Default: `20`.
+  + `event_name`: Name of the event. Default: `lab_name` value.
+  + `event_description`: Description of the event. Default: `empty`.
+  + `user_mode`: [User Mode](https://docs.ctfd.io/docs/accounts/user-mode). Possible values are: `teams` or `users`. Default: `user`.
+  + `challenge_visibility`: Control wheter users must be logged in to see challenges. Possible values are: `public`, `private` or `admins`. Default: `private`.
+  + `registration_visibility`: Control wheter registration is enabled for everyone or disable. Possible values are: `public`,`private`. Default: `private`.
+  + `score_visibility`: Control wheter solves/scores are shown to the public, to logged in users, hidden to all non admins, or only show to admins. Possible vlues are: `public`, `private`, `hidden`, `admins`. Default: `private`.
+  + `account_visibility`: Control wheter accounts (users and teams) are shown to everyone, only to authenticated users or only to admins. Possible values are: `public`, `private`, `admins`. Default: `private`.
+  + `verify_emails`: Control whether users must confirm their email addresses before participating. Default: `no`. Currently, CTFd cannot send emails so setting it to yes is pointless.
+  + `team_size`: Amount of users per team (Teams mode only). Default: `4`. 
+  + `enable_trainees`: Whether student users should be automatically configured. Default: `yes`.
+  + `event_start`: This is the time when the competition will begin. Challenges will automatically unlock and users will be able to submit answers. Default: `today`.
+  + `event_end`: This is the time when the competition will end. Challenges will automatically close and users won't be able to submit answers. Default: `in 3 weeks starting from today`.
+  + `event_freeze`: Freeze time specifies the timestamp that the competition will be frozen to. All solves before the freeze time will be shown, but new solves won't be shown to users. Default: `event_end` value.
 
 A complete example description file with all available options is available in the [example directory](../examples/password_cracking/description.yml).
 
@@ -155,13 +174,17 @@ Optionally, the user can provide a set of parameters to be used in the playbooks
 See [ansible](./ansible.md) for more information.
 
 ### Elastic Security artifacts
-Elastic Security configuration is done based on artifacts that are automatically imported into the Elasticsearch, Kibana and Fleet components. These artifacts must be provided as part of the scenario specification in the `elastic` directory. See [Elastic](./elastic.md) for more information.
+Elastic Security configuration is done based on artifacts that are automatically imported into the Elasticsearch, Kibana and Fleet components. These artifacts must be provided as part of the scenario specification in the `elastic` directory. See [Elastic](./services/elastic.md) for more information.
 
 ### Caldera artifacts
-Caldera configuration is done based on artifacts that are automatically imported into Caldera. These artifacts must be provided as part of the scenario specification in the `caldera` directory. See [Caldera](./caldera.md) for more information.
+Caldera configuration is done based on artifacts that are automatically imported into Caldera. These artifacts must be provided as part of the scenario specification in the `caldera` directory. See [Caldera](./services/caldera.md) for more information.
 
 ### Moodle artifacts
-Moodle configuration can be done based on course backup files that are automatically imported into Moodle. These artifacts must be provided as part of the scenario specification in the `moodle` directory . See [Moodle](./moodle.md) for more information.
+Moodle configuration can be done based on course backup files that are automatically imported into Moodle. These artifacts must be provided as part of the scenario specification in the `moodle` directory . See [Moodle](./services/moodle.md) for more information.
+
+### CTFd artifacts
+CTFd configuration can be done based on challenges backup files that are automatically imported into CTFd. These artifacts must be provided as part of the scenario specification in the `ctfd` directory . See [CTFd](./services/ctfd.md) for more information.
+
 
 ## Lab Edition Information
 The lab edition is a YAML file with the following options:
@@ -216,8 +239,8 @@ The lab edition is a YAML file with the following options:
     takes the value `true`.
   + `random_seed`: Seed used for the random generation of parameters
     that are used to configure and parameterize the instances.
-  + Four optional `elastic_settings`, `caldera_settings`, `guacamole_settings` 
-    and `moodle_settings` sections with the same options as the scenario
+  + Four optional `elastic_settings`, `caldera_settings`, `guacamole_settings`, `moodle_settings` 
+    and `ctfd_settings` sections with the same options as the scenario
     description. Options here take precedence on the scenario
     description. For the service to be effectively enabled, it must be
     enabled here and in the scenario description. Ultimately, the

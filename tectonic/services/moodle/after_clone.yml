@@ -208,6 +208,8 @@
   ansible.builtin.stat:
     path: "{{ scenario_dir }}/moodle"
   register: courses
+  delegate_to: localhost
+  become: false
 - name: Import courses
   block:
     - name: Copy courses backups

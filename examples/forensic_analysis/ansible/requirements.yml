@@ -1,0 +1,7 @@
+collections:
+  - name: https://github.com/GSI-Fing-Udelar/tectonic_collections_core.git
+    type: git
+    version: main
+  - name: https://github.com/GSI-Fing-Udelar/tectonic_evidence_generation.git
+    type: git
+    version: main

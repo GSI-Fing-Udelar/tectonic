@@ -53,8 +53,8 @@ class Core:
     Description: orchestrate Tectonic main functionalities using InstanceManagement and ServiceManagement.
     """
     ANSIBLE_SERVICE_PLAYBOOK = tectonic_resources.files('tectonic') / 'services' / 'ansible' / 'configure_services.yml'
-    ANSIBLE_TRAINEES_PLAYBOOK = tectonic_resources.files('tectonic') / 'playbooks' / 'trainees.yml'
-    ANSIBLE_TRAINER_PLAYBOOK = tectonic_resources.files('tectonic') / 'playbooks' / 'trainers.yml'
+    ANSIBLE_TRAINEES_PLAYBOOK = tectonic_resources.files('tectonic') / 'ansible' / 'playbooks' / 'trainees.yml'
+    ANSIBLE_TRAINER_PLAYBOOK = tectonic_resources.files('tectonic') / 'ansible' / 'playbooks' / 'trainers.yml'
 
     def __init__(self, description):
         """
@@ -101,6 +101,10 @@ class Core:
         if guests is None or len(guests) > 0:
             logger.info("Destroying scenario base images...")
             self.packer.destroy_instance_image(guests)
+
+            logger.info("Install scenario requirements...")
+            self.ansible.install_scenario_requirements()
+
             logger.info("Creating scenario base images...")
             self.packer.create_instance_image(guests)
 
@@ -114,6 +118,10 @@ class Core:
         if service_image_list is None or len(service_image_list) > 0:
             logger.info("Destroying service base images...")
             self.packer.destroy_service_image(service_image_list)
+
+            logger.info("Install scenario requirements...")
+            self.ansible.install_scenario_requirements()
+
             logger.info("Creating service base images...")
             self.packer.create_service_image(service_image_list)
     
@@ -155,6 +163,9 @@ class Core:
 
         logger.info("Waiting for machines to boot up...")
         self.ansible.wait_for_connections(instances=instances)
+
+        logger.info("Install scenario requirements...")
+        self.ansible.install_scenario_requirements()
 
         logger.info("Running after clone configuration...")
         self.ansible.run(instances, quiet=True)
@@ -232,6 +243,9 @@ class Core:
         logger.info("Waiting for machines to boot up...")
         self.ansible.wait_for_connections(instances, guests, copies, True)
         
+        logger.info("Install scenario requirements...")
+        self.ansible.install_scenario_requirements()
+
         logger.info("Running after clone configuration...")
         self.ansible.run(instances, guests, copies, quiet=True, only_instances=False)
 
@@ -436,6 +450,10 @@ class Core:
             username (str): username to use.
             playbook (str): path to Ansible playbook.
         """
+        logger.info("Install scenario requirements...")
+        self.ansible.install_scenario_requirements()
+
+        logger.info("Run ansible...")
         self.description.parse_machines(instances, guests, copies, False)
         self.ansible.run(instances=instances, guests=guests, copies=copies, only_instances=False, username=username, playbook=playbook)
     
@@ -468,21 +486,25 @@ class Core:
         logger.info("Configuring user access...")
 
         only_instances = True
+        extra_vars = {}
         entry_points = [guest.base_name for _, guest in self.description.base_guests.items() if guest.entry_point]
-        if self.config.platform == "aws" and entry_points:
+
+        if self.config.platform == "aws":
             entry_points.append("bastion_host")
             only_instances = False
-        users = self.description.generate_student_access_credentials()
-        self.ansible.run(
-            instances=instances,
-            guests=entry_points,
-            copies=None,
-            playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
-            only_instances=only_instances,
-            quiet=True,
-        )
+
+        if self.description.moodle.enable and self.description.moodle.enable_trainees:
+            entry_points.append("moodle")
+            only_instances = False
+
+        if self.description.ctfd.enable and self.description.ctfd.enable_trainees:
+            entry_points.append("ctfd")
+            only_instances = False
 
         if self.description.guacamole.enable:
+            entry_points.append("guacamole")
+            only_instances = False
+
             guacamole_password = self.terraform_service.get_service_credentials(self.description.guacamole, self.ansible)['trainer']
             trainer_credentials = self.description.generate_trainer_access_credentials(guacamole_password)
             self.ansible.run(
@@ -510,29 +532,22 @@ class Core:
                     "entry_point": guest.entry_point,
                     "ip": connection_ip,
                 }
-            self.ansible.run( #TODO: change user-mapping for database and assign guacadmin connections?
-                instances=None,
-                guests=["guacamole"],
-                copies=None,
-                playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
-                only_instances=False,
-                extra_vars={
-                    "instances": machines_data, 
-                    "trainer": trainer_credentials,   
-                },
-                quiet=True
-            )
+            extra_vars = {
+                "machines_data": machines_data, 
+                "trainer": trainer_credentials,   
+            }
+        
+        self.ansible.run(
+            instances=instances,
+            guests=entry_points,
+            copies=None,
+            playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
+            only_instances=only_instances,
+            extra_vars=extra_vars,
+            quiet=True,
+        )
 
-        if self.description.moodle.enable and self.description.moodle.enable_trainees:
-            self.ansible.run(
-                instances=None,
-                guests=["moodle"],
-                copies=None,
-                playbook=self.ANSIBLE_TRAINEES_PLAYBOOK,
-                only_instances=False,
-                quiet=True
-            )
-        return users
+        return self.description.generate_student_access_credentials()
     
     def _get_students_passwords(self):
         """

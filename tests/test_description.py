@@ -136,8 +136,10 @@ def test_description_traffic_rules(labs_path, tectonic_config):
                 assert len(rules) == 2
             elif service.base_name == "moodle":
                 assert len(rules) == 2
+            elif service.base_name == "ctfd":
+                assert len(rules) == 2
             elif service.base_name == "bastion_host":
-                assert len(rules) == 5
+                assert len(rules) == 6
             elif service.base_name == "teacher_access_host":
                 assert len(rules) == 1
 
@@ -169,6 +171,7 @@ def test_description_no_services(labs_path, tectonic_config):
     assert description.caldera.enable == False
     assert description.guacamole.enable == False
     assert description.moodle.enable == False
+    assert description.ctfd.enable == False
     assert description.bastion_host.enable == (tectonic_config.platform == "aws")
     assert description.teacher_access_host.enable == (tectonic_config.platform == "aws")
 
@@ -225,6 +228,7 @@ def test_parse_machines_elastic_endpoint(description):
     description.caldera.enable = False
     description.guacamole.enable = False
     description.moodle.enable = False
+    description.ctfd.enable = False
     machine_list = description.parse_machines(only_instances=False)
     expected_machines = base_machines.copy() + [
         'udelar-lab01-elastic',
@@ -243,6 +247,7 @@ def test_parse_machines_teacher_endpoint(description):
     description.caldera.enable = False
     description.guacamole.enable = False
     description.moodle.enable = False
+    description.ctfd.enable = False
     description.bastion_host.enable = False
     description.teacher_access_host.enable = False
     machine_list = description.parse_machines(only_instances=False)
@@ -258,6 +263,7 @@ def test_parse_machines_teacher_host(description):
     description.caldera.enable = True
     description.guacamole.enable = True
     description.moodle.enable = True
+    description.ctfd.enable = True
     description.elastic.monitor_type = "traffic"
     machine_list = description.parse_machines(only_instances=False)
     expected_machines = base_machines.copy() + [
@@ -265,6 +271,7 @@ def test_parse_machines_teacher_host(description):
         'udelar-lab01-caldera',
         'udelar-lab01-guacamole',
         'udelar-lab01-moodle',
+        'udelar-lab01-ctfd',
         'udelar-lab01-bastion_host'
     ]
     if description.config.platform == "aws":
@@ -280,6 +287,7 @@ def test_parse_machines_filter_guests_with_services(description):
     description.elastic.monitor_type = "traffic"
     description.guacamole.enable = True
     description.moodle.enable = True
+    description.ctfd.enable = True
     machine_list = description.parse_machines(guests=["attacker"], only_instances=False)
     assert set(machine_list) == set([
         'udelar-lab01-1-attacker',
@@ -292,11 +300,13 @@ def test_parse_machines_exclude_service(description):
     description.guacamole.enable = True
     description.caldera.enable = True
     description.moodle.enable = True
+    description.ctfd.enable = True
     if description.config.platform == "aws":
         description.bastion_host.enable = True
     machine_list = description.parse_machines(exclude=['elastic','moodle'], only_instances=False)
     expected_machines = base_machines.copy() + [
         'udelar-lab01-caldera',
+        'udelar-lab01-ctfd',
         'udelar-lab01-guacamole',
         'udelar-lab01-bastion_host'
     ]
@@ -313,12 +323,14 @@ def test_parse_machines_services(description):
     description.caldera.enable = True
     description.guacamole.enable = True
     description.moodle.enable = True
+    description.ctfd.enable = True
     machine_list = description.parse_machines(only_instances=False)
     expected_machines = base_machines.copy() + [
         'udelar-lab01-elastic',
         'udelar-lab01-caldera',
         'udelar-lab01-guacamole',
         'udelar-lab01-moodle',
+        'udelar-lab01-ctfd',
         'udelar-lab01-bastion_host',
     ]
     if description.config.platform == "aws":

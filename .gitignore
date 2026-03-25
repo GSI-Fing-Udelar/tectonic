@@ -61,3 +61,10 @@ Pipfile.lock
 build/
 .coverage
 codeclimate.json
+
+# Ansible
+ansible.log
+.ansible/
+*.retry
+tectonic/ansible/ansible_collections/
+tectonic/ansible/roles/

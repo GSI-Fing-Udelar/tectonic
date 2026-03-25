@@ -1,0 +1,10 @@
+---
+base_lab: forensic_analysis
+institution: udelar
+lab_edition_name: forensic_analysis
+instance_number: 1
+student_prefix: student
+create_students_passwords: true
+teacher_pubkey_dir: teacher_pubkeys/
+student_pubkey_dir: student_pubkeys/
+random_seed: 378374hdf9udf

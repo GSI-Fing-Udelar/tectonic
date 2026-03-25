@@ -6,6 +6,7 @@ This is a full reference example of the ansible variables available in
     "ansible": {
         "keep_logs": false
         "ssh_common_args: "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 "
+        "collections_and_roles_path": "./ansible
     }
     "configure_dns": false,
     "debug": true,
@@ -251,6 +252,64 @@ This is a full reference example of the ansible variables available in
         "name": "test-test-guacamole",
         "vcpu": 1,
         "version": "1.6.0"
+    },
+    "moodle": {
+        "base_name": "moodle",
+        "base_os": "ubuntu24",
+        "admin_email": "admin@tectonic.local",
+        "enable_trainees": true,
+        "auto_enroll_trainees": true,
+        "disk": 10,
+        "enable": true,
+        "external_port": "8080",
+        "interfaces": {
+            "test-test-moodle-2": {
+                "name": "test-test-moodle-2",
+                "private_ip": "10.99.0.137",
+                "subnetwork_name": "test-test-services"
+            }
+        },
+        "internal_port": 443,
+        "ip": "10.99.0.137",
+        "memory": 2048,
+        "name": "test-test-moodle",
+        "vcpu": 1,
+        "version": "4.5.8"
+    },
+    "ctfd": {
+        "base_name": "ctfd",
+        "base_os": "ubuntu24",
+        "admin_email": "admin@tectonic.local",
+        "auto_enroll_trainees": true,
+        "disk": 10,
+        "enable": true,
+        "external_port": "8090",
+        "event_name": "Tectonic CTF",
+        "event_description": "CTF event",
+        "user_mode": "users",
+        "challenge_visibility": "private",
+        "registration_visibility": "private",
+        "score_visibility": "private",
+        "account_visibility": "private",
+        "verify_emails": false,
+        "team_size": 0,
+        "enable_trainees": true,
+        "event_start": "2026-03-24 21:00:00",
+        "event_end": "2026-03-25 21:00:00",
+        "event_freeze": "2026-03-25 21:00:00",
+        "interfaces": {
+            "test-test-ctfd-2": {
+                "name": "test-test-ctfd-2",
+                "private_ip": "10.99.0.138",
+                "subnetwork_name": "test-test-services"
+            }
+        },
+        "internal_port": 8443,
+        "ip": "10.99.0.138",
+        "memory": 2048,
+        "name": "test-test-ctfd",
+        "vcpu": 1,
+        "version": "3.8.2"
     }
 },
 "ssh_password_login": true,

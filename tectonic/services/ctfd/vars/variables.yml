@@ -17,19 +17,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
-#
-- name: Make request
-  ansible.builtin.uri:
-    url: "{{ url }}"
-    headers: "{{ headers }}"
-    method: "{{ method }}"
-    body: "{{ body }}"
-    status_code: "{{ status_code }}"
-    body_format: "{{ body_format }}"
-    force_basic_auth: "{{ true if 'user' is defined and 'password' is defined else false }}"
-    user: "{{ user | default(omit) }}"
-    password: "{{ password | default(omit) }}"
-    use_proxy: false #No proxy is used even if configured, since this playbook is used for local service calls.
-    validate_certs: false
-    timeout: 360
-  register: result
+python_executable: python3
+db_name: ctfd
+db_user: ctfd

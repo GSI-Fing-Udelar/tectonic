@@ -200,6 +200,9 @@ def confirm_machines(ctx, instances, guest_names, copies, action, print_instance
         if "moodle" in guest_names:
             machines += ["the moodle server"]
             guest_names.remove("moodle")
+        if "ctfd" in guest_names:
+            machines += ["the ctfd server"]
+            guest_names.remove("ctfd")
         if "teacher_access" in guest_names:
             machines += ["the teacher access"]
             guest_names.remove("teacher_access")
@@ -792,7 +795,6 @@ def student_access(ctx, instances, force):
 
     Trainers users are created on all machines.
     """
-    logger.info("Configuring student access...")
     users = ctx.obj["core"].configure_access(instances)
 
     rows = []
