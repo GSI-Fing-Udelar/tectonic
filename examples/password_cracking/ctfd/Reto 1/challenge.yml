@@ -1,0 +1,76 @@
+# This file represents the base specification of your challenge. It is used by
+# other tools to install and deploy your challenge.
+
+# Required sections
+name: "Reto 1"
+author: "Tectonic"
+category: OS
+description: Obten credenciales para acceder a la máquina atacante y recuperar la flag.
+attribution: Tectonic Team
+value: 100
+type: standard
+
+# solution is used to provide a path to the challenge solution document.
+# The file path is relative to this challenge.yml file.
+# If provided as a string path, ctfcli uploads it as a hidden CTFd solution during sync.
+# You can also use an object:
+# solution:
+#   path: writeup/WRITEUP.md
+#   state: solved  # hidden | visible | solved
+solution: writeup/WRITEUP.md
+
+
+# Specifies flag processing behavior of challenge
+# Accept any flag (default): any
+# Require all flags to be provided: all
+# Require all team members to submit any flag: team
+logic: all
+
+# Flags specify answers that your challenge use. You should generally provide at least one.
+# Can be removed if unused
+# Accepts strings or dictionaries of CTFd API data
+flags:
+    - {
+        type: "regex",
+        content: "flag{tectonic-(.+)}",
+        data: "case_insensitive",
+    }
+
+# Topics are used to help tell what techniques/information a challenge involves
+# They are generally only visible to admins
+# Accepts strings
+topics:
+    - offensive
+    - password cracking
+
+# Tags are used to provide additional public tagging to a challenge
+# Can be removed if unused
+# Accepts strings
+tags:
+    - offensive
+    - intermediate
+    - linux
+
+# Hints are used to give players a way to buy or have suggestions. They are not
+# required but can be nice.
+# Can be removed if unused
+# Accepts dictionaries or strings
+hints:
+    - title: Pista 1
+      content: Realiza un escaneo de puertos
+      cost: 10
+    - title: Pista 2
+      content: Usa hydra contra el servicio FTP
+      cost: 10
+    - title: Pista 3
+      content: Crackea las contraseñas usando John the Ripper
+      cost: 10
+
+# The state of the challenge.
+# If the field is omitted, the challenge is visible by default.
+# If provided, the field can take one of two values: hidden, visible.
+state: visible
+
+# Specifies what version of the challenge specification was used.
+# Subject to change until ctfcli v1.0.0
+version: "1.0.0"

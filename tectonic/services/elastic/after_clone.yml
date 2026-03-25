@@ -311,7 +311,7 @@
     ansible.builtin.shell: cat /opt/agent/agent.key
     register: elastic_agent_key
   - name: Fleet - Configure elasticsearch output
-    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
+    ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/outputs"
       method: "POST"
@@ -326,7 +326,7 @@
     ansible.builtin.set_fact:
       elasticsearch_output_result: "{{ result }}"
   - name: Fleet - Configure server host
-    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
+    ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/fleet_server_hosts"
       method: "POST"
@@ -342,7 +342,7 @@
     ansible.builtin.set_fact:
       fleet_info : "{{ result }}"
   - name: Fleet - Generate service token
-    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
+    ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/service_tokens?remote=false"
       method: "POST"
@@ -357,7 +357,7 @@
     ansible.builtin.set_fact:
       elastic_result_service_token: "{{ result }}"
   - name: Fleet - Configure policy
-    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
+    ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies"
       method: "POST"
@@ -372,7 +372,7 @@
     ansible.builtin.set_fact:
       elastic_result_policy: "{{ result }}"
   - name: Fleet - Configure integration
-    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
+    ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
       method: "POST"
@@ -384,7 +384,7 @@
       password: "{{ elastic_superuser_password.stdout }}"
       user: "elastic"
   - name: Fleet - Configure Logstash output
-    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
+    ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/outputs"
       method: "POST"
@@ -396,7 +396,7 @@
       user: "elastic"
       password: "{{ elastic_superuser_password.stdout }}"
   - name: Fleet - Adjust policy output
-    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
+    ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies/{{ elastic_result_policy['json']['item']['id'] }}"
       method: "PUT"
@@ -418,7 +418,7 @@
 - name: Deploy Packetbeat default policy
   block:
   - name: Packetbeat - Configure policy
-    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
+    ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies"
       method: "POST"
@@ -433,7 +433,7 @@
     ansible.builtin.set_fact:
       elastic_result_policy: "{{ result  }}"
   - name: Packetbeat - Configure integration
-    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
+    ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
       method: "POST"
@@ -451,7 +451,7 @@
 - name: Deploy Endpoint default policy
   block:
   - name: Endpoint - Configure policy
-    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
+    ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/agent_policies?sys_monitoring=true"
       method: "POST"
@@ -466,7 +466,7 @@
     ansible.builtin.set_fact:
       elastic_result_policy: "{{ result  }}"
   - name: Endpoint - Configure integration Elastic Defend
-    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
+    ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
       method: "POST"
@@ -478,7 +478,7 @@
       user: "elastic"
       password: "{{ elastic_superuser_password.stdout }}"
   - name: Endpoint - Configure integration Auditd Manager
-    ansible.builtin.include_tasks: ../../playbooks/make_request.yml
+    ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
     vars:
       url: "https://{{ ansible_facts['fqdn'] }}:5601/api/fleet/package_policies"
       method: "POST"

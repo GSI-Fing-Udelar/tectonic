@@ -18,6 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import logging
 from pathlib import Path
 import ansible_runner
@@ -136,7 +137,7 @@ class Ansible:
                 inventory[machine.base_name]["hosts"][machine.name]["become_flags"] = "-i"
         return inventory
     
-    def build_inventory_localhost(self, username=None, extra_vars=None):
+    def build_inventory_localhost(self, username=None, extra_vars=None, become=True):
         if extra_vars is None:
             extra_vars = {}
         return {
@@ -147,7 +148,7 @@ class Ansible:
                     }
                 },
                 "vars": {
-                    "ansible_become": True,
+                    "ansible_become": become,
                     "ansible_user": username or self.config.elastic.user_install_packetbeat,
                     "basename": "localhost",
                     "ansible_connection" : "local",
@@ -211,13 +212,17 @@ class Ansible:
         self.output = ""
         self.debug_outputs = []
         extravars = { "ansible_no_target_syslog" : not self.config.ansible.keep_logs }
+                
         envvars = { 
             "ANSIBLE_FORKS": self.config.ansible.forks,
             "ANSIBLE_HOST_KEY_CHECKING": False,
             "ANSIBLE_PIPELINING": self.config.ansible.pipelining,
             "ANSIBLE_GATHERING": "explicit",
             "ANSIBLE_TIMEOUT": self.config.ansible.timeout,
+            "ANSIBLE_COLLECTIONS_PATH": self.config.ansible.collections_and_roles_path,
+            "ANSIBLE_ROLES_PATH": f"{self.config.ansible.collections_and_roles_path}/roles"
         }
+        
         r = ansible_runner.interface.run(
             inventory=inventory,
             playbook=playbook,
@@ -234,7 +239,7 @@ class Ansible:
 
     def wait_for_connections(self, instances=None, guests=None, copies=None, only_instances=True, exclude=[], username=None, inventory=None):
         """Wait for machines to respond to ssh connections for ansible."""
-        playbook = tectonic_resources.files('tectonic') / 'playbooks' / 'wait_for_connection.yml'
+        playbook = tectonic_resources.files('tectonic') / 'ansible' / 'playbooks' / 'wait_for_connection.yml'
 
         return self.run(
             instances=instances, guests=guests, copies=copies,
@@ -249,3 +254,12 @@ class Ansible:
             inventory = self.build_inventory(machine_list=enabled_services)
             self.wait_for_connections(inventory=inventory)
             self.run(inventory=inventory, playbook=self.ANSIBLE_SERVICE_PLAYBOOK, quiet=True)
+
+    def install_scenario_requirements(self, quiet=True):
+        if os.path.exists(Path(self.description.scenario_dir) / "ansible"/ "requirements.yml"):
+            inventory = self.build_inventory_localhost(become=False)
+            self.run(
+                inventory=inventory,
+                playbook=tectonic_resources.files('tectonic') / 'ansible' / 'playbooks' / 'install_collections.yml',
+                quiet=quiet
+            )

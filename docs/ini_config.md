@@ -36,6 +36,7 @@ main `config` section and special sections for different platforms
 * `pipelining`: Whether pipelining is enabled in order to reduce the
   number of SSH connections. Default: `no`.
 * `timeout`: Ansible connection timeout in seconds. Default: `10`.
+* `collections_and_roles_path`: Path to custom Ansible collections and roles. Default: `./tectonic/ansible`. See [ansible](ansible.md) for more information.
 
 ### [libvirt] section:
 * `uri`: URI to connect to libvirt server. Default:
@@ -111,6 +112,13 @@ main `config` section and special sections for different platforms
 * `site_shortname`: Moodle site short name. Default: `Tectonic`.
 * `admin_email`: Email for administrator account. Default: `admin@tectonic.local`
 * `external_port`: Port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `8080`.
+
+### [ctfd] section:
+* `version`: CTFD version to use. Use `latest` for latest version or assign a specific version. Default: `3.8.2`. All tests were performed on version `3.8.2` so we recommend using it. However, it may also work for older or newer CTFD versions.
+* `site_fullname`: Moodle site full name. Default: `Tectonic Moodle`.
+* `site_shortname`: Moodle site short name. Default: `Tectonic`.
+* `admin_email`: Email for administrator account. Default: `admin@tectonic.local`
+* `external_port`: Port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `8090`.
 
 ### [bastion_host] section
 * `domain`:Domain name used.

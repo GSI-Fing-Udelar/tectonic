@@ -1,0 +1,21 @@
+server {
+    listen 80;
+    return 301 https://$host$request_uri:{{ services.ctfd.internal_port }};
+}
+
+server {
+    listen {{ services.ctfd.internal_port }} ssl;
+    server_name {{ services.ctfd.ip }};
+    ssl_certificate /opt/certs/certificate.crt;
+    ssl_certificate_key /opt/certs/certificate.key;
+    access_log            /var/log/nginx/ctfd.access.log;
+    location / {
+      proxy_set_header        Host $host;
+      proxy_set_header        X-Real-IP $remote_addr;
+      proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header        X-Forwarded-Proto $scheme;
+      proxy_pass          http://localhost:8000;
+      proxy_read_timeout  90;
+      proxy_redirect      http://localhost:8000 https://{{ services.ctfd.ip }}:{{ services.ctfd.internal_port }};
+    }
+}

@@ -1,0 +1,80 @@
+---
+# ==============================================================================
+# Forensic Analysis Scenario - Unified WannaCry Attack Simulation
+# ==============================================================================
+# This scenario simulates a complete WannaCry attack combining both:
+#   1. NETWORK: Realistic PCAP traffic (reconnaissance, malware download, C2)
+#   2. FILESYSTEM: Forensic disk image with encrypted and deleted files
+#
+# Key Features:
+#   - Network traffic simulation (SMB exploitation, HTTP malware download)
+#   - Realistic file system generation with multiple file types
+#   - Real AES-256-CBC encryption (not fake/simulated)
+#   - Forensic disk image creation for Autopsy analysis
+#   - Hidden flag file (encrypted + deleted) for DFIR challenge
+#   - PE executables with WannaCry signatures
+#   - Ransom notes and forensic artifacts
+#
+# Learning Objectives:
+#   1. Network forensics: Analyze PCAP files to identify attack vectors
+#   2. Disk forensics: Use Autopsy to recover deleted files
+#   3. Malware analysis: Identify ransomware patterns and artifacts
+#   4. Incident response: Correlate network and filesystem evidence
+#   5. File recovery: Recover and decrypt deleted encrypted files
+# ==============================================================================
+
+institution: udelar
+lab_name: forensic_analysis
+default_os: ubuntu22
+description: |
+  Unified WannaCry Attack Simulation for Digital Forensics and Incident Response Training.
+  
+  This scenario creates a complete attack simulation combining:
+  - Network traffic capture (PCAP): SMB exploitation, malware download, C2 communication
+  - Forensic disk image: Encrypted files, deleted artifacts, hidden flags
+  
+  Students will practice:
+  - Network forensics with Wireshark
+  - Disk forensics with Autopsy
+  - File recovery and decryption
+  - Timeline reconstruction
+  - Incident response correlation
+  
+  WARNING: Files are REALLY encrypted with AES-256-CBC!
+  CHALLENGE: Find and decrypt the hidden flag file!
+
+
+topology:
+  - name: internal
+    members:
+      - victim
+      - analyst
+
+guest_settings:
+  # Victim machine that gets "infected" with WannaCry simulator
+  victim:
+    hostname: victim
+    entry_point: yes
+    memory: 2048
+    vcpu: 2
+    disk: 20
+    base_os: ubuntu22
+    internet_access: no
+    copies: 1
+    monitor: no
+    red_team_agent: no
+    blue_team_agent: no
+  
+  # Forensic analysis workstation for Autopsy and network analysis
+  analyst:
+    hostname: forensic-analyst
+    entry_point: yes
+    memory: 4096
+    vcpu: 4
+    disk: 50
+    base_os: ubuntu22
+    internet_access: no
+    copies: 1
+    monitor: no
+    red_team_agent: no
+    blue_team_agent: no

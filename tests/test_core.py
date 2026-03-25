@@ -99,6 +99,7 @@ def test_deploy(core):
     core.description.caldera.enable = True
     core.description.guacamole.enable = True
     core.description.moodle.enable = True
+    core.description.ctfd.enable = True
     core.description.bastion_host.enable = True
     core.terraform_service.deploy_packetbeat = MagicMock()
     core.terraform_service.install_elastic_agent = MagicMock()
@@ -124,6 +125,7 @@ def test_destroy(core):
     core.description.caldera.enable = True
     core.description.guacamole.enable = True
     core.description.moodle.enable = True
+    core.description.ctfd.enable = True
     core.description.bastion_host.enable = True
     core.client.destroy_nwfilter = MagicMock()
 
@@ -143,6 +145,7 @@ def test_recreate(core):
     core.description.caldera.enable = True
     core.description.guacamole.enable = True
     core.description.moodle.enable = True
+    core.description.ctfd.enable = True
     core.description.bastion_host.enable = True
     core.terraform_service.install_elastic_agent = MagicMock()
     core.terraform_service.install_caldera_agent = MagicMock()
@@ -182,6 +185,7 @@ def test_info(core):
     core.description.caldera.enabled = True
     core.description.guacamole.enable = True
     core.description.moodle.enable = True
+    core.description.ctfd.enable = True
     core.description.bastion_host.enable = True
     core.terraform_service.get_service_credentials = MagicMock(return_value="creds")
     core._get_students_passwords = MagicMock(return_value={"u": "p"})
@@ -278,19 +282,3 @@ def test_get_students_passwords(core):
     core.description.create_students_passwords = False
     core.description.moodle.enable = False
     assert core._get_students_passwords() == {}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

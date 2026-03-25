@@ -31,6 +31,7 @@ from tectonic.config_elastic import TectonicConfigElastic
 from tectonic.config_caldera import TectonicConfigCaldera
 from tectonic.config_guacamole import TectonicConfigGuacamole
 from tectonic.config_moodle import TectonicConfigMoodle
+from tectonic.config_ctfd import TectonicConfigCtfd
 from tectonic.config_bastion_host import TectonicConfigBastionHost
 
 class TectonicConfig(object):
@@ -61,7 +62,7 @@ class TectonicConfig(object):
         self.gitlab_backend_access_token = None
         self.packer_executable_path = "packer"
 
-        self._ansible = TectonicConfigAnsible()
+        self._ansible = TectonicConfigAnsible(self.tectonic_dir)
         self._aws = TectonicConfigAWS()
         self._libvirt = TectonicConfigLibvirt()
         self._docker = TectonicConfigDocker()
@@ -69,6 +70,7 @@ class TectonicConfig(object):
         self._caldera = TectonicConfigCaldera()
         self._guacamole = TectonicConfigGuacamole()
         self._moodle = TectonicConfigMoodle()
+        self._ctfd = TectonicConfigCtfd()
         self.bastion_host = TectonicConfigBastionHost()
 
 
@@ -160,6 +162,10 @@ class TectonicConfig(object):
     @property
     def moodle(self):
         return self._moodle
+
+    @property
+    def ctfd(self):
+        return self._ctfd
 
     #----------- Setters ----------
     @platform.setter
@@ -271,6 +277,7 @@ class TectonicConfig(object):
         TectonicConfig._assign_attributes(config.caldera, parser, 'caldera')
         TectonicConfig._assign_attributes(config.guacamole, parser, 'guacamole')
         TectonicConfig._assign_attributes(config.moodle, parser, 'moodle')
+        TectonicConfig._assign_attributes(config.ctfd, parser, 'ctfd')
         TectonicConfig._assign_attributes(config.bastion_host, parser, 'bastion_host')
 
         return config

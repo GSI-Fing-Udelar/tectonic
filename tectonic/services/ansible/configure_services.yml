@@ -36,7 +36,9 @@
     - name: Include Moodle playbook
       ansible.builtin.include_tasks: ../moodle/after_clone.yml
       when: '"moodle" in group_names'
+    - name: Include Ctfd playbook
+      ansible.builtin.include_tasks: ../ctfd/after_clone.yml
+      when: '"ctfd" in group_names'
     - name: Include Bastion Host playbook
       ansible.builtin.include_tasks: ../bastion_host/after_clone.yml
       when: '"bastion_host" in group_names'
-

@@ -29,6 +29,7 @@ from zipfile import ZipFile
 from pathlib import Path
 import re
 import json
+from datetime import datetime, timedelta, timezone
 
 import importlib.resources as tectonic_resources
 from tectonic.constants import OS_DATA
@@ -934,6 +935,8 @@ class BastionHostDescription(ServiceDescription):
             self.ports["caldera"] = description.config.caldera.external_port
         if description.moodle.enable:
             self.ports["moodle"] = description.config.moodle.external_port
+        if description.ctfd.enable:
+            self.ports["ctfd"] = description.config.ctfd.external_port
 
     @property
     def instance_type(self):
@@ -988,6 +991,112 @@ class TeacherAccessHostDescription(ServiceDescription):
     def base_traffic_rules(self):
         base_traffic_rules = []
         base_traffic_rules.append(BaseTrafficRule("service-bastion_host-ssh", "Allow incoming ssh traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", "22"))
+        return base_traffic_rules
+
+class CtfdDescription(ServiceDescription):
+    def __init__(self, description):
+        super().__init__(description, "ctfd", "ubuntu24")
+        self.memory = 4096
+        self.vcpu = 2
+        self.disk = 20
+        self.event_name = description.base_lab
+        self.event_description = ""
+        self.user_mode = "users"
+        self.challenge_visibility = "private"
+        self.registration_visibility = "private"
+        self.score_visibility = "private"
+        self.account_visibility = "private"
+        self.verify_emails = False
+        self.team_size = 4 if self.user_mode == "teams" else None
+        self.enable_trainees = True
+        self.event_start = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        self.event_end = (datetime.now(timezone.utc) + timedelta(weeks=3)).strftime("%Y-%m-%d %H:%M:%S")
+        self.event_freeze = self.event_end
+
+    def load_service(self, data):
+        super().load_service(data)
+
+        self.event_name = data.get("event_name", self.event_name)
+        self.event_description = data.get("event_description", self.event_description)
+
+        user_mode = data.get("user_mode", self.user_mode)
+        validate.supported_value("CTFd user mode", user_mode, ["users", "teams"])
+        self.user_mode = user_mode
+
+        challenge_visibility = data.get("challenge_visibility", self.challenge_visibility)
+        validate.supported_value("CTFd challenge visibility", challenge_visibility, ["private", "public", "admins"])
+        self.challenge_visibility = challenge_visibility
+
+        registration_visibility = data.get("registration_visibility", self.registration_visibility)
+        validate.supported_value("CTFd registration visibility", registration_visibility, ["private", "public"])
+        self.registration_visibility = registration_visibility
+
+        score_visibility = data.get("score_visibility", self.score_visibility)
+        validate.supported_value("CTFd score visibility", score_visibility, ["private", "public", "hidden", "admins"])
+        self.score_visibility = score_visibility
+
+        account_visibility = data.get("account_visibility", self.account_visibility)
+        validate.supported_value("CTFd account visibility", account_visibility, ["private", "public", "admins"])
+        self.account_visibility = account_visibility
+
+        verify_emails = data.get("verify_emails", self.verify_emails)
+        validate.boolean("CTFd enable users email verification", verify_emails)
+        self.verify_emails = verify_emails
+
+        team_size = data.get("team_size", self.team_size)
+        if self.user_mode == "teams":
+            validate.number("CTFd teams size", team_size, 2, 100)
+            self.team_size = team_size
+        else:
+            self.team_size = None
+
+        enable_trainees = data.get("enable_trainees", self.enable_trainees)
+        validate.boolean("CTFd enable trainees users", enable_trainees)
+        self.enable_trainees = enable_trainees
+
+        event_start = data.get("event_start", self.event_start)
+        validate.time("CTFd event start time", event_start)
+        self.event_start = event_start
+
+        event_end = data.get("event_end", (datetime.strptime(self.event_start, "%Y-%m-%d %H:%M:%S") + timedelta(weeks=3)).strftime("%Y-%m-%d %H:%M:%S"))
+        validate.time("CTFd event end time", event_end)
+        validate.times_compare("CTFd event start and event end times", event_start, event_end)
+        validate.times_compare("CTFd event end and now times", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), event_end)
+        self.event_end = event_end
+
+        event_freeze = data.get("event_freeze", self.event_end)
+        validate.time("CTFd event freeze time", event_freeze)
+        validate.times_compare("CTFd event start and event freeze times", event_start, event_freeze)
+        validate.times_compare("CTFd event freeze and event end times", event_freeze, event_end)
+        validate.times_compare("CTFd event freeze and now times", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), event_freeze)
+        self.event_freeze = event_freeze
+
+    def to_dict(self):
+        result = super().to_dict()
+        result["event_name"] = self.event_name
+        result["event_description"] = self.event_description
+        result["user_mode"] = self.user_mode
+        result["challenge_visibility"] = self.challenge_visibility
+        result["registration_visibility"] = self.registration_visibility
+        result["score_visibility"] = self.score_visibility
+        result["account_visibility"] = self.account_visibility
+        result["verify_emails"] = self.verify_emails
+        result["team_size"] = self.team_size
+        result["enable_trainees"] = self.enable_trainees
+        result["event_start"] = self.event_start
+        result["event_end"] = self.event_end
+        result["event_freeze"] = self.event_freeze
+        return result | self._description.config.ctfd.to_dict()
+    
+    def base_traffic_rules(self):
+        base_traffic_rules = []
+        base_traffic_rules.append(BaseTrafficRule("service-ctfd-web", "Allow incoming web interface traffic", f"{self._description.bastion_host.service_ip}/32", self.service_ip, "tcp", f"{self._description.config.ctfd.internal_port}"))
+        source_ssh = None
+        if self._description.config.platform == "libvirt":
+            source_ssh = f"{list(ipaddress.ip_network(self._description.config.services_network_cidr_block).hosts())[0]}/32"
+        elif self._description.config.platform == "aws":
+            source_ssh = f"{self._description.teacher_access_host.service_ip}/32"
+        base_traffic_rules.append(BaseTrafficRule("service-moodle-ssh", "Allow incoming ssh traffic", source_ssh, self.service_ip, "tcp", "22"))
         return base_traffic_rules
 
 class BaseTrafficRule():
@@ -1195,6 +1304,8 @@ class Description:
         self.guacamole.load_service(description_data.get("guacamole_settings", {}))
         self._moodle = MoodleDescription(self)
         self.moodle.load_service(description_data.get("moodle_settings", {}))
+        self._ctfd = CtfdDescription(self)
+        self.ctfd.load_service(description_data.get("ctfd_settings", {}))
 
         # Load lab edition data
         self._required(lab_edition_data, "instance_number")
@@ -1237,7 +1348,11 @@ class Description:
         enable_moodle = self.moodle.enable and lab_edition_data.get("moodle_settings", {}).get("enable", True)
         self.moodle.load_service(lab_edition_data.get("moodle_settings", {}))
         self.moodle.enable = enable_moodle
-        
+
+        # Ctfd is enabled if it is enabled in the description and not disabled in the lab edition.
+        enable_ctfd = self.ctfd.enable and lab_edition_data.get("ctfd_settings", {}).get("enable", True)
+        self.ctfd.load_service(lab_edition_data.get("ctfd_settings", {}))
+        self.ctfd.enable = enable_ctfd
 
         # Bastion Host
         self._bastion_host = BastionHostDescription(self)
@@ -1248,7 +1363,8 @@ class Description:
             self.elastic.enable or
             self.caldera.enable or
             self.guacamole.enable or
-            self.moodle.enable
+            self.moodle.enable or
+            self.ctfd.enable
         )
 
         # Teacher Access Host
@@ -1265,7 +1381,7 @@ class Description:
             self._auxiliary_networks[internet_network_name].members = ["elastic"]
         services_network_name = f"{self.institution}-{self.lab_name}-services"
         self._auxiliary_networks[services_network_name] = AuxiliaryNetwork(self, "services", self.config.services_network_cidr_block, "route" if (self.config.platform == "libvirt" and self.config.libvirt.routing) else "none" )
-        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole", "moodle"]
+        self._auxiliary_networks[services_network_name].members = ["elastic", "caldera", "guacamole", "moodle", "ctfd"]
         if self.config.platform == "aws":
             self._auxiliary_networks[services_network_name].members.append("teacher_access_host")
             if self.elastic.monitor_type == "traffic":
@@ -1281,6 +1397,7 @@ class Description:
         self.caldera.load_interfaces(self._auxiliary_networks)
         self.moodle.load_interfaces(self.auxiliary_networks)
         self.guacamole.load_interfaces(self.auxiliary_networks)
+        self.ctfd.load_interfaces(self.auxiliary_networks)
 
         ##### End load services #####
 
@@ -1663,6 +1780,8 @@ class Description:
             services[self.guacamole.name] = self.guacamole
         if self.moodle.enable:
             services[self.moodle.name] = self.moodle
+        if self.ctfd.enable:
+            services[self.ctfd.name] = self.ctfd
         if self.teacher_access_host.enable:
             services[self.teacher_access_host.name] = self.teacher_access_host
         return services
@@ -1686,6 +1805,10 @@ class Description:
     @property
     def moodle(self):
         return self._moodle
+
+    @property
+    def ctfd(self):
+        return self._ctfd
     
     @property
     def bastion_host(self):
@@ -1849,6 +1972,7 @@ class Description:
         services["caldera"] = self.caldera.to_dict()
         services["guacamole"] = self.guacamole.to_dict()
         services["moodle"] = self.moodle.to_dict()
+        services["ctfd"] = self.ctfd.to_dict()
         services["bastion_host"] = self.bastion_host.to_dict()
         services["teacher_access_host"] = self.teacher_access_host.to_dict()
 

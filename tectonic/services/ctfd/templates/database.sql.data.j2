@@ -1,0 +1,37 @@
+INSERT INTO `config` VALUES 
+    (3,'ctf_name','{{ services.ctfd.event_name }}'),
+    (4,'ctf_description','{{ services.ctfd.event_description }}'),
+    (5,'user_mode','{{ services.ctfd.user_mode }}'),
+    (6,'ctf_theme','core'),
+    (7,'start','{{ (services.ctfd.event_start | ansible.builtin.to_datetime).strftime('%s') }}'),
+    (8,'end','{{ (services.ctfd.event_end | ansible.builtin.to_datetime).strftime('%s') }}'),
+    (9,'freeze','{{ (services.ctfd.event_freeze | ansible.builtin.to_datetime).strftime('%s') }}'),
+    (10,'challenge_visibility','{{ services.ctfd.challenge_visibility }}'),
+    (11,'registration_visibility','{{ services.ctfd.registration_visibility }}'),
+    (12,'score_visibility','{{ services.ctfd.score_visibility }}'),
+    (13,'account_visibility','{{ services.ctfd.account_visibility }}'),
+    (14,'verify_emails','{{ services.ctfd.verify_emails }}'),
+    (15,'social_shares','false'),
+    (16,'team_size','{{ services.ctfd.team_size }}'),
+    (17,'mail_server',NULL),
+    (18,'mail_port',NULL),
+    (19,'mail_tls',NULL),
+    (20,'mail_ssl',NULL),
+    (21,'mail_username',NULL),
+    (22,'mail_password',NULL),
+    (23,'mail_useauth',NULL),
+    (24,'html_sanitization','1'),
+    (25,'view_after_ctf','1'),
+    (26,'setup','1');
+INSERT INTO `users` VALUES (1,NULL,'admin','{{ admin_password_hash }}','{{ services.ctfd.admin_email }}','admin',NULL,NULL,NULL,NULL,1,0,0,NULL,'{{ ansible_facts['date_time']['iso8601_micro'] | replace('T', ' ') | replace('Z','')  }}',NULL,NULL,0);
+INSERT INTO `tokens` VALUES (1,'user',1,'{{ ansible_facts['date_time']['iso8601_micro'] | replace('T', ' ') | replace('Z','') }}','{{ ansible_facts['date_time']['year'] | int +1 }}-{{ ansible_facts['date_time']['month'] }}-{{ ansible_facts['date_time']['day'] }} {{ ansible_facts['date_time']['time'] }}.000000','{{ ctfd_admin_token }}','tectonic');
+INSERT INTO `pages` VALUES (1,'{{ services.ctfd.event_name }}','index','<div class="row">
+    <div class="col-md-6 offset-md-3">
+        <h3 class="text-center" style="padding-top: 14vh">
+            <p>Comienzo del evento: {{ '{{' }} ctf_start {{ '}}' }}</p>
+            <p>Fin del evento: {{ '{{' }} ctf_end {{ '}}' }}</p>
+        </h3>
+        <br>
+        <h4 class="text-center"><a href="login">Click aquí</a> para comenzar entrenamiento.</h4>
+    </div>
+</div>',0,0,0,'markdown',NULL);
