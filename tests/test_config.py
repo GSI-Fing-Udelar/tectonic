@@ -211,14 +211,14 @@ def test_config_caldera_latest(test_data_path):
     config.caldera.version = 'latest'
     assert config.caldera.version == 'master'
 
-    config.caldera.version = 'master'
-    assert config.caldera.version == 'master'
-
     config.guacamole.version = 'latest'
     assert config.guacamole.version == '1.6.0'
 
     config.moodle.version = 'latest'
     assert config.moodle.version == 'main'
+
+    config.ctfd.version = 'latest'
+    assert config.ctfd.version == 'master'
 
 def test_config_elastic_latest(test_data_path):
     filename = Path(test_data_path).joinpath("config", "tectonic1.ini")
