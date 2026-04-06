@@ -56,7 +56,7 @@ pynacl = "*"
 python-dateutil = "*"
 python-terraform = "*"
 pyyaml = "*"
-requests = "2.33.0"
+requests = "2.33.1"
 requests-toolbelt = "*"
 s3transfer = "*"
 six = "*"
@@ -79,7 +79,7 @@ pytest = "9.0.2"
 pytest-cov = "7.1.0"
 pytest-mock = "3.15.1"
 pytest-env = "1.6.0"
-fabric = { version = "3.2.2", extras = ["pytest"] }
+fabric = { version = "3.2.3", extras = ["pytest"] }
 pylint = "4.0.5"
 black = "26.3.1"
 moto = { version = "5.1.22", extras = ["ec2"] }
