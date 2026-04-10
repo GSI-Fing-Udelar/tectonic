@@ -43,7 +43,7 @@
     - name: "Enable Caldera OT plugins: {{ item.name }}"
       ansible.builtin.command: "mv /root/ot_plugins/{{ item.name }} /opt/caldera/plugins/"
       loop: "{{ ot_plugins }}"
-  when: services.caldera.ot_enabled == "True"
+  when: services.caldera.ot_enabled
 
 - name: Create certificates
   block:
