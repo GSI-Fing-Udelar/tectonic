@@ -285,6 +285,13 @@ def init_logging(logfile, loglevel):
     logger.addHandler(file_handler)
 
 @click.group(context_settings=CONTEXT_SETTINGS)
+@click.version_option(
+    None,
+    "-v", 
+    "--version",
+    package_name="tectonic-cyberrange",
+    message="%(package)s, version %(version)s"
+)
 @click.option(
     "--config",
     "-c",
