@@ -40,7 +40,7 @@
     - name: Enable Caldera OT plugins | Load variables
       ansible.builtin.include_vars:
         file: vars/variables.yml
-    - name: "Enable Caldera OT plugins: {{ item.name }}"
+    - name: "Enable Caldera OT plugins"
       ansible.builtin.command: "mv /root/ot_plugins/{{ item.name }} /opt/caldera/plugins/"
       loop: "{{ ot_plugins }}"
   when: services.caldera.ot_enabled
