@@ -30,6 +30,7 @@ The variables for the `base_config` playbooks are the following:
     - `ansible`
         - `ssh_common_args`
         - `keep_logs`
+        - `collections_and_roles_path`
     - `configure_dns`
     - `debug`
     - `internet_network_cidr_block`
@@ -59,6 +60,7 @@ The variables for the `base_config` playbooks are the following:
     - `copies`
     - `disk`
     - `entry_point`
+    - `evidence_generation`
     - `gui`
     - `hostname`
     - `instance`
@@ -196,4 +198,26 @@ These parameters are used in a playbook as follows:
 ```
 parameters["flags"]
 parameters["users"]["name"] and parametes["users"]["password"]
+```
+### Collections
+
+Tectonic provides a set of Ansible collections for advanced functionality. The collections are:
+
+- [tectonic.core](https://github.com/GSI-Fing-Udelar/tectonic_collections_core.git): core functionalities
+- [tectonic.evidence_generation](https://github.com/GSI-Fing-Udelar/tectonic_evidence_generation.git): useful for generating evidence and other network and filesystem artifacts
+
+For more details on these collections, see the specific documentation for each one.
+
+If your scenario's Ansible playbooks depend on Ansible collections or roles, create a requirements.yml file defining these dependencies. Tectonic will automate the installation via ansible-galaxy. The [requirements.yml](https://docs.ansible.com/projects/ansible/latest/galaxy/user_guide.html#installing-roles-and-collections-from-the-same-requirements-yml-file) file must follow the Ansible Galaxy standard.
+
+For example, the following requirements.yml defines the dependencies on all the collections provided by tectonic:
+
+```yaml
+collections:
+  - name: https://github.com/GSI-Fing-Udelar/tectonic_collections_core.git
+    type: git
+    version: main
+  - name: https://github.com/GSI-Fing-Udelar/tectonic_evidence_generation.git
+    type: git
+    version: main
 ```

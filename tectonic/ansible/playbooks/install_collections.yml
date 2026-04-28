@@ -1,0 +1,22 @@
+- name: Install collections
+  hosts: localhost
+  become: false
+  tasks:
+    - name: Create collections directory
+      ansible.builtin.file:
+        path: "{{ config.ansible.collections_and_roles_path }}/ansible_collections"
+        state: directory
+    - name: Install collections
+      community.general.ansible_galaxy_install:
+        type: collection
+        requirements_file: "{{ scenario_dir }}/ansible/requirements.yml"
+        dest: "{{ config.ansible.collections_and_roles_path }}/ansible_collections"
+    - name: Create roles directory
+      ansible.builtin.file:
+        path: "{{ config.ansible.collections_and_roles_path }}/roles"
+        state: directory
+    - name: Install roles
+      community.general.ansible_galaxy_install:
+        type: role
+        requirements_file: "{{ scenario_dir }}/ansible/requirements.yml"
+        dest: "{{ config.ansible.collections_and_roles_path }}/roles"
