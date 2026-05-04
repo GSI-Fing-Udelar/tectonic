@@ -82,7 +82,7 @@ pytest-env = "1.6.0"
 fabric = { version = "3.2.3", extras = ["pytest"] }
 pylint = "4.0.5"
 black = "26.3.1"
-moto = { version = "5.1.22", extras = ["ec2"] }
+moto = { version = "5.2.0", extras = ["ec2"] }
 responses = "0.26.0"
 freezegun = "1.5.5"
 
