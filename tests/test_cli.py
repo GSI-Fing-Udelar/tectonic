@@ -5,7 +5,7 @@ from click.testing import CliRunner
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 import logging
-
+import importlib.metadata
 import tectonic.cli as cli
 
 @pytest.fixture
@@ -234,4 +234,20 @@ def test_cli_invalid_default_pubkey(mock_core, mock_desc, monkeypatch, runner, m
     assert result.exit_code == 0
     mock_ctx["core"].info.assert_called_once()
     
+def test_version_flag_long(runner):
+    result = runner.invoke(cli.tectonic, ["--version"])
+    assert result.exit_code == 0
+    expected = f"tectonic-cyberrange, version {importlib.metadata.version('tectonic-cyberrange')}"
+    assert expected in result.output
 
+def test_version_flag_short(runner):
+    result = runner.invoke(cli.tectonic, ["-v"])
+    assert result.exit_code == 0
+    expected = f"tectonic-cyberrange, version {importlib.metadata.version('tectonic-cyberrange')}"
+    assert expected in result.output
+
+def test_version_flag_no_side_effect(runner):
+    result = runner.invoke(cli.tectonic, ["--version", "deploy"])
+    assert result.exit_code == 0
+    expected = f"tectonic-cyberrange, version {importlib.metadata.version('tectonic-cyberrange')}"
+    assert expected in result.output
