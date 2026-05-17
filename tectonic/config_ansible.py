@@ -19,17 +19,19 @@
 # along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
 
 import tectonic.validate as validate
+from tectonic.utils import absolute_path
 
 class TectonicConfigAnsible(object):
     """Class to store Tectonic ansible configuration."""
 
-    def __init__(self):
+    def __init__(self, tectonic_dir):
         self.ssh_common_args = "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 "
         self.keep_logs = False
         self.forks = 5
         self.pipelining = False
         self.timeout = 10
-
+        self.tectonic_dir = tectonic_dir
+        self.collections_and_roles_path = "./tectonic/ansible"
 
     #----------- Getters ----------
     @property
@@ -51,7 +53,10 @@ class TectonicConfigAnsible(object):
     @property
     def timeout(self):
         return self._timeout
-
+    
+    @property
+    def collections_and_roles_path(self):
+        return self._collections_and_roles_path
 
     #----------- Setters ----------
     @ssh_common_args.setter
@@ -78,8 +83,15 @@ class TectonicConfigAnsible(object):
         validate.number("timeout", value, min_value=1)
         self._timeout = value
 
+    @collections_and_roles_path.setter
+    def collections_and_roles_path(self, value):
+        value = absolute_path(value, base_dir=self.tectonic_dir)
+        validate.path_to_dir("collections_and_roles_path", value)
+        self._collections_and_roles_path = value
+
     def to_dict(self):
         return {
             "ssh_common_args": self.ssh_common_args,
             "keep_logs": self.keep_logs,
+            "collections_and_roles_path": self.collections_and_roles_path,
         }

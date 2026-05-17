@@ -6,6 +6,7 @@ This is a full reference example of the ansible variables available in
     "ansible": {
         "keep_logs": false
         "ssh_common_args: "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=3600 "
+        "collections_and_roles_path": "./ansible
     }
     "configure_dns": false,
     "debug": true,

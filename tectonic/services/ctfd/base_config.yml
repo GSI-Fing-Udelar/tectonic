@@ -1,0 +1,118 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+
+- name: Install ctfd (Ubuntu 22.04)
+  hosts: ctfd
+  become: true
+  vars_files:
+    - vars/variables.yml
+  tasks:
+    - name: Install software-properties-common
+      ansible.builtin.package: 
+        name: software-properties-common
+        state: present
+
+    - name: Add Universe repo
+      ansible.builtin.shell: add-apt-repository universe -y
+
+    - name: Update repos
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install software
+      ansible.builtin.package:
+        name:
+          - nginx
+          - redis-server
+          - mysql-server
+          - git
+          - build-essential
+          - python3-dev
+          - python3-venv
+          - python3-pip
+          - python3
+          - libffi-dev
+          - python3-pymysql 
+        state: present
+
+    - name: Ensure group 'ctf' exists
+      ansible.builtin.group:
+        name: ctf
+        state: present
+        system: true
+
+    - name: Add the user 'ctf' with a primary group of 'ctf'
+      ansible.builtin.user:
+        name: ctf
+        comment: ctf service
+        group: ctf
+        system: true
+
+    - name: Download CTFd
+      ansible.builtin.git:
+        repo: https://github.com/CTFd/CTFd.git
+        dest: /opt/CTFd/
+        version: "{{ services.ctfd.version }}"
+
+    - name: Recursively change ownership of /opt/CTFd
+      ansible.builtin.file:
+        path: /opt/CTFd
+        state: directory
+        recurse: yes
+        owner: ctf
+        group: ctf
+
+    - name: Create /var/log/CTFd
+      ansible.builtin.file:
+        path: /var/log/CTFd
+        state: directory
+        owner: ctf
+        group: ctf
+
+    - name: Search for requirements.txt
+      ansible.builtin.find:
+        path: /opt/CTFd
+        recurse: yes
+        pattern: "requirements.txt"
+        use_regex: true
+      register: found_requirements
+
+    - name: Create virtual env directory
+      ansible.builtin.file:
+        path: /opt/CTFd/venv
+        state: directory
+        owner: ctf
+        group: ctf
+        mode: '0755'
+
+    - name: Install python packages
+      ansible.builtin.pip:
+        requirements: "{{ item['path'] }}"
+        virtualenv: /opt/CTFd/venv
+        virtualenv_command: python3 -m venv
+      loop: "{{ found_requirements['files'] }}"
+
+    - name: Install other python packages
+      ansible.builtin.pip:
+        name: 
+          - pyOpenSSL
+          - ctfcli
+        virtualenv: /opt/CTFd/venv
+        virtualenv_command: python3 -m venv

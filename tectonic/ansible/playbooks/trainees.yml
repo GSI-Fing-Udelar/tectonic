@@ -108,7 +108,7 @@
         - config.platform == "aws"
 
 - name: "Create student users on the rest of the machines."
-  hosts: all:!bastion_host:!guacamole:!moodle
+  hosts: all:!bastion_host:!guacamole:!moodle:!ctfd
   gather_facts: true
   vars:
     digit_count: "{{ instances | string | length }}"
@@ -259,3 +259,23 @@
           become_user: www-data
           loop: "{{ users | dict2items | product(moosh_results.stdout_lines[1:]) | list }}"
       when: services.moodle.auto_enroll_trainees
+
+- name: Create student users on ctfd
+  hosts: ctfd
+  gather_facts: false
+  tasks:
+    - name: Get admin token
+      block:
+        - name: Get admin token | Read credentials file
+          ansible.builtin.slurp:
+            src: /root/credentials
+          register: credentials
+        - name: Get admin token | Parse credentials file
+          ansible.builtin.set_fact:
+            admin_token: "{{ (credentials['content'] | b64decode).splitlines()[1].split()[1] }}"
+    - name: Create users
+      ansible.builtin.include_tasks: ../../services/ctfd/create_user.yml
+      loop: "{{ users | dict2items }}"
+      loop_control:
+        loop_var: item
+    

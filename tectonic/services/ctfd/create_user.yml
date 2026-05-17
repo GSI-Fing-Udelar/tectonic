@@ -1,0 +1,55 @@
+#
+# Tectonic - An academic Cyber Range
+# Copyright (C) 2024 Grupo de Seguridad Informática, Universidad de la República,
+# Uruguay
+#
+# This file is part of Tectonic.
+#
+# Tectonic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tectonic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Tectonic.  If not, see <http://www.gnu.org/licenses/>.
+#
+- name: debug
+  ansible.builtin.debug:
+    var: admin_token
+- name: Create user | Check if user already exists
+  ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
+  vars:
+    url: "https://{{ services.ctfd.ip }}:8443/api/v1/users?field=name&q={{ item.key }}"
+    method: "GET"
+    status_code: 200
+    headers: 
+      Authorization: "Token {{ admin_token }}"
+      Content-Type: "application/json"
+  register: result
+- name: debug
+  ansible.builtin.debug:
+    var: result
+- name: Create user | Create user via API
+  ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
+  vars:
+    url: "https://{{ services.ctfd.ip }}:8443/api/v1/users?notify=false"
+    method: "POST"
+    status_code: 200
+    body_format: "json"
+    headers: 
+      Authorization: "Token {{ admin_token }}"
+      Content-Type: "application/json"
+    body:
+      name: "{{ item.key  }}"
+      email: "{{ item.key }}@{{ services.bastion_host.domain }}"
+      password: "{{ item.value.password }}"
+      type: "user"
+      verified: false
+      hidden: false
+      banned: false
+  when: result.json.data is defined and result.json.data | length == 0

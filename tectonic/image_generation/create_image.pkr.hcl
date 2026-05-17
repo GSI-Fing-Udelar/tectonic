@@ -283,6 +283,11 @@ build {
       ["--extra-vars", "ansible_become=true ansible_no_target_syslog=${local.remove_ansible_logs}"]
     )
 
+    ansible_env_vars = concat(
+      ["ANSIBLE_COLLECTIONS_PATH=${local.tectonic["config"]["ansible"]["collections_and_roles_path"]}"],
+      ["ANSIBLE_ROLES_PATH=${local.tectonic["config"]["ansible"]["collections_and_roles_path"]}/roles"]
+    )
+
     ansible_ssh_extra_args = [local.tectonic["config"]["ansible"]["ssh_common_args"]]
 
     except = local.not_endpoint_monitoring_machines
@@ -314,6 +319,11 @@ build {
       ["--extra-vars", var.networks_json],
       ["--extra-vars", "guest=${source.name}"],
       ["--extra-vars", "ansible_become=true ansible_no_target_syslog=${local.remove_ansible_logs}"]
+    )
+
+    ansible_env_vars = concat(
+      ["ANSIBLE_COLLECTIONS_PATH=${local.tectonic["config"]["ansible"]["collections_and_roles_path"]}"],
+      ["ANSIBLE_ROLES_PATH=${local.tectonic["config"]["ansible"]["collections_and_roles_path"]}/roles"]
     )
 
     except = !fileexists("${local.tectonic["ansible_dir"]}/base_config.yml") ? local.machine_builds : []

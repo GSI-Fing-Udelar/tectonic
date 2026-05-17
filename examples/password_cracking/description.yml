@@ -48,7 +48,7 @@ guest_settings:
     # defensive actions simulation. Default: no.
     blue_team_agent: no
     # Configure GUI. Default: no.
-    gui: yes
+    gui: no
 
   # The victim that must be attacked.
   victim:
@@ -65,7 +65,7 @@ topology:
 
 # Elastic service configuration
 elastic_settings:
-  # Wheter to deploy this service. Default: no.
+  # Wheter to deploy this service.
   enable: yes
   # How to monitor instances. traffic (only network traffic with
   # packetbeat) or endpoint (monitor processes, network traces, files,
@@ -73,27 +73,55 @@ elastic_settings:
   monitor_type: endpoint
   # Wheter to deploy default policy. Default: yes.
   deploy_default_policy: yes
+  # Service machine resources
+  vcpu: 2
+  memory: 8192
+  disk: 30
 
 # Caldera service configuration
 caldera_settings:
-  # Wheter to deploy this service. Default: no.
+  # Wheter to deploy this service.
   enable: no
+  # Service machine resources
   memory: 2048
   vpcu: 2
   disk: 20
 
 # Guacamole service configuration
 guacamole_settings:
-  # Default values:
+  # Wheter to deploy this service.
   enable: yes
+  # Service machine resources
   memory: 2048
   vpcu: 2
   disk: 20
 
 # Moodle service configuration
 moodle_settings:
+  # Wheter to deploy this service.
   enable: yes
-  # Default values:
-  memory: 4096
+  # Service machine resources
+  memory: 2048
+  vpcu: 2
+  disk: 20
+
+# CTFd service configuration
+ctfd_settings:
+  # Wheter to deploy this service.
+  enable: yes
+  # Name for the event
+  event_name: Password Cracking
+  # Description for the event
+  event_description: Password Cracking exercise
+  # TODO adjust comments
+  user_mode: users
+  challenge_visibility: private
+  registration_visibility: private
+  score_visibility: private
+  account_visibility: private
+  enable_trainees: yes
+  verify_emails: no
+  # Service machine resources
+  memory: 2048
   vpcu: 2
   disk: 20

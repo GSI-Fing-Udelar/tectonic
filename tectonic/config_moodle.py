@@ -57,11 +57,11 @@ class TectonicConfigMoodle(object):
     
     @version.setter
     def version(self, value):
-        if value != 'latest':
-            validate.version_number("moodle version", value)
-            value = f"v{value}"
+        validate.version_number("moodle version", value)
         if value == "latest":
             value = "main"
+        else:
+            value = f"v{value}"
         self._version = value
 
     @internal_port.setter
