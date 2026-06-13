@@ -926,17 +926,13 @@ class MoodleDescription(ServiceDescription):
 class BastionHostDescription(ServiceDescription):
     def __init__(self, description):
         super().__init__(description, "bastion_host", "ubuntu22", description.config.platform == "aws")
-        self.ports = {
-            "guacamole": description.config.guacamole.external_port
-        }
+        self.ports["bastion_host"] = description.config.bastion_host.external_port 
         if description.elastic.enable:
             self.ports["elastic"] = description.config.elastic.external_port
         if description.caldera.enable:
             self.ports["caldera"] = description.config.caldera.external_port
         if description.moodle.enable:
             self.ports["moodle"] = description.config.moodle.external_port
-        if description.ctfd.enable:
-            self.ports["ctfd"] = description.config.ctfd.external_port
 
     @property
     def instance_type(self):
@@ -978,6 +974,7 @@ class BastionHostDescription(ServiceDescription):
             source = "0.0.0.0/0"
         for service, port in self.ports.items():
             base_traffic_rules.append(BaseTrafficRule(f"service-bastion_host-web-{service}", "Allow incoming web interface traffic", source, self.service_ip, "tcp", port))
+        base_traffic_rules.append(BaseTrafficRule(f"service-bastion_host-web-http", "Allow incoming http web interface traffic", source, self.service_ip, "tcp", 80))
         base_traffic_rules.append(BaseTrafficRule("service-bastion_host-ssh", "Allow incoming ssh traffic", source, self.service_ip, "tcp", "22"))
         return base_traffic_rules
 

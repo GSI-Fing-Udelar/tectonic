@@ -1,4 +1,4 @@
-<VirtualHost *:{{ services.guacamole.external_port }}>
+<VirtualHost *:{{ services.bastion_host.external_port }}>
     ServerName {{ services.bastion_host.domain }}
 
     DocumentRoot /var/www/html
@@ -25,6 +25,13 @@
     <Location "/guacamole/websocket-tunnel/">
         ProxyPass "wss://{{ services.guacamole.ip }}:{{ services.guacamole.internal_port }}/websocket-tunnel"
         ProxyPassReverse "wss://{{ services.guacamole.ip }}:{{ services.guacamole.internal_port }}/websocket-tunnel"
+    </Location>
+{% endif %}
+
+{% if services.ctfd.enable %}
+    <Location "/ctfd/">
+        ProxyPass "https://{{ services.ctfd.ip }}:{{ services.ctfd.internal_port }}/ctfd/"
+        ProxyPassReverse "https://{{ services.ctfd.ip }}:{{ services.ctfd.internal_port }}/ctfd/"
     </Location>
 {% endif %}
 </VirtualHost>
@@ -93,28 +100,5 @@
     ProxyPreserveHost On
     ProxyPass "/" "https://{{ services.moodle.ip }}:{{ services.moodle.internal_port }}/"
     ProxyPassReverse "/" "https://{{ services.moodle.ip }}:{{ services.moodle.internal_port }}/"
-</VirtualHost>
-{% endif %}
-
-{% if services.ctfd.enable %}
-<VirtualHost *:{{ services.ctfd.external_port }}>
-    ServerName {{ services.bastion_host.domain }}
-
-    ErrorLog ${APACHE_LOG_DIR}/ctfd_error.log
-    CustomLog ${APACHE_LOG_DIR}/ctfd_access.log combined
-
-    SSLEngine on
-    SSLProtocol All -SSLv2 -SSLv3 -TLSv1
-    SSLCertificateFile /etc/letsencrypt/live/active/fullchain.pem
-    SSLCertificateKeyFile /etc/letsencrypt/live/active/privkey.pem
-
-    SSLProxyEngine on
-    SSLProxyVerify none
-    SSLProxyCheckPeerCN off
-    SSLProxyCheckPeerExpire off
-
-    ProxyPreserveHost On
-    ProxyPass "/" "https://{{ services.ctfd.ip }}:{{ services.ctfd.internal_port }}/"
-    ProxyPassReverse "/" "https://{{ services.ctfd.ip }}:{{ services.ctfd.internal_port }}/"
 </VirtualHost>
 {% endif %}

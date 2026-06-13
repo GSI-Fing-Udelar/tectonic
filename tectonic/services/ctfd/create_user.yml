@@ -24,7 +24,7 @@
 - name: Create user | Check if user already exists
   ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
   vars:
-    url: "https://{{ services.ctfd.ip }}:8443/api/v1/users?field=name&q={{ item.key }}"
+    url: "https://{{ services.ctfd.ip }}:8443/ctfd/api/v1/users?field=name&q={{ item.key }}"
     method: "GET"
     status_code: 200
     headers: 
@@ -37,7 +37,7 @@
 - name: Create user | Create user via API
   ansible.builtin.include_tasks: ../../ansible/playbooks/make_request.yml
   vars:
-    url: "https://{{ services.ctfd.ip }}:8443/api/v1/users?notify=false"
+    url: "https://{{ services.ctfd.ip }}:8443/ctfd/api/v1/users?notify=false"
     method: "POST"
     status_code: 200
     body_format: "json"

@@ -57,11 +57,11 @@
         destination_port: "{{ item }}"
         jump: ACCEPT
       with_items:
+        - "80"
+        - "{{ services.bastion_host.external_port }}"
         - "{{ services.elastic.external_port }}"
         - "{{ services.caldera.external_port }}"
-        - "{{ services.guacamole.external_port }}"
         - "{{ services.moodle.external_port }}"
-        - "{{ services.ctfd.external_port }}"
     - name: Configure firewall | Allow related or established connections
       ansible.builtin.iptables:
         chain: INPUT

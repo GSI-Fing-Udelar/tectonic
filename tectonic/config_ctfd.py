@@ -26,7 +26,6 @@ class TectonicConfigCtfd(object):
     def __init__(self):
         self.version = "3.8.2"
         self.internal_port = 8443
-        self.external_port = 8090
         self.admin_email = "admin@tectonic.local"
 
     @property
@@ -36,10 +35,6 @@ class TectonicConfigCtfd(object):
     @property
     def internal_port(self):
         return self._internal_port
-    
-    @property
-    def external_port(self):
-        return self._external_port
 
     @property
     def admin_email(self):
@@ -57,11 +52,6 @@ class TectonicConfigCtfd(object):
         validate.number("CTFd internal port", value)
         self._internal_port = value
 
-    @external_port.setter
-    def external_port(self, value):
-        validate.number("CTFd external port", value)
-        self._external_port = value
-
     @admin_email.setter
     def admin_email(self, value):
         self._admin_email = value
@@ -70,6 +60,5 @@ class TectonicConfigCtfd(object):
         return {
             "version": self.version,
             "internal_port": self.internal_port,
-            "external_port": self.external_port,
             "admin_email": self.admin_email
         }

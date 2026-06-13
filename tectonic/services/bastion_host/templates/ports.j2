@@ -1,5 +1,5 @@
 Listen 80
-Listen {{ services.guacamole.external_port }}
+Listen {{ services.bastion_host.external_port }}
 {% if services.elastic.enable %}
 Listen {{ services.elastic.external_port }}
 {% endif %}
@@ -8,7 +8,4 @@ Listen {{ services.caldera.external_port }}
 {% endif %}
 {% if services.moodle.enable %}
 Listen {{ services.moodle.external_port }}
-{% endif %}
-{% if services.ctfd.enable %}
-Listen {{ services.ctfd.external_port }}
 {% endif %}

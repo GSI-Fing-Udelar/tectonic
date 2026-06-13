@@ -25,7 +25,7 @@ The scenario description is a YAML file with the following sections:
   + `lab_name`: The lab name. Must be alphanumeric. Required.
   + `default_os`: The default operating system to use for guests. Must
     be one of `ubuntu22`, `ubuntu24`, `rocky8`, `rocky9` or `kali`. Optional, default:
-    `ubuntu22`.
+    `ubuntu22`. See [operating systems](./base_os.md) for more details.
 
 * A `guest_settings` section in which all guest machines of the lab
   are described. Each guest entry has these options (all are
@@ -42,7 +42,7 @@ The scenario description is a YAML file with the following sections:
   + `base_os`: The operating system of the guest. Must be one of
     `ubuntu22`, `ubuntu24`, `rocky8`, `rocky9`, `kali` or `windows_srv_2022`.
     Default is taken from the global `default_os` description
-    attribute mentioned above.
+    attribute mentioned above. See [operating systems](./base_os.md) for more details.
   + `internet_access`: Whether the guest has internet access. Note
     that this might be expensive on AWS, since a NAT gateway is
     deployed in the lab VPC. Default: `no`. It only works on AWS and Libvirt.

@@ -330,13 +330,19 @@ class Core:
             elif self.config.platform == "libvirt":
                 bastion_host_ip = self.description.bastion_host.service_ip
             instances_info["Bastion Host domain - IP"] = f"{self.config.bastion_host.domain} - {bastion_host_ip}"
+            instances_info["Bastion Host URL"] = f"https://{self.config.bastion_host.domain}:{self.description.bastion_host.ports["bastion_host"]}/"
 
         service_info = {}
         for _, service in self.description.services_guests.items():
             if service.base_name not in ["packetbeat", "bastion_host", "teacher_access_host"]:
-                service_port = self.description.bastion_host.ports[service.base_name]
+                if service.base_name in ["guacamole", "ctfd"]:
+                    service_port = self.description.bastion_host.ports["bastion_host"]
+                    service_url = f"https://{self.config.bastion_host.domain}:{service_port}/{service.base_name}/"
+                else:
+                    service_port = self.description.bastion_host.ports[service.base_name]
+                    service_url = f"https://{self.config.bastion_host.domain}:{service_port}"
                 service_info[service.base_name] = {
-                    "URL": f"https://{self.config.bastion_host.domain}:{service_port}",
+                    "URL": service_url,
                     "Credentials": self.terraform_service.get_service_credentials(service, self.ansible),
                 }
         return {

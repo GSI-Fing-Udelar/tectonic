@@ -155,6 +155,7 @@ This is a full reference example of the ansible variables available in
         "disk": 10,
         "domain": "tectonic.cyberrange.com",
         "enable": true,
+        "external_port": "10443",
         "interfaces": {
             "test-test-bastion_host-2": {
                 "name": "test-test-bastion_host-2",
@@ -166,18 +167,9 @@ This is a full reference example of the ansible variables available in
         "memory": 1024,
         "name": "test-test-bastion_host",
         "ports": {
-            "caldera": {
-                "external_port": "8443",
-                "internal_port": 8443
-            },
-            "elastic": {
-                "external_port": "5601",
-                "internal_port": 5601
-            },
-            "guacamole": {
-                "external_port": "10443",
-                "internal_port": 10443
-            }
+            "caldera": "8443",
+            "elastic": "5601",
+            "bastion_host": "10443",
         },
         "vcpu": 1
     },
@@ -238,7 +230,6 @@ This is a full reference example of the ansible variables available in
         "brute_force_protection_enabled": false,
         "disk": 10,
         "enable": true,
-        "external_port": "10443",
         "interfaces": {
             "test-test-guacamole-2": {
                 "name": "test-test-guacamole-2",
