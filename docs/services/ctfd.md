@@ -1,7 +1,25 @@
 # CTFd
 CTFd is a Capture The Flag framework focusing on ease of use and customizability. In Tectonic, CTFd can be deployed as a service in order to implement capture the flag competencies.
 
-### Challenge creation
+In order to upload resources to CTFd you must provide a `ctfd` directory with the following structure:
+```
+ctfd
+├── challenges
+│       ├── <challenge_1>/
+│       │      ├── challenge.yml
+│       │
+│       ├── <challenge_2>/
+│              ├── challenge.yml
+│
+├──pages
+    ├──<page_1.html>
+    │
+    ├──<page2.html>
+```
+
+### Challenge
+
+#### Challenge creation
 
 The main resource in CTFd is an challenge. To create a challenge, follow these steps:
 
@@ -11,7 +29,7 @@ The main resource in CTFd is an challenge. To create a challenge, follow these s
 
 For more information, consult the [CTFd documentation](https://docs.ctfd.io/docs/challenges/overview).
 
-### Challenge backup
+#### Challenge backup
 
 Once the challenges have been generated and tested, a backup must be created so that Tectonic can automate their import when deploying the scenario. 
 
@@ -19,16 +37,38 @@ For this, the challenge specification defined by the ctfcli tool must be followe
 
 To facilitate this task, it is suggested to work on the CTFd machine as follows:
 - Generate the challenges from the web.
-- Connect to the CTFd machine and navigate to the /opt/challenges directory (you can use tectonic command console).
+- Connect to the CTFd machine and navigate to the /opt/ctfcli/challenges/ directory (you can use tectonic command console).
 - For each challenge, create a subdirectory with its name. Inside each subdirectory, create a challenge.yml file with the following content: 
     ```yml
     name: <challenge_name>
     ```
 - For each challenge, run: /opt/CTFd/venv/bin/python3 -m ctfcli challenge mirror <challenge_name>
 
-Once the challenge backups were created, copy the generated directories into a `ctfd` directory inside the scenario specification.
+Once the challenge backups were created, copy the generated directories into a `ctfd/challenges` directory inside the scenario specification.
 
 Note: ctfcli has some limitations. For example, it's not possible to import or export requirements for flags.
+
+### Pages
+
+#### Pages creation
+To create a page, follow these steps:
+
+1. Log in with the administrator account.
+2. Click the Admin panel tab.
+3. Click the Pages tab and complete with the necessary content,
+
+For more information, consult the [CTFd documentation](https://docs.ctfd.io/docs/pages/overview).
+
+#### Pages backup
+
+Once the page have been generated and tested, a backup must be created so that Tectonic can automate their import when deploying the scenario. 
+
+To facilitate this task, it is suggested to work on the CTFd machine as follows:
+- Generate the pages from the web.
+- Connect to the CTFd machine and navigate to the /opt/ctfcli/ directory (you can use tectonic command console).
+- Run: /opt/CTFd/venv/bin/python3 -m ctfcli pages pull
+
+Once the pages backups were created, copy the generated directories into a `ctfd/pages` directory inside the scenario specification.
 
 ### CTFd bakup
 

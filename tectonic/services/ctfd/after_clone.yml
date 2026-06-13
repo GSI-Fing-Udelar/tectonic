@@ -280,11 +280,11 @@
   block:
     - name: Create ctcli config | Create directory
       ansible.builtin.file:
-        path: /opt/challenges/.ctf
+        path: /opt/ctfcli/.ctf
         state: directory
     - name: Create ctfcli config | Create file
       ansible.builtin.copy:
-        dest: /opt/challenges/.ctf/config
+        dest: /opt/ctfcli/.ctf/config
         content: |
           [config]
           url = http://127.0.0.1:8000/ctfd
@@ -299,23 +299,32 @@
   delegate_to: localhost
   become: false
   
-- name: Import challenges
+- name: Import content
   block:
-    - name: Copy challenges
+    - name: Copy content
       ansible.builtin.copy:
         src: "{{ scenario_dir }}/ctfd/"
-        dest: /opt/challenges
-    - name: Find all challenges in /opt/challenges
+        dest: /opt/ctfcli
+    - name: Find all challenges in /opt/ctfcli/challenges
       ansible.builtin.find:
-        paths: /opt/challenges
+        paths: /opt/ctfcli/challenges
         file_type: directory
         recurse: false
       register: challenges
     - name: Import challenges
       ansible.builtin.command:
-        cmd: /opt/CTFd/venv/bin/python3 -m ctfcli challenge install "{{ item.path | basename }}"
-        chdir: /opt/challenges
+        cmd: /opt/CTFd/venv/bin/python3 -m ctfcli challenge install challenges/{{ item.path | basename }}
+        chdir: /opt/ctfcli/challenges
       loop: "{{ challenges.files | sort(attribute='path') }}"
+    - name: Import pages
+      ansible.builtin.command:
+        cmd: /opt/CTFd/venv/bin/python3 -m ctfcli pages push
+        chdir: /opt/ctfcli
+      ignore_errors: true
+    - name: Sync pages
+      ansible.builtin.command:
+        cmd: /opt/CTFd/venv/bin/python3 -m ctfcli pages sync
+        chdir: /opt/ctfcli
   when:
     ctfd.stat.isdir is defined and ctfd.stat.isdir
 

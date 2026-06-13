@@ -20,7 +20,7 @@ INSERT INTO `config` VALUES
     (21,'mail_username',NULL),
     (22,'mail_password',NULL),
     (23,'mail_useauth',NULL),
-    (24,'html_sanitization','1'),
+    (24,'html_sanitization','0'),
     (25,'view_after_ctf','1'),
     (26,'setup','1');
 INSERT INTO `users` VALUES (1,NULL,'admin','{{ admin_password_hash }}','{{ services.ctfd.admin_email }}','admin',NULL,NULL,NULL,NULL,1,0,0,NULL,'{{ ansible_facts['date_time']['iso8601_micro'] | replace('T', ' ') | replace('Z','')  }}',NULL,NULL,0);
