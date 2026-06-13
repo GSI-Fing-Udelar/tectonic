@@ -78,7 +78,7 @@ OS_DATA = {
         "cloud_image_checksum": "94ce481ccb48661bb17c8283ac32d8be2f15a4b8ce9201743a466079be27664e",
         "docker_base_image": "gsitectonic/kali",
         "entrypoint": "/usr/sbin/init",
-        "interface_base_name": "ens"
+        "interface_base_name": "eth"
         },
     "windows_srv_2022": {
         "ami_filter": "Windows_Server-2022-English-Full-Base*",

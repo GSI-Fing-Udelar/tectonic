@@ -166,6 +166,7 @@ build {
       communicator         = "ssh"
       ssh_username = local.os_data[source.value["base_os"]]["username"]
       ssh_private_key_file = (source.value["base_os"] == "windows_srv_2022" ? data.sshkey.install.private_key_path : null)
+      ssh_timeout = "20m"
       # Windows only config. bootstrap_win enables OpenSSH access with
       # pubkey for the administrator.
       user_data = (source.value["base_os"] == "windows_srv_2022" ? templatefile("${abspath(path.root)}/bootstrap_win.pkrtpl", { pubkey = data.sshkey.install.public_key }): null)
@@ -187,6 +188,7 @@ build {
         communicator         = "ssh"
         ssh_username         = local.os_data[source.value["base_os"]]["username"]
         ssh_private_key_file = data.sshkey.install.private_key_path
+        ssh_timeout = "20m"
         # ssh_agent_auth = true
         # ssh_bastion_host = "tortuga"
         # ssh_bastion_port = 4446
@@ -332,8 +334,8 @@ build {
   # Clean cloud-init configuration, so it runs again after clone
   provisioner "shell" {
     inline = [ 
-      "sudo systemctl stop cloud-init",
-      "sudo cloud-init clean --logs",
+      "sudo systemctl is-active cloud-init 2>/dev/null && sudo systemctl stop cloud-init || true",
+      "sudo cloud-init clean --logs 2>/dev/null || true",
     ]
     except = local.tectonic["config"]["platform"] != "docker" ? local.win_machines : local.machine_builds 
   }

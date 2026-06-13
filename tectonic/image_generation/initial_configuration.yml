@@ -75,6 +75,13 @@
       block:
         - name: Install RDP and GUI | Debian like
           block:
+            - name: Add source.list file
+              ansible.builtin.file:
+                path: /etc/apt/sources.list
+                state: touch
+                owner: root
+                group: root
+                mode: '0644'
             - name: Add non-free repo
               ansible.builtin.lineinfile:
                 path: /etc/apt/sources.list
