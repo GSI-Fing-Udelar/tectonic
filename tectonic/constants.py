@@ -25,8 +25,8 @@ OS_DATA = {
         "ami_filter": "ubuntu/images/*/ubuntu-*-22.04-amd64-server*",
         "owner": "099720109477",
         "username": "ubuntu",
-        "cloud_image_url": "https://cloud-images.ubuntu.com/releases/22.04/release-20230616/ubuntu-22.04-server-cloudimg-amd64.img",
-        "cloud_image_checksum": "fe102bfb3d3d917d31068dd9a4bd8fcaeb1f529edda86783f8524fdc1477ee29",
+        "cloud_image_url": "https://cloud-images.ubuntu.com/releases/22.04/release-20260515/ubuntu-22.04-server-cloudimg-amd64.img",
+        "cloud_image_checksum": "f6729b53d930d7f0c6691eb553cfa6be7109de9412125bf1bf2dc6747de8a44d",
         "docker_base_image": "gsitectonic/ubuntu22",
         "entrypoint": "/usr/bin/systemd",
         "interface_base_name": "ens"
@@ -41,8 +41,8 @@ OS_DATA = {
         "ami_filter": "ubuntu/images/*/ubuntu-*-24.04-amd64-server*",
         "owner": "099720109477",
         "username": "ubuntu",
-        "cloud_image_url": "https://cloud-images.ubuntu.com/releases/noble/release-20251213/ubuntu-24.04-server-cloudimg-amd64.img",
-        "cloud_image_checksum": "2b5f90ffe8180def601c021c874e55d8303e8bcbfc66fee2b94414f43ac5eb1f",
+        "cloud_image_url": "https://cloud-images.ubuntu.com/releases/noble/release-20260518/ubuntu-24.04-server-cloudimg-amd64.img",
+        "cloud_image_checksum": "53fdde898feed8b027d94baa9cfe8229867f330a1d9c49dc7d84465ee7f229f7",
         "docker_base_image": "gsitectonic/ubuntu24",
         "entrypoint": "/usr/bin/systemd",
         "interface_base_name": "ens"
@@ -63,20 +63,19 @@ OS_DATA = {
         "owner": "792107900819",
         "username": "rocky",
         "cloud_image_url": "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
-        "cloud_image_checksum": "15d81d3434b298142b2fdd8fb54aef2662684db5c082cc191c3c79762ed6360c",
         #"cloud_image_url": "file:///data/isos/Rocky-9-GenericCloud.latest.x86_64.qcow2",
-        #"cloud_image_checksum": "2c72815bb83cadccbede4704780e9b52033722db8a45c3fb02130aa380690a3d",
+        "cloud_image_checksum": "92c206cc6f790c61583247eefe87890f8828420662c17cacf247cec78ab4eec8",
         "docker_base_image": "gsitectonic/rocky9",
         "entrypoint": "/usr/sbin/init",
         "interface_base_name": "eth"
     },
     "kali": {
         "ami_filter": "kali-last-snapshot-amd64*",
-        "owner": "679593333241",  # TODO: Marketplace owner id
+        "owner": "679593333241",
         "username": "kali",
-        "cloud_image_url": "https://kali.download/cloud-images/kali-2025.3/kali-linux-2025.3-cloud-genericcloud-amd64.tar.xz",
-        #"cloud_image_url": "file:///data/isos/kali-linux-2025.3-cloud-genericcloud-amd64.qcow2",
-        "cloud_image_checksum": "ef21c5c186a6de18ab3109bd75494a56834b92d04641aa59a7d8f6691d17d2bc",
+        #"cloud_image_url": "https://kali.download/cloud-images/kali-2026.1/kali-linux-2026.1-cloud-genericcloud-amd64.tar.xz",
+        "cloud_image_url": "file:///data/isos/kali-linux-2026.1-cloud-genericcloud-amd64.qcow2",
+        "cloud_image_checksum": "94ce481ccb48661bb17c8283ac32d8be2f15a4b8ce9201743a466079be27664e",
         "docker_base_image": "gsitectonic/kali",
         "entrypoint": "/usr/sbin/init",
         "interface_base_name": "ens"
