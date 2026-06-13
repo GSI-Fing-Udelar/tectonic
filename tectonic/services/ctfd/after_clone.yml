@@ -223,6 +223,22 @@
 
 - name: Import configuration into database
   block:
+    - name: Import configuration into database | Check that tables exist in database
+      community.mysql.mysql_query:
+        query: "SELECT COUNT(*) = 4 AS tables_exist FROM information_schema.tables WHERE table_schema = '{{ db_name }}' AND table_name IN ('config', 'users', 'tokens', 'pages')"
+        login_db: "{{ db_name }}"
+        login_user: root
+        login_password: "{{ db_root_password }}"
+      register: result
+      until: result.query_result[0][0]['tables_exist'] == 1
+      retries: 20
+      delay: 5
+    - name: Import configuration into database | Flush tables
+      community.mysql.mysql_query:
+        query: "FLUSH TABLES"
+        login_db: "{{ db_name }}"
+        login_user: root
+        login_password: "{{ db_root_password }}"
     - name: Import configuration into database | Create CTFd database template
       ansible.builtin.template:
         src: templates/database.sql.data.j2
@@ -299,7 +315,7 @@
       ansible.builtin.command:
         cmd: /opt/CTFd/venv/bin/python3 -m ctfcli challenge install "{{ item.path | basename }}"
         chdir: /opt/challenges
-      loop: "{{ challenges.files }}"
+      loop: "{{ challenges.files | sort(attribute='path') }}"
   when:
     ctfd.stat.isdir is defined and ctfd.stat.isdir
 
