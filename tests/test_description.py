@@ -139,7 +139,7 @@ def test_description_traffic_rules(labs_path, tectonic_config):
             elif service.base_name == "ctfd":
                 assert len(rules) == 2
             elif service.base_name == "bastion_host":
-                assert len(rules) == 6
+                assert len(rules) == 5
             elif service.base_name == "teacher_access_host":
                 assert len(rules) == 1
 

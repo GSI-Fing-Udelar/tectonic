@@ -335,7 +335,7 @@ class Core:
         service_info = {}
         for _, service in self.description.services_guests.items():
             if service.base_name not in ["packetbeat", "bastion_host", "teacher_access_host"]:
-                if service.base_name in ["guacamole", "ctfd"]:
+                if service.base_name in ["guacamole", "ctfd", "moodle"]:
                     service_port = self.description.bastion_host.ports["bastion_host"]
                     service_url = f"https://{self.config.bastion_host.domain}:{service_port}/{service.base_name}/"
                 else:

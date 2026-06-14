@@ -123,7 +123,7 @@
           --non-interactive
           --agree-license
           --lang=en
-          --wwwroot=https://{{ services.bastion_host.domain }}:{{ services.moodle.external_port }}
+          --wwwroot=https://{{ services.bastion_host.domain }}:{{ services.bastion_host.external_port }}/moodle
           --dataroot=/var/moodledata
           --dbtype=pgsql
           --dbhost=localhost
@@ -152,6 +152,13 @@
         minute: "*"
         user: "www-data"
         job: "/usr/bin/php{{ php_version }} /var/www/html/moodle/admin/cli/cron.php >/dev/null 2>&1"
+    - name: Configure reverse proxy
+      ansible.builtin.command:
+        cmd: >
+          /usr/bin/php{{ php_version }} /var/www/html/moodle/admin/cli/cfg.php
+          --name=reverseproxy --set=1
+      become: true
+      become_user: www-data
 
 - name: Start web services
   ansible.builtin.systemd_service:
@@ -208,6 +215,9 @@
   ansible.builtin.stat:
     path: "{{ scenario_dir }}/moodle"
   register: courses
+  delegate_to: localhost
+  become: false
+
 - name: Import courses
   block:
     - name: Copy courses backups

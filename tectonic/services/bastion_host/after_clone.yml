@@ -61,7 +61,6 @@
         - "{{ services.bastion_host.external_port }}"
         - "{{ services.elastic.external_port }}"
         - "{{ services.caldera.external_port }}"
-        - "{{ services.moodle.external_port }}"
     - name: Configure firewall | Allow related or established connections
       ansible.builtin.iptables:
         chain: INPUT

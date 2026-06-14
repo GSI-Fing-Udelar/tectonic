@@ -931,8 +931,6 @@ class BastionHostDescription(ServiceDescription):
             self.ports["elastic"] = description.config.elastic.external_port
         if description.caldera.enable:
             self.ports["caldera"] = description.config.caldera.external_port
-        if description.moodle.enable:
-            self.ports["moodle"] = description.config.moodle.external_port
 
     @property
     def instance_type(self):

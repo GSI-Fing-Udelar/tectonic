@@ -104,7 +104,6 @@ version = 4.5.8
 site_fullname = Tectonic Moodle
 site_shortname = Tectonic
 admin_email = admin@tectonic.local
-external_port = 8080
 
 [ctfd]
 version = 3.8.5
