@@ -104,17 +104,22 @@ main `config` section and special sections for different platforms
   performed on version 1.6.0 so we recommend using it. However, it may
   also work for older or newer Guacamole versions.
 * `brute_force_protection_enabled`: Whether Guacamole's brute force protection should be enabled. See [Guacamole brute force protection](https://guacamole.apache.org/doc/1.6.0/gug/auth-ban.html#securing-guacamole-against-brute-force-attacks). Default: `no`.
-* `external_port`: Port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `10443`.
 
 ### [moodle] section:
 * `version`: Moodle version to use. Use `latest` for latest version or assign a specific version. Default: `5.1.0`. All tests were performed on version `5.1.0` so we recommend using it. However, it may also work for older or newer Moodle versions.
 * `site_fullname`: Moodle site full name. Default: `Tectonic Moodle`.
 * `site_shortname`: Moodle site short name. Default: `Tectonic`.
 * `admin_email`: Email for administrator account. Default: `admin@tectonic.local`
-* `external_port`: Port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `8080`.
+
+### [ctfd] section:
+* `version`: CTFD version to use. Use `latest` for latest version or assign a specific version. Default: `3.8.2`. All tests were performed on version `3.8.2` so we recommend using it. However, it may also work for older or newer CTFD versions.
+* `site_fullname`: Moodle site full name. Default: `Tectonic Moodle`.
+* `site_shortname`: Moodle site short name. Default: `Tectonic`.
+* `admin_email`: Email for administrator account. Default: `admin@tectonic.local`
 
 ### [bastion_host] section
 * `domain`:Domain name used.
+* `external_port`: Port on which the service is offered. If using Docker, do not make use of privileged ports. Default: `10443`.
 
 
 You can find an example configuration file with the default values

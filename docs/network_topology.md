@@ -117,6 +117,9 @@ If `routing: no`, then in order for Guacamole to reach guests, it is necessary t
 ##### Moodle
 - The `bastion_host` has access to `moodle` on port 443/tcp.
 
+##### CTFd
+- The `bastion_host` has access to `ctfd` on port 8443/tcp.
+
 ##### Bastion Host
 - The ports indicated with the `external_port` option for each of the services in the tectonic.ini file are accessible. In the case of AWS, access is enabled for the entire internet. In the case of Libvirt and Docker, it is possible to access these ports from the host where the deployment is performed.
 

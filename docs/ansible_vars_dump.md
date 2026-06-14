@@ -155,6 +155,7 @@ This is a full reference example of the ansible variables available in
         "disk": 10,
         "domain": "tectonic.cyberrange.com",
         "enable": true,
+        "external_port": "10443",
         "interfaces": {
             "test-test-bastion_host-2": {
                 "name": "test-test-bastion_host-2",
@@ -166,18 +167,9 @@ This is a full reference example of the ansible variables available in
         "memory": 1024,
         "name": "test-test-bastion_host",
         "ports": {
-            "caldera": {
-                "external_port": "8443",
-                "internal_port": 8443
-            },
-            "elastic": {
-                "external_port": "5601",
-                "internal_port": 5601
-            },
-            "guacamole": {
-                "external_port": "10443",
-                "internal_port": 10443
-            }
+            "caldera": "8443",
+            "elastic": "5601",
+            "bastion_host": "10443",
         },
         "vcpu": 1
     },
@@ -238,7 +230,6 @@ This is a full reference example of the ansible variables available in
         "brute_force_protection_enabled": false,
         "disk": 10,
         "enable": true,
-        "external_port": "10443",
         "interfaces": {
             "test-test-guacamole-2": {
                 "name": "test-test-guacamole-2",
@@ -252,6 +243,62 @@ This is a full reference example of the ansible variables available in
         "name": "test-test-guacamole",
         "vcpu": 1,
         "version": "1.6.0"
+    },
+    "moodle": {
+        "base_name": "moodle",
+        "base_os": "ubuntu24",
+        "admin_email": "admin@tectonic.local",
+        "enable_trainees": true,
+        "auto_enroll_trainees": true,
+        "disk": 10,
+        "enable": true,
+        "interfaces": {
+            "test-test-moodle-2": {
+                "name": "test-test-moodle-2",
+                "private_ip": "10.99.0.137",
+                "subnetwork_name": "test-test-services"
+            }
+        },
+        "internal_port": 443,
+        "ip": "10.99.0.137",
+        "memory": 2048,
+        "name": "test-test-moodle",
+        "vcpu": 1,
+        "version": "4.5.8"
+    },
+    "ctfd": {
+        "base_name": "ctfd",
+        "base_os": "ubuntu24",
+        "admin_email": "admin@tectonic.local",
+        "auto_enroll_trainees": true,
+        "disk": 10,
+        "enable": true,
+        "event_name": "Tectonic CTF",
+        "event_description": "CTF event",
+        "user_mode": "users",
+        "challenge_visibility": "private",
+        "registration_visibility": "private",
+        "score_visibility": "private",
+        "account_visibility": "private",
+        "verify_emails": false,
+        "team_size": 0,
+        "enable_trainees": true,
+        "event_start": "2026-03-24 21:00:00",
+        "event_end": "2026-03-25 21:00:00",
+        "event_freeze": "2026-03-25 21:00:00",
+        "interfaces": {
+            "test-test-ctfd-2": {
+                "name": "test-test-ctfd-2",
+                "private_ip": "10.99.0.138",
+                "subnetwork_name": "test-test-services"
+            }
+        },
+        "internal_port": 8443,
+        "ip": "10.99.0.138",
+        "memory": 2048,
+        "name": "test-test-ctfd",
+        "vcpu": 1,
+        "version": "3.8.2"
     }
 },
 "ssh_password_login": true,

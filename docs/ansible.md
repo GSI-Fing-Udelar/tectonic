@@ -85,6 +85,7 @@ The variables for the `base_config` playbooks are the following:
     - `bastion_host`
         - `<guest_configuracion>`
         - `domain`
+        - `external_port`
     - `caldera`
         - `<guest_configuracion>`
         - `external_port`
@@ -104,9 +105,33 @@ The variables for the `base_config` playbooks are the following:
     - `guacamole`
         - `<guest_configuracion>`
         - `brute_force_protection_enabled`
-        - `external_port`
         - `internal_port`
         - `version`
+    - `moodle`
+        - `<guest_configuracion>`
+        - `enable_trainees`
+        - `admin_email`
+        - `auto_enroll_trainees`
+        - `internal_port`
+        - `version`
+    - `ctfd`
+        - `<guest_configuracion>`
+        - `internal_port`
+        - `version`
+        - `admin_email`
+        - `event_name`
+        - `event_description`
+        - `user_mode`
+        - `challenge_visibility`
+        - `registration_visibility`
+        - `score_visibility`
+        - `account_visibility`
+        - `verify_emails`
+        - `team_size`
+        - `enable_trainees`
+        - `event_start`
+        - `event_end`
+        - `event_freeze`
 
 #### After clone configuration
 

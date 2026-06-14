@@ -10,7 +10,7 @@ more.
 
 The main resource in Moodle is a course. To create a course, follow these steps:
 
-1. Log in with the administrator account (credentials???).
+1. Log in with the administrator account.
 2. Click Site administration.
 3. Click the Courses tab.
 4. Click Add a new course.

@@ -75,9 +75,17 @@
                         <div class="col-12">
                             <h2>Train</h2>
 {% if services.guacamole.enable %}
-                            <a href="./guacamole/">Start training</a>
+                            <a href="./guacamole/">Access Guacamole</a>
+                            <br>
 {% endif %}
-{% if not services.guacamole.enable %}
+{% if services.ctfd.enable %}
+                            <a href="./ctfd/">Access CTFd</a>
+                            <br>
+{% endif %}
+{% if services.moodle.enable %}
+                            <a href="./moodle/">Access Moodle</a>
+{% endif %}
+{% if not services.guacamole.enable and not services.ctfd.enable and not services.moodle.enable %}
                             <p>To access the training, contact your trainer.</p>
 {% endif %}
                         </div>

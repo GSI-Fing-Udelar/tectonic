@@ -42,7 +42,7 @@ plugins:
 - stockpile
 - training
 - ssl
-{% if services.caldera.ot_enabled == "True" %}
+{% if services.caldera.ot_enabled %}
 {% for ot_plugin in ot_plugins %}
 - {{ ot_plugin.name }}
 {% endfor %}
