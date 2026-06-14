@@ -26,7 +26,6 @@ class TectonicConfigMoodle(object):
     def __init__(self):
         self.version = "4.5.8"
         self.internal_port = 443
-        self.external_port = 8080
         self.site_fullname = "Tectonic Moodle"
         self.site_shortname = "Tectonic"
         self.admin_email = "admin@tectonic.local"
@@ -38,10 +37,6 @@ class TectonicConfigMoodle(object):
     @property
     def internal_port(self):
         return self._internal_port
-    
-    @property
-    def external_port(self):
-        return self._external_port
     
     @property
     def site_fullname(self):
@@ -57,22 +52,17 @@ class TectonicConfigMoodle(object):
     
     @version.setter
     def version(self, value):
-        if value != 'latest':
-            validate.version_number("moodle version", value)
-            value = f"v{value}"
+        validate.version_number("moodle version", value)
         if value == "latest":
             value = "main"
+        else:
+            value = f"v{value}"
         self._version = value
 
     @internal_port.setter
     def internal_port(self, value):
         validate.number("Moodle internal port", value)
         self._internal_port = value
-
-    @external_port.setter
-    def external_port(self, value):
-        validate.number("Moodle external port", value)
-        self._external_port = value
     
     @site_fullname.setter
     def site_fullname(self, value):
@@ -90,7 +80,6 @@ class TectonicConfigMoodle(object):
         return {
             "version": self.version,
             "internal_port": self.internal_port,
-            "external_port": self.external_port,
             "site_fullname": self.site_fullname,
             "site_shortname": self.site_shortname,
             "admin_email": self.admin_email,

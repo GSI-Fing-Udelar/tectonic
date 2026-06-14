@@ -98,17 +98,20 @@ external_port = 8443
 [guacamole]
 version = 1.6.0
 brute_force_protection_enabled = no
-external_port = 10443
 
 [moodle]
 version = 4.5.8
 site_fullname = Tectonic Moodle
 site_shortname = Tectonic
 admin_email = admin@tectonic.local
-external_port = 8080
+
+[ctfd]
+version = 3.8.5
+admin_email = admin@tectonic.local
 
 [bastion_host]
 domain = tectonic.cyberrange.com
+external_port = 10443
 """
 
 @pytest.fixture(scope="session")

@@ -24,6 +24,7 @@
   gather_facts: true
   vars:
     mysql_driver_version: 9.5.0
+    guacamole_base_path: apache.org/dyn/closer.lua/guacamole
 
   tasks:
     - name: "Update repos"
@@ -65,7 +66,7 @@
 
     - name: Download guacamole
       ansible.builtin.unarchive:
-        src: "https://downloads.apache.org/guacamole/{{ services.guacamole.version }}/source/guacamole-server-{{ services.guacamole.version }}.tar.gz"
+        src: "https://{{ guacamole_base_path }}/{{ services.guacamole.version }}/source/guacamole-server-{{ services.guacamole.version }}.tar.gz?action=download"
         dest: /root/
         remote_src: yes
       environment:
@@ -113,7 +114,7 @@
 
     - name: Download guacamole webapp
       ansible.builtin.get_url:
-        url: "https://downloads.apache.org/guacamole/{{ services.guacamole.version }}/binary/guacamole-{{ services.guacamole.version }}.war"
+        url: "https://{{ guacamole_base_path }}/{{ services.guacamole.version }}/binary/guacamole-{{ services.guacamole.version }}.war?action=download"
         dest: /var/lib/tomcat9/webapps/ROOT.war
     - name: Configure guacamole
       block:

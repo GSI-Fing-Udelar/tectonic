@@ -48,7 +48,7 @@ guest_settings:
     # defensive actions simulation. Default: no.
     blue_team_agent: no
     # Configure GUI. Default: no.
-    gui: yes
+    gui: no
 
   # The victim that must be attacked.
   victim:
@@ -65,7 +65,7 @@ topology:
 
 # Elastic service configuration
 elastic_settings:
-  # Wheter to deploy this service. Default: no.
+  # Wheter to deploy this service.
   enable: yes
   # How to monitor instances. traffic (only network traffic with
   # packetbeat) or endpoint (monitor processes, network traces, files,
@@ -73,27 +73,61 @@ elastic_settings:
   monitor_type: endpoint
   # Wheter to deploy default policy. Default: yes.
   deploy_default_policy: yes
+  # Service machine resources
+  vcpu: 2
+  memory: 8192
+  disk: 30
 
 # Caldera service configuration
 caldera_settings:
-  # Wheter to deploy this service. Default: no.
+  # Wheter to deploy this service.
   enable: no
+  # Service machine resources
   memory: 2048
   vpcu: 2
   disk: 20
 
 # Guacamole service configuration
 guacamole_settings:
-  # Default values:
+  # Wheter to deploy this service.
   enable: yes
+  # Service machine resources
   memory: 2048
   vpcu: 2
   disk: 20
 
 # Moodle service configuration
 moodle_settings:
+  # Wheter to deploy this service.
   enable: yes
-  # Default values:
-  memory: 4096
+  # Service machine resources
+  memory: 2048
+  vpcu: 2
+  disk: 20
+
+# CTFd service configuration
+ctfd_settings:
+  # Wheter to deploy this service.
+  enable: yes
+  # Name for the event
+  event_name: Password Cracking
+  # Description for the event
+  event_description: Password Cracking exercise
+  # User mode (users/teams)
+  user_mode: users
+  # Who can see the challenges
+  challenge_visibility: private
+  # Who can register new users
+  registration_visibility: private
+  # Who can see the score
+  score_visibility: private
+  # Who can see the accounts
+  account_visibility: private
+  # Create trainees users 
+  enable_trainees: yes
+  # Send email confirmations
+  verify_emails: no
+  # Service machine resources
+  memory: 2048
   vpcu: 2
   disk: 20

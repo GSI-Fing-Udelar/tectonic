@@ -75,6 +75,38 @@
       block:
         - name: Install RDP and GUI | Debian like
           block:
+            - name: Add source.list file
+              ansible.builtin.file:
+                path: /etc/apt/sources.list
+                state: touch
+                owner: root
+                group: root
+                mode: '0644'
+            - name: Add non-free repo
+              ansible.builtin.lineinfile:
+                path: /etc/apt/sources.list
+                line: deb http://http.kali.org/kali kali-rolling main contrib non-free
+                state: present
+                insertafter: EOF
+              when: ansible_facts['distribution'] == "Kali"
+            - name: Update repos
+              ansible.builtin.apt:
+                update_cache: true
+              when: ansible_facts['distribution'] == "Kali"
+            - name: Install RDP and GUI | Kali like | Install packages
+              ansible.builtin.package:
+                name:
+                  - kali-desktop-xfce
+                  - xorg 
+                  - xrdp 
+                  - xorgxrdp
+              when: ansible_facts['distribution'] == "Kali"
+            - name: Install RDP and GUI | Kali like | Adjust xrdp user
+              ansible.builtin.user:
+                name: xrdp
+                groups: ssl-cert
+                append: true
+              when: ansible_facts['distribution'] == "Kali"
             - name: Install RDP and GUI | Debian like | Install packages
               ansible.builtin.package:
                 name:
@@ -83,6 +115,7 @@
                   - xorg 
                   - xrdp 
                   - xorgxrdp
+              when: ansible_facts['distribution'] != "Kali"
             - name: Install RDP and GUI | Debian like | Start and enable XRDP
               ansible.builtin.service:
                 state: started
@@ -121,4 +154,3 @@
                 immediate: true
           when: ansible_facts['os_family'] in ['RedHat', 'Rocky', 'Fedora']
       when: guests is defined and guests[guest]["gui"]
-

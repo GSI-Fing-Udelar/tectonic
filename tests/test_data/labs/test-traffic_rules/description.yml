@@ -57,3 +57,6 @@ guacamole_settings:
 
 moodle_settings:
   enable: yes
+
+ctfd_settings:
+  enable: yes

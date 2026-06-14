@@ -35,7 +35,6 @@ class TectonicConfigElastic(object):
         self.internal_port = 5601
         self.external_port = 5601
 
-
     #----------- Getters ----------
     @property
     def version(self):

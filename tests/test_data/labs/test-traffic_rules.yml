@@ -52,3 +52,18 @@ moodle_settings:
   vcpu: 2
   memory: 2048
   disk: 20
+
+ctfd_settings:
+  enable: yes
+  event_name: Test name
+  event_description: Test description
+  user_mode: users
+  challenge_visibility: private
+  registration_visibility: private
+  score_visibility: private
+  account_visibility: private
+  enable_trainees: yes
+  verify_emails: no
+  memory: 2048
+  vpcu: 2
+  disk: 20

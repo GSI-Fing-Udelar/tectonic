@@ -1,0 +1,19 @@
+[Unit]
+Description = CTFd
+After = network.target
+
+[Service]
+PermissionsStartOnly = true
+PIDFile = /run/CTFd.pid
+User = ctf
+Group = ctf
+WorkingDirectory = /opt/CTFd
+ExecStartPre = /bin/mkdir -p /run/CTFd
+ExecStartPre = /bin/chown -R ctf. /run/CTFd
+ExecStart = /opt/CTFd/venv/bin/gunicorn 'CTFd:create_app()' --bind '127.0.0.1:8000' --workers 4 --worker-class 'gevent' --pid /run/CTFd/CTFd.pid --access-logfile "/var/log/CTFd/access.log" --error-logfile "/var/log/CTFd/error.log"
+ExecReload = /bin/kill -s HUP $MAINPID
+ExecStop = /bin/kill -s TERM $MAINPID
+PrivateTmp = true
+
+[Install]
+WantedBy = multi-user.target

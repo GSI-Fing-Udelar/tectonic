@@ -22,6 +22,7 @@ from urllib.parse import urlparse
 import ipaddress
 from pathlib import Path
 import re
+from datetime import datetime
 
 
 def supported_value(name, value, supported_values, case_sensitive=True):
@@ -173,4 +174,17 @@ def ip_address_or_hostname(name, value):
             hostname(name, value)
         except:
             raise ValueError(f"Invalid {name} {value}. Must be a valid hostname or IP address.")
+
+def time(name, value):
+    try:
+        datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        raise ValueError(f"Invalid {name} {value}. Must be a valid timestamp.")
+
+def times_compare(name, min_time, max_time):
+    try:
+        if min_time > max_time:
+            raise ValueError()
+    except ValueError:
+        raise ValueError(f"Invalid {name}. Time {max_time} must be grater than {min_time}.")
     
