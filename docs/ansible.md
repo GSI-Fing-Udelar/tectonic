@@ -109,16 +109,29 @@ The variables for the `base_config` playbooks are the following:
         - `version`
     - `moodle`
         - `<guest_configuracion>`
-        - `internal_port`
-        - `site_fullname`
-        - `site_shortname`
+        - `enable_trainees`
         - `admin_email`
+        - `auto_enroll_trainees`
+        - `internal_port`
         - `version`
     - `ctfd`
         - `<guest_configuracion>`
         - `internal_port`
-        - `admin_email`
         - `version`
+        - `admin_email`
+        - `event_name`
+        - `event_description`
+        - `user_mode`
+        - `challenge_visibility`
+        - `registration_visibility`
+        - `score_visibility`
+        - `account_visibility`
+        - `verify_emails`
+        - `team_size`
+        - `enable_trainees`
+        - `event_start`
+        - `event_end`
+        - `event_freeze`
 
 #### After clone configuration
 
