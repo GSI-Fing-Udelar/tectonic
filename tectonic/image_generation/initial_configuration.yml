@@ -97,8 +97,8 @@
               ansible.builtin.package:
                 name:
                   - kali-desktop-xfce
-                  - xorg 
-                  - xrdp 
+                  - xorg
+                  - xrdp
                   - xorgxrdp
               when: ansible_facts['distribution'] == "Kali"
             - name: Install RDP and GUI | Kali like | Adjust xrdp user
@@ -121,6 +121,21 @@
                 state: started
                 enabled: yes
                 name: xrdp
+
+            - name: Mask display managers to prevent host video takeover in docker
+              ansible.builtin.systemd:
+                name: "{{ item }}"
+                masked: true
+                state: stopped
+              loop:
+                - gdm3
+                - gdm
+                - lightdm
+                - sddm
+                - weston
+              ignore_errors: true
+              when: config.platform == "docker"
+
           when: ansible_facts['os_family'] in ['Debian', 'Ubuntu']
         - name: Install RDP and GUI | RedHat
           block:
