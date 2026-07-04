@@ -25,6 +25,7 @@ OS_DATA = {
         "ami_filter": "ubuntu/images/*/ubuntu-*-22.04-amd64-server*",
         "owner": "099720109477",
         "username": "ubuntu",
+        "device_name": "/dev/sda1",
         "cloud_image_url": "https://cloud-images.ubuntu.com/releases/22.04/release-20260515/ubuntu-22.04-server-cloudimg-amd64.img",
         "cloud_image_checksum": "f6729b53d930d7f0c6691eb553cfa6be7109de9412125bf1bf2dc6747de8a44d",
         "docker_base_image": "gsitectonic/ubuntu22",
@@ -35,12 +36,14 @@ OS_DATA = {
         "ami_filter": "*Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*",
         "owner": "898082745236",
         "username": "ubuntu",
+        "device_name": "/dev/sda1",
         "interface_base_name": "ens"
     },
     "ubuntu24": {
         "ami_filter": "ubuntu/images/*/ubuntu-*-24.04-amd64-server*",
         "owner": "099720109477",
         "username": "ubuntu",
+        "device_name": "/dev/sda1",
         "cloud_image_url": "https://cloud-images.ubuntu.com/releases/noble/release-20260518/ubuntu-24.04-server-cloudimg-amd64.img",
         "cloud_image_checksum": "53fdde898feed8b027d94baa9cfe8229867f330a1d9c49dc7d84465ee7f229f7",
         "docker_base_image": "gsitectonic/ubuntu24",
@@ -51,6 +54,7 @@ OS_DATA = {
         "ami_filter": "Rocky-8-EC2-Base-8.*x86_64",
         "owner": "792107900819",
         "username": "rocky",
+        "device_name": "/dev/sda1",
         "cloud_image_url": "http://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2",
         #"cloud_image_url": "file:///data/isos/Rocky-8-GenericCloud.latest.x86_64.qcow2",
         "cloud_image_checksum": "e56066c58606191e96184de9a9183a3af33c59bcbd8740d8b10ca054a7a89c14",
@@ -62,6 +66,7 @@ OS_DATA = {
         "ami_filter": "Rocky-9-EC2-Base-9.*x86_64",
         "owner": "792107900819",
         "username": "rocky",
+        "device_name": "/dev/sda1",
         "cloud_image_url": "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
         #"cloud_image_url": "file:///data/isos/Rocky-9-GenericCloud.latest.x86_64.qcow2",
         "cloud_image_checksum": "92c206cc6f790c61583247eefe87890f8828420662c17cacf247cec78ab4eec8",
@@ -70,9 +75,10 @@ OS_DATA = {
         "interface_base_name": "eth"
     },
     "kali": {
-        "ami_filter": "kali-last-snapshot-amd64*",
+        "ami_filter": "debian-kali-last-snapshot-amd64*",
         "owner": "679593333241",
         "username": "kali",
+        "device_name": "/dev/xvda",
         #"cloud_image_url": "https://kali.download/cloud-images/kali-2026.1/kali-linux-2026.1-cloud-genericcloud-amd64.tar.xz",
         "cloud_image_url": "file:///data/isos/kali-linux-2026.1-cloud-genericcloud-amd64.qcow2",
         "cloud_image_checksum": "94ce481ccb48661bb17c8283ac32d8be2f15a4b8ce9201743a466079be27664e",
@@ -84,5 +90,6 @@ OS_DATA = {
         "ami_filter": "Windows_Server-2022-English-Full-Base*",
         "owner": "amazon",
         "username": "administrator",
+        "device_name": "dummy",
     },
 }

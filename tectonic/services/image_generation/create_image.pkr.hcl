@@ -149,7 +149,7 @@ build {
       communicator         = "ssh"
       ssh_username = local.os_data[source.value["base_os"]]["username"]
       launch_block_device_mappings {
-        device_name = "/dev/sda1"
+        device_name = "${local.os_data[source.value["base_os"]]["device_name"]}"
         volume_size = "${source.value["disk"]}"
         volume_type = "gp2"
       }
