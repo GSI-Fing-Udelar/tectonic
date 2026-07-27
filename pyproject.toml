@@ -80,7 +80,7 @@ ctfcli = "*"
 pytest = "9.1.1"
 pytest-cov = "7.1.0"
 pytest-mock = "3.15.1"
-pytest-env = "1.6.0"
+pytest-env = "1.7.0"
 fabric = { version = "3.2.3", extras = ["pytest"] }
 pylint = "4.0.6"
 black = "26.5.1"
