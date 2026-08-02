@@ -22,7 +22,7 @@
         ProxyPassReverse "https://{{ services.guacamole.ip }}:{{ services.guacamole.internal_port }}/"
     </Location>
 
-    <Location "/guacamole/websocket-tunnel/">
+    <Location "/guacamole/websocket-tunnel">
         ProxyPass "wss://{{ services.guacamole.ip }}:{{ services.guacamole.internal_port }}/websocket-tunnel"
         ProxyPassReverse "wss://{{ services.guacamole.ip }}:{{ services.guacamole.internal_port }}/websocket-tunnel"
     </Location>
