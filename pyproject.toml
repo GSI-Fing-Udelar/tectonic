@@ -82,10 +82,10 @@ pytest-cov = "7.1.0"
 pytest-mock = "3.15.1"
 pytest-env = "1.7.0"
 fabric = { version = "3.2.3", extras = ["pytest"] }
-pylint = "4.0.7"
+pylint = "4.0.8"
 black = "26.5.1"
 moto = { version = "5.2.3", extras = ["ec2"] }
-responses = "0.26.2"
+responses = "0.26.3"
 freezegun = "1.5.5"
 
 [tool.semantic_release]
