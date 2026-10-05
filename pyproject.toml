@@ -82,8 +82,8 @@ pytest-cov = "7.1.0"
 pytest-mock = "3.16.0"
 pytest-env = "1.7.1"
 fabric = { version = "3.2.3", extras = ["pytest"] }
-pylint = "4.0.9"
-black = "26.5.1"
+pylint = "4.1.2"
+black = "26.10.0"
 moto = { version = "5.2.3", extras = ["ec2"] }
 responses = "0.26.3"
 freezegun = "1.5.5"
