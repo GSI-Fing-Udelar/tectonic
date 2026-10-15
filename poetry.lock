@@ -881,14 +881,14 @@ test-randomorder = ["pytest-randomly"]
 
 [[package]]
 name = "ctfcli"
-version = "0.1.7"
+version = "0.1.8"
 description = "ctfcli is a tool to manage Capture The Flag events and challenges"
 optional = false
 python-versions = "<4,>=3.10"
 groups = ["main"]
 files = [
-    {file = "ctfcli-0.1.7-py3-none-any.whl", hash = "sha256:905f8374129909697b904d6921a9689884cbc02d326d2cbe412296e15e36c48a"},
-    {file = "ctfcli-0.1.7.tar.gz", hash = "sha256:745ac4344b44ea3a086f8060ed324af74f743b922e5ee59da9679aa9a97fbdb4"},
+    {file = "ctfcli-0.1.8-py3-none-any.whl", hash = "sha256:dbb3f3aa2f44181ef05751d79fc6251fca4ff2c3d86fdd2b57273bff6b2fe9bf"},
+    {file = "ctfcli-0.1.8.tar.gz", hash = "sha256:b5a0318fbc2451bde7407e4d725f404d7542b3ab349b2cf0cd019a4105b40776"},
 ]
 
 [package.dependencies]
@@ -901,6 +901,7 @@ python-frontmatter = ">=1.0.0,<2"
 python-slugify = ">=8.0.4,<9"
 pyyaml = ">=6.0.1,<7"
 requests = ">=2.31.0,<3"
+requests-toolbelt = "1.0.0"
 typing-extensions = ">=4.7.1,<5"
 
 [[package]]
