@@ -230,6 +230,7 @@ Tectonic provides a set of Ansible collections for advanced functionality. The c
 
 - [tectonic.core](https://github.com/GSI-Fing-Udelar/tectonic_collections_core.git): core functionalities
 - [tectonic.evidence_generation](https://github.com/GSI-Fing-Udelar/tectonic_evidence_generation.git): useful for generating evidence and other network and filesystem artifacts
+- [tectonic.android](https://github.com/GSI-Fing-Udelar/tectonic_android_emulation.git): for Android emulation in Tectonic cyber range.
 
 For more details on these collections, see the specific documentation for each one.
 
@@ -243,6 +244,9 @@ collections:
     type: git
     version: main
   - name: https://github.com/GSI-Fing-Udelar/tectonic_evidence_generation.git
+    type: git
+    version: main
+  - name: https://github.com/GSI-Fing-Udelar/tectonic_android_emulation.git
     type: git
     version: main
 ```

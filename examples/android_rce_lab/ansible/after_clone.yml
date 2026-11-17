@@ -1,0 +1,41 @@
+---
+- name: "Install and Launch Lab APK"
+  hosts: smartphone
+  gather_facts: true
+  vars:
+    adb_path: "/home/ubuntu/Android/platform-tools/adb"
+    apk_name: "app-debug.apk"
+  tasks:
+    - name: "Wait for VNC to be accessible"
+      ansible.builtin.wait_for:
+        port: 5902
+        timeout: 120
+        state: started
+    - name: "Copy the APK"
+      ansible.builtin.copy:
+        src: "files/{{ apk_name }}"
+        dest: "/tmp/{{ apk_name }}"
+    - name: "Wait for emulator to be fully booted"
+      ansible.builtin.shell:
+        cmd: "{{ adb_path }} wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done;'"
+      changed_when: false
+      retries: 10
+      delay: 15
+    - name: "Install the APK using ADB"
+      ansible.builtin.shell:
+        cmd: "{{ adb_path }} install -r /tmp/{{ apk_name }}"
+      changed_when: true
+    - name: "Configure emulator proxy to point to the attacker machine"
+      vars:
+        attacker_host_name: "{{ hostvars.keys() | select('search', 'attacker') | first }}"
+      ansible.builtin.shell:
+        cmd: "{{ adb_path }} shell settings put global http_proxy {{ hostvars[attacker_host_name]['ansible_host'] }}:8090"
+      changed_when: true
+    - name: "Launch the application"
+      ansible.builtin.shell:
+        cmd: "{{ adb_path }} shell am start -n com.app.lab.rcelab_nowsecure/.MainActivity"
+      changed_when: true
+    - name: "Clean up the temporary APK file"
+      ansible.builtin.file:
+        path: "/tmp/{{ apk_name }}"
+        state: absent

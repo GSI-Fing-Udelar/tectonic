@@ -1,0 +1,51 @@
+---
+- name: Install smartphone
+  hosts: smartphone
+  become: true
+  roles:
+    - role: tectonic.android.install
+      vars:
+        android_user: "{{ ansible_user }}"
+        cli_tools_url: "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip"
+        api_level: "24"
+        avd_device: "pixel"
+        vnc_port: 5902
+        vnc_pass: "tectonic"
+
+- name: Attacker configuration
+  hosts: attacker
+  become: true
+  tasks:
+    - name: "Update apt cache"
+      ansible.builtin.apt:
+        update_cache: true
+    - name: "Install attacker tools"
+      ansible.builtin.package:
+        state: present
+        name:
+          - python3-pip
+    - name: "Install mitmproxy via pip"
+      ansible.builtin.pip:
+        name: mitmproxy
+    - name: "Create RCELab_workspace directory"
+      become: false
+      ansible.builtin.file:
+        path: "/home/ubuntu/RCELab_workspace"
+        state: directory
+        mode: "0755"
+    - name: "Copy scripts directory"
+      become: false
+      ansible.builtin.copy:
+        src: files/scripts
+        dest: /home/ubuntu/RCELab_workspace/
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+    - name: "Copy exploit bundle"
+      become: false
+      ansible.builtin.copy:
+        src: files/exploit_bundle.zip
+        dest: /home/ubuntu/RCELab_workspace/exploit_bundle.zip
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'

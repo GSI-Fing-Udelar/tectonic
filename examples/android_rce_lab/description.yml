@@ -1,0 +1,18 @@
+---
+institution: udelar
+lab_name: android_rce_lab
+
+guest_settings:
+  attacker:
+    entry_point: yes
+  smartphone:
+    disk: 40
+    memory: 8192
+    vcpu: 4
+
+topology:
+  - name: internal
+    members:
+      - attacker
+      - smartphone
+

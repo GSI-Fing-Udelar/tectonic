@@ -1,0 +1,4 @@
+collections:
+  - name: https://github.com/GSI-Fing-Udelar/tectonic_android_emulation.git
+    type: git
+    version: main
